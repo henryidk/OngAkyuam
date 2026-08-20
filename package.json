@@ -1,0 +1,16 @@
+{
+  "name": "akyuam",
+  "private": true,
+  "version": "0.0.0",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev:api": "pnpm --filter @akyuam/api dev",
+    "dev:web": "pnpm --filter @akyuam/web dev",
+    "build": "pnpm -r build",
+    "build:shared": "pnpm --filter @akyuam/shared build",
+    "lint": "pnpm -r lint"
+  }
+}

@@ -1,0 +1,17 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Placeholder model — el modelo de datos completo (casos, usuarias, areas,
+// referidos, documentos, permisos_area, audit_log) es una tarea aparte.
+model Placeholder {
+  id        String   @id @default(uuid())
+  label     String
+  createdAt DateTime @default(now())
+}

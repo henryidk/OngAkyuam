@@ -1,0 +1,18 @@
+# Se aplica automáticamente en local con `docker compose up`.
+# Publica el puerto de Postgres solo hacia 127.0.0.1 para poder usar Prisma CLI,
+# Prisma Studio, etc. desde el host. En apps/api y apps/web se sigue corriendo
+# con `pnpm dev` fuera de Docker, así que "api" y "web" quedan bajo el profile
+# "production" y no se levantan a menos que se pida explícitamente:
+#   docker compose --profile production up --build
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+
+  api:
+    profiles:
+      - production
+
+  web:
+    profiles:
+      - production
