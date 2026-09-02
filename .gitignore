@@ -34,3 +34,18 @@ pnpm-debug.log*
 
 # Test coverage
 coverage/
+
+# Capturas de pantalla locales (no son parte del proyecto)
+capturas/
+
+# Contexto de proyecto para Claude Code — solo local, no visible para el equipo
+CLAUDE.md
+
+# MCP servers (Claude Code) — config local, no se comparte con el equipo
+.mcp.json
+
+# Claude Code — config/sesión local, no se comparte con el equipo
+.claude/
+
+# TypeScript — cache incremental de build, se regenera sola
+*.tsbuildinfo
