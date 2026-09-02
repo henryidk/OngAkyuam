@@ -8,10 +8,55 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Placeholder model — el modelo de datos completo (casos, usuarias, areas,
-// referidos, documentos, permisos_area, audit_log) es una tarea aparte.
-model Placeholder {
+enum Rol {
+  TRABAJO_SOCIAL
+  JURIDICO
+  PSICOLOGIA
+  MEDICA
+  ADMINISTRACION
+}
+
+model Usuario {
+  id                 String   @id @default(uuid())
+  nombreCompleto     String
+  username           String   @unique
+  passwordHash       String
+  rol                Rol
+  isActive           Boolean  @default(true)
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  refreshTokens RefreshToken[]
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique // sha256 del JWT, nunca el token en claro
+  usuarioId String
+  usuario   Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  expiresAt DateTime  @db.Timestamptz(3)
+  revoked   Boolean   @default(false)
+  revokedAt DateTime? @db.Timestamptz(3)
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@index([usuarioId]) // consulta frecuente: "todos los refresh tokens activos de este usuario" al desactivar/resetear
+}
+
+model AuditLog {
   id        String   @id @default(uuid())
-  label     String
-  createdAt DateTime @default(now())
+  usuarioId String?
+  username  String?
+  accion    String // LOGIN_SUCCESS, LOGIN_FAILED, LOGOUT, USER_CREATED, PASSWORD_RESET, USER_DEACTIVATED, ...
+  entidad   String? // pensado a futuro para auditar acceso a expedientes/documentos, no solo auth
+  entidadId String?
+  ipAddress String?
+  userAgent String?
+  detalles  Json?
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+
+  @@index([usuarioId])
+  @@index([accion, createdAt]) // reportes/filtros por tipo de evento y rango de fecha
 }

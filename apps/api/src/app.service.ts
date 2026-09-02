@@ -10,7 +10,7 @@ export class AppService {
   }
 
   async getHealth() {
-    const count = await this.prisma.placeholder.count();
-    return { status: 'ok', placeholderCount: count };
+    await this.prisma.$queryRaw`SELECT 1`;
+    return { status: 'ok' };
   }
 }
