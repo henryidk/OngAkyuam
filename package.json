@@ -2,7 +2,7 @@
   "name": "akyuam",
   "private": true,
   "version": "0.0.0",
-  "packageManager": "pnpm@9.15.9",
+  "packageManager": "pnpm@10.34.5",
   "engines": {
     "node": ">=20"
   },
@@ -12,5 +12,10 @@
     "build": "pnpm -r build",
     "build:shared": "pnpm --filter @akyuam/shared build",
     "lint": "pnpm -r lint"
+  },
+  "pnpm": {
+    "overrides": {
+      "deepmerge-ts": "^8.0.2"
+    }
   }
 }
