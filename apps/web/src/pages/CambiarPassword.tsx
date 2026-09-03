@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
+import LogoutButton from '../components/LogoutButton'
 import { api } from '../lib/api'
 import { extraerMensajeError } from '../lib/errors'
 import { useAuthStore, type UsuarioAutenticado } from '../store/auth.store'
@@ -47,7 +48,10 @@ export default function CambiarPassword() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
       <div className="w-full max-w-sm rounded border bg-white p-6 shadow-sm">
-        <h1 className="mb-1 text-xl font-semibold">Cambiar contraseña</h1>
+        <div className="mb-1 flex items-center justify-between">
+          <h1 className="text-xl font-semibold">Cambiar contraseña</h1>
+          <LogoutButton />
+        </div>
         <p className="mb-4 text-sm text-gray-600">
           Debe establecer una nueva contraseña antes de continuar.
         </p>

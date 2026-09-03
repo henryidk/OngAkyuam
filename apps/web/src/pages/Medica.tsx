@@ -1,7 +1,5 @@
+import PanelLayout from '../components/PanelLayout'
+
 export default function Medica() {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold">Médica</h1>
-    </div>
-  )
+  return <PanelLayout titulo="Médica" />
 }
