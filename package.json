@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "packageManager": "pnpm@10.34.5",
   "engines": {
-    "node": ">=20"
+    "node": ">=20.20 <21"
   },
   "scripts": {
     "dev:api": "pnpm --filter @akyuam/api dev",
