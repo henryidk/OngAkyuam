@@ -29,12 +29,12 @@ async function bootstrap() {
   // viajan como cookies httpOnly, no en el body — sin esto el navegador no las
   // adjunta ni las guarda en peticiones cross-origin (frontend en otro puerto/host).
   app.enableCors({
-    origin: configService.getOrThrow('FRONTEND_URL'),
+    origin: configService.getOrThrow<string>('FRONTEND_URL'),
     credentials: true,
   });
 
   app.setGlobalPrefix('api');
 
-  await app.listen(configService.getOrThrow('API_PORT'));
+  await app.listen(configService.getOrThrow<number>('API_PORT'));
 }
 void bootstrap();
