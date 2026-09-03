@@ -12,11 +12,13 @@
   "dependencies": {
     "@akyuam/shared": "workspace:*",
     "@hookform/resolvers": "^5.9.1",
+    "axios": "^1.20.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.55.0",
     "react-router-dom": "^7.18.3",
-    "zod": "^4.5.4"
+    "zod": "^4.5.4",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
