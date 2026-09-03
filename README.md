@@ -27,31 +27,41 @@ Detalles y justificación completa de cada decisión en [`CLAUDE.md`](./CLAUDE.m
 apps/api/           Backend NestJS + Prisma
   src/main.ts          punto de entrada
   src/prisma/          PrismaModule / PrismaService (conexión a Postgres)
-  prisma/schema.prisma  modelo de datos (hoy: solo un modelo placeholder;
-                         el modelo real de casos/usuarias/áreas/permisos
-                         es una tarea aparte, todavía no implementada)
+  src/auth/            módulo de login (JWT doble token en cookies, Redis,
+                        lockout, auditoría) — ver login.md
+  prisma/schema.prisma  modelo de datos (Usuario, RefreshToken, AuditLog)
   prisma/migrations/   historial de migraciones
+  prisma/seed.ts        crea los usuarios ficticios de cada área (ver abajo)
   Dockerfile           build de producción multi-stage
 
 apps/web/            Frontend React + Vite + Tailwind + React Router
   src/App.tsx           definición de rutas
-  src/pages/            una página placeholder por área (gerencia,
-                         trabajo-social, jurídica, psicológica, médica)
+  src/pages/            login, cambio de contraseña, y una página
+                         placeholder por área (trabajo-social, jurídica,
+                         psicológica, médica, admin)
   Dockerfile           build de producción multi-stage (sirve con nginx)
 
 packages/shared/     Schemas de Zod compartidos entre frontend y backend,
                       para validar el mismo formulario en ambos lados sin
                       que se desincronicen
 
-docker-compose.yml   Postgres local únicamente (bindeado a 127.0.0.1)
-.env.example         nombres de variables de entorno requeridas (sin valores)
+docker-compose.yml            base: define api/web (build de producción), postgres, redis
+docker-compose.override.yml   dev local: postgres/redis bindeados a 127.0.0.1,
+                               api-dev (backend con hot-reload en Docker), y deja
+                               api/web de producción bajo el profile "production"
+apps/api/Dockerfile.dev       imagen de dev de api-dev (no es la de producción)
+.nvmrc                         versión de Node fijada, para nvm/nvm-windows/fnm
+.env.example                  nombres de variables de entorno requeridas (sin valores)
 ```
 
 ## Requisitos
 
-- Node.js 20+
-- pnpm 10+ (bloquea por defecto los scripts de instalación de dependencias nuevas — ver [Seguridad de dependencias](#seguridad-de-dependencias))
-- Docker y Docker Compose (para Postgres y Redis locales)
+- Node.js 20+ (versión exacta en `.nvmrc` — con nvm/nvm-windows/fnm, `nvm use`)
+- Después de instalar Node: `corepack enable` una sola vez por máquina. Lee el
+  campo `packageManager` del `package.json` raíz y deja instalada la versión
+  exacta de pnpm que usa el proyecto, igual en Windows que en Linux — no
+  instalar pnpm por separado.
+- Docker y Docker Compose (para Postgres, Redis y el backend en dev — ver abajo)
 
 ## Levantar el proyecto en local
 
@@ -64,20 +74,30 @@ docker-compose.yml   Postgres local únicamente (bindeado a 127.0.0.1)
    ```
    pnpm install
    ```
-4. Levantar Postgres local:
+4. Levantar Postgres, Redis y el backend (`api-dev`, con hot-reload vía bind mount):
    ```
-   docker compose up -d postgres
+   docker compose up -d
    ```
-   Si ya tienes otro Postgres corriendo en el 5432, cambia `POSTGRES_PORT` en `.env` (y el puerto correspondiente en `DATABASE_URL`) antes de levantar el contenedor.
+   Si ya tienes otro Postgres corriendo en el 5432, cambia `POSTGRES_PORT` en `.env` (y el puerto correspondiente en `DATABASE_URL`) antes de levantar el contenedor. Lo mismo aplica a `API_PORT` si el 3000 ya está en uso.
+
+   El backend corre en un contenedor Linux (Alpine) para que todo el equipo compile y ejecute `bcrypt` (dependencia con binding nativo) en el mismo entorno, sin importar si la máquina es Windows o Linux — evita el clásico "en mi máquina sí funciona" por diferencias de compilación nativa entre sistemas operativos. Si el hot-reload no detecta cambios en Windows, ya está resuelto con `CHOKIDAR_USEPOLLING=true` en `docker-compose.override.yml`.
+
+   Alternativa nativa (sin Docker para el backend) para quien prefiera no depender de contenedores y no tenga problemas de compilación con `bcrypt` en su máquina:
+   ```
+   docker compose up -d postgres redis
+   pnpm dev:api
+   ```
 5. Aplicar las migraciones de Prisma:
    ```
    pnpm --filter @akyuam/api exec prisma migrate dev
    ```
-6. Arrancar el backend (desde la raíz):
+   Si el backend está corriendo vía Docker (`api-dev`), este comando igual se corre desde el host — Prisma CLI se conecta a Postgres por el puerto publicado en `127.0.0.1`.
+6. Crear los usuarios ficticios de cada área (solo hace falta una vez; si ya existen, el script los omite):
    ```
-   pnpm dev:api
+   pnpm --filter @akyuam/api exec prisma db seed
    ```
-7. Arrancar el frontend (desde la raíz, en otra terminal):
+   Las contraseñas temporales se imprimen únicamente en la consola — cópialas de ahí, no quedan guardadas en ningún archivo del repo. Cada usuario debe cambiarla en su primer login.
+7. Arrancar el frontend (desde la raíz, en otra terminal — se queda nativo, no corre en Docker):
    ```
    pnpm dev:web
    ```
