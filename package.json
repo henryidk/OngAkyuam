@@ -11,11 +11,16 @@
     "dev:web": "pnpm --filter @akyuam/web dev",
     "build": "pnpm -r build",
     "build:shared": "pnpm --filter @akyuam/shared build",
-    "lint": "pnpm -r lint"
+    "lint": "pnpm -r lint",
+    "prepare": "husky || true"
   },
   "pnpm": {
     "overrides": {
       "deepmerge-ts": "^8.0.2"
     }
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^17.4.1"
   }
 }
