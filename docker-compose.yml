@@ -40,10 +40,13 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
       REDIS_URL: redis://redis:6379
       API_PORT: ${API_PORT}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
     expose:
       - "${API_PORT}"
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${API_PORT}/health || exit 1"]
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${API_PORT}/api/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -59,8 +62,16 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
     restart: unless-stopped
+    # Bindeado a 127.0.0.1: la arquitectura de producción decidida en CLAUDE.md
+    # pone nginx-proxy + acme-companion como el único servicio que publica 80/443
+    # al host (0.0.0.0), detrás de Cloudflare. Ese proxy todavía no existe en este
+    # repo — se construye aparte (necesita dominio real, IPs de Cloudflare para el
+    # firewall, config de acme-companion). Mientras tanto, este bind a localhost
+    # deja probar el build de producción de "web" en local sin exponerlo a la red,
+    # y evita que "80:80" quede accidentalmente como la exposición real si alguien
+    # despliega este compose tal cual antes de que el proxy esté listo.
     ports:
-      - "80:80"
+      - "127.0.0.1:80:80"
     depends_on:
       api:
         condition: service_healthy

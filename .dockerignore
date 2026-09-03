@@ -2,6 +2,11 @@ node_modules
 **/node_modules
 **/dist
 **/build
+# Caché incremental de tsc: si queda en el host (de un "tsc"/"nest build" nativo,
+# o del contenedor de dev escribiendo por el bind mount), tsc la usa para decidir
+# que no hay nada que emitir aunque "dist" no exista todavía en esta imagen —
+# rompe el build de producción de forma silenciosa. Nunca debe viajar al contexto.
+**/*.tsbuildinfo
 .git
 .env
 .env.*

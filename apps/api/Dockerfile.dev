@@ -1,0 +1,37 @@
+# Solo para desarrollo local (servicio "api-dev" en docker-compose.override.yml).
+# Build context: repo root (monorepo workspace)
+# La imagen de producción real es apps/api/Dockerfile — este archivo no la reemplaza.
+FROM node:20-alpine
+RUN corepack enable
+WORKDIR /repo
+
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY apps/api/package.json apps/api/package.json
+COPY packages/shared/package.json packages/shared/package.json
+RUN pnpm install --frozen-lockfile
+
+# El código real llega por bind mount (ver docker-compose.override.yml); esta copia
+# solo deja la imagen usable si alguna vez se corre sin el mount.
+COPY packages/shared packages/shared
+COPY apps/api apps/api
+
+WORKDIR /repo
+# El bind mount trae el estado de compilación del host tal cual esté (incluida la
+# caché incremental de tsc, ver .gitignore: "*.tsbuildinfo"). Si el host corrió
+# alguna vez "pnpm dev:api" nativo, esa caché queda inválida para el contenedor y
+# tsc --watch se queda sin emitir dist/main.js. Se limpia en cada arranque para
+# garantizar una compilación fresca sin importar el estado del host.
+#
+# Sin USER explícito: corre como root dentro del contenedor. Es una excepción
+# deliberada solo para este contenedor de dev (nunca se expone a internet, no es
+# la imagen de producción) — con bind mount, un usuario no-root normalmente
+# choca con el UID/GID del host y complica escribir dist/node_modules; en la
+# imagen de producción (apps/api/Dockerfile) sí se corre como "node".
+#
+# El "exec" final reemplaza el shell (PID 1) por el proceso de pnpm, para que
+# "docker compose stop/down" pueda mandarle SIGTERM directo en vez de esperar
+# el timeout completo y matarlo a la fuerza.
+CMD rm -rf apps/api/dist apps/api/tsconfig.build.tsbuildinfo packages/shared/dist && \
+    pnpm --filter @akyuam/shared build && \
+    pnpm --filter @akyuam/api exec prisma generate && \
+    exec pnpm --filter @akyuam/api start:dev

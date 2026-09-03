@@ -1,8 +1,13 @@
 # Se aplica automáticamente en local con `docker compose up`.
 # Publica el puerto de Postgres solo hacia 127.0.0.1 para poder usar Prisma CLI,
-# Prisma Studio, etc. desde el host. En apps/api y apps/web se sigue corriendo
-# con `pnpm dev` fuera de Docker, así que "api" y "web" quedan bajo el profile
-# "production" y no se levantan a menos que se pida explícitamente:
+# Prisma Studio, etc. desde el host.
+#
+# "api" corre en dev como el servicio "api-dev" de abajo (contenedor Linux con
+# hot-reload vía bind mount) — así todo el equipo compila y corre bcrypt (módulo
+# nativo) dentro del mismo entorno, sin importar si el host es Windows o Linux.
+# La imagen real de producción sigue siendo "api" (apps/api/Dockerfile), que junto
+# con "web" queda bajo el profile "production" y no se levanta a menos que se pida
+# explícitamente:
 #   docker compose --profile production up --build
 services:
   postgres:
@@ -20,3 +25,43 @@ services:
   web:
     profiles:
       - production
+
+  api-dev:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+      API_PORT: ${API_PORT}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL}
+      # Docker Desktop en Windows no siempre propaga bien los eventos de
+      # filesystem de un bind mount; con polling, "nest start --watch" sigue
+      # detectando cambios de forma confiable ahí. Sin efecto negativo en Linux.
+      CHOKIDAR_USEPOLLING: "true"
+    ports:
+      - "127.0.0.1:${API_PORT}:${API_PORT}"
+    volumes:
+      - .:/repo
+      - api_dev_node_modules:/repo/node_modules
+      - api_dev_api_node_modules:/repo/apps/api/node_modules
+      - api_dev_shared_node_modules:/repo/packages/shared/node_modules
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${API_PORT}/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  api_dev_node_modules:
+  api_dev_api_node_modules:
+  api_dev_shared_node_modules:
