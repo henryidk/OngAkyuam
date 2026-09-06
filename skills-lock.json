@@ -1,0 +1,611 @@
+{
+  "version": 1,
+  "skills": {
+    "academy-guide": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/academy-guide/SKILL.md",
+      "computedHash": "3850fdb589a7a5ba8c3fc5610b43751fef339ba8569a106e316a3b199f6426bc"
+    },
+    "advanced-evaluation": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/advanced-evaluation/SKILL.md",
+      "computedHash": "e05159dc68e33f4e4bb7ab6bda7c99fdf517aa0f7e8846cab00b5f99946051a9"
+    },
+    "algorithmic-art": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/algorithmic-art/SKILL.md",
+      "computedHash": "987b24aa98171a0d3690420173b2cdb6eaafd57981ed716b5d50371affa82ea3"
+    },
+    "baoyu-article-illustrator": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-article-illustrator/SKILL.md",
+      "computedHash": "638be20552ce146ed02645e559d4c96b89dfa650194070146417c650c6397fd1"
+    },
+    "baoyu-comic": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-comic/SKILL.md",
+      "computedHash": "594cd1430487a7a295297fcf5bbab6a889fc5a751d89a088ae058b79274de8d3"
+    },
+    "baoyu-compress-image": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-compress-image/SKILL.md",
+      "computedHash": "0d5f175415d21d7563518967513a73c0c1a8faa384aa9f1abc12c47e6c1e32ef"
+    },
+    "baoyu-cover-image": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-cover-image/SKILL.md",
+      "computedHash": "c421fbe115f1735b649a609e166fec768c4ef6ef7426d6e6c0c1a4d6bbd59818"
+    },
+    "baoyu-danger-gemini-web": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-danger-gemini-web/SKILL.md",
+      "computedHash": "538c9e309dd42c207eb9ea013393eaa3e540f2c8db69bfad17c57942e377ef2b"
+    },
+    "baoyu-danger-x-to-markdown": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-danger-x-to-markdown/SKILL.md",
+      "computedHash": "dd0b6ff86e112bcd6d0e06c9111fb5941cfd7a081e1a7ae446018738235f44e9"
+    },
+    "baoyu-diagram": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-diagram/SKILL.md",
+      "computedHash": "e7916305c6010b1bdcc1579754e6c7b4dd5462ac033c34327c640e5a18e52b75"
+    },
+    "baoyu-electron-extract": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-electron-extract/SKILL.md",
+      "computedHash": "65733d70ad013a14904715e1f08d55991b39203f24ad4de5eebdcbdde7a34409"
+    },
+    "baoyu-format-markdown": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-format-markdown/SKILL.md",
+      "computedHash": "188fda27907b76d5f040bcd1e49754ec9e0a948ccb38898114df3c2448ef793a"
+    },
+    "baoyu-image-cards": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-image-cards/SKILL.md",
+      "computedHash": "0d79992487d522b793ff3e3d252906c9a13332a0e3ca37ad613452aed7644c49"
+    },
+    "baoyu-image-gen": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-image-gen/SKILL.md",
+      "computedHash": "86767ba3ac46a682dbf3b2df0e9c9b85a81594340f58bc12ff35b834a176e8ea"
+    },
+    "baoyu-imagine": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-imagine/SKILL.md",
+      "computedHash": "4351d81683406f6700ef35fdec6215f3c628c91e2b6511d233424b0bc82fcad0"
+    },
+    "baoyu-infographic": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-infographic/SKILL.md",
+      "computedHash": "0aa212ad387a07c9b848ec7a8e85a54d85ffe42469717ae13aa94438d1955f92"
+    },
+    "baoyu-markdown-to-html": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-markdown-to-html/SKILL.md",
+      "computedHash": "4ce18a657644ae75c5bb0fd85104eb0c7a7e975c6119dd77bc226933c4112a2e"
+    },
+    "baoyu-post-to-wechat": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-post-to-wechat/SKILL.md",
+      "computedHash": "2eb7ee45639f77fc4a287986a46481746d3717fd10ebe1c664ab7514b773a211"
+    },
+    "baoyu-post-to-weibo": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-post-to-weibo/SKILL.md",
+      "computedHash": "799e534822782699d834a5faf1ba9e10b1bb676cf90223a5e8f49fbfbf06fb3d"
+    },
+    "baoyu-post-to-x": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-post-to-x/SKILL.md",
+      "computedHash": "0d5bb495958dd64db40b2884032accd9ab8bae72fe14db6523933fa09a2ea6ca"
+    },
+    "baoyu-slide-deck": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-slide-deck/SKILL.md",
+      "computedHash": "7bd345477dd48625a01477ef5c9873802f853b4478ff736b39629af930ee9dcc"
+    },
+    "baoyu-translate": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-translate/SKILL.md",
+      "computedHash": "25d799dbf105dc92f415089c091862954bd1803136fbd3d174557058073ab8c7"
+    },
+    "baoyu-url-to-markdown": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-url-to-markdown/SKILL.md",
+      "computedHash": "ca98ae07f45f5a5ae8976845a2df3f3be307181e280b0c51dd04fe4cd32699b6"
+    },
+    "baoyu-wechat-summary": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-wechat-summary/SKILL.md",
+      "computedHash": "c20972f3f7c72fe9c11dd4949dc4538b02059fc6efe1091b41551b9fc96ab272"
+    },
+    "baoyu-xhs-images": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-xhs-images/SKILL.md",
+      "computedHash": "4c2d671e036f43f6338b6320095db4c4e44b6d948097ad2f2b27c61eff71ef86"
+    },
+    "baoyu-youtube-transcript": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/baoyu-youtube-transcript/SKILL.md",
+      "computedHash": "e39b39f19d681ef05e3d8e7fc6eabbbc0a9260f4512a5bb51fbb04b1e56c8664"
+    },
+    "bdi-mental-states": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/bdi-mental-states/SKILL.md",
+      "computedHash": "e8668dcf32f142dd3a09ba980a1fbdbafd5c2def031cc975b819cc0af651e0db"
+    },
+    "brainstorming": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/brainstorming/SKILL.md",
+      "computedHash": "c5742d83fe891ecda7bf2db9222b778dc6af668f6ed96cfc0c3e4376f7cd9498"
+    },
+    "brand-guidelines": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/brand-guidelines/SKILL.md",
+      "computedHash": "c82f0b24cdcc7e2693a963d30c810558b7bb89ed84508b2328228d21256ef865"
+    },
+    "canvas-design": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/canvas-design/SKILL.md",
+      "computedHash": "4e8bbc31d3b159efdd32d31a63ba8cd5a44d84911e924c1f2c709c50cbcdd0ec"
+    },
+    "claude-academy-guide": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/claude-academy-guide/SKILL.md",
+      "computedHash": "5f87008025e85f59469055e38feebd7e4409c171ef8b08dc48fdf8c3bff81550"
+    },
+    "claude-api": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/claude-api/SKILL.md",
+      "computedHash": "842a416d8ae4217473c84161a2863d0c86322ac3c045b0829f8f00b5a42ece09"
+    },
+    "context-compression": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/context-compression/SKILL.md",
+      "computedHash": "76d3233ee719579b0e9ead7f33b8e055377ee0b9c303677a3532df551f91d85d"
+    },
+    "context-degradation": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/context-degradation/SKILL.md",
+      "computedHash": "997ebe47cce9ae049aac90bba898ae59f1a6b561642b8fb4069a9c80279d9370"
+    },
+    "context-fundamentals": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/context-fundamentals/SKILL.md",
+      "computedHash": "13d836c887430486b76477856d0432962d10a6c4e14725b33c6b63ef118448af"
+    },
+    "context-optimization": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/context-optimization/SKILL.md",
+      "computedHash": "45e1ddc847beeecf6e35be7c619e753a36dcab6a0f441ceeb1af7058061c4f88"
+    },
+    "defuddle": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/defuddle/SKILL.md",
+      "computedHash": "ad2cf050eced5f0d9057d534bf6e084bd8d6e521529b5b783940b20fd835c4df"
+    },
+    "discernment-nudge": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/discernment-nudge/SKILL.md",
+      "computedHash": "80db132d056a73d1ff7b209c4fba8e414285ff20ccc2d3e9e6803e6283b3b931"
+    },
+    "dispatching-parallel-agents": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/dispatching-parallel-agents/SKILL.md",
+      "computedHash": "94fb7190e672dda48c156be56c49cd1771bba70fa6c27b1b65289e9b9c3d5f41"
+    },
+    "doc-coauthoring": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/doc-coauthoring/SKILL.md",
+      "computedHash": "62cd7744438ee2aecc986c520bb603988a78ff6aaaf70a471bf4584fe0b78dae"
+    },
+    "docx": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/docx/SKILL.md",
+      "computedHash": "5db33182b0eea951828d808d428e7a0a0d5f04290605cec36f07179c5788edc8"
+    },
+    "evaluation": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/evaluation/SKILL.md",
+      "computedHash": "362ea1b61a39080f52d48a93a65d5db7319719945ae3e05d83516ca4f011181a"
+    },
+    "executing-plans": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/executing-plans/SKILL.md",
+      "computedHash": "f02062e7e9284e62747e5382480e9f124e6495f4ef20bc1ef4d2a61b0dd8846c"
+    },
+    "filesystem-context": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/filesystem-context/SKILL.md",
+      "computedHash": "569e3daebcf07edfc2c642888176b40ac2cb42c158044125fe22a8f0e5dcb4e4"
+    },
+    "finishing-a-development-branch": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/finishing-a-development-branch/SKILL.md",
+      "computedHash": "6ddaf60fc12a99afec2521f77d031b7c9054dc4b546420e73b32c1574d50373f"
+    },
+    "frontend-design": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "106acf230014cbb43ca34e6410371321b56ca742f9ee0442e8ec05bf02eb0384"
+    },
+    "harness-engineering": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/harness-engineering/SKILL.md",
+      "computedHash": "a49a9c76abbd0c3123949c88f5dcc9121ca377365b0464c296104e03cd33ce8b"
+    },
+    "hosted-agents": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/hosted-agents/SKILL.md",
+      "computedHash": "f08065b025c4377a313fd867433dfcc101312f8f1918d4ca42804837b744c133"
+    },
+    "internal-comms": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/internal-comms/SKILL.md",
+      "computedHash": "b7873ffad6a16a38996ce43cd27fce6b8e66000a8261143058fc989ed08b2919"
+    },
+    "json-canvas": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/json-canvas/SKILL.md",
+      "computedHash": "bb7aa4f03414d50d91736f824bc5f79122b38a895deb03c0260700842a338580"
+    },
+    "latent-briefing": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/latent-briefing/SKILL.md",
+      "computedHash": "4fca45c701d97e4ad51e7036b9ffba938f5a34b3d8ed388f312e1b446ee3c6b6"
+    },
+    "long-horizon-prompting": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/long-horizon-prompting/SKILL.md",
+      "computedHash": "64f0b0a6e92a1a65dbfb3da146ed5533b264f32928422dc212de31e82ba844d8"
+    },
+    "mcp-builder": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/mcp-builder/SKILL.md",
+      "computedHash": "6498a736a8dc5c645047c8a875b8ea7417e2ad97146f005200e50d20a9337ada"
+    },
+    "mediabunny": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/mediabunny/SKILL.md",
+      "computedHash": "6c05696717d4f717ae8432d21bfc27407626aa46ede272c91913df5451ed3ca6"
+    },
+    "memory-systems": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/memory-systems/SKILL.md",
+      "computedHash": "7789fe477b24dfb054669b45b915a00e36b3bb0e76075d12c5d30486aab42974"
+    },
+    "multi-agent-patterns": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/multi-agent-patterns/SKILL.md",
+      "computedHash": "31a81f92540a554ef8866451f793bbbc40207ce87e3fc3b562bf2f69fb3d1e92"
+    },
+    "notebooklm": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/notebooklm/SKILL.md",
+      "computedHash": "40877d53667ab1d100695e3b171c305a9c341fa251835af1c6f5d8a910f3ac6f"
+    },
+    "obsidian-bases": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/obsidian-bases/SKILL.md",
+      "computedHash": "0d9958e07672384650f404bda4fc9268e1720e9234d42eeca29fc356b1e2a277"
+    },
+    "obsidian-cli": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/obsidian-cli/SKILL.md",
+      "computedHash": "89ded0eb1499286d5c95217df0ff7015aa46b7efe4646fafaba38cbac3289392"
+    },
+    "obsidian-markdown": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/obsidian-markdown/SKILL.md",
+      "computedHash": "d65bfcd6012560c61da9c88c79679a9a8218ac6b4928df9b55ae451949a1618a"
+    },
+    "pdf": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/pdf/SKILL.md",
+      "computedHash": "52fe0971d35b344b18c19ef89abbd7db8ac1c388e31dad5b1c516debebef620b"
+    },
+    "planning-with-files": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/planning-with-files/SKILL.md",
+      "computedHash": "229da47aff06adf287f8ede08c7d6473b5ba7d60ec309463e23f2ac3431fadf5"
+    },
+    "pptx": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/pptx/SKILL.md",
+      "computedHash": "2bb0ecd8aa94decf6e3d96eeac4decad5f0f85fde320dd26c60778b21afa040f"
+    },
+    "project-development": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/project-development/SKILL.md",
+      "computedHash": "6da5cf34ba576af3bc7178eae583d63b755d49a3a943296300a95b4bf41fb3d6"
+    },
+    "receiving-code-review": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/receiving-code-review/SKILL.md",
+      "computedHash": "9b95a908b3beb4363350d1575fd1f2708ae947a594e198bf311144bb6438c5a2"
+    },
+    "remotion-best-practices": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion/SKILL.md",
+      "computedHash": "0846efde7150ce453852293736deb215aa6f61233cc749eab10a1c97222c6faf"
+    },
+    "remotion-captions": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-captions/SKILL.md",
+      "computedHash": "93823694d3a65418cc3262251123f6f135b18c8c777a47efcc8f1680dd6f42f9"
+    },
+    "remotion-create": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-create/SKILL.md",
+      "computedHash": "1e0cd9acdc3f91b28d601248b984f9afd5bc200a6ecf64967819441fb2b70872"
+    },
+    "remotion-docs": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-docs/SKILL.md",
+      "computedHash": "5f5ae02750a47f6a32205e6bbaee6e974d59510397b7e85b802dc0089eb1b89e"
+    },
+    "remotion-interactivity": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-interactivity/SKILL.md",
+      "computedHash": "cc7a1bfab139a19159e46e4c8e7df63de4b66a154c91005a6393e8ac9c64eab5"
+    },
+    "remotion-maps": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-maps/SKILL.md",
+      "computedHash": "b8caf1a7ef16757684313e7d5a19c4d123e29ffb781542ec295a5a91ce99442d"
+    },
+    "remotion-markup": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-markup/SKILL.md",
+      "computedHash": "bdebf8cfed5ab5929f9ede4e7adfe638a550026a154d4361360b3dc50ba217f8"
+    },
+    "remotion-multimedia": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-multimedia/SKILL.md",
+      "computedHash": "4e2f43b09589bd5411fcbb2ca4360a89e543a25d863b8e65130a188c2291108d"
+    },
+    "remotion-render": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-render/SKILL.md",
+      "computedHash": "7e9fbef146c3b75ed4df2a09e1424c2842c5fc246ada0fc37c831fd3f7f422ec"
+    },
+    "remotion-saas": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-saas/SKILL.md",
+      "computedHash": "ee56e4088e43d85f3db8a18e43315094f93d6652831764c08d1f8b26584c937c"
+    },
+    "remotion-studio": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-studio/SKILL.md",
+      "computedHash": "c788414fcd6c9af4a6ed534d98f6f4fb8708ea207be89d14f0b7f09d6b85edfa"
+    },
+    "remotion-upgrade": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/remotion-upgrade/SKILL.md",
+      "computedHash": "b035249e2ddab9b7560269847cd37b48a5bff7233d8faa0ec785d2322392d008"
+    },
+    "replace-with-skill-name-using-hyphens": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "template/SKILL.md",
+      "computedHash": "3927d734d589a2ee3657d4461ce28b5fdb610870ebeb61cc46c12f6b84229d21"
+    },
+    "requesting-code-review": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/requesting-code-review/SKILL.md",
+      "computedHash": "c6d16a6047479fdd7fddc10b2c1bc5f164a15a5bd2c96cffdb9c9a04aff53b6c"
+    },
+    "self-improvement-loops": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/self-improvement-loops/SKILL.md",
+      "computedHash": "6eb36ec9a3d716a03837a24c030c23f14a528e7bf858d5bd3ea13bfeb0ae8c52"
+    },
+    "skill-creator": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/skill-creator/SKILL.md",
+      "computedHash": "936afbfe7a06f6e3da9d0251557f65b8dc5f285d5bab1aa99e186cbde1dde8f3"
+    },
+    "slack-gif-creator": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/slack-gif-creator/SKILL.md",
+      "computedHash": "a36e1ceb3f07eb37bdc259f1bfb18e48cc0e809b2e1651cb2369286cd66b2107"
+    },
+    "subagent-driven-development": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/subagent-driven-development/SKILL.md",
+      "computedHash": "d74844d6dd766ebc3926ab16d46b5d48df7daf56942019921002da411bddf158"
+    },
+    "supabase-postgres-best-practices": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/supabase-postgres-best-practices/SKILL.md",
+      "computedHash": "3a55ee33f8e9bc7bbab6fecd5e8525598f74d38d5316f76113f66c13c80130d2"
+    },
+    "systematic-debugging": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/systematic-debugging/SKILL.md",
+      "computedHash": "73ff374e2b8d70d5901ef5fd5f592713e322fb37737cd4bb494c215be748003a"
+    },
+    "test-driven-development": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/test-driven-development/SKILL.md",
+      "computedHash": "96730266538dca5fcecf9de7aa04bd61b7932efeb4ecfa7b4c5e63259e48d130"
+    },
+    "theme-factory": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/theme-factory/SKILL.md",
+      "computedHash": "e9ec1fe85faa729e9f3d1731cd7e4e485f98c099ccc7c1c0d198f473aa4b654a"
+    },
+    "tool-design": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/tool-design/SKILL.md",
+      "computedHash": "50032642e8084597cc1f2d4d1ab988fda592c405c9d4d063087dcdbb37cbda07"
+    },
+    "ui-ux-pro-max": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/ui-ux-pro-max/SKILL.md",
+      "computedHash": "b987567a065af3c786bb290b25e3fdb9328083d4f4c0a6ed3ee4a4cbeb09ff69"
+    },
+    "using-git-worktrees": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/using-git-worktrees/SKILL.md",
+      "computedHash": "9be045d24936e89dbd2675d01b30a4786eb284b29ae0df1064e17117b62f0cc9"
+    },
+    "using-superpowers": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/using-superpowers/SKILL.md",
+      "computedHash": "4e6cc8b6e208cdf638d54f13381416791bafc88c5a787cf917a661c5c018ed54"
+    },
+    "vercel-composition-patterns": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/composition-patterns/SKILL.md",
+      "computedHash": "10eb4ec94577b79ae98c63ce3e7f35f8a6a06436a4011bff083b397de6960eeb"
+    },
+    "vercel-react-best-practices": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "6b526d013e28073246a36f99b529bc43745d30832ecfa8217b359c34f260ca6b"
+    },
+    "vercel-react-native-skills": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/react-native-skills/SKILL.md",
+      "computedHash": "a804b4e848059822638c390359976f7021380bcefb1469d473aa4e9202c15ecb"
+    },
+    "verification-before-completion": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/verification-before-completion/SKILL.md",
+      "computedHash": "d66b25e87a0c44b4e76440f475a796572147e47c63f7d6c70a17a90b327f9975"
+    },
+    "web-artifacts-builder": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/web-artifacts-builder/SKILL.md",
+      "computedHash": "fdddbe9bb720ea1aea9292ee513ec10b2a8f4912e2c343bdc246ab3febd7c9b3"
+    },
+    "web-design-guidelines": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/web-design-guidelines/SKILL.md",
+      "computedHash": "d8e7d3afe37dcc8a97b99ffb5afdb4d0919ae0092ea8b68f44eb201f035e33ac"
+    },
+    "webapp-testing": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/webapp-testing/SKILL.md",
+      "computedHash": "d0257b1b8884310a741e9c43976f2dd24ecc949d3476503fd9654c92a4eddd62"
+    },
+    "writing-plans": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/writing-plans/SKILL.md",
+      "computedHash": "3d8bb195fec7456b43d861aaa584099d2ff4605cd93200f71eabb865e0378725"
+    },
+    "writing-skills": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/writing-skills/SKILL.md",
+      "computedHash": "07bf9e6e4065ba31efebf71d69118f285a4184b1ecaeff5859c572e53f85bcf7"
+    },
+    "xlsx": {
+      "source": "guanyang/open-agent-hub",
+      "sourceType": "github",
+      "skillPath": "skills/xlsx/SKILL.md",
+      "computedHash": "aed8efe763651eaebf2d50fcff7160f043b42b710a13358abeaebbffc28e7d64"
+    }
+  }
+}

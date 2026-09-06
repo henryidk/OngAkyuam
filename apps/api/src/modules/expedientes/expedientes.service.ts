@@ -85,24 +85,39 @@ export class ExpedientesService {
     });
   }
 
-  async findAll() {
+  async findAll(user: any) {
+    const isAdminOrTS = user.rol === 'ADMINISTRACION' || user.rol === 'TRABAJO_SOCIAL';
+    const isMedica = user.rol === 'MEDICA';
+
+    // Si es ADMIN o TRABAJO_SOCIAL, ve todos. De lo contrario, solo ve los asignados a su rol.
+    const where = isAdminOrTS ? {} : { areasAsignadas: { has: user.rol } };
+
     return this.prisma.expediente.findMany({
+      where,
       orderBy: {
         createdAt: 'desc',
       },
       include: {
         bitacora: true,
-        trabajoSocial: true,
+        trabajoSocial: !isMedica, // MǸdica no debe ver el reporte de TS
         archivos: true,
       },
     });
   }
 
-  async findOne(id: string) {
+  async findOne(id: string, user: any) {
+    const isAdminOrTS = user.rol === 'ADMINISTRACION' || user.rol === 'TRABAJO_SOCIAL';
+    const isMedica = user.rol === 'MEDICA';
+
+    const where: any = { id };
+    if (!isAdminOrTS) {
+      where.areasAsignadas = { has: user.rol };
+    }
+
     return this.prisma.expediente.findUnique({
-      where: { id },
+      where,
       include: {
-        trabajoSocial: true,
+        trabajoSocial: !isMedica, // MǸdica no debe ver el reporte de TS
         bitacora: {
           orderBy: { createdAt: 'desc' },
         },

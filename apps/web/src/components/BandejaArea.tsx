@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import PanelLayout from './PanelLayout';
 import { User, FileText, AlertCircle, MessageSquare } from 'lucide-react';
+import { io } from 'socket.io-client';
 
 interface BandejaAreaProps {
   titulo: string;
@@ -13,6 +14,7 @@ export default function BandejaArea({ titulo, rol }: BandejaAreaProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 1. Fetch inicial de datos
     const fetchExpedientes = async () => {
       try {
         const { data } = await api.get('/expedientes');
@@ -43,6 +45,31 @@ export default function BandejaArea({ titulo, rol }: BandejaAreaProps) {
     };
 
     fetchExpedientes();
+
+    // 2. Conectar a WebSockets para actualizaciones en tiempo real
+    const socket = io('http://localhost:3000', {
+      withCredentials: true,
+    });
+
+    socket.on('connect', () => {
+      console.log('✅ Conectado a WebSockets para Bandeja de Referencias');
+    });
+
+    socket.on('new_reference', (data) => {
+      console.log('NUEVA REFERENCIA RECIBIDA:', data);
+      
+      // Si la nueva referencia incluye a esta area (rol), refetch
+      if (data.areas && data.areas.includes(rol)) {
+        console.log('Recargando bandeja porque hay un nuevo expediente para', rol);
+        fetchExpedientes();
+        // Opcional: Aqui se puede lanzar un sonido o una alerta visual nativa
+      }
+    });
+
+    // Cleanup al desmontar el componente
+    return () => {
+      socket.disconnect();
+    };
   }, [rol]);
 
   return (

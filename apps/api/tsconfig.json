@@ -20,5 +20,5 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true
   },
-  "exclude": ["node_modules", "dist", "**/*.config.js", "**/*.config.mjs"]
+  "exclude": ["node_modules", "dist", "**/*.config.js", "**/*.config.mjs", "eslint.config.mjs", "jest.config.js"]
 }
