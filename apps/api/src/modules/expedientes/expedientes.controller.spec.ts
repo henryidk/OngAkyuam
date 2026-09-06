@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ExpedientesController } from './expedientes.controller';
 import { ExpedientesService } from './expedientes.service';
+import { ExpedientesGateway } from './expedientes.gateway';
 import { PrismaService } from '../../prisma/prisma.service';
 
 describe('ExpedientesController', () => {
@@ -14,6 +15,12 @@ describe('ExpedientesController', () => {
         {
           provide: PrismaService,
           useValue: {},
+        },
+        {
+          provide: ExpedientesGateway,
+          useValue: {
+            emitNewReference: jest.fn(),
+          },
         },
       ],
     }).compile();
