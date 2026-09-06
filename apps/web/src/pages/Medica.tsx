@@ -1,5 +1,5 @@
-import PanelLayout from '../components/PanelLayout'
+﻿import BandejaArea from '../components/BandejaArea';
 
 export default function Medica() {
-  return <PanelLayout titulo="Médica" />
+  return <BandejaArea titulo="Médica" rol="MEDICA" />;
 }

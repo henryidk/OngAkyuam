@@ -10,6 +10,7 @@ import { MustChangePasswordGuard } from './auth/guards/must-change-password.guar
 import { validateEnv } from './config/env.schema';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { ExpedientesModule } from './modules/expedientes/expedientes.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { RedisModule } from './redis/redis.module';
     PrismaModule,
     RedisModule,
     AuthModule,
+    ExpedientesModule,
   ],
   controllers: [AppController],
   providers: [

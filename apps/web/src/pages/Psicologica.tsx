@@ -1,5 +1,5 @@
-import PanelLayout from '../components/PanelLayout'
+﻿import BandejaArea from '../components/BandejaArea';
 
 export default function Psicologica() {
-  return <PanelLayout titulo="Psicología" />
+  return <BandejaArea titulo="Psicológica" rol="PSICOLOGIA" />;
 }

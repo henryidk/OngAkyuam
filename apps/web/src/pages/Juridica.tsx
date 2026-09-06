@@ -1,5 +1,5 @@
-import PanelLayout from '../components/PanelLayout'
+import BandejaArea from '../components/BandejaArea';
 
 export default function Juridica() {
-  return <PanelLayout titulo="Jurídico" />
+  return <BandejaArea titulo="Jurídica" rol="JURIDICO" />;
 }

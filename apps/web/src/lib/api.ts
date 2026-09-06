@@ -24,6 +24,11 @@ api.interceptors.request.use((config) => {
     if (csrfToken) {
       config.headers.set('X-CSRF-Token', csrfToken)
     }
+  } else if (config.method === 'get') {
+    // Evitar cachǸ agresivo del navegador en las peticiones GET
+    config.headers.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    config.headers.set('Pragma', 'no-cache');
+    config.headers.set('Expires', '0');
   }
   return config
 })
