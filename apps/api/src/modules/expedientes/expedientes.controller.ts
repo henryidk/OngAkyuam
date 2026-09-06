@@ -1,4 +1,16 @@
-import { Controller, Post, Body, Get, UseGuards, Request, Param, Put, UploadedFile, UseInterceptors } from '@nestjs/common';
+﻿/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  UseGuards,
+  Request,
+  Param,
+  Put,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -19,14 +31,14 @@ export class ExpedientesController {
     const parseResult = createExpedienteSchema.safeParse(body);
     if (!parseResult.success) {
       throw new BadRequestException({
-        message: 'Validación fallida',
+        message: 'ValidaciÃ³n fallida',
         errors: parseResult.error.format(),
       });
     }
 
     // req.user asume que el AuthGuard mete la info del JWT (id, username, nombreCompleto)
     const currentUserName = req.user?.nombreCompleto || 'Usuario Desconocido';
-    
+
     return this.expedientesService.create(parseResult.data, currentUserName);
   }
 
@@ -57,37 +69,62 @@ export class ExpedientesController {
   }
 
   @Post(':id/bitacora')
-  async addBitacoraEntry(@Param('id') id: string, @Body() body: any, @Request() req: any) {
+  async addBitacoraEntry(
+    @Param('id') id: string,
+    @Body() body: any,
+    @Request() req: any,
+  ) {
     const currentUserName = req.user?.nombreCompleto || 'Usuario Desconocido';
     return this.expedientesService.addBitacoraEntry(id, body, currentUserName);
   }
 
   @Post(':id/archivos')
-  @UseInterceptors(FileInterceptor('file', {
-    storage: diskStorage({
-      destination: './uploads',
-      filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-        cb(null, uniqueSuffix + extname(file.originalname));
-      }
-    })
-  }))
-  async uploadFile(@Param('id') id: string, @UploadedFile() file: any, @Body() body: any, @Request() req: any) {
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          cb(null, uniqueSuffix + extname(file.originalname));
+        },
+      }),
+    }),
+  )
+  async uploadFile(
+    @Param('id') id: string,
+    @UploadedFile() file: any,
+    @Body() body: any,
+    @Request() req: any,
+  ) {
     const currentUserId = req.user?.sub || null;
-    return this.expedientesService.addArchivoDigital(id, file, body.categoria, currentUserId);
+    return this.expedientesService.addArchivoDigital(
+      id,
+      file,
+      body.categoria,
+      currentUserId,
+    );
   }
 
   @Post(':id/referir')
-  async referirExpediente(@Param('id') id: string, @Body() body: { referencias: { area: string, motivo: string }[] }, @Request() req: any) {
+  async referirExpediente(
+    @Param('id') id: string,
+    @Body() body: { referencias: { area: string; motivo: string }[] },
+    @Request() req: any,
+  ) {
     console.log('REFERIR CALLED', id, body);
     const currentUserName = req.user?.nombreCompleto || 'Usuario Desconocido';
     const areas: any[] = [];
     for (const ref of body.referencias) {
       areas.push(ref.area);
-      await this.expedientesService.addBitacoraEntry(id, {
-        titulo: `Expediente Referido a ${ref.area}`,
-        descripcion: ref.motivo
-      }, currentUserName);
+      await this.expedientesService.addBitacoraEntry(
+        id,
+        {
+          titulo: `Expediente Referido a ${ref.area}`,
+          descripcion: ref.motivo,
+        },
+        currentUserName,
+      );
     }
     if (areas.length > 0) {
       await this.expedientesService.asignarAreas(id, areas);

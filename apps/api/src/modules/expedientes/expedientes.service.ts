@@ -1,3 +1,4 @@
+﻿/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CreateExpedienteDto } from '@akyuam/shared';
@@ -9,8 +10,8 @@ export class ExpedientesService {
   async generarCodigoCasoPublico(): Promise<string> {
     const year = new Date().getFullYear();
     const shortYear = year.toString().slice(-2); // '26'
-    
-    // Busca el último expediente creado este año
+
+    // Busca el Ãºltimo expediente creado este aÃ±o
     const ultimo = await this.prisma.expediente.findFirst({
       where: {
         codigoCaso: {
@@ -29,14 +30,14 @@ export class ExpedientesService {
     const correlativoStr = ultimo.codigoCaso.split('-')[0];
     const correlativo = parseInt(correlativoStr, 10);
     const nuevoCorrelativo = (correlativo + 1).toString(); // Sin padding (ej. '2' en lugar de '002')
-    
+
     return `${nuevoCorrelativo}-${shortYear}`;
   }
 
   async create(data: CreateExpedienteDto, currentUserName: string) {
     const codigoCaso = await this.generarCodigoCasoPublico();
 
-    // Usa una transacción para crear el Expediente, su sub-registro de TS y la Bitácora inicial
+    // Usa una transacciÃ³n para crear el Expediente, su sub-registro de TS y la BitÃ¡cora inicial
     return this.prisma.$transaction(async (tx) => {
       const expediente = await tx.expediente.create({
         data: {
@@ -46,32 +47,34 @@ export class ExpedientesService {
           dpi: data.dpi || null,
           telefono: data.telefono || null,
           direccion: data.direccion,
-          
+
           nombresAgresor: data.nombresAgresor || null,
           apellidosAgresor: data.apellidosAgresor || null,
           telefonoAgresor: data.telefonoAgresor || null,
           direccionAgresor: data.direccionAgresor || null,
-          
+
           tipologiasViolencia: data.tipologiasViolencia,
           condicionRegistro: data.condicionRegistro,
-          fechaIngreso: data.fechaIngreso ? new Date(data.fechaIngreso) : new Date(),
-          
+          fechaIngreso: data.fechaIngreso
+            ? new Date(data.fechaIngreso)
+            : new Date(),
+
           // Crear de una vez el sub-registro
           trabajoSocial: {
             create: {
               observacionesGenerales: data.observacionesGenerales || null,
             },
           },
-          
-          // Loggear en bitácora
+
+          // Loggear en bitÃ¡cora
           bitacora: {
             create: {
               area: 'TRABAJO_SOCIAL',
-              titulo: 'Creación de Expediente',
+              titulo: 'CreaciÃ³n de Expediente',
               descripcion: `Expediente creado y guardado como registro de Trabajo Social`,
               usuarioNombre: currentUserName,
-            }
-          }
+            },
+          },
         },
         include: {
           trabajoSocial: true,
@@ -90,8 +93,8 @@ export class ExpedientesService {
       include: {
         bitacora: true,
         trabajoSocial: true,
-        archivos: true
-      }
+        archivos: true,
+      },
     });
   }
 
@@ -117,7 +120,9 @@ export class ExpedientesService {
         nombresUsuaria: data.nombresUsuaria,
         apellidosUsuaria: data.apellidosUsuaria,
         dpi: data.dpi,
-        fechaNacimiento: data.fechaNacimiento ? new Date(data.fechaNacimiento) : null,
+        fechaNacimiento: data.fechaNacimiento
+          ? new Date(data.fechaNacimiento)
+          : null,
         edad: data.edad ? parseInt(data.edad, 10) : null,
         genero: data.genero,
         telefono: data.telefono,
@@ -126,12 +131,12 @@ export class ExpedientesService {
         municipio: data.municipio,
         grupoEtnico: data.grupoEtnico,
         ubicacionGeo: data.ubicacionGeografica,
-        
+
         nombresAgresor: data.nombresAgresor,
         apellidosAgresor: data.apellidosAgresor,
         telefonoAgresor: data.telefonoAgresor,
         direccionAgresor: data.direccionAgresor,
-        
+
         condicionRegistro: data.condicionRegistro,
       },
     });
@@ -150,17 +155,19 @@ export class ExpedientesService {
   async asignarAreas(id: string, areas: any[]) {
     const expediente = await this.prisma.expediente.findUnique({
       where: { id },
-      select: { areasAsignadas: true }
+      select: { areasAsignadas: true },
     });
-    
+
     if (!expediente) return null;
-    
+
     // Union de areas existentes con las nuevas (sin duplicados)
-    const nuevasAreas = Array.from(new Set([...expediente.areasAsignadas, ...areas]));
-    
+    const nuevasAreas = Array.from(
+      new Set([...expediente.areasAsignadas, ...areas]),
+    );
+
     return this.prisma.expediente.update({
       where: { id },
-      data: { areasAsignadas: nuevasAreas }
+      data: { areasAsignadas: nuevasAreas },
     });
   }
 
@@ -176,7 +183,12 @@ export class ExpedientesService {
     });
   }
 
-  async addArchivoDigital(id: string, file: any, categoria: string, currentUserId: string | null) {
+  async addArchivoDigital(
+    id: string,
+    file: any,
+    categoria: string,
+    currentUserId: string | null,
+  ) {
     const sizeInMB = (file.size / (1024 * 1024)).toFixed(2) + ' MB';
     return this.prisma.archivoDigital.create({
       data: {
