@@ -20,11 +20,11 @@ export class ExpedientesGateway
   @WebSocketServer() server!: Server;
   private logger: Logger = new Logger('ExpedientesGateway');
 
-  afterInit(server: Server) {
+  afterInit() {
     this.logger.log('WebSocket Gateway Initialized');
   }
 
-  handleConnection(client: Socket, ...args: any[]) {
+  handleConnection(client: Socket) {
     this.logger.log(`Client connected: ${client.id}`);
   }
 

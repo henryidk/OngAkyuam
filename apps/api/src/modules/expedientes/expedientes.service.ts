@@ -86,7 +86,8 @@ export class ExpedientesService {
   }
 
   async findAll(user: any) {
-    const isAdminOrTS = user.rol === 'ADMINISTRACION' || user.rol === 'TRABAJO_SOCIAL';
+    const isAdminOrTS =
+      user.rol === 'ADMINISTRACION' || user.rol === 'TRABAJO_SOCIAL';
     const isMedica = user.rol === 'MEDICA';
 
     // Si es ADMIN o TRABAJO_SOCIAL, ve todos. De lo contrario, solo ve los asignados a su rol.
@@ -106,7 +107,8 @@ export class ExpedientesService {
   }
 
   async findOne(id: string, user: any) {
-    const isAdminOrTS = user.rol === 'ADMINISTRACION' || user.rol === 'TRABAJO_SOCIAL';
+    const isAdminOrTS =
+      user.rol === 'ADMINISTRACION' || user.rol === 'TRABAJO_SOCIAL';
     const isMedica = user.rol === 'MEDICA';
 
     const where: any = { id };

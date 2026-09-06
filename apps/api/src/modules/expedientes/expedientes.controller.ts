@@ -19,7 +19,11 @@ import { createExpedienteSchema } from '@akyuam/shared';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 // Utilizamos una herramienta ligera de pipe (si no usamos ZodPipe por defecto) para validar, o validamos a mano.
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 import { ExpedientesGateway } from './expedientes.gateway';
 
@@ -44,10 +48,16 @@ export class ExpedientesController {
     // Solo Trabajo Social debera poder crear expedientes, pero lo dejamos segn requerimientos
     const currentUserName = req.user?.nombreCompleto || 'Usuario Desconocido';
 
-    const expediente = await this.expedientesService.create(parseResult.data, currentUserName);
-    
+    const expediente = await this.expedientesService.create(
+      parseResult.data,
+      currentUserName,
+    );
+
     // Notificar a clientes sobre el nuevo expediente (opcional, para UI en tiempo real)
-    this.expedientesGateway.emitNewReference({ type: 'NEW_EXPEDIENTE', data: expediente });
+    this.expedientesGateway.emitNewReference({
+      type: 'NEW_EXPEDIENTE',
+      data: expediente,
+    });
 
     return expediente;
   }
@@ -67,7 +77,9 @@ export class ExpedientesController {
   async findOne(@Param('id') id: string, @Request() req: any) {
     const expediente = await this.expedientesService.findOne(id, req.user);
     if (!expediente) {
-      throw new NotFoundException(`Expediente con ID ${id} no encontrado o no tienes permiso para verlo`);
+      throw new NotFoundException(
+        `Expediente con ID ${id} no encontrado o no tienes permiso para verlo`,
+      );
     }
     return expediente;
   }
@@ -130,17 +142,21 @@ export class ExpedientesController {
 
     // 1. Validar quin puede referir
     if (req.user?.rol !== 'TRABAJO_SOCIAL') {
-      throw new ForbiddenException('Solo los usuarios de Trabajo Social pueden referir expedientes.');
+      throw new ForbiddenException(
+        'Solo los usuarios de Trabajo Social pueden referir expedientes.',
+      );
     }
 
     const currentUserName = req.user?.nombreCompleto || 'Usuario Desconocido';
     const areasValidas = ['MEDICA', 'PSICOLOGIA', 'JURIDICO'];
     const areas: any[] = [];
-    
+
     for (const ref of body.referencias) {
       // 2. Validar que las ǭreas de destino sean vǭlidas
       if (!areasValidas.includes(ref.area)) {
-        throw new BadRequestException(`El área ${ref.area} no es un destino válido para referir.`);
+        throw new BadRequestException(
+          `El área ${ref.area} no es un destino válido para referir.`,
+        );
       }
 
       areas.push(ref.area);
@@ -153,16 +169,16 @@ export class ExpedientesController {
         currentUserName,
       );
     }
-    
+
     if (areas.length > 0) {
       await this.expedientesService.asignarAreas(id, areas);
-      
+
       // Emitir el evento de WebSockets a todos los conectados
       this.expedientesGateway.emitNewReference({
         expedienteId: id,
         areas: areas,
         motivos: body.referencias,
-        referidoPor: currentUserName
+        referidoPor: currentUserName,
       });
     }
     return { success: true };
