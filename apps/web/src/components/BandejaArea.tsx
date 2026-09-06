@@ -1,7 +1,7 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { api } from '../lib/api';
 import PanelLayout from './PanelLayout';
-import { User, FileText, MapPin, Phone, AlertCircle, FileArchive, MessageSquare } from 'lucide-react';
+import { User, FileText, AlertCircle, MessageSquare } from 'lucide-react';
 
 interface BandejaAreaProps {
   titulo: string;

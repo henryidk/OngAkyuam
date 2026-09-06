@@ -1,6 +1,6 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import PanelLayout from '../../components/PanelLayout';
-import { Search, ExternalLink, Share2 } from 'lucide-react';
+import { Search, Share2 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { ReferralModal } from './components/ReferralModal';
 
