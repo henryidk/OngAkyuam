@@ -60,3 +60,82 @@ model AuditLog {
   @@index([usuarioId])
   @@index([accion, createdAt]) // reportes/filtros por tipo de evento y rango de fecha
 }
+
+model Expediente {
+  id         String @id @default(uuid())
+  codigoCaso String @unique // Autogenerado: Ej. 001-2026
+
+  // Datos Generales de la Usuaria
+  nombresUsuaria   String
+  apellidosUsuaria String
+  dpi              String?   @db.VarChar(13) // Puede ser opcional temporalmente
+  fechaNacimiento  DateTime? @db.Date
+  edad             Int?
+  genero           String    @default("Femenino")
+  telefono         String?
+  direccion        String
+  departamento     String?
+  municipio        String?
+  grupoEtnico      String?
+  ubicacionGeo     String? // Urbana/Rural
+
+  // Datos Generales del Agresor
+  nombresAgresor   String?
+  apellidosAgresor String?
+  telefonoAgresor  String?
+  direccionAgresor String?
+
+  // Tipología y Condición
+  tipologiasViolencia String[] // ["Física", "Psicológica", "Económica", "Sexual"]
+  condicionRegistro   String // "INTERNA" | "EXTERNA"
+  fechaIngreso        DateTime @default(now()) @db.Date
+
+  // Relaciones a submódulos y logs
+  archivos      ArchivoDigital[]
+  bitacora      Bitacora[]
+  trabajoSocial TrabajoSocialRegistro?
+  
+  // Áreas que tienen acceso al expediente
+  areasAsignadas Rol[] @default([TRABAJO_SOCIAL])
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model TrabajoSocialRegistro {
+  id           String     @id @default(uuid())
+  expedienteId String     @unique
+  expediente   Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+
+  observacionesGenerales String?
+
+  // Entrevista Inicial
+  descripcionHecho        String?
+  observacionesEntrevista String?
+
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+}
+
+model ArchivoDigital {
+  id           String     @id @default(uuid())
+  expedienteId String
+  expediente   Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  nombre       String
+  categoria    String // Acta de Compromiso, Copia de DPI, etc.
+  peso         String?
+  url          String // Ruta local en la carpeta de uploads
+  uploadedById String? // Id del Usuario que lo subió
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+}
+
+model Bitacora {
+  id            String     @id @default(uuid())
+  expedienteId  String
+  expediente    Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  area          String // TRABAJO_SOCIAL, JURIDICO, etc.
+  titulo        String
+  descripcion   String
+  usuarioNombre String // Nombre descriptivo de quien hizo la acción
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+}
