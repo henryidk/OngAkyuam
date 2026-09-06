@@ -4,6 +4,6 @@ import { ExpedientesService } from './expedientes.service';
 
 @Module({
   controllers: [ExpedientesController],
-  providers: [ExpedientesService]
+  providers: [ExpedientesService],
 })
 export class ExpedientesModule {}
