@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AreasModule } from './areas/areas.module';
 import { AuthModule } from './auth/auth.module';
 import { CsrfGuard } from './auth/guards/csrf.guard';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
@@ -10,6 +11,7 @@ import { MustChangePasswordGuard } from './auth/guards/must-change-password.guar
 import { validateEnv } from './config/env.schema';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
+import { TrabajoSocialModule } from './trabajo-social/trabajo-social.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { RedisModule } from './redis/redis.module';
     PrismaModule,
     RedisModule,
     AuthModule,
+    TrabajoSocialModule,
+    AreasModule,
   ],
   controllers: [AppController],
   providers: [

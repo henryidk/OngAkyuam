@@ -1,0 +1,60 @@
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import type {
+  ExpedienteDetalleArea,
+  ExpedienteResumenArea,
+} from '@akyuam/shared';
+import { AuditService } from '../auth/services/audit.service';
+import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { AREAS_REPOSITORY } from './interfaces/areas-repository.interface';
+import type { IAreasRepository } from './interfaces/areas-repository.interface';
+
+interface ContextoAuditoria {
+  usuarioId: string;
+  username: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+@Injectable()
+export class AreasService {
+  constructor(
+    @Inject(AREAS_REPOSITORY)
+    private readonly areasRepository: IAreasRepository,
+    private readonly auditService: AuditService,
+  ) {}
+
+  async listarReferidos(
+    area: AuthenticatedUser['rol'],
+  ): Promise<ExpedienteResumenArea[]> {
+    return this.areasRepository.listarPorArea(area);
+  }
+
+  async obtenerDetalle(
+    id: string,
+    usuario: AuthenticatedUser,
+    contexto: ContextoAuditoria,
+  ): Promise<ExpedienteDetalleArea> {
+    const expediente = await this.areasRepository.buscarConAcceso(
+      id,
+      usuario.rol,
+    );
+    if (!expediente) {
+      // Mismo mensaje/código tanto si el expediente no existe como si existe pero no fue
+      // referido a esta área — no debe ser posible distinguir ambos casos desde afuera.
+      throw new ForbiddenException('No tiene acceso a este expediente');
+    }
+
+    await this.auditService.registrar({
+      usuarioId: contexto.usuarioId,
+      username: contexto.username,
+      accion: 'EXPEDIENTE_CONSULTADO',
+      entidad: 'Expediente',
+      entidadId: id,
+      ipAddress: contexto.ipAddress,
+      userAgent: contexto.userAgent,
+      detalles: { area: usuario.rol },
+    });
+
+    return expediente;
+  }
+}
