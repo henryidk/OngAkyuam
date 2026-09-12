@@ -24,6 +24,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     CookieService,
     UserCacheService,
   ],
-  exports: [AuthService],
+  exports: [AuthService, AuditService],
 })
 export class AuthModule {}

@@ -6,6 +6,8 @@ interface RegistrarAuditoriaParams {
   usuarioId?: string;
   username?: string;
   accion: string;
+  entidad?: string;
+  entidadId?: string;
   ipAddress?: string;
   userAgent?: string;
   detalles?: Prisma.InputJsonValue;
@@ -21,6 +23,8 @@ export class AuditService {
         usuarioId: params.usuarioId,
         username: params.username,
         accion: params.accion,
+        entidad: params.entidad,
+        entidadId: params.entidadId,
         ipAddress: params.ipAddress,
         userAgent: params.userAgent,
         detalles: params.detalles,
