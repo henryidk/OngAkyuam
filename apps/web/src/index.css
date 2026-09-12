@@ -1,1 +1,16 @@
 @import "tailwindcss";
+
+/* Paleta de marca tomada del logo de Centro Ak'Yu'am (tonos de morado medidos directamente del archivo). */
+@theme {
+  --color-brand-50: #f7f3fc;
+  --color-brand-100: #eee4f8;
+  --color-brand-200: #dcc9f0;
+  --color-brand-300: #c7a8e5;
+  --color-brand-400: #aa71c0;
+  --color-brand-500: #8c58ac;
+  --color-brand-600: #7346a5;
+  --color-brand-700: #5b3985;
+  --color-brand-800: #402c65;
+  --color-brand-900: #2d2465;
+  --color-brand-950: #1c1640;
+}
