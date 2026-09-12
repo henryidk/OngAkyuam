@@ -27,7 +27,9 @@ model Usuario {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  refreshTokens RefreshToken[]
+  refreshTokens      RefreshToken[]
+  expedientesCreados Expediente[]
+  referidosOtorgados ReferidoArea[]
 }
 
 model RefreshToken {
@@ -59,4 +61,140 @@ model AuditLog {
 
   @@index([usuarioId])
   @@index([accion, createdAt]) // reportes/filtros por tipo de evento y rango de fecha
+}
+
+enum TipoRegistro {
+  INTERNA
+  EXTERNA
+}
+
+enum GeneroPersona {
+  MUJER
+  HOMBRE
+}
+
+enum GrupoEtnico {
+  MAYA_QECHI
+  MAYA_POQOMCHI
+  XINCA
+  GARIFUNA
+  LADINO
+  OTRO
+}
+
+enum TipologiaDelito {
+  FISICA
+  PSICOLOGICA
+  ECONOMICA_PATRIMONIAL
+  SEXUAL
+}
+
+enum MunicipioAltaVerapaz {
+  COBAN
+  SANTA_CRUZ_VERAPAZ
+  SAN_CRISTOBAL_VERAPAZ
+  TACTIC
+  TAMAHU
+  TUCURU
+  PANZOS
+  SENAHU
+  SAN_PEDRO_CARCHA
+  SAN_JUAN_CHAMELCO
+  LANQUIN
+  CAHABON
+  CHISEC
+  CHAHAL
+  FRAY_BARTOLOME_DE_LAS_CASAS
+  RAXRUHA
+  SANTA_CATALINA_LA_TINTA
+}
+
+// Identidad de la persona atendida — capturada una sola vez, reutilizada
+// entre expedientes (RNF-09, RF-08).
+model Usuaria {
+  id              String   @id @default(uuid())
+  dpi             String?  @unique // único cuando existe; NULL permitido varias veces (mujeres sin DPI)
+  nombres         String
+  apellidos       String
+  telefono        String?
+  direccion       String?
+  fechaNacimiento DateTime @db.Date
+  grupoEtnico     GrupoEtnico
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+
+  expedientes Expediente[]
+
+  @@index([apellidos, nombres]) // recorrido ordenado; la búsqueda difusa usa el índice trigram (ver migración)
+}
+
+model Expediente {
+  id                  String            @id @default(uuid())
+  numero              String            @unique // "NN-AAAA", ver ExpedienteContador
+  usuariaId           String
+  usuaria             Usuaria           @relation(fields: [usuariaId], references: [id])
+  fecha               DateTime          @db.Date
+  municipio           MunicipioAltaVerapaz?
+  departamentoOtro    String? // excepción: usuaria de fuera de Alta Verapaz
+  municipioOtro       String?
+  ubicacionGeografica String // aldea/zona/colonia, texto libre
+  tipoRegistro        TipoRegistro
+  tipologiaDelito     TipologiaDelito[]
+  creadoPorId         String
+  creadoPor           Usuario           @relation(fields: [creadoPorId], references: [id])
+  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+
+  agresor   Agresor?
+  ninos     Nino[]
+  referidos ReferidoArea[]
+
+  @@index([usuariaId])
+  @@index([fecha])
+  @@index([creadoPorId])
+  @@index([municipio])
+}
+
+// Otorga acceso de solo lectura a un área de atención (subconjunto de Rol: JURIDICO,
+// PSICOLOGIA, MEDICA — validado en capa de aplicación) sobre un expediente puntual.
+// Ver CLAUDE.md: "Cada área solo ve lo que trabajo social le autoriza explícitamente".
+model ReferidoArea {
+  id            String     @id @default(uuid())
+  expedienteId  String
+  expediente    Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  area          Rol
+  otorgadoPorId String
+  otorgadoPor   Usuario    @relation(fields: [otorgadoPorId], references: [id])
+  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@unique([expedienteId, area])
+  @@index([area])
+}
+
+model Agresor {
+  id           String     @id @default(uuid())
+  expedienteId String     @unique
+  expediente   Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  nombres      String?
+  apellidos    String?
+  telefono     String?
+  direccion    String?
+}
+
+model Nino {
+  id              String     @id @default(uuid())
+  expedienteId    String
+  expediente      Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  nombres         String
+  apellidos       String
+  fechaNacimiento DateTime   @db.Date
+  genero          GeneroPersona
+
+  @@index([expedienteId])
+}
+
+// Consecutivo atómico por año para el número de expediente "NN-AAAA".
+model ExpedienteContador {
+  anio   Int @id
+  ultimo Int @default(0)
 }
