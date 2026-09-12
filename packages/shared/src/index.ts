@@ -5,3 +5,8 @@ export const pingSchema = z.object({
 });
 
 export type Ping = z.infer<typeof pingSchema>;
+
+export * from "./timezone.js";
+export * from "./catalogos/registroUsuaria.js";
+export * from "./schemas/registroUsuaria.js";
+export * from "./schemas/areas.js";
