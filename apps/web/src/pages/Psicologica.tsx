@@ -1,5 +1,5 @@
-import PanelLayout from '../components/PanelLayout'
+import PanelArea from '../features/area-atencion/PanelArea'
 
 export default function Psicologica() {
-  return <PanelLayout titulo="Psicología" />
+  return <PanelArea titulo="Psicología" basePath="/psicologia" />
 }

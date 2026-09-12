@@ -1,5 +1,5 @@
-import PanelLayout from '../components/PanelLayout'
+import PanelArea from '../features/area-atencion/PanelArea'
 
 export default function Juridica() {
-  return <PanelLayout titulo="Jurídico" />
+  return <PanelArea titulo="Jurídica" basePath="/juridico" />
 }

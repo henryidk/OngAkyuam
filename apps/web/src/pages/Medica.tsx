@@ -1,5 +1,5 @@
-import PanelLayout from '../components/PanelLayout'
+import PanelArea from '../features/area-atencion/PanelArea'
 
 export default function Medica() {
-  return <PanelLayout titulo="Médica" />
+  return <PanelArea titulo="Médica" basePath="/medica" />
 }
