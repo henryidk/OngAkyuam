@@ -13,6 +13,7 @@
     "@akyuam/shared": "workspace:*",
     "@hookform/resolvers": "^5.9.1",
     "axios": "^1.20.0",
+    "lucide-react": "^1.44.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-hook-form": "^7.55.0",
