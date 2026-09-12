@@ -2,7 +2,7 @@
 # Build context: repo root (monorepo workspace)
 # La imagen de producción real es apps/api/Dockerfile — este archivo no la reemplaza.
 FROM node:20-alpine
-RUN corepack enable
+RUN corepack enable && apk add --no-cache su-exec
 WORKDIR /repo
 
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
@@ -16,21 +16,35 @@ COPY packages/shared packages/shared
 COPY apps/api apps/api
 
 WORKDIR /repo
+
+# La imagen base ya trae un usuario "node" (uid=1000/gid=1000), que suele coincidir
+# con el usuario normal de un host Linux — se reutiliza en vez de crear uno nuevo.
+# Se parametriza por si alguien necesita otro UID/GID (ver docker-compose.override.yml).
+ARG DEV_UID=1000
+ARG DEV_GID=1000
+RUN if [ "$DEV_UID" != "1000" ] || [ "$DEV_GID" != "1000" ]; then \
+      deluser node && delgroup node && \
+      addgroup -g "$DEV_GID" node && \
+      adduser -D -u "$DEV_UID" -G node -h /home/node node; \
+    fi
+
+COPY apps/api/docker-entrypoint.dev.sh /usr/local/bin/docker-entrypoint.dev.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.dev.sh
+ENTRYPOINT ["docker-entrypoint.dev.sh"]
+
 # El bind mount trae el estado de compilación del host tal cual esté (incluida la
 # caché incremental de tsc, ver .gitignore: "*.tsbuildinfo"). Si el host corrió
 # alguna vez "pnpm dev:api" nativo, esa caché queda inválida para el contenedor y
 # tsc --watch se queda sin emitir dist/main.js. Se limpia en cada arranque para
 # garantizar una compilación fresca sin importar el estado del host.
 #
-# Sin USER explícito: corre como root dentro del contenedor. Es una excepción
-# deliberada solo para este contenedor de dev (nunca se expone a internet, no es
-# la imagen de producción) — con bind mount, un usuario no-root normalmente
-# choca con el UID/GID del host y complica escribir dist/node_modules; en la
-# imagen de producción (apps/api/Dockerfile) sí se corre como "node".
+# Ya no corre como root: el entrypoint (docker-entrypoint.dev.sh) corrige el dueño
+# de los volúmenes nombrados y baja privilegios a "node" antes de ejecutar esto —
+# así lo que el contenedor escribe en el bind mount (dist/, tsbuildinfo) queda con
+# el mismo dueño que el resto del repo en el host, no root.
 #
-# El "exec" final reemplaza el shell (PID 1) por el proceso de pnpm, para que
-# "docker compose stop/down" pueda mandarle SIGTERM directo en vez de esperar
-# el timeout completo y matarlo a la fuerza.
+# El "exec" final reemplaza el proceso por el de pnpm, para que "docker compose
+# stop/down" pueda mandarle SIGTERM directo en vez de esperar el timeout y matarlo.
 CMD rm -rf apps/api/dist apps/api/tsconfig.build.tsbuildinfo packages/shared/dist && \
     pnpm --filter @akyuam/shared build && \
     pnpm --filter @akyuam/api exec prisma generate && \
