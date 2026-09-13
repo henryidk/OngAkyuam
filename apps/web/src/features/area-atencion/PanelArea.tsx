@@ -1,16 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ETIQUETAS_TIPO_REGISTRO, formatFechaGT, type ExpedienteResumenArea } from '@akyuam/shared'
-import PanelLayout from '../../components/PanelLayout'
 import { api } from '../../lib/api'
 import { extraerMensajeError } from '../../lib/errors'
+import { crearSocketArea } from '../../lib/socket'
 
 interface PanelAreaProps {
-  titulo: string
   basePath: string
 }
 
-export default function PanelArea({ titulo, basePath }: PanelAreaProps) {
+export default function PanelArea({ basePath }: PanelAreaProps) {
   const [expedientes, setExpedientes] = useState<ExpedienteResumenArea[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -29,8 +28,23 @@ export default function PanelArea({ titulo, basePath }: PanelAreaProps) {
     }
   }, [])
 
+  useEffect(() => {
+    const socket = crearSocketArea()
+    socket.on('referido:nuevo', (resumen: ExpedienteResumenArea) => {
+      setExpedientes((actuales) => {
+        if (!actuales || actuales.some((expediente) => expediente.id === resumen.id)) {
+          return actuales
+        }
+        return [resumen, ...actuales]
+      })
+    })
+    return () => {
+      socket.disconnect()
+    }
+  }, [])
+
   return (
-    <PanelLayout titulo={titulo}>
+    <div>
       {error && (
         <p className="mb-4 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
       )}
@@ -69,6 +83,6 @@ export default function PanelArea({ titulo, basePath }: PanelAreaProps) {
           </table>
         </div>
       )}
-    </PanelLayout>
+    </div>
   )
 }
