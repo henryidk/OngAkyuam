@@ -53,6 +53,8 @@ export interface ExpedienteCreadoResultado {
   usuariaId: string;
   usuariaNombreCompleto: string;
   fecha: string;
+  municipio: string | null;
+  tipoRegistro: TipoRegistro;
 }
 
 export interface IExpedientesRepository {

@@ -115,6 +115,8 @@ export class ExpedientesRepository implements IExpedientesRepository {
         usuariaId: usuaria.id,
         usuariaNombreCompleto: `${usuaria.nombres} ${usuaria.apellidos}`,
         fecha: params.fecha,
+        municipio: expediente.municipio,
+        tipoRegistro: expediente.tipoRegistro,
       };
     });
   }

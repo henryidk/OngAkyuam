@@ -133,4 +133,6 @@ export interface ExpedienteCreado {
   usuariaId: string
   usuariaNombreCompleto: string
   fecha: string
+  municipio: string | null
+  tipoRegistro: TipoRegistro
 }
