@@ -39,6 +39,12 @@ export class TokenService {
     });
   }
 
+  verifyAccessToken(token: string): JwtAccessPayload {
+    return this.jwtService.verify<JwtAccessPayload>(token, {
+      secret: this.configService.getOrThrow<string>('JWT_ACCESS_SECRET'),
+    });
+  }
+
   hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
   }
