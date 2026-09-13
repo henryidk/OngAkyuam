@@ -10,7 +10,6 @@ import {
   formatFechaGT,
   type ExpedienteDetalleArea as ExpedienteDetalleAreaDto,
 } from '@akyuam/shared'
-import PanelLayout from '../../components/PanelLayout'
 import { api } from '../../lib/api'
 import { extraerMensajeError } from '../../lib/errors'
 
@@ -58,7 +57,7 @@ export default function DetalleExpedienteArea({ basePath }: DetalleExpedienteAre
   }, [id])
 
   return (
-    <PanelLayout titulo="Detalle del expediente">
+    <div>
       <div className="mb-4">
         <Link to={basePath} className="text-sm font-medium text-brand-600 hover:underline">
           ← Volver al listado
@@ -139,6 +138,6 @@ export default function DetalleExpedienteArea({ basePath }: DetalleExpedienteAre
           )}
         </div>
       )}
-    </PanelLayout>
+    </div>
   )
 }
