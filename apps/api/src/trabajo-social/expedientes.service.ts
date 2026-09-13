@@ -1,6 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { CrearExpedienteInput, ExpedienteCreado } from '@akyuam/shared';
 import type { MunicipioAltaVerapaz } from '@prisma/client';
+import { AREA_NOTIFIER } from '../areas/interfaces/area-notifier.interface';
+import type { IAreaNotifier } from '../areas/interfaces/area-notifier.interface';
 import { AuditService } from '../auth/services/audit.service';
 import { EXPEDIENTES_REPOSITORY } from './interfaces/expedientes-repository.interface';
 import type {
@@ -40,6 +42,8 @@ export class ExpedientesService {
     @Inject(EXPEDIENTES_REPOSITORY)
     private readonly expedientesRepository: IExpedientesRepository,
     private readonly auditService: AuditService,
+    @Inject(AREA_NOTIFIER)
+    private readonly areaNotifier: IAreaNotifier,
   ) {}
 
   async crear(
@@ -71,6 +75,15 @@ export class ExpedientesService {
         ipAddress: contexto.ipAddress,
         userAgent: contexto.userAgent,
         detalles: { area },
+      });
+
+      this.areaNotifier.notificarReferido(area, {
+        id: resultado.id,
+        numero: resultado.numero,
+        fecha: resultado.fecha,
+        municipio: resultado.municipio,
+        tipoRegistro: resultado.tipoRegistro,
+        usuariaNombreCompleto: resultado.usuariaNombreCompleto,
       });
     }
 
