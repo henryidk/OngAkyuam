@@ -28,6 +28,7 @@
   },
   "dependencies": {
     "@akyuam/shared": "workspace:*",
+    "@aws-sdk/client-s3": "^3.1132.0",
     "@nestjs/common": "^11.2.3",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^11.2.3",
@@ -65,6 +66,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.2.0",
     "@types/node": "^24.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^7.0.0",
@@ -92,7 +94,19 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
+      "^.+\\.(t|j)s$": [
+        "ts-jest",
+        {
+          "tsconfig": {
+            "module": "commonjs",
+            "moduleResolution": "node16"
+          }
+        }
+      ]
+    },
+    "moduleNameMapper": {
+      "^@akyuam/shared$": "<rootDir>/../../../packages/shared/src/index.ts",
+      "^(\\.{1,2}/.*)\\.js$": "$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"
