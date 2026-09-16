@@ -27,9 +27,11 @@ model Usuario {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  refreshTokens      RefreshToken[]
-  expedientesCreados Expediente[]
-  referidosOtorgados ReferidoArea[]
+  refreshTokens          RefreshToken[]
+  expedientesCreados     Expediente[]
+  referidosOtorgados     ReferidoArea[]
+  documentosSubidos      Documento[]
+  visibilidadesOtorgadas DocumentoVisibilidadArea[]
 }
 
 model RefreshToken {
@@ -145,9 +147,10 @@ model Expediente {
   createdAt           DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
 
-  agresor   Agresor?
-  ninos     Nino[]
-  referidos ReferidoArea[]
+  agresor    Agresor?
+  ninos      Nino[]
+  referidos  ReferidoArea[]
+  documentos Documento[]
 
   @@index([usuariaId])
   @@index([fecha])
@@ -197,4 +200,44 @@ model Nino {
 model ExpedienteContador {
   anio   Int @id
   ultimo Int @default(0)
+}
+
+enum TipoDocumento {
+  ENTREVISTA_USUARIA
+  CONVENIO_INGRESO
+  RECEPCION_BIENES
+}
+
+model Documento {
+  id            String        @id @default(uuid())
+  expedienteId  String
+  expediente    Expediente    @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  tipo          TipoDocumento
+  nombreArchivo String // nombre original, solo para mostrar en UI — nunca se usa como parte de la clave en R2
+  claveR2       String        @unique // object key generado por el backend (uuid), nunca derivado de input del usuario
+  mimeType      String
+  tamanioBytes  Int
+  subidoPorId   String
+  subidoPor     Usuario       @relation(fields: [subidoPorId], references: [id])
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+
+  visibilidadAreas DocumentoVisibilidadArea[]
+
+  @@index([expedienteId])
+}
+
+// Visibilidad de un documento para un área — permiso explícito y separado de ReferidoArea.
+// Ver CLAUDE.md: "área solo ve... archivos subidos solo si trabajo social habilitó
+// visibilidad para esa área en particular". Todo privado por defecto.
+model DocumentoVisibilidadArea {
+  id            String    @id @default(uuid())
+  documentoId   String
+  documento     Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  area          Rol
+  otorgadoPorId String
+  otorgadoPor   Usuario   @relation(fields: [otorgadoPorId], references: [id])
+  createdAt     DateTime  @default(now()) @db.Timestamptz(3)
+
+  @@unique([documentoId, area])
+  @@index([area])
 }
