@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import type { ExpedienteCreado, RegistroUsuariaFormValues } from '@akyuam/shared'
+import type { ExpedienteCreado, RegistroUsuariaFormValues, TipoDocumento } from '@akyuam/shared'
 import { api } from '../../lib/api'
 import { extraerMensajeError } from '../../lib/errors'
 import ConfirmacionRegistro from './components/ConfirmacionRegistro'
 import IndicadorPasos from './components/IndicadorPasos'
 import IndicadorPasosVertical from './components/IndicadorPasosVertical'
+import { useDocumentosStaging } from './hooks/useDocumentosStaging'
 import { useRegistroUsuariaForm, valoresIniciales } from './hooks/useRegistroUsuariaForm'
+import { subirDocumento, type DocumentoEnSubida } from './lib/documentosUpload'
 import PasoDatosAgresor from './steps/PasoDatosAgresor'
 import PasoDatosCaso from './steps/PasoDatosCaso'
 import PasoDatosUsuaria from './steps/PasoDatosUsuaria'
@@ -17,10 +19,12 @@ import { PASOS_REGISTRO_USUARIA, type PasoId } from './wizard'
 
 export default function RegistrarUsuaria() {
   const { form, ninosFieldArray } = useRegistroUsuariaForm()
+  const documentosStaging = useDocumentosStaging()
   const [pasoActual, setPasoActual] = useState(0)
   const [expedienteCreado, setExpedienteCreado] = useState<ExpedienteCreado | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
+  const [documentosEnSubida, setDocumentosEnSubida] = useState<DocumentoEnSubida[]>([])
 
   const paso = PASOS_REGISTRO_USUARIA[pasoActual]
   const esPrimerPaso = pasoActual === 0
@@ -50,6 +54,7 @@ export default function RegistrarUsuaria() {
     try {
       const { data } = await api.post<ExpedienteCreado>('/trabajo-social/expedientes', datos)
       setExpedienteCreado(data)
+      subirDocumentosPreparados(data.id)
     } catch (err) {
       setErrorGuardado(extraerMensajeError(err))
     } finally {
@@ -57,14 +62,59 @@ export default function RegistrarUsuaria() {
     }
   }
 
+  function subirDocumentosPreparados(expedienteId: string) {
+    const documentosValidos = documentosStaging.documentos.filter((documento) => !documento.error)
+    setDocumentosEnSubida(documentosValidos.map((documento) => ({ ...documento, estado: 'subiendo' })))
+
+    for (const documento of documentosValidos) {
+      subirDocumento(expedienteId, documento)
+        .then(() => actualizarEstadoDocumento(documento.tipo, 'ok'))
+        .catch((err) => actualizarEstadoDocumento(documento.tipo, 'error', extraerMensajeError(err)))
+    }
+  }
+
+  function actualizarEstadoDocumento(
+    tipo: TipoDocumento,
+    estado: 'ok' | 'error',
+    mensajeError?: string,
+  ) {
+    setDocumentosEnSubida((actual) =>
+      actual.map((documento) =>
+        documento.tipo === tipo ? { ...documento, estado, mensajeError } : documento,
+      ),
+    )
+  }
+
+  function reintentarDocumento(tipo: TipoDocumento) {
+    if (!expedienteCreado) return
+    const documento = documentosEnSubida.find((d) => d.tipo === tipo)
+    if (!documento) return
+
+    setDocumentosEnSubida((actual) =>
+      actual.map((d) => (d.tipo === tipo ? { ...d, estado: 'subiendo', mensajeError: undefined } : d)),
+    )
+    subirDocumento(expedienteCreado.id, documento)
+      .then(() => actualizarEstadoDocumento(tipo, 'ok'))
+      .catch((err) => actualizarEstadoDocumento(tipo, 'error', extraerMensajeError(err)))
+  }
+
   function iniciarNuevoRegistro() {
     form.reset(valoresIniciales)
+    documentosStaging.limpiar()
     setExpedienteCreado(null)
+    setDocumentosEnSubida([])
     setPasoActual(0)
   }
 
   if (expedienteCreado) {
-    return <ConfirmacionRegistro expediente={expedienteCreado} onNuevoRegistro={iniciarNuevoRegistro} />
+    return (
+      <ConfirmacionRegistro
+        expediente={expedienteCreado}
+        documentosEnSubida={documentosEnSubida}
+        onReintentarDocumento={reintentarDocumento}
+        onNuevoRegistro={iniciarNuevoRegistro}
+      />
+    )
   }
 
   return (
@@ -95,7 +145,13 @@ export default function RegistrarUsuaria() {
           {paso.id === 'agresor' && <PasoDatosAgresor form={form} />}
           {paso.id === 'registro' && <PasoTipoRegistro form={form} ninosFieldArray={ninosFieldArray} />}
           {paso.id === 'areas' && <PasoAreasAtencion form={form} />}
-          {paso.id === 'documentos' && <PasoDocumentos tipoRegistro={form.watch('tipoRegistro')} />}
+          {paso.id === 'documentos' && (
+            <PasoDocumentos
+              tipoRegistro={form.watch('tipoRegistro')}
+              areasReferidas={form.watch('areasReferidas')}
+              staging={documentosStaging}
+            />
+          )}
           {paso.id === 'revision' && <PasoRevision form={form} onEditar={irAPaso} />}
 
           <div className="mt-8 flex items-center justify-between border-t border-gray-100 pt-4">
