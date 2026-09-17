@@ -22,6 +22,15 @@ model Usuario {
   username           String   @unique
   passwordHash       String
   rol                Rol
+  // Nullable a nivel de columna a propósito: los 5 usuarios ficticios del seed de login no
+  // tienen estos datos reales, y no tiene sentido inventarlos. La obligatoriedad real (para
+  // cuentas creadas desde Administración) vive en Zod (`crearUsuarioSchema`), no aquí.
+  telefono           String?
+  dpi                String?  @unique
+  // Cargo dentro del área (ej. "ABOGADA", "DOCTORA") — null para ADMINISTRACION, que no
+  // atiende casos. Texto libre igual que `Personal.tipo`: qué valores son válidos por área
+  // se valida con Zod (`PUESTOS_POR_AREA`), no con un enum de Postgres.
+  puesto             String?
   isActive           Boolean  @default(true)
   mustChangePassword Boolean  @default(true)
   createdAt          DateTime @default(now())

@@ -28,6 +28,6 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     AuthenticatedUserResolver,
     SocketAuthService,
   ],
-  exports: [AuthService, AuditService, SocketAuthService],
+  exports: [AuthService, AuditService, SocketAuthService, UserCacheService],
 })
 export class AuthModule {}

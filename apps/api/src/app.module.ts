@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
+import { AdministracionModule } from './administracion/administracion.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AreasModule } from './areas/areas.module';
@@ -29,6 +30,7 @@ import { TrabajoSocialModule } from './trabajo-social/trabajo-social.module';
     AreasModule,
     PersonalModule,
     JuridicoModule,
+    AdministracionModule,
   ],
   controllers: [AppController],
   providers: [

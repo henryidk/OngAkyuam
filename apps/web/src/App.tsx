@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
-import Administracion from './pages/admin/Administracion'
+import AdminLayout from './pages/admin/AdminLayout'
+import Usuarios from './pages/admin/Usuarios'
 import AreaLayout from './pages/area-atencion/AreaLayout'
 import Juridica from './pages/Juridica'
 import JuridicaExpediente from './pages/JuridicaExpediente'
@@ -40,7 +41,7 @@ function App() {
       <Route element={<ProtectedRoute allowedRoles={['JURIDICO']} />}>
         <Route path="/juridico" element={<AreaLayout subtitulo="Jurídica" basePath="/juridico" />}>
           <Route index element={<Juridica />} />
-          <Route path=":id" element={<JuridicaExpediente />} />
+          <Route path=":id/casos" element={<JuridicaExpediente />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['PSICOLOGIA']} />}>
@@ -56,7 +57,10 @@ function App() {
         </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['ADMINISTRACION']} />}>
-        <Route path="/admin" element={<Administracion />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<Navigate to="usuarios" replace />} />
+          <Route path="usuarios" element={<Usuarios />} />
+        </Route>
       </Route>
 
       <Route path="/" element={<Navigate to="/login" replace />} />
