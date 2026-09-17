@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ETIQUETAS_TIPO_REGISTRO, formatFechaGT, type ExpedienteResumenArea } from '@akyuam/shared'
 import { api } from '../../lib/api'
@@ -7,9 +7,16 @@ import { crearSocketArea } from '../../lib/socket'
 
 interface PanelAreaProps {
   basePath: string
+  /**
+   * Render prop por fila, solo usada por jurídico hoy (psicológica/médica no la pasan, sin
+   * cambios de comportamiento para ellas — ver planjuridico.md, punto 7). Cuando está
+   * presente, el número deja de ser un link de navegación: las acciones de esta columna
+   * son la única forma de entrar al caso.
+   */
+  renderAcciones?: (expediente: ExpedienteResumenArea) => ReactNode
 }
 
-export default function PanelArea({ basePath }: PanelAreaProps) {
+export default function PanelArea({ basePath, renderAcciones }: PanelAreaProps) {
   const [expedientes, setExpedientes] = useState<ExpedienteResumenArea[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -64,19 +71,25 @@ export default function PanelArea({ basePath }: PanelAreaProps) {
                 <th className="px-4 py-3 font-medium">Fecha</th>
                 <th className="px-4 py-3 font-medium">Usuaria</th>
                 <th className="px-4 py-3 font-medium">Tipo de registro</th>
+                {renderAcciones && <th className="px-4 py-3 font-medium">Acciones</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {expedientes.map((expediente) => (
                 <tr key={expediente.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
-                    <Link to={`${basePath}/${expediente.id}`} className="font-medium text-brand-600 hover:underline">
-                      {expediente.numero}
-                    </Link>
+                    {renderAcciones ? (
+                      <span className="font-medium text-gray-800">{expediente.numero}</span>
+                    ) : (
+                      <Link to={`${basePath}/${expediente.id}`} className="font-medium text-brand-600 hover:underline">
+                        {expediente.numero}
+                      </Link>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-gray-600">{formatFechaGT(expediente.fecha)}</td>
                   <td className="px-4 py-3 text-gray-800">{expediente.usuariaNombreCompleto}</td>
                   <td className="px-4 py-3 text-gray-600">{ETIQUETAS_TIPO_REGISTRO[expediente.tipoRegistro]}</td>
+                  {renderAcciones && <td className="px-4 py-3">{renderAcciones(expediente)}</td>}
                 </tr>
               ))}
             </tbody>

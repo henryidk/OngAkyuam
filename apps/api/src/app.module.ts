@@ -9,6 +9,8 @@ import { CsrfGuard } from './auth/guards/csrf.guard';
 import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MustChangePasswordGuard } from './auth/guards/must-change-password.guard';
 import { validateEnv } from './config/env.schema';
+import { JuridicoModule } from './juridico/juridico.module';
+import { PersonalModule } from './personal/personal.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { TrabajoSocialModule } from './trabajo-social/trabajo-social.module';
@@ -25,6 +27,8 @@ import { TrabajoSocialModule } from './trabajo-social/trabajo-social.module';
     AuthModule,
     TrabajoSocialModule,
     AreasModule,
+    PersonalModule,
+    JuridicoModule,
   ],
   controllers: [AppController],
   providers: [

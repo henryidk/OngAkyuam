@@ -27,11 +27,15 @@ model Usuario {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  refreshTokens          RefreshToken[]
-  expedientesCreados     Expediente[]
-  referidosOtorgados     ReferidoArea[]
-  documentosSubidos      Documento[]
-  visibilidadesOtorgadas DocumentoVisibilidadArea[]
+  refreshTokens            RefreshToken[]
+  expedientesCreados       Expediente[]
+  referidosOtorgados       ReferidoArea[]
+  documentosSubidos        Documento[]
+  visibilidadesOtorgadas   DocumentoVisibilidadArea[]
+  procesosJuridicosCreados ProcesoJuridico[]
+  notasAvanceRegistradas   NotaAvanceProceso[]
+  documentosProcesoSubidos DocumentoProceso[]
+  abandonosRegistrados     AbandonoProceso[]
 }
 
 model RefreshToken {
@@ -114,16 +118,16 @@ enum MunicipioAltaVerapaz {
 // Identidad de la persona atendida — capturada una sola vez, reutilizada
 // entre expedientes (RNF-09, RF-08).
 model Usuaria {
-  id              String   @id @default(uuid())
-  dpi             String?  @unique // único cuando existe; NULL permitido varias veces (mujeres sin DPI)
+  id              String      @id @default(uuid())
+  dpi             String?     @unique // único cuando existe; NULL permitido varias veces (mujeres sin DPI)
   nombres         String
   apellidos       String
   telefono        String?
   direccion       String?
-  fechaNacimiento DateTime @db.Date
+  fechaNacimiento DateTime    @db.Date
   grupoEtnico     GrupoEtnico
-  createdAt       DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(3)
 
   expedientes Expediente[]
 
@@ -131,11 +135,11 @@ model Usuaria {
 }
 
 model Expediente {
-  id                  String            @id @default(uuid())
-  numero              String            @unique // "NN-AAAA", ver ExpedienteContador
+  id                  String                @id @default(uuid())
+  numero              String                @unique // "NN-AAAA", ver ExpedienteContador
   usuariaId           String
-  usuaria             Usuaria           @relation(fields: [usuariaId], references: [id])
-  fecha               DateTime          @db.Date
+  usuaria             Usuaria               @relation(fields: [usuariaId], references: [id])
+  fecha               DateTime              @db.Date
   municipio           MunicipioAltaVerapaz?
   departamentoOtro    String? // excepción: usuaria de fuera de Alta Verapaz
   municipioOtro       String?
@@ -143,14 +147,15 @@ model Expediente {
   tipoRegistro        TipoRegistro
   tipologiaDelito     TipologiaDelito[]
   creadoPorId         String
-  creadoPor           Usuario           @relation(fields: [creadoPorId], references: [id])
-  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
+  creadoPor           Usuario               @relation(fields: [creadoPorId], references: [id])
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
 
-  agresor    Agresor?
-  ninos      Nino[]
-  referidos  ReferidoArea[]
-  documentos Documento[]
+  agresor           Agresor?
+  ninos             Nino[]
+  referidos         ReferidoArea[]
+  documentos        Documento[]
+  procesosJuridicos ProcesoJuridico[]
 
   @@index([usuariaId])
   @@index([fecha])
@@ -185,12 +190,12 @@ model Agresor {
 }
 
 model Nino {
-  id              String     @id @default(uuid())
+  id              String        @id @default(uuid())
   expedienteId    String
-  expediente      Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  expediente      Expediente    @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   nombres         String
   apellidos       String
-  fechaNacimiento DateTime   @db.Date
+  fechaNacimiento DateTime      @db.Date
   genero          GeneroPersona
 
   @@index([expedienteId])
@@ -240,4 +245,124 @@ model DocumentoVisibilidadArea {
 
   @@unique([documentoId, area])
   @@index([area])
+}
+
+// Catálogo de personal por área (abogadas/procuradoras en jurídico, y a futuro los cargos
+// que definan psicológica/médica/trabajo social), gestionado desde Administración. Una sola
+// tabla genérica en vez de una por área: `area` reusa el mismo enum `Rol` que ya discrimina
+// áreas en `ReferidoArea`, y `tipo` es texto libre (no un enum de Postgres) porque cada área
+// define sus propios cargos con el tiempo — agregar un cargo nuevo no debe exigir una
+// migración de esquema. Qué valores de `tipo` son válidos para cada área se valida con Zod
+// en el módulo de esa área (ver `packages/shared/src/schemas/juridico.ts`), no aquí.
+// Se desactiva en vez de borrar para no romper el historial de procesos ya asociados.
+model Personal {
+  id        String   @id @default(uuid())
+  area      Rol
+  tipo      String
+  nombre    String
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime @updatedAt @db.Timestamptz(3)
+
+  procesosComoAbogada     ProcesoJuridico[] @relation("AbogadaDeProceso")
+  procesosComoProcuradora ProcesoJuridico[] @relation("ProcuradoraDeProceso")
+
+  @@index([area, tipo, activo])
+}
+
+enum TipoProcesoJuridico {
+  FIJACION_PENSION_ALIMENTICIA
+  MODIFICACION_PENSION_ALIMENTICIA
+  DIVORCIO_MUTUO_ACUERDO
+  DIVORCIO_CAUSAL_DETERMINADA
+  PATERNIDAD_FILIACION
+  EJECUCION_VIA_APREMIO
+  JUICIO_EJECUTIVO
+  GUARDA_CUSTODIA
+  MEDIDAS_SEGURIDAD
+  MENAJE_CASA
+  RELACIONES_FAMILIARES
+  RECONOCIMIENTO_PRENEZ_PARTO
+  REFERENCIA_PGN
+  ORDINARIO_LABORAL
+  INSCRIPCION_RENAP
+}
+
+enum EstadoProcesoJuridico {
+  INICIADO
+  CERRADO
+}
+
+// Un proceso judicial que jurídico lleva para una usuaria dentro de un expediente que le fue
+// referido. Una usuaria puede tener varios procesos, incluso del mismo tipo repetido en el
+// tiempo (ej. fijación y luego modificación de la misma pensión alimenticia).
+model ProcesoJuridico {
+  id            String                @id @default(uuid())
+  expedienteId  String
+  expediente    Expediente            @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  tipo          TipoProcesoJuridico
+  estado        EstadoProcesoJuridico @default(INICIADO)
+  abogadaId     String?
+  abogada       Personal?             @relation("AbogadaDeProceso", fields: [abogadaId], references: [id])
+  procuradoraId String?
+  procuradora   Personal?             @relation("ProcuradoraDeProceso", fields: [procuradoraId], references: [id])
+  fechaInicio   DateTime              @db.Date
+  fechaCierre   DateTime?             @db.Date
+  creadoPorId   String
+  creadoPor     Usuario               @relation(fields: [creadoPorId], references: [id])
+  createdAt     DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime              @updatedAt @db.Timestamptz(3)
+
+  notas      NotaAvanceProceso[]
+  documentos DocumentoProceso[]
+  abandono   AbandonoProceso?
+
+  @@index([expedienteId])
+  @@index([estado])
+}
+
+// Abandono del proceso por inasistencia de la usuaria — evento aparte, no un estado: puede
+// registrarse sobre un proceso en cualquier momento, sin importar su estado actual (decisión
+// de negocio confirmada, ver planjuridico.md).
+model AbandonoProceso {
+  id              String          @id @default(uuid())
+  procesoId       String          @unique
+  proceso         ProcesoJuridico @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  fecha           DateTime        @db.Date
+  motivo          String?
+  registradoPorId String
+  registradoPor   Usuario         @relation(fields: [registradoPorId], references: [id])
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+}
+
+model NotaAvanceProceso {
+  id              String          @id @default(uuid())
+  procesoId       String
+  proceso         ProcesoJuridico @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  contenido       String
+  registradoPorId String
+  registradoPor   Usuario         @relation(fields: [registradoPorId], references: [id])
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+
+  @@index([procesoId])
+}
+
+// Documento propio de un proceso jurídico. `nombreVisible` es el identificador elegido por
+// quien lo sube (ej. "Demanda inicial", "Constancia de notificación") — distinto de
+// `nombreArchivo`, el nombre original del archivo. Mismo criterio que `Documento`: `claveR2`
+// nunca se deriva de input del usuario.
+model DocumentoProceso {
+  id            String          @id @default(uuid())
+  procesoId     String
+  proceso       ProcesoJuridico @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  nombreVisible String
+  nombreArchivo String
+  claveR2       String          @unique
+  mimeType      String
+  tamanioBytes  Int
+  subidoPorId   String
+  subidoPor     Usuario         @relation(fields: [subidoPorId], references: [id])
+  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+
+  @@index([procesoId])
 }

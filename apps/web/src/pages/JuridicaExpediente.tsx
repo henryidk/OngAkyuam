@@ -1,5 +1,8 @@
-import DetalleExpedienteArea from '../features/area-atencion/DetalleExpedienteArea'
+import { useParams } from 'react-router-dom'
+import EspacioTrabajoCaso from '../features/juridico/EspacioTrabajoCaso'
 
 export default function JuridicaExpediente() {
-  return <DetalleExpedienteArea basePath="/juridico" />
+  const { id } = useParams<{ id: string }>()
+  if (!id) return null
+  return <EspacioTrabajoCaso expedienteId={id} />
 }
