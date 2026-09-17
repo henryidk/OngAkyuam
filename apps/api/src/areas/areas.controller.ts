@@ -34,4 +34,20 @@ export class AreasController {
       userAgent: req.headers['user-agent'],
     });
   }
+
+  @Get(':id/documentos/:documentoId/url')
+  obtenerUrlDescarga(
+    @Param('id') id: string,
+    @Param('documentoId') documentoId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    return this.areasService.obtenerUrlDescarga(id, documentoId, usuario, {
+      usuarioId: usuario.id,
+      username: usuario.username,
+      ipAddress: ip,
+      userAgent: req.headers['user-agent'],
+    });
+  }
 }

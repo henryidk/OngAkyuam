@@ -48,6 +48,9 @@ describe('DocumentosService', () => {
     objectStorage = {
       subirObjeto: jest.fn().mockResolvedValue(undefined),
       eliminarObjeto: jest.fn().mockResolvedValue(undefined),
+      generarUrlDescarga: jest
+        .fn()
+        .mockResolvedValue('https://descarga.firmada/x'),
     };
     auditService = {
       registrar: jest.fn(),

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
+import { StorageModule } from '../storage/storage.module';
 import { AreasController } from './areas.controller';
 import { AreasService } from './areas.service';
 import { AreasGateway } from './gateways/areas.gateway';
@@ -9,7 +10,7 @@ import { AREAS_REPOSITORY } from './interfaces/areas-repository.interface';
 import { AreasRepository } from './repositories/areas.repository';
 
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [PrismaModule, AuthModule, StorageModule],
   controllers: [AreasController],
   providers: [
     AreasService,

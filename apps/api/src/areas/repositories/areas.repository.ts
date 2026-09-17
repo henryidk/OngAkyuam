@@ -6,7 +6,10 @@ import {
   type ExpedienteResumenArea,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { IAreasRepository } from '../interfaces/areas-repository.interface';
+import type {
+  DocumentoParaDescargaArea,
+  IAreasRepository,
+} from '../interfaces/areas-repository.interface';
 
 @Injectable()
 export class AreasRepository implements IAreasRepository {
@@ -35,7 +38,12 @@ export class AreasRepository implements IAreasRepository {
   ): Promise<ExpedienteDetalleArea | null> {
     const expediente = await this.prisma.expediente.findFirst({
       where: { id: expedienteId, referidos: { some: { area } } },
-      include: { usuaria: true, agresor: true, ninos: true },
+      include: {
+        usuaria: true,
+        agresor: true,
+        ninos: true,
+        documentos: { where: { visibilidadAreas: { some: { area } } } },
+      },
     });
     if (!expediente) {
       return null;
@@ -75,6 +83,28 @@ export class AreasRepository implements IAreasRepository {
         fechaNacimiento: fechaColumnaISO(nino.fechaNacimiento),
         genero: nino.genero === 'MUJER' ? 'M' : 'H',
       })),
+      documentos: expediente.documentos.map((documento) => ({
+        id: documento.id,
+        tipo: documento.tipo,
+        nombreArchivo: documento.nombreArchivo,
+        tamanioBytes: documento.tamanioBytes,
+        createdAt: documento.createdAt.toISOString(),
+      })),
     };
+  }
+
+  async buscarDocumentoVisible(
+    documentoId: string,
+    expedienteId: string,
+    area: Rol,
+  ): Promise<DocumentoParaDescargaArea | null> {
+    return this.prisma.documento.findFirst({
+      where: {
+        id: documentoId,
+        expedienteId,
+        visibilidadAreas: { some: { area } },
+      },
+      select: { claveR2: true, nombreArchivo: true },
+    });
   }
 }

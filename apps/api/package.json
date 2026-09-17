@@ -29,6 +29,7 @@
   "dependencies": {
     "@akyuam/shared": "workspace:*",
     "@aws-sdk/client-s3": "^3.1132.0",
+    "@aws-sdk/s3-request-presigner": "^3.1133.0",
     "@nestjs/common": "^11.2.3",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^11.2.3",

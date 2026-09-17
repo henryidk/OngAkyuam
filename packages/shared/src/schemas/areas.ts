@@ -1,4 +1,5 @@
 import type { Nino, TipoRegistro } from './registroUsuaria.js'
+import type { TipoDocumento } from './documentos.js'
 
 /**
  * Forma de un expediente tal como lo ve un área de atención (jurídica/médica/psicológica)
@@ -37,4 +38,19 @@ export interface ExpedienteDetalleArea extends ExpedienteResumenArea {
     direccion: string | null
   } | null
   ninos: Nino[]
+  documentos: DocumentoVisibleArea[]
+}
+
+/**
+ * Documento subido por trabajo social y visible para esta área — trabajo social otorgó
+ * visibilidad explícita (`DocumentoVisibilidadArea`), no todo documento del expediente.
+ * Nunca incluye `claveR2`: la descarga real va por URL firmada
+ * (GET /areas/expedientes/:id/documentos/:documentoId/url), nunca por acceso directo.
+ */
+export interface DocumentoVisibleArea {
+  id: string
+  tipo: TipoDocumento
+  nombreArchivo: string
+  tamanioBytes: number
+  createdAt: string
 }
