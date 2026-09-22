@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Ip,
   Param,
   ParseUUIDPipe,
@@ -42,6 +43,26 @@ export class DocumentosController {
   ) {
     return this.documentosService.subir(
       { expedienteId, tipo, areasVisiblesRaw: areasVisibles, archivo },
+      {
+        usuarioId: usuario.id,
+        username: usuario.username,
+        ipAddress: ip,
+        userAgent: req.headers['user-agent'],
+      },
+    );
+  }
+
+  @Get(':documentoId/url')
+  async obtenerUrlDescarga(
+    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
+    @Param('documentoId', ParseUUIDPipe) documentoId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    return this.documentosService.obtenerUrlDescarga(
+      expedienteId,
+      documentoId,
       {
         usuarioId: usuario.id,
         username: usuario.username,

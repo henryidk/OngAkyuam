@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import type {
   CrearDocumentoParams,
   DocumentoCreado,
+  DocumentoParaDescarga,
   ExpedienteParaDocumento,
   IDocumentosRepository,
 } from '../interfaces/documentos-repository.interface';
@@ -64,5 +65,15 @@ export class DocumentosRepository implements IDocumentosRepository {
       tamanioBytes: documento.tamanioBytes,
       createdAt: documento.createdAt,
     };
+  }
+
+  async buscarParaDescarga(
+    documentoId: string,
+    expedienteId: string,
+  ): Promise<DocumentoParaDescarga | null> {
+    return this.prisma.documento.findFirst({
+      where: { id: documentoId, expedienteId },
+      select: { claveR2: true, nombreArchivo: true },
+    });
   }
 }

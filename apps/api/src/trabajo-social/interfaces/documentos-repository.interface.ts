@@ -26,9 +26,20 @@ export interface DocumentoCreado {
   createdAt: Date;
 }
 
+export interface DocumentoParaDescarga {
+  claveR2: string;
+  nombreArchivo: string;
+}
+
 export interface IDocumentosRepository {
   buscarExpedienteParaSubida(
     expedienteId: string,
   ): Promise<ExpedienteParaDocumento | null>;
   crear(params: CrearDocumentoParams): Promise<DocumentoCreado>;
+  /** Trabajo social ve cualquier documento que haya subido — sin filtro de área (a diferencia
+   * de `AreasRepository.buscarDocumentoVisible`, que sí filtra por visibilidad otorgada). */
+  buscarParaDescarga(
+    documentoId: string,
+    expedienteId: string,
+  ): Promise<DocumentoParaDescarga | null>;
 }

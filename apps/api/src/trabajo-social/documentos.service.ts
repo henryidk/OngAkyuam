@@ -144,6 +144,40 @@ export class DocumentosService {
     };
   }
 
+  async obtenerUrlDescarga(
+    expedienteId: string,
+    documentoId: string,
+    contexto: ContextoAuditoria,
+  ): Promise<{ url: string }> {
+    const documento = await this.documentosRepository.buscarParaDescarga(
+      documentoId,
+      expedienteId,
+    );
+    if (!documento) {
+      throw new NotFoundException('Documento no encontrado');
+    }
+
+    const url = await this.objectStorage.generarUrlDescarga(
+      documento.claveR2,
+      documento.nombreArchivo,
+    );
+
+    // Mismo criterio que AreasService.obtenerUrlDescarga: leer un archivo sensible se audita
+    // igual que subirlo.
+    await this.auditService.registrar({
+      usuarioId: contexto.usuarioId,
+      username: contexto.username,
+      accion: 'DOCUMENTO_DESCARGADO',
+      entidad: 'Documento',
+      entidadId: documentoId,
+      ipAddress: contexto.ipAddress,
+      userAgent: contexto.userAgent,
+      detalles: { expedienteId },
+    });
+
+    return { url };
+  }
+
   private parsearAreasVisibles(raw: string | undefined): unknown {
     if (!raw) {
       return [];

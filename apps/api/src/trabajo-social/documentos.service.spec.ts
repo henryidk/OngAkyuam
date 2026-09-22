@@ -44,6 +44,7 @@ describe('DocumentosService', () => {
     documentosRepository = {
       buscarExpedienteParaSubida: jest.fn(),
       crear: jest.fn(),
+      buscarParaDescarga: jest.fn(),
     };
     objectStorage = {
       subirObjeto: jest.fn().mockResolvedValue(undefined),
@@ -269,5 +270,43 @@ describe('DocumentosService', () => {
       expect.stringMatching(/^expedientes\/exp-1\//),
     );
     expect(auditService.registrar).not.toHaveBeenCalled();
+  });
+
+  describe('obtenerUrlDescarga', () => {
+    it('lanza 404 si el documento no existe en ese expediente', async () => {
+      documentosRepository.buscarParaDescarga.mockResolvedValue(null);
+
+      await expect(
+        service.obtenerUrlDescarga('exp-1', 'doc-x', contexto),
+      ).rejects.toBeInstanceOf(NotFoundException);
+      expect(objectStorage.generarUrlDescarga).not.toHaveBeenCalled();
+    });
+
+    it('genera la URL firmada y audita la descarga', async () => {
+      documentosRepository.buscarParaDescarga.mockResolvedValue({
+        claveR2: 'expedientes/exp-1/archivo',
+        nombreArchivo: 'documento.pdf',
+      });
+
+      const resultado = await service.obtenerUrlDescarga(
+        'exp-1',
+        'doc-1',
+        contexto,
+      );
+
+      expect(objectStorage.generarUrlDescarga).toHaveBeenCalledWith(
+        'expedientes/exp-1/archivo',
+        'documento.pdf',
+      );
+      expect(auditService.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'DOCUMENTO_DESCARGADO',
+          entidad: 'Documento',
+          entidadId: 'doc-1',
+          detalles: { expedienteId: 'exp-1' },
+        }),
+      );
+      expect(resultado).toEqual({ url: 'https://descarga.firmada/x' });
+    });
   });
 });
