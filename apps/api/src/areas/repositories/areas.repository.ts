@@ -26,7 +26,7 @@ export class AreasRepository implements IAreasRepository {
       id: expediente.id,
       numero: expediente.numero,
       fecha: fechaColumnaISO(expediente.fecha),
-      municipio: expediente.municipio,
+      municipio: expediente.usuaria.municipio,
       tipoRegistro: expediente.tipoRegistro,
       usuariaNombreCompleto: `${expediente.usuaria.nombres} ${expediente.usuaria.apellidos}`,
     }));
@@ -53,12 +53,9 @@ export class AreasRepository implements IAreasRepository {
       id: expediente.id,
       numero: expediente.numero,
       fecha: fechaColumnaISO(expediente.fecha),
-      municipio: expediente.municipio,
+      municipio: expediente.usuaria.municipio,
       tipoRegistro: expediente.tipoRegistro,
       usuariaNombreCompleto: `${expediente.usuaria.nombres} ${expediente.usuaria.apellidos}`,
-      ubicacionGeografica: expediente.ubicacionGeografica,
-      departamentoOtro: expediente.departamentoOtro,
-      municipioOtro: expediente.municipioOtro,
       usuaria: {
         nombres: expediente.usuaria.nombres,
         apellidos: expediente.usuaria.apellidos,
@@ -68,6 +65,9 @@ export class AreasRepository implements IAreasRepository {
         fechaNacimiento: fechaColumnaISO(expediente.usuaria.fechaNacimiento),
         grupoEtnico: expediente.usuaria.grupoEtnico,
         tipologiaDelito: expediente.tipologiaDelito,
+        ubicacionGeografica: expediente.usuaria.ubicacionGeografica,
+        departamentoOtro: expediente.usuaria.departamentoOtro,
+        municipioOtro: expediente.usuaria.municipioOtro,
       },
       agresor: expediente.agresor
         ? {
