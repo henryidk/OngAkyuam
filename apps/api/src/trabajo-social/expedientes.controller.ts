@@ -1,4 +1,13 @@
-import { Body, Controller, Ip, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Ip,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import {
   crearExpedienteSchema,
   type CrearExpedienteInput,
@@ -26,6 +35,21 @@ export class ExpedientesController {
     @Req() req: Request,
   ) {
     return this.expedientesService.crear(datos, {
+      usuarioId: usuario.id,
+      username: usuario.username,
+      ipAddress: ip,
+      userAgent: req.headers['user-agent'],
+    });
+  }
+
+  @Get(':id')
+  async obtenerDetalle(
+    @Param('id') id: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    return this.expedientesService.obtenerDetalle(id, {
       usuarioId: usuario.id,
       username: usuario.username,
       ipAddress: ip,
