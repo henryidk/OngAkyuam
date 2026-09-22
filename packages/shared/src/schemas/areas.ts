@@ -16,9 +16,6 @@ export interface ExpedienteResumenArea {
 
 /** Detalle completo — ver GET /areas/expedientes/:id. */
 export interface ExpedienteDetalleArea extends ExpedienteResumenArea {
-  ubicacionGeografica: string
-  departamentoOtro: string | null
-  municipioOtro: string | null
   usuaria: {
     nombres: string
     apellidos: string
@@ -28,6 +25,9 @@ export interface ExpedienteDetalleArea extends ExpedienteResumenArea {
     fechaNacimiento: string
     grupoEtnico: string
     tipologiaDelito: string[]
+    ubicacionGeografica: string | null
+    departamentoOtro: string | null
+    municipioOtro: string | null
   }
   // No reutiliza `DatosAgresor` (representación de formulario, "" = sin dato): esta es una
   // vista de solo lectura de lo ya guardado, donde la ausencia se representa como `null`.

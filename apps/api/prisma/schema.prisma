@@ -133,6 +133,13 @@ model Usuaria {
   apellidos       String
   telefono        String?
   direccion       String?
+  // Datos de dónde vive la usuaria — identidad, no del caso puntual: se capturan una vez y se
+  // editan explícitamente si cambian (ver Usuarios → Expediente → "editar datos"), nunca se
+  // vuelven a pedir al registrar un caso nuevo de una usuaria ya existente.
+  municipio           MunicipioAltaVerapaz?
+  departamentoOtro    String? // excepción: usuaria de fuera de Alta Verapaz
+  municipioOtro       String?
+  ubicacionGeografica String? // aldea/zona/colonia, texto libre
   fechaNacimiento DateTime    @db.Date
   grupoEtnico     GrupoEtnico
   createdAt       DateTime    @default(now()) @db.Timestamptz(3)
@@ -141,24 +148,21 @@ model Usuaria {
   expedientes Expediente[]
 
   @@index([apellidos, nombres]) // recorrido ordenado; la búsqueda difusa usa el índice trigram (ver migración)
+  @@index([municipio])
 }
 
 model Expediente {
-  id                  String                @id @default(uuid())
-  numero              String                @unique // "NN-AAAA", ver ExpedienteContador
-  usuariaId           String
-  usuaria             Usuaria               @relation(fields: [usuariaId], references: [id])
-  fecha               DateTime              @db.Date
-  municipio           MunicipioAltaVerapaz?
-  departamentoOtro    String? // excepción: usuaria de fuera de Alta Verapaz
-  municipioOtro       String?
-  ubicacionGeografica String // aldea/zona/colonia, texto libre
-  tipoRegistro        TipoRegistro
-  tipologiaDelito     TipologiaDelito[]
-  creadoPorId         String
-  creadoPor           Usuario               @relation(fields: [creadoPorId], references: [id])
-  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
+  id              String            @id @default(uuid())
+  numero          String            @unique // "NN-AAAA", ver ExpedienteContador
+  usuariaId       String
+  usuaria         Usuaria           @relation(fields: [usuariaId], references: [id])
+  fecha           DateTime          @db.Date
+  tipoRegistro    TipoRegistro
+  tipologiaDelito TipologiaDelito[]
+  creadoPorId     String
+  creadoPor       Usuario           @relation(fields: [creadoPorId], references: [id])
+  createdAt       DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @db.Timestamptz(3)
 
   agresor           Agresor?
   ninos             Nino[]
@@ -169,7 +173,6 @@ model Expediente {
   @@index([usuariaId])
   @@index([fecha])
   @@index([creadoPorId])
-  @@index([municipio])
 }
 
 // Otorga acceso de solo lectura a un área de atención (subconjunto de Rol: JURIDICO,
