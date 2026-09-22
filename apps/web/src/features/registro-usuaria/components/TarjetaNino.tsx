@@ -1,11 +1,11 @@
 import { Pencil, Trash2 } from 'lucide-react'
 import type { UseFormReturn } from 'react-hook-form'
-import { ETIQUETAS_GENERO, formatFechaGT, GENEROS, type RegistroUsuariaFormValues } from '@akyuam/shared'
+import { ETIQUETAS_GENERO, formatFechaGT, GENEROS, type RegistroUsuariaNuevaFormValues } from '@akyuam/shared'
 import GrupoRadio from '../../../components/form/GrupoRadio'
 import TextoInput from '../../../components/form/TextoInput'
 
 interface TarjetaNinoProps {
-  form: UseFormReturn<RegistroUsuariaFormValues>
+  form: UseFormReturn<RegistroUsuariaNuevaFormValues>
   indice: number
   expandido: boolean
   onExpandir: () => void
@@ -21,9 +21,9 @@ export default function TarjetaNino({ form, indice, expandido, onExpandir, onCol
     getValues,
     formState: { errors },
   } = form
-  const erroresNino = errors.ninos?.[indice]
+  const erroresNino = errors.datosCaso?.ninos?.[indice]
   const tieneErrores = Boolean(erroresNino)
-  const nino = getValues(`ninos.${indice}`)
+  const nino = getValues(`datosCaso.ninos.${indice}`)
   const nombreCompleto = `${nino.nombres} ${nino.apellidos}`.trim()
 
   if (!expandido) {
@@ -84,12 +84,12 @@ export default function TarjetaNino({ form, indice, expandido, onExpandir, onCol
       <div className="grid gap-3 sm:grid-cols-2">
         <TextoInput
           label="Nombres"
-          registro={register(`ninos.${indice}.nombres`)}
+          registro={register(`datosCaso.ninos.${indice}.nombres`)}
           error={erroresNino?.nombres?.message}
         />
         <TextoInput
           label="Apellidos"
-          registro={register(`ninos.${indice}.apellidos`)}
+          registro={register(`datosCaso.ninos.${indice}.apellidos`)}
           error={erroresNino?.apellidos?.message}
         />
       </div>
@@ -97,13 +97,13 @@ export default function TarjetaNino({ form, indice, expandido, onExpandir, onCol
         <TextoInput
           label="Fecha de nacimiento"
           type="date"
-          registro={register(`ninos.${indice}.fechaNacimiento`)}
+          registro={register(`datosCaso.ninos.${indice}.fechaNacimiento`)}
           error={erroresNino?.fechaNacimiento?.message}
         />
         <GrupoRadio
           label="Género"
           opciones={opcionesGenero}
-          registro={register(`ninos.${indice}.genero`)}
+          registro={register(`datosCaso.ninos.${indice}.genero`)}
           error={erroresNino?.genero?.message}
         />
       </div>

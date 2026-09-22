@@ -1,9 +1,9 @@
 import type { UseFormReturn } from 'react-hook-form'
-import { AREAS_ATENCION, ETIQUETAS_AREA_ATENCION, type RegistroUsuariaFormValues } from '@akyuam/shared'
+import { AREAS_ATENCION, ETIQUETAS_AREA_ATENCION, type RegistroUsuariaNuevaFormValues } from '@akyuam/shared'
 import GrupoCheckbox from '../../../components/form/GrupoCheckbox'
 
 interface PasoAreasAtencionProps {
-  form: UseFormReturn<RegistroUsuariaFormValues>
+  form: UseFormReturn<RegistroUsuariaNuevaFormValues>
 }
 
 const opcionesAreas = AREAS_ATENCION.map((area) => ({ value: area, label: ETIQUETAS_AREA_ATENCION[area] }))
@@ -20,8 +20,8 @@ export default function PasoAreasAtencion({ form }: PasoAreasAtencionProps) {
         label="Referir a otras áreas de atención"
         ayuda="Las áreas seleccionadas tendrán acceso a los datos de este expediente. Puedes dejarlo vacío si aún no corresponde."
         opciones={opcionesAreas}
-        registro={register('areasReferidas')}
-        error={errors.areasReferidas?.message}
+        registro={register('datosCaso.areasReferidas')}
+        error={errors.datosCaso?.areasReferidas?.message}
       />
     </div>
   )

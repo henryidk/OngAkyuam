@@ -1,13 +1,13 @@
 import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import { useWatch, type UseFieldArrayReturn, type UseFormReturn } from 'react-hook-form'
-import { ETIQUETAS_TIPO_REGISTRO, TIPOS_REGISTRO, type RegistroUsuariaFormValues } from '@akyuam/shared'
+import { ETIQUETAS_TIPO_REGISTRO, TIPOS_REGISTRO, type RegistroUsuariaNuevaFormValues } from '@akyuam/shared'
 import GrupoRadio from '../../../components/form/GrupoRadio'
 import TarjetaNino from '../components/TarjetaNino'
 
 interface PasoTipoRegistroProps {
-  form: UseFormReturn<RegistroUsuariaFormValues>
-  ninosFieldArray: UseFieldArrayReturn<RegistroUsuariaFormValues, 'ninos'>
+  form: UseFormReturn<RegistroUsuariaNuevaFormValues>
+  ninosFieldArray: UseFieldArrayReturn<RegistroUsuariaNuevaFormValues, 'datosCaso.ninos'>
 }
 
 const opcionesTipoRegistro = TIPOS_REGISTRO.map((tipo) => ({ value: tipo, label: ETIQUETAS_TIPO_REGISTRO[tipo] }))
@@ -18,7 +18,7 @@ export default function PasoTipoRegistro({ form, ninosFieldArray }: PasoTipoRegi
     control,
     formState: { errors },
   } = form
-  const tipoRegistro = useWatch({ control, name: 'tipoRegistro' })
+  const tipoRegistro = useWatch({ control, name: 'datosCaso.tipoRegistro' })
   const { fields, append, remove } = ninosFieldArray
   const [indiceExpandido, setIndiceExpandido] = useState<number | null>(null)
 
@@ -37,8 +37,8 @@ export default function PasoTipoRegistro({ form, ninosFieldArray }: PasoTipoRegi
       <GrupoRadio
         label="Tipo de registro"
         opciones={opcionesTipoRegistro}
-        registro={register('tipoRegistro')}
-        error={errors.tipoRegistro?.message}
+        registro={register('datosCaso.tipoRegistro')}
+        error={errors.datosCaso?.tipoRegistro?.message}
       />
 
       {tipoRegistro === 'INTERNA' && (
@@ -76,7 +76,9 @@ export default function PasoTipoRegistro({ form, ninosFieldArray }: PasoTipoRegi
             Agregar niña o niño
           </button>
 
-          {errors.ninos?.message && <p className="mt-2 text-sm text-red-600">{errors.ninos.message}</p>}
+          {errors.datosCaso?.ninos?.message && (
+            <p className="mt-2 text-sm text-red-600">{errors.datosCaso.ninos.message}</p>
+          )}
         </div>
       )}
     </div>

@@ -8,13 +8,15 @@ import {
   ETIQUETAS_TIPO_REGISTRO,
   ETIQUETAS_TIPOLOGIA_DELITO,
   formatFechaGT,
-  type RegistroUsuariaFormValues,
+  type RegistroUsuariaNuevaFormValues,
 } from '@akyuam/shared'
 import type { PasoId } from '../wizard'
 
 interface PasoRevisionProps {
-  form: UseFormReturn<RegistroUsuariaFormValues>
+  form: UseFormReturn<RegistroUsuariaNuevaFormValues>
   onEditar: (pasoId: PasoId) => void
+  /** Cuando la usuaria ya existe, su identidad no es parte de este wizard — no hay nada que revisar aquí. */
+  usuariaExistente: boolean
 }
 
 function Fila({ etiqueta, valor }: { etiqueta: string; valor: string }) {
@@ -54,57 +56,59 @@ function Seccion({
   )
 }
 
-export default function PasoRevision({ form, onEditar }: PasoRevisionProps) {
+export default function PasoRevision({ form, onEditar, usuariaExistente }: PasoRevisionProps) {
   const datos = form.getValues()
+  const agresor = datos.datosCaso.datosAgresor
 
-  const tieneDatosAgresor =
-    datos.datosAgresor.nombres || datos.datosAgresor.apellidos || datos.datosAgresor.telefono || datos.datosAgresor.direccion
+  const tieneDatosAgresor = agresor.nombres || agresor.apellidos || agresor.telefono || agresor.direccion
 
   return (
     <div className="space-y-4">
       <Seccion titulo="Datos del caso" pasoId="caso" onEditar={onEditar}>
         <Fila etiqueta="Fecha" valor={formatFechaGT(datos.datosCaso.fecha)} />
-        {datos.datosCaso.fueraDeAltaVerapaz ? (
-          <>
-            <Fila etiqueta="Departamento de origen" valor={datos.datosCaso.departamentoOtro} />
-            <Fila etiqueta="Municipio de origen" valor={datos.datosCaso.municipioOtro} />
-          </>
-        ) : (
-          <Fila
-            etiqueta="Municipio"
-            valor={
-              datos.datosCaso.municipio
-                ? ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[
-                    datos.datosCaso.municipio as keyof typeof ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ
-                  ]
-                : ''
-            }
-          />
-        )}
-        <Fila etiqueta="Ubicación geográfica" valor={datos.datosCaso.ubicacionGeografica} />
-      </Seccion>
-
-      <Seccion titulo="Datos de la usuaria" pasoId="usuaria" onEditar={onEditar}>
-        <Fila etiqueta="Nombres" valor={datos.datosUsuaria.nombres} />
-        <Fila etiqueta="Apellidos" valor={datos.datosUsuaria.apellidos} />
-        <Fila etiqueta="DPI" valor={datos.datosUsuaria.dpi ?? ''} />
-        <Fila etiqueta="Teléfono" valor={datos.datosUsuaria.telefono ?? ''} />
-        <Fila etiqueta="Dirección" valor={datos.datosUsuaria.direccion ?? ''} />
-        <Fila etiqueta="Fecha de nacimiento" valor={formatFechaGT(datos.datosUsuaria.fechaNacimiento)} />
-        <Fila etiqueta="Grupo étnico" valor={ETIQUETAS_GRUPO_ETNICO[datos.datosUsuaria.grupoEtnico]} />
         <Fila
           etiqueta="Tipología del delito"
-          valor={datos.datosUsuaria.tipologiaDelito.map((tipo) => ETIQUETAS_TIPOLOGIA_DELITO[tipo]).join(', ')}
+          valor={datos.datosCaso.tipologiaDelito.map((tipo) => ETIQUETAS_TIPOLOGIA_DELITO[tipo]).join(', ')}
         />
       </Seccion>
+
+      {!usuariaExistente && (
+        <Seccion titulo="Datos de la usuaria" pasoId="usuaria" onEditar={onEditar}>
+          <Fila etiqueta="Nombres" valor={datos.datosUsuaria.nombres} />
+          <Fila etiqueta="Apellidos" valor={datos.datosUsuaria.apellidos} />
+          <Fila etiqueta="DPI" valor={datos.datosUsuaria.dpi ?? ''} />
+          <Fila etiqueta="Teléfono" valor={datos.datosUsuaria.telefono ?? ''} />
+          <Fila etiqueta="Dirección" valor={datos.datosUsuaria.direccion ?? ''} />
+          <Fila etiqueta="Fecha de nacimiento" valor={formatFechaGT(datos.datosUsuaria.fechaNacimiento)} />
+          <Fila etiqueta="Grupo étnico" valor={ETIQUETAS_GRUPO_ETNICO[datos.datosUsuaria.grupoEtnico]} />
+          {datos.datosUsuaria.fueraDeAltaVerapaz ? (
+            <>
+              <Fila etiqueta="Departamento de origen" valor={datos.datosUsuaria.departamentoOtro} />
+              <Fila etiqueta="Municipio de origen" valor={datos.datosUsuaria.municipioOtro} />
+            </>
+          ) : (
+            <Fila
+              etiqueta="Municipio"
+              valor={
+                datos.datosUsuaria.municipio
+                  ? ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[
+                      datos.datosUsuaria.municipio as keyof typeof ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ
+                    ]
+                  : ''
+              }
+            />
+          )}
+          <Fila etiqueta="Ubicación geográfica" valor={datos.datosUsuaria.ubicacionGeografica} />
+        </Seccion>
+      )}
 
       <Seccion titulo="Datos del agresor" pasoId="agresor" onEditar={onEditar}>
         {tieneDatosAgresor ? (
           <>
-            <Fila etiqueta="Nombres" valor={datos.datosAgresor.nombres ?? ''} />
-            <Fila etiqueta="Apellidos" valor={datos.datosAgresor.apellidos ?? ''} />
-            <Fila etiqueta="Teléfono" valor={datos.datosAgresor.telefono ?? ''} />
-            <Fila etiqueta="Dirección" valor={datos.datosAgresor.direccion ?? ''} />
+            <Fila etiqueta="Nombres" valor={agresor.nombres ?? ''} />
+            <Fila etiqueta="Apellidos" valor={agresor.apellidos ?? ''} />
+            <Fila etiqueta="Teléfono" valor={agresor.telefono ?? ''} />
+            <Fila etiqueta="Dirección" valor={agresor.direccion ?? ''} />
           </>
         ) : (
           <p className="py-1.5 text-sm text-gray-400">No se registraron datos del agresor.</p>
@@ -112,17 +116,17 @@ export default function PasoRevision({ form, onEditar }: PasoRevisionProps) {
       </Seccion>
 
       <Seccion titulo="Tipo de registro" pasoId="registro" onEditar={onEditar}>
-        <Fila etiqueta="Tipo" valor={ETIQUETAS_TIPO_REGISTRO[datos.tipoRegistro]} />
-        {datos.tipoRegistro === 'INTERNA' && (
+        <Fila etiqueta="Tipo" valor={ETIQUETAS_TIPO_REGISTRO[datos.datosCaso.tipoRegistro]} />
+        {datos.datosCaso.tipoRegistro === 'INTERNA' && (
           <div className="py-1.5">
             <p className="text-sm text-gray-500">
-              {datos.ninos.length === 0
+              {datos.datosCaso.ninos.length === 0
                 ? 'Sin niñas o niños registrados.'
-                : `${datos.ninos.length} niña(s)/niño(s) registrados:`}
+                : `${datos.datosCaso.ninos.length} niña(s)/niño(s) registrados:`}
             </p>
-            {datos.ninos.length > 0 && (
+            {datos.datosCaso.ninos.length > 0 && (
               <ul className="mt-1 space-y-1 text-sm">
-                {datos.ninos.map((nino, indice) => (
+                {datos.datosCaso.ninos.map((nino, indice) => (
                   <li key={indice} className="text-gray-700">
                     {nino.nombres} {nino.apellidos} — {ETIQUETAS_GENERO[nino.genero]}, nacimiento{' '}
                     {formatFechaGT(nino.fechaNacimiento)}
@@ -138,8 +142,8 @@ export default function PasoRevision({ form, onEditar }: PasoRevisionProps) {
         <Fila
           etiqueta="Referido a"
           valor={
-            datos.areasReferidas.length > 0
-              ? datos.areasReferidas.map((area) => ETIQUETAS_AREA_ATENCION[area]).join(', ')
+            datos.datosCaso.areasReferidas.length > 0
+              ? datos.datosCaso.areasReferidas.map((area) => ETIQUETAS_AREA_ATENCION[area]).join(', ')
               : 'Ninguna seleccionada'
           }
         />

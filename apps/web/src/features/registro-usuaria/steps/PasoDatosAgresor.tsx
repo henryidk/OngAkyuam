@@ -1,9 +1,9 @@
 import type { UseFormReturn } from 'react-hook-form'
-import type { RegistroUsuariaFormValues } from '@akyuam/shared'
+import type { RegistroUsuariaNuevaFormValues } from '@akyuam/shared'
 import TextoInput from '../../../components/form/TextoInput'
 
 interface PasoDatosAgresorProps {
-  form: UseFormReturn<RegistroUsuariaFormValues>
+  form: UseFormReturn<RegistroUsuariaNuevaFormValues>
 }
 
 export default function PasoDatosAgresor({ form }: PasoDatosAgresorProps) {
@@ -21,28 +21,28 @@ export default function PasoDatosAgresor({ form }: PasoDatosAgresorProps) {
         <TextoInput
           label="Nombres"
           opcional
-          registro={register('datosAgresor.nombres')}
-          error={errors.datosAgresor?.nombres?.message}
+          registro={register('datosCaso.datosAgresor.nombres')}
+          error={errors.datosCaso?.datosAgresor?.nombres?.message}
         />
         <TextoInput
           label="Apellidos"
           opcional
-          registro={register('datosAgresor.apellidos')}
-          error={errors.datosAgresor?.apellidos?.message}
+          registro={register('datosCaso.datosAgresor.apellidos')}
+          error={errors.datosCaso?.datosAgresor?.apellidos?.message}
         />
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <TextoInput
           label="Teléfono"
           opcional
-          registro={register('datosAgresor.telefono')}
-          error={errors.datosAgresor?.telefono?.message}
+          registro={register('datosCaso.datosAgresor.telefono')}
+          error={errors.datosCaso?.datosAgresor?.telefono?.message}
         />
         <TextoInput
           label="Dirección"
           opcional
-          registro={register('datosAgresor.direccion')}
-          error={errors.datosAgresor?.direccion?.message}
+          registro={register('datosCaso.datosAgresor.direccion')}
+          error={errors.datosCaso?.datosAgresor?.direccion?.message}
         />
       </div>
     </div>

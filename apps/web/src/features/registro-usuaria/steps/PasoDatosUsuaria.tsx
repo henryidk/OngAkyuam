@@ -2,27 +2,33 @@ import { useWatch, type UseFormReturn } from 'react-hook-form'
 import {
   calcularRangoEdad,
   edadEnAniosGT,
+  DEPARTAMENTOS_FUERA_ALTA_VERAPAZ,
   ETIQUETAS_GRUPO_ETNICO,
+  ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   ETIQUETAS_RANGO_EDAD,
-  ETIQUETAS_TIPOLOGIA_DELITO,
   GRUPOS_ETNICOS,
-  TIPOLOGIAS_DELITO,
-  type RegistroUsuariaFormValues,
+  MUNICIPIOS_ALTA_VERAPAZ,
+  type RegistroUsuariaNuevaFormValues,
 } from '@akyuam/shared'
-import GrupoCheckbox from '../../../components/form/GrupoCheckbox'
 import SelectInput from '../../../components/form/SelectInput'
 import TextoInput from '../../../components/form/TextoInput'
 
 interface PasoDatosUsuariaProps {
-  form: UseFormReturn<RegistroUsuariaFormValues>
+  form: UseFormReturn<RegistroUsuariaNuevaFormValues>
 }
 
 const FECHA_ISO_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
 const opcionesGrupoEtnico = GRUPOS_ETNICOS.map((grupo) => ({ value: grupo, label: ETIQUETAS_GRUPO_ETNICO[grupo] }))
-const opcionesTipologia = TIPOLOGIAS_DELITO.map((tipologia) => ({
-  value: tipologia,
-  label: ETIQUETAS_TIPOLOGIA_DELITO[tipologia],
+
+const opcionesMunicipio = MUNICIPIOS_ALTA_VERAPAZ.map((municipio) => ({
+  value: municipio,
+  label: ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[municipio],
+}))
+
+const opcionesDepartamentoOtro = DEPARTAMENTOS_FUERA_ALTA_VERAPAZ.map((departamento) => ({
+  value: departamento,
+  label: departamento,
 }))
 
 export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
@@ -32,6 +38,7 @@ export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
     formState: { errors },
   } = form
   const fechaNacimiento = useWatch({ control, name: 'datosUsuaria.fechaNacimiento' })
+  const fueraDeAltaVerapaz = useWatch({ control, name: 'datosUsuaria.fueraDeAltaVerapaz' })
   const rangoEdad = FECHA_ISO_REGEX.test(fechaNacimiento ?? '')
     ? calcularRangoEdad(edadEnAniosGT(fechaNacimiento))
     : null
@@ -99,12 +106,45 @@ export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
         error={errors.datosUsuaria?.grupoEtnico?.message}
       />
 
-      <GrupoCheckbox
-        label="Tipología del delito"
-        ayuda="Puedes seleccionar una o varias."
-        opciones={opcionesTipologia}
-        registro={register('datosUsuaria.tipologiaDelito')}
-        error={errors.datosUsuaria?.tipologiaDelito?.message}
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input
+          type="checkbox"
+          className="h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+          {...register('datosUsuaria.fueraDeAltaVerapaz')}
+        />
+        La usuaria es de fuera de Alta Verapaz
+      </label>
+
+      {fueraDeAltaVerapaz ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <SelectInput
+            label="Departamento de origen"
+            placeholder="Selecciona un departamento"
+            opciones={opcionesDepartamentoOtro}
+            registro={register('datosUsuaria.departamentoOtro')}
+            error={errors.datosUsuaria?.departamentoOtro?.message}
+          />
+          <TextoInput
+            label="Municipio de origen"
+            registro={register('datosUsuaria.municipioOtro')}
+            error={errors.datosUsuaria?.municipioOtro?.message}
+          />
+        </div>
+      ) : (
+        <SelectInput
+          label="Municipio"
+          placeholder="Selecciona un municipio"
+          opciones={opcionesMunicipio}
+          registro={register('datosUsuaria.municipio')}
+          error={errors.datosUsuaria?.municipio?.message}
+        />
+      )}
+
+      <TextoInput
+        label="Ubicación geográfica"
+        ayuda="Aldea, zona, colonia o cantón donde vive la usuaria."
+        registro={register('datosUsuaria.ubicacionGeografica')}
+        error={errors.datosUsuaria?.ubicacionGeografica?.message}
       />
     </div>
   )

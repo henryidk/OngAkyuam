@@ -3,6 +3,7 @@ import type { DocumentoEnSubida } from '../lib/documentosUpload'
 
 interface ConfirmacionRegistroProps {
   expediente: ExpedienteCreado
+  usuariaExistente: boolean
   documentosEnSubida: DocumentoEnSubida[]
   onReintentarDocumento: (tipo: TipoDocumento) => void
   onNuevoRegistro: () => void
@@ -10,6 +11,7 @@ interface ConfirmacionRegistroProps {
 
 export default function ConfirmacionRegistro({
   expediente,
+  usuariaExistente,
   documentosEnSubida,
   onReintentarDocumento,
   onNuevoRegistro,
@@ -21,7 +23,9 @@ export default function ConfirmacionRegistro({
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
-      <h2 className="mt-4 text-lg font-semibold text-brand-900">Usuaria guardada correctamente</h2>
+      <h2 className="mt-4 text-lg font-semibold text-brand-900">
+        {usuariaExistente ? 'Caso guardado correctamente' : 'Usuaria guardada correctamente'}
+      </h2>
       <p className="mt-2 text-sm text-brand-800">
         Expediente <span className="font-semibold">{expediente.numero}</span> — {expediente.usuariaNombreCompleto}
       </p>
@@ -63,7 +67,7 @@ export default function ConfirmacionRegistro({
         onClick={onNuevoRegistro}
         className="mt-6 rounded bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700"
       >
-        Registrar otra usuaria
+        {usuariaExistente ? 'Volver a buscar' : 'Registrar otra usuaria'}
       </button>
     </div>
   )
