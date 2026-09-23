@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { edadEnAniosGT } from '../timezone.js'
+import type { TipoDocumento } from './documentos.js'
 import {
   AREAS_ATENCION,
   DEPARTAMENTOS_GUATEMALA,
@@ -221,7 +222,7 @@ export interface ExpedienteDetalleCaso {
   areasReferidas: AreaAtencion[]
   documentos: {
     id: string
-    tipo: string
+    tipo: TipoDocumento
     nombreArchivo: string
     tamanioBytes: number
     createdAt: string

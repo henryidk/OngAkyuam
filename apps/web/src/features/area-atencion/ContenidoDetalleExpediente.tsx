@@ -95,18 +95,6 @@ export default function ContenidoDetalleExpediente({ expedienteId }: ContenidoDe
       <Seccion titulo="Datos del caso">
         <Fila etiqueta="Número" valor={expediente.numero} />
         <Fila etiqueta="Fecha" valor={formatFechaGT(expediente.fecha)} />
-        <Fila
-          etiqueta="Municipio"
-          valor={
-            expediente.municipio
-              ? ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[
-                  expediente.municipio as keyof typeof ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ
-                ]
-              : (expediente.municipioOtro ?? '')
-          }
-        />
-        {expediente.departamentoOtro && <Fila etiqueta="Departamento de origen" valor={expediente.departamentoOtro} />}
-        <Fila etiqueta="Ubicación geográfica" valor={expediente.ubicacionGeografica} />
         <Fila etiqueta="Tipo de registro" valor={ETIQUETAS_TIPO_REGISTRO[expediente.tipoRegistro]} />
       </Seccion>
 
@@ -117,6 +105,20 @@ export default function ContenidoDetalleExpediente({ expedienteId }: ContenidoDe
         <Fila etiqueta="Teléfono" valor={expediente.usuaria.telefono ?? ''} />
         <Fila etiqueta="Dirección" valor={expediente.usuaria.direccion ?? ''} />
         <Fila etiqueta="Fecha de nacimiento" valor={formatFechaGT(expediente.usuaria.fechaNacimiento)} />
+        <Fila
+          etiqueta="Municipio"
+          valor={
+            expediente.municipio
+              ? ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[
+                  expediente.municipio as keyof typeof ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ
+                ]
+              : (expediente.usuaria.municipioOtro ?? '')
+          }
+        />
+        {expediente.usuaria.departamentoOtro && (
+          <Fila etiqueta="Departamento de origen" valor={expediente.usuaria.departamentoOtro} />
+        )}
+        <Fila etiqueta="Ubicación geográfica" valor={expediente.usuaria.ubicacionGeografica ?? ''} />
         <Fila
           etiqueta="Grupo étnico"
           valor={ETIQUETAS_GRUPO_ETNICO[expediente.usuaria.grupoEtnico as keyof typeof ETIQUETAS_GRUPO_ETNICO]}

@@ -1,10 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect } from 'react'
-import { useFieldArray, useForm, useWatch, type Resolver } from 'react-hook-form'
+import { useFieldArray, useForm, useWatch, type FieldErrors, type Resolver, type ResolverOptions } from 'react-hook-form'
 import {
   datosCasoSchema,
   hoyGT,
   registroUsuariaNuevaSchema,
+  type DatosCaso,
+  type NuevoCasoFormValues,
   type RegistroUsuariaNuevaFormValues,
 } from '@akyuam/shared'
 
@@ -41,15 +43,28 @@ export const valoresIniciales = {
   },
 } as unknown as RegistroUsuariaNuevaFormValues
 
+// `datosCasoSchema` solo conoce la forma de `datosCaso`, no la del formulario completo
+// (`datosUsuaria` + `datosCaso`) — el cast de `opciones` es necesario porque RHF tipa
+// `ResolverOptions` por el formulario que lo invoca, no por el que valida internamente.
 const resolverCasoNuevo: Resolver<RegistroUsuariaNuevaFormValues> = async (
   valores,
   contexto,
   opciones,
 ) => {
-  const resultado = await zodResolver(datosCasoSchema)(valores.datosCaso, contexto, opciones)
+  const resultado = await zodResolver(datosCasoSchema)(
+    valores.datosCaso,
+    contexto,
+    opciones as unknown as ResolverOptions<NuevoCasoFormValues>,
+  )
+  if (Object.keys(resultado.errors).length > 0) {
+    return {
+      values: {},
+      errors: { datosCaso: resultado.errors } as FieldErrors<RegistroUsuariaNuevaFormValues>,
+    }
+  }
   return {
-    values: { ...valores, datosCaso: resultado.values },
-    errors: Object.keys(resultado.errors).length > 0 ? { datosCaso: resultado.errors } : {},
+    values: { ...valores, datosCaso: resultado.values as DatosCaso },
+    errors: {},
   }
 }
 
