@@ -13,6 +13,7 @@ import { validateEnv } from './config/env.schema';
 import { JuridicoModule } from './juridico/juridico.module';
 import { PersonalModule } from './personal/personal.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PsicologiaModule } from './psicologia/psicologia.module';
 import { RedisModule } from './redis/redis.module';
 import { TrabajoSocialModule } from './trabajo-social/trabajo-social.module';
 
@@ -30,6 +31,7 @@ import { TrabajoSocialModule } from './trabajo-social/trabajo-social.module';
     AreasModule,
     PersonalModule,
     JuridicoModule,
+    PsicologiaModule,
     AdministracionModule,
   ],
   controllers: [AppController],
