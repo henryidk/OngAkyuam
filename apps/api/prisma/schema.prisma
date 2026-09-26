@@ -45,6 +45,8 @@ model Usuario {
   notasAvanceRegistradas   NotaAvanceProceso[]
   documentosProcesoSubidos DocumentoProceso[]
   abandonosRegistrados     AbandonoProceso[]
+  atencionesPsicologicasActualizadas AtencionPsicologica[] @relation("AtencionPsicologicaActualizadaPor")
+  citasPsicologicasAtendidas         CitaPsicologica[]     @relation("CitaPsicologicaAtendidaPor")
 }
 
 model RefreshToken {
@@ -164,11 +166,12 @@ model Expediente {
   createdAt       DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt       DateTime          @updatedAt @db.Timestamptz(3)
 
-  agresor           Agresor?
-  ninos             Nino[]
-  referidos         ReferidoArea[]
-  documentos        Documento[]
-  procesosJuridicos ProcesoJuridico[]
+  agresor             Agresor?
+  ninos               Nino[]
+  referidos           ReferidoArea[]
+  documentos          Documento[]
+  procesosJuridicos   ProcesoJuridico[]
+  atencionPsicologica AtencionPsicologica?
 
   @@index([usuariaId])
   @@index([fecha])
@@ -223,6 +226,7 @@ enum TipoDocumento {
   ENTREVISTA_USUARIA
   CONVENIO_INGRESO
   RECEPCION_BIENES
+  FORMATO_ATENCION_PSICOLOGICA
 }
 
 model Documento {
@@ -240,7 +244,14 @@ model Documento {
 
   visibilidadAreas DocumentoVisibilidadArea[]
 
+  // Vínculo opcional al "Formato General" escaneado de una cita de psicología. SetNull (no
+  // Cascade): si se elimina la cita, el documento no debe desaparecer — sigue siendo parte
+  // del expediente y de su propio ciclo de vida vía `expedienteId`.
+  citaPsicologicaId String?
+  citaPsicologica   CitaPsicologica? @relation(fields: [citaPsicologicaId], references: [id], onDelete: SetNull)
+
   @@index([expedienteId])
+  @@index([citaPsicologicaId])
 }
 
 // Visibilidad de un documento para un área — permiso explícito y separado de ReferidoArea.
@@ -377,4 +388,64 @@ model DocumentoProceso {
   createdAt     DateTime        @default(now()) @db.Timestamptz(3)
 
   @@index([procesoId])
+}
+
+enum EstadoAtencionPsicologica {
+  INICIO
+  SEGUIMIENTO
+  CIERRE
+}
+
+// Estado de seguimiento clínico de psicología para un expediente referido — 1:1 con
+// Expediente y no con ReferidoArea porque este concepto es exclusivo de psicología y no debe
+// filtrarse a la tabla genérica que comparten jurídico/médica.
+model AtencionPsicologica {
+  id               String                    @id @default(uuid())
+  expedienteId     String                    @unique
+  expediente       Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  estado           EstadoAtencionPsicologica @default(INICIO)
+  actualizadoPorId String
+  actualizadoPor   Usuario                   @relation("AtencionPsicologicaActualizadaPor", fields: [actualizadoPorId], references: [id])
+  createdAt        DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime                  @updatedAt @db.Timestamptz(3)
+
+  citas CitaPsicologica[]
+}
+
+enum ModalidadCita {
+  PRESENCIAL
+  VIRTUAL
+}
+
+enum EstadoCitaPsicologica {
+  PROGRAMADA
+  ATENDIDA
+  CANCELADA
+  NO_ASISTIO
+}
+
+// `fechaHora` es un instante real (cuándo ocurre la cita), no una fecha de calendario — se
+// guarda en UTC (Timestamptz) y se muestra convertida a America/Guatemala vía
+// packages/shared/src/timezone.ts, igual que el resto del sistema.
+// `atendidoPorId` referencia directamente al Usuario que atendió (cada psicóloga tiene su
+// propia cuenta) — a diferencia de jurídico, aquí no hay catálogo Personal separado.
+model CitaPsicologica {
+  id             String                @id @default(uuid())
+  atencionId     String
+  atencion       AtencionPsicologica   @relation(fields: [atencionId], references: [id], onDelete: Cascade)
+  fechaHora      DateTime              @db.Timestamptz(3)
+  modalidad      ModalidadCita
+  lugar          String?
+  motivo         String
+  estado         EstadoCitaPsicologica @default(PROGRAMADA)
+  observaciones  String?               @db.Text
+  acuerdos       String?               @db.Text
+  atendidoPorId  String
+  atendidoPor    Usuario               @relation("CitaPsicologicaAtendidaPor", fields: [atendidoPorId], references: [id])
+  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
+
+  documentos Documento[]
+
+  @@index([atencionId])
+  @@index([fechaHora])
 }
