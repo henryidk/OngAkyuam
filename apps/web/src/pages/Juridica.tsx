@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { ExpedienteResumenArea } from '@akyuam/shared'
 import PanelArea from '../features/area-atencion/PanelArea'
 import Button from '../components/ui/Button'
-import DrawerDetalleExpediente from '../features/juridico/DrawerDetalleExpediente'
+import DrawerDetalleExpediente from '../features/area-atencion/DrawerDetalleExpediente'
 
 export default function Juridica() {
   const navigate = useNavigate()

@@ -1,5 +1,8 @@
-import DetalleExpedienteArea from '../features/area-atencion/DetalleExpedienteArea'
+import { useParams } from 'react-router-dom'
+import EspacioTrabajoPsicologia from '../features/psicologia/EspacioTrabajoPsicologia'
 
 export default function PsicologicaExpediente() {
-  return <DetalleExpedienteArea basePath="/psicologia" />
+  const { id } = useParams<{ id: string }>()
+  if (!id) return null
+  return <EspacioTrabajoPsicologia expedienteId={id} />
 }

@@ -1,5 +1,5 @@
 import Drawer from '../../components/ui/Drawer'
-import ContenidoDetalleExpediente from '../area-atencion/ContenidoDetalleExpediente'
+import ContenidoDetalleExpediente from './ContenidoDetalleExpediente'
 
 interface DrawerDetalleExpedienteProps {
   expedienteId: string | null

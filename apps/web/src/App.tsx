@@ -8,6 +8,9 @@ import JuridicaExpediente from './pages/JuridicaExpediente'
 import Login from './pages/Login'
 import Medica from './pages/Medica'
 import MedicaExpediente from './pages/MedicaExpediente'
+import AgendaPsicologia from './features/psicologia/AgendaPsicologia'
+import ReportePsicologia from './features/psicologia/ReportePsicologia'
+import PsicologiaLayout from './pages/psicologia/PsicologiaLayout'
 import Psicologica from './pages/Psicologica'
 import PsicologicaExpediente from './pages/PsicologicaExpediente'
 import Expediente from './pages/trabajo-social/Expediente'
@@ -45,9 +48,11 @@ function App() {
         </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['PSICOLOGIA']} />}>
-        <Route path="/psicologia" element={<AreaLayout subtitulo="Psicológica" basePath="/psicologia" />}>
+        <Route path="/psicologia" element={<PsicologiaLayout />}>
           <Route index element={<Psicologica />} />
-          <Route path=":id" element={<PsicologicaExpediente />} />
+          <Route path="pacientes/:id" element={<PsicologicaExpediente />} />
+          <Route path="agenda" element={<AgendaPsicologia />} />
+          <Route path="reporte" element={<ReportePsicologia />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['MEDICA']} />}>
