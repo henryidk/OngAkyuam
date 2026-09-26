@@ -44,6 +44,16 @@ export function parseLocalGT(valorDatetimeLocal: string): Date {
   return DateTime.fromISO(valorDatetimeLocal, { zone: GUATEMALA_TZ }).toUTC().toJSDate()
 }
 
+/** Medianoche de una fecha de calendario "YYYY-MM-DD" en Guatemala, como instante UTC — límite inferior de un rango de fechas (ej. filtrar citas entre `desde` y `hasta`). */
+export function inicioDiaGT(fechaIso: string): Date {
+  return DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).startOf('day').toUTC().toJSDate()
+}
+
+/** Último instante de una fecha de calendario "YYYY-MM-DD" en Guatemala, como instante UTC — límite superior de un rango de fechas. */
+export function finDiaGT(fechaIso: string): Date {
+  return DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).endOf('day').toUTC().toJSDate()
+}
+
 /** Edad en años cumplidos a partir de una fecha de nacimiento "YYYY-MM-DD", calculada en hora de Guatemala. */
 export function edadEnAniosGT(fechaNacimientoIso: string): number {
   const nacimiento = DateTime.fromISO(fechaNacimientoIso, { zone: GUATEMALA_TZ })

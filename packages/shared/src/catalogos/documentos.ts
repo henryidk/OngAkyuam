@@ -1,9 +1,15 @@
-export const TIPOS_DOCUMENTO = ['ENTREVISTA_USUARIA', 'CONVENIO_INGRESO', 'RECEPCION_BIENES'] as const
+export const TIPOS_DOCUMENTO = [
+  'ENTREVISTA_USUARIA',
+  'CONVENIO_INGRESO',
+  'RECEPCION_BIENES',
+  'FORMATO_ATENCION_PSICOLOGICA',
+] as const
 
 export const ETIQUETAS_TIPO_DOCUMENTO: Record<(typeof TIPOS_DOCUMENTO)[number], string> = {
   ENTREVISTA_USUARIA: 'Entrevista a usuaria',
   CONVENIO_INGRESO: 'Convenio de ingreso',
   RECEPCION_BIENES: 'Documento de recepción de bienes',
+  FORMATO_ATENCION_PSICOLOGICA: 'Formato general de atención psicológica',
 }
 
 /** Documentos que solo aplican cuando el registro es Interna (solicita albergue). */
