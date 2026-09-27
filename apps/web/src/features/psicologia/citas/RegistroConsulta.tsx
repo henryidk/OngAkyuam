@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import type { z } from 'zod'
 import { formatInstanteGT, registroConsultaSchema, type CitaPsicologicaDetalle, type RegistroConsultaInput } from '@akyuam/shared'
 import SelectInput from '../../../components/form/SelectInput'
 import TextareaInput from '../../../components/form/TextareaInput'
@@ -31,7 +32,7 @@ export default function RegistroConsulta() {
     watch,
     reset,
     formState: { errors },
-  } = useForm<RegistroConsultaInput>({
+  } = useForm<z.input<typeof registroConsultaSchema>, any, RegistroConsultaInput>({
     resolver: zodResolver(registroConsultaSchema),
     defaultValues: {
       estado: 'ATENDIDA',

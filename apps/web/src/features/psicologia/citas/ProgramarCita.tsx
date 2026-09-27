@@ -3,6 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
+import type { z } from 'zod'
 import {
   DURACION_CITA_PSICOLOGICA_MINUTOS_DEFAULT,
   ETIQUETAS_MODALIDAD_CITA,
@@ -43,7 +44,7 @@ export default function ProgramarCita() {
     handleSubmit,
     getValues,
     formState: { errors, isSubmitting },
-  } = useForm<ProgramarCitaInput>({
+  } = useForm<z.input<typeof programarCitaSchema>, any, ProgramarCitaInput>({
     resolver: zodResolver(programarCitaSchema),
     defaultValues: {
       fechaHora: '',
@@ -86,7 +87,10 @@ export default function ProgramarCita() {
   }
 
   function confirmarDeTodosModos() {
-    void enviar(getValues(), true)
+    // getValues() refleja el tipo de entrada del formulario (con defaults opcionales);
+    // los valores de tipo/duracionMinutos/confirmarTraslape siempre están definidos porque
+    // defaultValues los fija desde el inicio.
+    void enviar(getValues() as ProgramarCitaInput, true)
   }
 
   if (!expedienteId) return null
