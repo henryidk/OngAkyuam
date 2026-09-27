@@ -13,6 +13,7 @@ import {
   type DocumentoSubido,
 } from '@akyuam/shared';
 import { AuditService } from '../auth/services/audit.service';
+import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import { OBJECT_STORAGE } from '../storage/interfaces/object-storage.interface';
 import type { IObjectStorage } from '../storage/interfaces/object-storage.interface';
 import { DOCUMENTOS_REPOSITORY } from './interfaces/documentos-repository.interface';
@@ -26,13 +27,6 @@ interface SubirDocumentoParams {
   tipo: string | undefined;
   areasVisiblesRaw: string | undefined;
   archivo: Express.Multer.File;
-}
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
 }
 
 @Injectable()

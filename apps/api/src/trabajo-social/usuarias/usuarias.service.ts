@@ -13,6 +13,7 @@ import type {
 } from '@akyuam/shared';
 import type { MunicipioAltaVerapaz } from '@prisma/client';
 import { AuditService } from '../../auth/services/audit.service';
+import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { USUARIAS_REPOSITORY } from './interfaces/usuarias-repository.interface';
 import type {
   DatosIdentidadUsuariaParams,
@@ -21,13 +22,6 @@ import type {
 
 const LONGITUD_MINIMA_BUSQUEDA_NOMBRE = 3;
 const LIMITE_RESULTADOS_BUSQUEDA = 20;
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 function vacioANulo(valor: string): string | null {
   return valor === '' ? null : valor;

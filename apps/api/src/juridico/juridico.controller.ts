@@ -2,13 +2,11 @@ import {
   Body,
   Controller,
   Get,
-  Ip,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
-  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -29,11 +27,10 @@ import {
   type ListarProcesosQuery,
   type RegistrarAbandonoInput,
 } from '@akyuam/shared';
-import type { Request } from 'express';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { ContextoAuditoria } from '../common/decorators/contexto-auditoria.decorator';
+import type { ContextoAuditoria as IContextoAuditoria } from '../common/types/contexto-auditoria';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { JuridicoService } from './juridico.service';
 
@@ -55,16 +52,9 @@ export class JuridicoController {
     @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
     @Body(new ZodValidationPipe(crearProcesoJuridicoSchema))
     datos: CrearProcesoJuridicoInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.juridicoService.crearProceso(expedienteId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.juridicoService.crearProceso(expedienteId, datos, contexto);
   }
 
   // Vista global paginada (punto 9 del plan) — ruta sin :procesoId, no colisiona con las
@@ -80,16 +70,9 @@ export class JuridicoController {
   @Get('procesos/:procesoId')
   obtenerDetalle(
     @Param('procesoId', ParseUUIDPipe) procesoId: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.juridicoService.obtenerDetalle(procesoId, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.juridicoService.obtenerDetalle(procesoId, contexto);
   }
 
   // El PATCH único del plan ("editar asignación, o cerrar el proceso") se separa en dos
@@ -100,32 +83,18 @@ export class JuridicoController {
     @Param('procesoId', ParseUUIDPipe) procesoId: string,
     @Body(new ZodValidationPipe(editarAsignacionProcesoSchema))
     datos: EditarAsignacionProcesoInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.juridicoService.editarAsignacion(procesoId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.juridicoService.editarAsignacion(procesoId, datos, contexto);
   }
 
   @Patch('procesos/:procesoId/cierre')
   cerrarProceso(
     @Param('procesoId', ParseUUIDPipe) procesoId: string,
     @Body(new ZodValidationPipe(cerrarProcesoSchema)) datos: CerrarProcesoInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.juridicoService.cerrarProceso(procesoId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.juridicoService.cerrarProceso(procesoId, datos, contexto);
   }
 
   @Post('procesos/:procesoId/notas')
@@ -133,16 +102,9 @@ export class JuridicoController {
     @Param('procesoId', ParseUUIDPipe) procesoId: string,
     @Body(new ZodValidationPipe(agregarNotaAvanceSchema))
     datos: AgregarNotaAvanceInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.juridicoService.agregarNota(procesoId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.juridicoService.agregarNota(procesoId, datos, contexto);
   }
 
   @Post('procesos/:procesoId/abandono')
@@ -150,16 +112,9 @@ export class JuridicoController {
     @Param('procesoId', ParseUUIDPipe) procesoId: string,
     @Body(new ZodValidationPipe(registrarAbandonoSchema))
     datos: RegistrarAbandonoInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.juridicoService.registrarAbandono(procesoId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.juridicoService.registrarAbandono(procesoId, datos, contexto);
   }
 
   @Post('procesos/:procesoId/documentos')
@@ -172,19 +127,12 @@ export class JuridicoController {
     @Param('procesoId', ParseUUIDPipe) procesoId: string,
     @Body('nombreVisible') nombreVisible: string | undefined,
     @UploadedFile() archivo: Express.Multer.File,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.juridicoService.subirDocumento(
       procesoId,
       { nombreVisible, archivo },
-      {
-        usuarioId: usuario.id,
-        username: usuario.username,
-        ipAddress: ip,
-        userAgent: req.headers['user-agent'],
-      },
+      contexto,
     );
   }
 
@@ -192,15 +140,12 @@ export class JuridicoController {
   obtenerUrlDescarga(
     @Param('procesoId', ParseUUIDPipe) procesoId: string,
     @Param('documentoId', ParseUUIDPipe) documentoId: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.juridicoService.obtenerUrlDescarga(procesoId, documentoId, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.juridicoService.obtenerUrlDescarga(
+      procesoId,
+      documentoId,
+      contexto,
+    );
   }
 }

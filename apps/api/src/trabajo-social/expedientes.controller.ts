@@ -1,22 +1,12 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Ip,
-  Param,
-  Post,
-  Req,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import {
   crearExpedienteSchema,
   type CrearExpedienteInput,
 } from '@akyuam/shared';
-import type { Request } from 'express';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { ContextoAuditoria } from '../common/decorators/contexto-auditoria.decorator';
+import type { ContextoAuditoria as IContextoAuditoria } from '../common/types/contexto-auditoria';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { ExpedientesService } from './expedientes.service';
 
@@ -30,30 +20,16 @@ export class ExpedientesController {
   async crear(
     @Body(new ZodValidationPipe(crearExpedienteSchema))
     datos: CrearExpedienteInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.expedientesService.crear(datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.expedientesService.crear(datos, contexto);
   }
 
   @Get(':id')
   async obtenerDetalle(
     @Param('id') id: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.expedientesService.obtenerDetalle(id, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.expedientesService.obtenerDetalle(id, contexto);
   }
 }

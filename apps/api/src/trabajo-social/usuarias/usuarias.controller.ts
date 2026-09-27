@@ -4,12 +4,10 @@ import {
   Get,
   HttpCode,
   HttpStatus,
-  Ip,
   Param,
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -20,11 +18,10 @@ import {
   type DatosCaso,
   type EditarIdentidadUsuariaInput,
 } from '@akyuam/shared';
-import type { Request } from 'express';
-import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
-import type { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
+import { ContextoAuditoria } from '../../common/decorators/contexto-auditoria.decorator';
+import type { ContextoAuditoria as IContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { ExpedientesService } from '../expedientes.service';
 import { UsuariasService } from './usuarias.service';
@@ -43,31 +40,17 @@ export class UsuariasController {
   async buscar(
     @Query(new ZodValidationPipe(buscarUsuariaQuerySchema))
     query: BuscarUsuariaQuery,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.usuariasService.buscar(query, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.usuariasService.buscar(query, contexto);
   }
 
   @Get(':id')
   async obtenerHub(
     @Param('id') id: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.usuariasService.obtenerHub(id, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.usuariasService.obtenerHub(id, contexto);
   }
 
   @Patch(':id')
@@ -75,16 +58,9 @@ export class UsuariasController {
     @Param('id') id: string,
     @Body(new ZodValidationPipe(editarIdentidadUsuariaSchema))
     datos: EditarIdentidadUsuariaInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.usuariasService.actualizarIdentidad(id, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.usuariasService.actualizarIdentidad(id, datos, contexto);
   }
 
   @Post(':id/expedientes')
@@ -93,19 +69,12 @@ export class UsuariasController {
     @Param('id') id: string,
     @Body(new ZodValidationPipe(nuevoCasoSchema))
     datosCaso: DatosCaso,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.expedientesService.crearCasoParaUsuariaExistente(
       id,
       datosCaso,
-      {
-        usuarioId: usuario.id,
-        username: usuario.username,
-        ipAddress: ip,
-        userAgent: req.headers['user-agent'],
-      },
+      contexto,
     );
   }
 }

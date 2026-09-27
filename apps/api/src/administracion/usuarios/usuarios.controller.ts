@@ -2,13 +2,11 @@ import {
   Body,
   Controller,
   Get,
-  Ip,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -19,11 +17,12 @@ import {
   type EditarUsuarioInput,
   type ListarUsuariosQuery,
 } from '@akyuam/shared';
-import type { Request } from 'express';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
+import { ContextoAuditoria } from '../../common/decorators/contexto-auditoria.decorator';
+import type { ContextoAuditoria as IContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { UsuariosService } from './usuarios.service';
 
@@ -44,16 +43,9 @@ export class UsuariosController {
   @Post()
   crear(
     @Body(new ZodValidationPipe(crearUsuarioSchema)) datos: CrearUsuarioInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.usuariosService.crear(datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.usuariosService.crear(datos, contexto);
   }
 
   // Sin DELETE: se desactiva, nunca se borra (mismo criterio que `personal`).
@@ -61,60 +53,34 @@ export class UsuariosController {
   editar(
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(editarUsuarioSchema)) datos: EditarUsuarioInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.usuariosService.editar(id, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.usuariosService.editar(id, datos, contexto);
   }
 
   @Patch(':id/resetear-password')
   resetearPassword(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.usuariosService.resetearPassword(id, usuario, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.usuariosService.resetearPassword(id, usuario, contexto);
   }
 
   @Patch(':id/desactivar')
   desactivar(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.usuariosService.desactivar(id, usuario, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.usuariosService.desactivar(id, usuario, contexto);
   }
 
   @Patch(':id/activar')
   activar(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.usuariosService.activar(id, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.usuariosService.activar(id, contexto);
   }
 }

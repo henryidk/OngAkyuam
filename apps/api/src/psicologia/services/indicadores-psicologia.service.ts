@@ -15,19 +15,13 @@ import {
   type TipoCitaPsicologica,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
+import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicologica-repository.interface';
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import { INDICADORES_PSICOLOGIA_REPOSITORY } from '../interfaces/indicadores-psicologia-repository.interface';
 import type { IIndicadoresPsicologiaRepository } from '../interfaces/indicadores-psicologia-repository.interface';
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 function contadorEnCero<T extends string>(
   claves: readonly T[],

@@ -13,6 +13,7 @@ import {
   type RegistroConsultaInput,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
+import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { OBJECT_STORAGE } from '../../storage/interfaces/object-storage.interface';
 import type { IObjectStorage } from '../../storage/interfaces/object-storage.interface';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
@@ -20,13 +21,6 @@ import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologi
 import { DOCUMENTOS_CITA_REPOSITORY } from '../interfaces/documentos-cita-repository.interface';
 import type { IDocumentosCitaRepository } from '../interfaces/documentos-cita-repository.interface';
 import { AccesoPsicologiaService } from './acceso-psicologia.service';
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 const MENSAJE_SIN_ACCESO_DOCUMENTO = 'No tiene acceso a este documento';
 

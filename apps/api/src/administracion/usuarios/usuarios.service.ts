@@ -21,17 +21,11 @@ import {
 import type { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
 import { AuditService } from '../../auth/services/audit.service';
 import { UserCacheService } from '../../auth/services/user-cache.service';
+import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { PrismaService } from '../../prisma/prisma.service';
 import { USUARIOS_REPOSITORY } from './interfaces/usuarios-repository.interface';
 import type { IUsuariosRepository } from './interfaces/usuarios-repository.interface';
 import { generarPasswordSegura } from './utils/generar-password-segura';
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 @Injectable()
 export class UsuariosService {

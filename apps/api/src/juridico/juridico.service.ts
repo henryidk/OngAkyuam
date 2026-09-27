@@ -22,6 +22,7 @@ import {
   type RegistrarAbandonoInput,
 } from '@akyuam/shared';
 import { AuditService } from '../auth/services/audit.service';
+import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import { OBJECT_STORAGE } from '../storage/interfaces/object-storage.interface';
 import type { IObjectStorage } from '../storage/interfaces/object-storage.interface';
 import { PROCESOS_JURIDICOS_REPOSITORY } from './interfaces/procesos-juridicos-repository.interface';
@@ -35,13 +36,6 @@ import { DOCUMENTOS_PROCESO_REPOSITORY } from './interfaces/documentos-proceso-r
 import type { IDocumentosProcesoRepository } from './interfaces/documentos-proceso-repository.interface';
 import { PERSONAL_REPOSITORY } from '../personal/interfaces/personal-repository.interface';
 import type { IPersonalRepository } from '../personal/interfaces/personal-repository.interface';
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 interface SubirDocumentoProcesoParams {
   nombreVisible: string | undefined;

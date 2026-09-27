@@ -26,18 +26,12 @@ import {
   type ReprogramarCitaInput,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
+import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicologica-repository.interface';
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import { AccesoPsicologiaService } from './acceso-psicologia.service';
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 /** "" (campo opcional sin llenar) -> null para la base de datos, mismo criterio que juridico.service.ts. */
 function vacioANulo(valor: string): string | null {

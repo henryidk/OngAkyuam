@@ -2,13 +2,11 @@ import {
   Body,
   Controller,
   Get,
-  Ip,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
-  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -20,11 +18,12 @@ import {
   type EditarPersonalInput,
   type ListarPersonalQuery,
 } from '@akyuam/shared';
-import type { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { ContextoAuditoria } from '../common/decorators/contexto-auditoria.decorator';
+import type { ContextoAuditoria as IContextoAuditoria } from '../common/types/contexto-auditoria';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { PersonalService } from './personal.service';
 
@@ -49,16 +48,9 @@ export class PersonalController {
   @Roles('ADMINISTRACION')
   crear(
     @Body(new ZodValidationPipe(crearPersonalSchema)) datos: CrearPersonalInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.personalService.crear(datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.personalService.crear(datos, contexto);
   }
 
   // Sin DELETE: se desactiva, nunca se borra, para no romper el historial de procesos ya
@@ -69,15 +61,8 @@ export class PersonalController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(editarPersonalSchema))
     datos: EditarPersonalInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.personalService.editar(id, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.personalService.editar(id, datos, contexto);
   }
 }

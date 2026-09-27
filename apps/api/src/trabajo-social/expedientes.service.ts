@@ -16,6 +16,7 @@ import type { MunicipioAltaVerapaz } from '@prisma/client';
 import { AREA_NOTIFIER } from '../areas/interfaces/area-notifier.interface';
 import type { IAreaNotifier } from '../areas/interfaces/area-notifier.interface';
 import { AuditService } from '../auth/services/audit.service';
+import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import {
   DpiUsuariaDuplicadoError,
   EXPEDIENTES_REPOSITORY,
@@ -26,13 +27,6 @@ import type {
   DatosIdentidadUsuaria,
   IExpedientesRepository,
 } from './interfaces/expedientes-repository.interface';
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 function vacioANulo(valor: string): string | null {
   return valor === '' ? null : valor;

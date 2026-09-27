@@ -2,14 +2,12 @@ import {
   Body,
   Controller,
   Get,
-  Ip,
   Param,
   ParseUUIDPipe,
   Patch,
   Post,
   Put,
   Query,
-  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -38,11 +36,12 @@ import {
   type RegistroConsultaInput,
   type ReprogramarCitaInput,
 } from '@akyuam/shared';
-import type { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { ContextoAuditoria } from '../common/decorators/contexto-auditoria.decorator';
+import type { ContextoAuditoria as IContextoAuditoria } from '../common/types/contexto-auditoria';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CitasPsicologicasService } from './services/citas-psicologicas.service';
 import { IndicadoresPsicologiaService } from './services/indicadores-psicologia.service';
@@ -104,16 +103,9 @@ export class PsicologiaController {
   @Get('expedientes/:expedienteId/atencion')
   obtenerAtencion(
     @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.procesoService.obtenerAtencion(expedienteId, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.procesoService.obtenerAtencion(expedienteId, contexto);
   }
 
   @Patch('expedientes/:expedienteId/atencion')
@@ -121,31 +113,21 @@ export class PsicologiaController {
     @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
     @Body(new ZodValidationPipe(actualizarEstadoAtencionSchema))
     datos: ActualizarEstadoAtencionInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.procesoService.actualizarEstadoAtencion(expedienteId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.procesoService.actualizarEstadoAtencion(
+      expedienteId,
+      datos,
+      contexto,
+    );
   }
 
   @Post('expedientes/:expedienteId/tomar')
   tomarCaso(
     @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.procesoService.tomarCaso(expedienteId, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.procesoService.tomarCaso(expedienteId, contexto);
   }
 
   @Get('referencias-sin-tomar')
@@ -158,16 +140,9 @@ export class PsicologiaController {
     @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
     @Body(new ZodValidationPipe(programarCitaSchema))
     datos: ProgramarCitaInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.citasService.programarCita(expedienteId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.citasService.programarCita(expedienteId, datos, contexto);
   }
 
   @Post('citas/:citaId/reprogramar')
@@ -175,16 +150,9 @@ export class PsicologiaController {
     @Param('citaId', ParseUUIDPipe) citaId: string,
     @Body(new ZodValidationPipe(reprogramarCitaSchema))
     datos: ReprogramarCitaInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.citasService.reprogramarCita(citaId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.citasService.reprogramarCita(citaId, datos, contexto);
   }
 
   @Put('citas/:citaId/registro')
@@ -192,16 +160,9 @@ export class PsicologiaController {
     @Param('citaId', ParseUUIDPipe) citaId: string,
     @Body(new ZodValidationPipe(registroConsultaSchema))
     datos: RegistroConsultaInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.registroService.registrarConsulta(citaId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.registroService.registrarConsulta(citaId, datos, contexto);
   }
 
   @Get('citas/:citaId')
@@ -217,16 +178,9 @@ export class PsicologiaController {
     @Param('citaId', ParseUUIDPipe) citaId: string,
     @Body(new ZodValidationPipe(actualizarCitaSchema))
     datos: ActualizarCitaInput,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.registroService.actualizarCita(citaId, datos, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.registroService.actualizarCita(citaId, datos, contexto);
   }
 
   @Post('citas/:citaId/documento')
@@ -238,31 +192,20 @@ export class PsicologiaController {
   subirDocumentoCita(
     @Param('citaId', ParseUUIDPipe) citaId: string,
     @UploadedFile() archivo: Express.Multer.File,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.registroService.subirDocumentoCita(citaId, archivo, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.registroService.subirDocumentoCita(citaId, archivo, contexto);
   }
 
   @Get('citas/:citaId/documento/url')
   obtenerUrlDescargaDocumentoCita(
     @Param('citaId', ParseUUIDPipe) citaId: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.registroService.obtenerUrlDescargaDocumentoCita(citaId, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.registroService.obtenerUrlDescargaDocumentoCita(
+      citaId,
+      contexto,
+    );
   }
 
   // Rutas sin :id, no colisionan con las de arriba (un segmento menos).
@@ -297,14 +240,12 @@ export class PsicologiaController {
     @Query(new ZodValidationPipe(indicadoresQuerySchema))
     query: IndicadoresQuery,
     @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.indicadoresService.obtenerIndicadores(query, usuario.id, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.indicadoresService.obtenerIndicadores(
+      query,
+      usuario.id,
+      contexto,
+    );
   }
 }

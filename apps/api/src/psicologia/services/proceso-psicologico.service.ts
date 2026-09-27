@@ -14,19 +14,13 @@ import type {
   ReferenciaSinTomar,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
+import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicologica-repository.interface';
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import { AccesoPsicologiaService } from './acceso-psicologia.service';
 
 /** Tamaño de página fijo para los listados por cursor de psicología (§7.3/§7.5 del plan). */
 const LIMITE_PAGINA = 20;
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 const MENSAJE_CASO_YA_TOMADO = 'Este caso ya fue tomado por otra profesional';
 

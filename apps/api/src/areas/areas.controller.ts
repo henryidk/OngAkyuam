@@ -1,10 +1,11 @@
-import { Controller, Get, Ip, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, UseGuards } from '@nestjs/common';
 import { AREAS_ATENCION } from '@akyuam/shared';
-import type { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import { ContextoAuditoria } from '../common/decorators/contexto-auditoria.decorator';
+import type { ContextoAuditoria as IContextoAuditoria } from '../common/types/contexto-auditoria';
 import { AreasService } from './areas.service';
 
 @Controller('areas/expedientes')
@@ -24,15 +25,9 @@ export class AreasController {
   detalle(
     @Param('id') id: string,
     @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.areasService.obtenerDetalle(id, usuario, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.areasService.obtenerDetalle(id, usuario, contexto);
   }
 
   @Get(':id/documentos/:documentoId/url')
@@ -40,14 +35,13 @@ export class AreasController {
     @Param('id') id: string,
     @Param('documentoId') documentoId: string,
     @CurrentUser() usuario: AuthenticatedUser,
-    @Ip() ip: string,
-    @Req() req: Request,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.areasService.obtenerUrlDescarga(id, documentoId, usuario, {
-      usuarioId: usuario.id,
-      username: usuario.username,
-      ipAddress: ip,
-      userAgent: req.headers['user-agent'],
-    });
+    return this.areasService.obtenerUrlDescarga(
+      id,
+      documentoId,
+      usuario,
+      contexto,
+    );
   }
 }

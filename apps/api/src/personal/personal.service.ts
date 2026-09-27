@@ -13,15 +13,9 @@ import {
 } from '@akyuam/shared';
 import { AuditService } from '../auth/services/audit.service';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import { PERSONAL_REPOSITORY } from './interfaces/personal-repository.interface';
 import type { IPersonalRepository } from './interfaces/personal-repository.interface';
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 @Injectable()
 export class PersonalService {

@@ -5,19 +5,13 @@ import type {
 } from '@akyuam/shared';
 import { AuditService } from '../auth/services/audit.service';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
+import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import { OBJECT_STORAGE } from '../storage/interfaces/object-storage.interface';
 import type { IObjectStorage } from '../storage/interfaces/object-storage.interface';
 import { AREAS_REPOSITORY } from './interfaces/areas-repository.interface';
 import type { IAreasRepository } from './interfaces/areas-repository.interface';
 
 const MENSAJE_SIN_ACCESO_DOCUMENTO = 'No tiene acceso a este documento';
-
-interface ContextoAuditoria {
-  usuarioId: string;
-  username: string;
-  ipAddress?: string;
-  userAgent?: string;
-}
 
 @Injectable()
 export class AreasService {
