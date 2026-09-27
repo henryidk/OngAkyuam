@@ -1,18 +1,32 @@
 import { Injectable } from '@nestjs/common';
-import type { AgendaCita, CitaResumen, DocumentoCitaDto } from '@akyuam/shared';
-import { ESTADOS_CITA_PSICOLOGICA, MODALIDADES_CITA } from '@akyuam/shared';
+import type {
+  AgendaCita,
+  CitaPsicologicaDetalle,
+  CitaResumen,
+} from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   AccesoCitaPsicologica,
   ActualizarCitaParams,
+  BuscarSolapamientoParams,
+  CitaParaAgregado,
   CrearCitaParams,
-  CrearDocumentoCitaParams,
-  DocumentoCitaParaDescarga,
+  DatosCitaOrigen,
   ICitasPsicologicasRepository,
-  RangoFechas,
-  ReporteAgregado,
+  ListarAgendaParams,
+  ListarCitasEnRangoParams,
+  ListarHistorialParams,
+  RegistrarConsultaParams,
+  ReprogramarCitaParams,
 } from '../interfaces/citas-psicologicas-repository.interface';
+import type { PaginaConCursorRepo } from '../interfaces/atencion-psicologica-repository.interface';
 import { INCLUDE_CITA, mapearCita } from './citas-psicologicas.mapper';
+
+/** Margen amplio de sobra sobre cualquier duración real de consulta, para acotar la ventana de candidatas sin riesgo de descartar un traslape real. */
+const MARGEN_SOLAPAMIENTO_MS = 12 * 60 * 60 * 1000;
+
+/** Un elemento de sobra para saber si hay siguiente página, sin un segundo `count` (§7.5 del plan). */
+const LIMITE_EXTRA_CURSOR = 1;
 
 @Injectable()
 export class CitasPsicologicasRepository implements ICitasPsicologicasRepository {
@@ -20,12 +34,14 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
 
   async buscarAccesoCita(
     citaId: string,
+    psicologaId: string,
   ): Promise<AccesoCitaPsicologica | null> {
     const cita = await this.prisma.citaPsicologica.findFirst({
       where: {
         id: citaId,
         atencion: {
           expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
+          psicologaAsignadaId: psicologaId,
         },
       },
       select: {
@@ -50,6 +66,8 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         modalidad: params.modalidad,
         lugar: params.lugar,
         motivo: params.motivo,
+        tipo: params.tipo,
+        duracionMinutos: params.duracionMinutos,
         atendidoPorId: params.atendidoPorId,
       },
       include: INCLUDE_CITA,
@@ -70,46 +88,13 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     return mapearCita(cita);
   }
 
-  async crearDocumento(
-    params: CrearDocumentoCitaParams,
-  ): Promise<DocumentoCitaDto> {
-    const documento = await this.prisma.documento.create({
-      data: {
-        expedienteId: params.expedienteId,
-        tipo: 'FORMATO_ATENCION_PSICOLOGICA',
-        nombreArchivo: params.nombreArchivo,
-        claveR2: params.claveR2,
-        mimeType: params.mimeType,
-        tamanioBytes: params.tamanioBytes,
-        subidoPorId: params.subidoPorId,
-        citaPsicologicaId: params.citaId,
-      },
-    });
-    return {
-      id: documento.id,
-      tipo: documento.tipo,
-      nombreArchivo: documento.nombreArchivo,
-      tamanioBytes: documento.tamanioBytes,
-      createdAt: documento.createdAt.toISOString(),
-    };
-  }
-
-  async buscarDocumentoParaDescarga(
-    citaId: string,
-  ): Promise<DocumentoCitaParaDescarga | null> {
-    return this.prisma.documento.findFirst({
-      where: { citaPsicologicaId: citaId },
-      orderBy: { createdAt: 'desc' },
-      select: { id: true, claveR2: true, nombreArchivo: true },
-    });
-  }
-
-  async listarAgenda(rango: RangoFechas): Promise<AgendaCita[]> {
+  async listarAgenda(params: ListarAgendaParams): Promise<AgendaCita[]> {
     const citas = await this.prisma.citaPsicologica.findMany({
       where: {
-        fechaHora: { gte: rango.desde, lte: rango.hasta },
+        fechaHora: { gte: params.desde, lte: params.hasta },
         atencion: {
           expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
+          psicologaAsignadaId: params.psicologaId,
         },
       },
       include: {
@@ -135,40 +120,178 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     }));
   }
 
-  async obtenerReporte(rango: RangoFechas): Promise<ReporteAgregado> {
+  async buscarCitasSolapadas(
+    params: BuscarSolapamientoParams,
+  ): Promise<CitaResumen[]> {
+    const finPropuesto = new Date(
+      params.fechaHora.getTime() + params.duracionMinutos * 60_000,
+    );
+
+    const candidatas = await this.prisma.citaPsicologica.findMany({
+      where: {
+        id: params.excluirCitaId ? { not: params.excluirCitaId } : undefined,
+        estado: 'PROGRAMADA',
+        fechaHora: {
+          lt: finPropuesto,
+          gte: new Date(params.fechaHora.getTime() - MARGEN_SOLAPAMIENTO_MS),
+        },
+        atencion: { psicologaAsignadaId: params.psicologaId },
+      },
+      include: INCLUDE_CITA,
+    });
+
+    // El filtro de arriba solo acota candidatas por inicio; el fin real depende de su propia
+    // duracionMinutos, así que el solapamiento exacto se calcula en memoria.
+    return candidatas
+      .filter(
+        (cita) =>
+          cita.fechaHora.getTime() + cita.duracionMinutos * 60_000 >
+          params.fechaHora.getTime(),
+      )
+      .map(mapearCita);
+  }
+
+  async obtenerDatosParaReprogramar(
+    citaId: string,
+  ): Promise<DatosCitaOrigen | null> {
+    const cita = await this.prisma.citaPsicologica.findUnique({
+      where: { id: citaId },
+      select: {
+        atencionId: true,
+        tipo: true,
+        duracionMinutos: true,
+        estado: true,
+      },
+    });
+    return cita ?? null;
+  }
+
+  async reprogramar(params: ReprogramarCitaParams): Promise<CitaResumen> {
+    const nueva = await this.prisma.$transaction(async (tx) => {
+      await tx.citaPsicologica.update({
+        where: { id: params.citaAnteriorId },
+        data: { estado: 'REPROGRAMADA' },
+      });
+      return tx.citaPsicologica.create({
+        data: {
+          atencionId: params.atencionId,
+          fechaHora: params.fechaHora,
+          modalidad: params.modalidad,
+          lugar: params.lugar,
+          motivo: params.motivo,
+          tipo: params.tipo,
+          duracionMinutos: params.duracionMinutos,
+          atendidoPorId: params.atendidoPorId,
+          reprogramadaDesdeId: params.citaAnteriorId,
+        },
+        include: INCLUDE_CITA,
+      });
+    });
+    return mapearCita(nueva);
+  }
+
+  async registrarConsulta(
+    params: RegistrarConsultaParams,
+  ): Promise<CitaResumen> {
+    const cita = await this.prisma.citaPsicologica.update({
+      where: { id: params.citaId },
+      data: {
+        estado: params.estado,
+        temas: params.temas,
+        intervencion: params.intervencion,
+        recomendaciones: params.recomendaciones,
+        acuerdos: params.acuerdos,
+        observaciones: params.observaciones,
+        motivoNoAsistencia: params.motivoNoAsistencia,
+        borrador: params.borrador,
+      },
+      include: INCLUDE_CITA,
+    });
+    return mapearCita(cita);
+  }
+
+  async listarCitasEnRango(
+    params: ListarCitasEnRangoParams,
+  ): Promise<CitaParaAgregado[]> {
     const citas = await this.prisma.citaPsicologica.findMany({
       where: {
-        fechaHora: { gte: rango.desde, lte: rango.hasta },
-        atencion: {
-          expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
-        },
+        fechaHora: { gte: params.desde, lte: params.hasta },
+        atencion: { psicologaAsignadaId: params.psicologaId },
       },
       select: {
+        fechaHora: true,
         estado: true,
-        modalidad: true,
-        atencion: { select: { expedienteId: true } },
+        tipo: true,
+        atencion: {
+          select: {
+            expediente: {
+              select: {
+                usuariaId: true,
+                usuaria: { select: { municipio: true } },
+              },
+            },
+          },
+        },
       },
     });
 
-    const porEstado = Object.fromEntries(
-      ESTADOS_CITA_PSICOLOGICA.map((estado) => [estado, 0]),
-    ) as ReporteAgregado['porEstado'];
-    const porModalidad = Object.fromEntries(
-      MODALIDADES_CITA.map((modalidad) => [modalidad, 0]),
-    ) as ReporteAgregado['porModalidad'];
+    return citas.map((cita) => ({
+      fechaHora: cita.fechaHora,
+      estado: cita.estado,
+      tipo: cita.tipo,
+      usuariaId: cita.atencion.expediente.usuariaId,
+      municipio: cita.atencion.expediente.usuaria.municipio,
+    }));
+  }
 
-    const expedientesUnicos = new Set<string>();
-    for (const cita of citas) {
-      porEstado[cita.estado] += 1;
-      porModalidad[cita.modalidad] += 1;
-      expedientesUnicos.add(cita.atencion.expedienteId);
-    }
+  async listarHistorial(
+    params: ListarHistorialParams,
+  ): Promise<PaginaConCursorRepo<CitaResumen>> {
+    const citas = await this.prisma.citaPsicologica.findMany({
+      where: {
+        atencionId: params.atencionId,
+        estado: params.estado,
+      },
+      include: INCLUDE_CITA,
+      orderBy: { fechaHora: 'desc' },
+      take: params.limite + LIMITE_EXTRA_CURSOR,
+      ...(params.cursor ? { cursor: { id: params.cursor }, skip: 1 } : {}),
+    });
+
+    const hayMas = citas.length > params.limite;
+    const pagina = hayMas ? citas.slice(0, params.limite) : citas;
 
     return {
-      totalCitas: citas.length,
-      porEstado,
-      porModalidad,
-      usuariasAtendidas: expedientesUnicos.size,
+      items: pagina.map(mapearCita),
+      siguienteCursor: hayMas ? pagina[pagina.length - 1].id : null,
+    };
+  }
+
+  async obtenerDetalle(citaId: string): Promise<CitaPsicologicaDetalle | null> {
+    const cita = await this.prisma.citaPsicologica.findUnique({
+      where: { id: citaId },
+      include: {
+        ...INCLUDE_CITA,
+        atencion: {
+          select: {
+            expedienteId: true,
+            expediente: {
+              select: {
+                numero: true,
+                usuaria: { select: { nombres: true, apellidos: true } },
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!cita) return null;
+
+    return {
+      ...mapearCita(cita),
+      expedienteId: cita.atencion.expedienteId,
+      numero: cita.atencion.expediente.numero,
+      usuariaNombreCompleto: `${cita.atencion.expediente.usuaria.nombres} ${cita.atencion.expediente.usuaria.apellidos}`,
     };
   }
 }

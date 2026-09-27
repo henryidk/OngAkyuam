@@ -45,8 +45,10 @@ model Usuario {
   notasAvanceRegistradas   NotaAvanceProceso[]
   documentosProcesoSubidos DocumentoProceso[]
   abandonosRegistrados     AbandonoProceso[]
-  atencionesPsicologicasActualizadas AtencionPsicologica[] @relation("AtencionPsicologicaActualizadaPor")
-  citasPsicologicasAtendidas         CitaPsicologica[]     @relation("CitaPsicologicaAtendidaPor")
+  atencionesPsicologicasActualizadas AtencionPsicologica[]  @relation("AtencionPsicologicaActualizadaPor")
+  atencionesPsicologicasAsignadas    AtencionPsicologica[]  @relation("AtencionPsicologicaAsignada")
+  cambiosEstadoAtencionRegistrados   CambioEstadoAtencion[] @relation("CambioEstadoAtencionRegistradoPor")
+  citasPsicologicasAtendidas         CitaPsicologica[]      @relation("CitaPsicologicaAtendidaPor")
 }
 
 model RefreshToken {
@@ -399,17 +401,51 @@ enum EstadoAtencionPsicologica {
 // Estado de seguimiento clínico de psicología para un expediente referido — 1:1 con
 // Expediente y no con ReferidoArea porque este concepto es exclusivo de psicología y no debe
 // filtrarse a la tabla genérica que comparten jurídico/médica.
+//
+// `psicologaAsignadaId` no es solo un dato organizativo: es la llave de autorización del
+// módulo completo de psicología (ver psicologianuevoplan.md §7.4). Trabajo social refiere el
+// caso al área, no a una psicóloga — mientras sea `null` el expediente aparece en la cola de
+// "Referencias sin tomar", visible a toda el área. La primera psicóloga que reclama el caso
+// (`POST /psicologia/expedientes/:id/tomar`, UPDATE atómico condicionado a `IS NULL`) se
+// convierte en su dueña exclusiva: a partir de ahí ninguna otra psicóloga puede leer ni
+// escribir nada de este expediente (403 genérico, sin distinguir el motivo).
 model AtencionPsicologica {
-  id               String                    @id @default(uuid())
-  expedienteId     String                    @unique
-  expediente       Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
-  estado           EstadoAtencionPsicologica @default(INICIO)
-  actualizadoPorId String
-  actualizadoPor   Usuario                   @relation("AtencionPsicologicaActualizadaPor", fields: [actualizadoPorId], references: [id])
-  createdAt        DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime                  @updatedAt @db.Timestamptz(3)
+  id                  String                    @id @default(uuid())
+  expedienteId        String                    @unique
+  expediente          Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  estado              EstadoAtencionPsicologica @default(INICIO)
+  psicologaAsignadaId String?
+  psicologaAsignada   Usuario?                  @relation("AtencionPsicologicaAsignada", fields: [psicologaAsignadaId], references: [id])
+  tomadaEn            DateTime?                 @db.Timestamptz(3)
+  fechaInicio         DateTime?                 @db.Timestamptz(3)
+  fechaCierre         DateTime?                 @db.Timestamptz(3)
+  motivoCierre        String?                   @db.Text
+  actualizadoPorId    String
+  actualizadoPor      Usuario                   @relation("AtencionPsicologicaActualizadaPor", fields: [actualizadoPorId], references: [id])
+  createdAt           DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                  @updatedAt @db.Timestamptz(3)
 
-  citas CitaPsicologica[]
+  citas         CitaPsicologica[]
+  cambiosEstado CambioEstadoAtencion[]
+
+  @@index([psicologaAsignadaId])
+}
+
+// Historial de hitos del proceso clínico (INICIO → SEGUIMIENTO → CIERRE), separado de
+// `AtencionPsicologica.estado` (que solo guarda el estado actual) para poder reconstruir cuándo
+// y por qué cambió — ver psicologianuevoplan.md §6.1.
+model CambioEstadoAtencion {
+  id              String                     @id @default(uuid())
+  atencionId      String
+  atencion        AtencionPsicologica        @relation(fields: [atencionId], references: [id], onDelete: Cascade)
+  estadoAnterior  EstadoAtencionPsicologica?
+  estadoNuevo     EstadoAtencionPsicologica
+  motivo          String?                    @db.Text
+  registradoPorId String
+  registradoPor   Usuario                    @relation("CambioEstadoAtencionRegistradoPor", fields: [registradoPorId], references: [id])
+  createdAt       DateTime                   @default(now()) @db.Timestamptz(3)
+
+  @@index([atencionId])
 }
 
 enum ModalidadCita {
@@ -422,6 +458,13 @@ enum EstadoCitaPsicologica {
   ATENDIDA
   CANCELADA
   NO_ASISTIO
+  REPROGRAMADA
+}
+
+enum TipoCitaPsicologica {
+  PRIMERA_ATENCION
+  SEGUIMIENTO
+  CIERRE
 }
 
 // `fechaHora` es un instante real (cuándo ocurre la cita), no una fecha de calendario — se
@@ -430,22 +473,32 @@ enum EstadoCitaPsicologica {
 // `atendidoPorId` referencia directamente al Usuario que atendió (cada psicóloga tiene su
 // propia cuenta) — a diferencia de jurídico, aquí no hay catálogo Personal separado.
 model CitaPsicologica {
-  id             String                @id @default(uuid())
-  atencionId     String
-  atencion       AtencionPsicologica   @relation(fields: [atencionId], references: [id], onDelete: Cascade)
-  fechaHora      DateTime              @db.Timestamptz(3)
-  modalidad      ModalidadCita
-  lugar          String?
-  motivo         String
-  estado         EstadoCitaPsicologica @default(PROGRAMADA)
-  observaciones  String?               @db.Text
-  acuerdos       String?               @db.Text
-  atendidoPorId  String
-  atendidoPor    Usuario               @relation("CitaPsicologicaAtendidaPor", fields: [atendidoPorId], references: [id])
-  createdAt      DateTime              @default(now()) @db.Timestamptz(3)
+  id                  String                @id @default(uuid())
+  atencionId          String
+  atencion            AtencionPsicologica   @relation(fields: [atencionId], references: [id], onDelete: Cascade)
+  fechaHora           DateTime              @db.Timestamptz(3)
+  modalidad           ModalidadCita
+  lugar               String?
+  motivo              String
+  tipo                TipoCitaPsicologica   @default(SEGUIMIENTO)
+  duracionMinutos     Int                   @default(45)
+  estado              EstadoCitaPsicologica @default(PROGRAMADA)
+  observaciones       String?               @db.Text
+  acuerdos            String?               @db.Text
+  motivoNoAsistencia  String?               @db.Text
+  temas               String?               @db.Text
+  intervencion        String?               @db.Text
+  recomendaciones     String?               @db.Text
+  borrador            Boolean               @default(false)
+  reprogramadaDesdeId String?               @unique
+  reprogramadaDesde   CitaPsicologica?      @relation("Reprogramacion", fields: [reprogramadaDesdeId], references: [id])
+  reprogramadaHacia   CitaPsicologica?      @relation("Reprogramacion")
+  atendidoPorId       String
+  atendidoPor         Usuario               @relation("CitaPsicologicaAtendidaPor", fields: [atendidoPorId], references: [id])
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
 
   documentos Documento[]
 
-  @@index([atencionId])
+  @@index([atencionId, fechaHora])
   @@index([fechaHora])
 }

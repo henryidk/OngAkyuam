@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UploadedFile,
@@ -18,12 +19,24 @@ import {
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
   actualizarCitaSchema,
   actualizarEstadoAtencionSchema,
+  agendaResumenQuerySchema,
+  buscarExpedientesQuerySchema,
+  historialCitasQuerySchema,
+  indicadoresQuerySchema,
   programarCitaSchema,
   rangoFechasQuerySchema,
+  registroConsultaSchema,
+  reprogramarCitaSchema,
   type ActualizarCitaInput,
   type ActualizarEstadoAtencionInput,
+  type AgendaResumenQuery,
+  type BuscarExpedientesQuery,
+  type HistorialCitasQuery,
+  type IndicadoresQuery,
   type ProgramarCitaInput,
   type RangoFechasQuery,
+  type RegistroConsultaInput,
+  type ReprogramarCitaInput,
 } from '@akyuam/shared';
 import type { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -31,13 +44,62 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
-import { PsicologiaService } from './psicologia.service';
+import { CitasPsicologicasService } from './services/citas-psicologicas.service';
+import { IndicadoresPsicologiaService } from './services/indicadores-psicologia.service';
+import { ProcesoPsicologicoService } from './services/proceso-psicologico.service';
+import { RegistroConsultaService } from './services/registro-consulta.service';
+import { TableroPsicologiaService } from './services/tablero-psicologia.service';
 
 @Controller('psicologia')
 @UseGuards(RolesGuard)
 @Roles('PSICOLOGIA')
 export class PsicologiaController {
-  constructor(private readonly psicologiaService: PsicologiaService) {}
+  constructor(
+    private readonly procesoService: ProcesoPsicologicoService,
+    private readonly citasService: CitasPsicologicasService,
+    private readonly registroService: RegistroConsultaService,
+    private readonly indicadoresService: IndicadoresPsicologiaService,
+    private readonly tableroService: TableroPsicologiaService,
+  ) {}
+
+  @Get('tablero')
+  obtenerTablero(@CurrentUser() usuario: AuthenticatedUser) {
+    return this.tableroService.obtenerTablero(usuario.id);
+  }
+
+  @Get('expedientes')
+  buscarExpedientes(
+    @Query(new ZodValidationPipe(buscarExpedientesQuerySchema))
+    query: BuscarExpedientesQuery,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.procesoService.buscarExpedientes(query, usuario.id);
+  }
+
+  @Get('expedientes/:expedienteId/resumen')
+  obtenerResumenExpediente(
+    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.procesoService.obtenerResumenExpediente(
+      expedienteId,
+      usuario.id,
+    );
+  }
+
+  @Get('expedientes/:expedienteId/citas')
+  listarHistorialCitas(
+    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
+    @Query(new ZodValidationPipe(historialCitasQuerySchema))
+    query: HistorialCitasQuery,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.citasService.listarHistorialCitas(
+      expedienteId,
+      query,
+      usuario.id,
+    );
+  }
 
   @Get('expedientes/:expedienteId/atencion')
   obtenerAtencion(
@@ -46,7 +108,7 @@ export class PsicologiaController {
     @Ip() ip: string,
     @Req() req: Request,
   ) {
-    return this.psicologiaService.obtenerAtencion(expedienteId, {
+    return this.procesoService.obtenerAtencion(expedienteId, {
       usuarioId: usuario.id,
       username: usuario.username,
       ipAddress: ip,
@@ -63,16 +125,32 @@ export class PsicologiaController {
     @Ip() ip: string,
     @Req() req: Request,
   ) {
-    return this.psicologiaService.actualizarEstadoAtencion(
-      expedienteId,
-      datos,
-      {
-        usuarioId: usuario.id,
-        username: usuario.username,
-        ipAddress: ip,
-        userAgent: req.headers['user-agent'],
-      },
-    );
+    return this.procesoService.actualizarEstadoAtencion(expedienteId, datos, {
+      usuarioId: usuario.id,
+      username: usuario.username,
+      ipAddress: ip,
+      userAgent: req.headers['user-agent'],
+    });
+  }
+
+  @Post('expedientes/:expedienteId/tomar')
+  tomarCaso(
+    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    return this.procesoService.tomarCaso(expedienteId, {
+      usuarioId: usuario.id,
+      username: usuario.username,
+      ipAddress: ip,
+      userAgent: req.headers['user-agent'],
+    });
+  }
+
+  @Get('referencias-sin-tomar')
+  listarReferenciasSinTomar() {
+    return this.procesoService.listarReferenciasSinTomar();
   }
 
   @Post('expedientes/:expedienteId/citas')
@@ -84,12 +162,54 @@ export class PsicologiaController {
     @Ip() ip: string,
     @Req() req: Request,
   ) {
-    return this.psicologiaService.programarCita(expedienteId, datos, {
+    return this.citasService.programarCita(expedienteId, datos, {
       usuarioId: usuario.id,
       username: usuario.username,
       ipAddress: ip,
       userAgent: req.headers['user-agent'],
     });
+  }
+
+  @Post('citas/:citaId/reprogramar')
+  reprogramarCita(
+    @Param('citaId', ParseUUIDPipe) citaId: string,
+    @Body(new ZodValidationPipe(reprogramarCitaSchema))
+    datos: ReprogramarCitaInput,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    return this.citasService.reprogramarCita(citaId, datos, {
+      usuarioId: usuario.id,
+      username: usuario.username,
+      ipAddress: ip,
+      userAgent: req.headers['user-agent'],
+    });
+  }
+
+  @Put('citas/:citaId/registro')
+  registrarConsulta(
+    @Param('citaId', ParseUUIDPipe) citaId: string,
+    @Body(new ZodValidationPipe(registroConsultaSchema))
+    datos: RegistroConsultaInput,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    return this.registroService.registrarConsulta(citaId, datos, {
+      usuarioId: usuario.id,
+      username: usuario.username,
+      ipAddress: ip,
+      userAgent: req.headers['user-agent'],
+    });
+  }
+
+  @Get('citas/:citaId')
+  obtenerDetalleCita(
+    @Param('citaId', ParseUUIDPipe) citaId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.citasService.obtenerDetalleCita(citaId, usuario.id);
   }
 
   @Patch('citas/:citaId')
@@ -101,7 +221,7 @@ export class PsicologiaController {
     @Ip() ip: string,
     @Req() req: Request,
   ) {
-    return this.psicologiaService.actualizarCita(citaId, datos, {
+    return this.registroService.actualizarCita(citaId, datos, {
       usuarioId: usuario.id,
       username: usuario.username,
       ipAddress: ip,
@@ -122,7 +242,7 @@ export class PsicologiaController {
     @Ip() ip: string,
     @Req() req: Request,
   ) {
-    return this.psicologiaService.subirDocumentoCita(citaId, archivo, {
+    return this.registroService.subirDocumentoCita(citaId, archivo, {
       usuarioId: usuario.id,
       username: usuario.username,
       ipAddress: ip,
@@ -137,7 +257,7 @@ export class PsicologiaController {
     @Ip() ip: string,
     @Req() req: Request,
   ) {
-    return this.psicologiaService.obtenerUrlDescargaDocumentoCita(citaId, {
+    return this.registroService.obtenerUrlDescargaDocumentoCita(citaId, {
       usuarioId: usuario.id,
       username: usuario.username,
       ipAddress: ip,
@@ -150,8 +270,18 @@ export class PsicologiaController {
   listarAgenda(
     @Query(new ZodValidationPipe(rangoFechasQuerySchema))
     query: RangoFechasQuery,
+    @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    return this.psicologiaService.listarAgenda(query);
+    return this.citasService.listarAgenda(query, usuario.id);
+  }
+
+  @Get('agenda/resumen')
+  obtenerResumenAgenda(
+    @Query(new ZodValidationPipe(agendaResumenQuerySchema))
+    query: AgendaResumenQuery,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.citasService.obtenerResumenAgenda(query, usuario.id);
   }
 
   @Get('reporte')
@@ -159,6 +289,22 @@ export class PsicologiaController {
     @Query(new ZodValidationPipe(rangoFechasQuerySchema))
     query: RangoFechasQuery,
   ) {
-    return this.psicologiaService.obtenerReporte(query);
+    return this.indicadoresService.obtenerReporte(query);
+  }
+
+  @Get('indicadores')
+  obtenerIndicadores(
+    @Query(new ZodValidationPipe(indicadoresQuerySchema))
+    query: IndicadoresQuery,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @Ip() ip: string,
+    @Req() req: Request,
+  ) {
+    return this.indicadoresService.obtenerIndicadores(query, usuario.id, {
+      usuarioId: usuario.id,
+      username: usuario.username,
+      ipAddress: ip,
+      userAgent: req.headers['user-agent'],
+    });
   }
 }

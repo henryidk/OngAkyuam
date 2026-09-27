@@ -1,11 +1,12 @@
 import type {
   AgendaCita,
+  CitaPsicologicaDetalle,
   CitaResumen,
-  DocumentoCitaDto,
   EstadoCitaPsicologica,
   ModalidadCita,
-  ReportePsicologia,
+  TipoCitaPsicologica,
 } from '@akyuam/shared';
+import type { PaginaConCursorRepo } from './atencion-psicologica-repository.interface';
 
 export const CITAS_PSICOLOGICAS_REPOSITORY = Symbol(
   'CITAS_PSICOLOGICAS_REPOSITORY',
@@ -23,6 +24,8 @@ export interface CrearCitaParams {
   modalidad: ModalidadCita;
   lugar: string | null;
   motivo: string;
+  tipo: TipoCitaPsicologica;
+  duracionMinutos: number;
   atendidoPorId: string;
 }
 
@@ -33,47 +36,123 @@ export interface ActualizarCitaParams {
   acuerdos: string | null;
 }
 
-export interface CrearDocumentoCitaParams {
-  citaId: string;
-  expedienteId: string;
-  nombreArchivo: string;
-  claveR2: string;
-  mimeType: string;
-  tamanioBytes: number;
-  subidoPorId: string;
-}
-
-export interface DocumentoCitaParaDescarga {
-  id: string;
-  claveR2: string;
-  nombreArchivo: string;
-}
-
 export interface RangoFechas {
   desde: Date;
   hasta: Date;
 }
 
-/** Reporte agregado sin `desde`/`hasta`: esos dos campos los agrega el servicio directamente
- *  desde el string de calendario ya validado en el query, nunca recalculados a partir de un
- *  `Date` en UTC (evitaría el bug de rollover de medianoche que la disciplina de fechas del
- *  proyecto existe para evitar). */
-export type ReporteAgregado = Omit<ReportePsicologia, 'desde' | 'hasta'>;
+export interface ListarAgendaParams extends RangoFechas {
+  /**
+   * Sin rol de coordinación en este alcance (§12 del plan, decisión confirmada): la agenda
+   * siempre es "la mía", nunca la del área completa — se filtra por dueña igual que el resto
+   * del guard de acceso.
+   */
+  psicologaId: string;
+}
 
+export interface BuscarSolapamientoParams {
+  psicologaId: string;
+  fechaHora: Date;
+  duracionMinutos: number;
+  /** Excluye la propia cita al revisar traslape de una reprogramación. */
+  excluirCitaId?: string;
+}
+
+/** Lo mínimo de la cita origen que necesita `reprogramar` — tipo/duración se heredan, no se repiten en `reprogramarCitaSchema`. */
+export interface DatosCitaOrigen {
+  atencionId: string;
+  tipo: TipoCitaPsicologica;
+  duracionMinutos: number;
+  estado: EstadoCitaPsicologica;
+}
+
+export interface ReprogramarCitaParams {
+  citaAnteriorId: string;
+  atencionId: string;
+  tipo: TipoCitaPsicologica;
+  duracionMinutos: number;
+  fechaHora: Date;
+  modalidad: ModalidadCita;
+  lugar: string | null;
+  motivo: string;
+  atendidoPorId: string;
+}
+
+export interface RegistrarConsultaParams {
+  citaId: string;
+  /** `undefined` cuando se guarda como borrador — el estado de la cita no cambia (§5.4 del plan). */
+  estado: EstadoCitaPsicologica | undefined;
+  temas: string | null;
+  intervencion: string | null;
+  recomendaciones: string | null;
+  acuerdos: string | null;
+  observaciones: string | null;
+  motivoNoAsistencia: string | null;
+  borrador: boolean;
+}
+
+/** Fila mínima para agregados por rango — usada tanto por `/agenda/resumen` (mes) como por indicadores (año); el corte de mes/día en GT se calcula en el servicio, nunca aquí (§7.5 del plan). */
+export interface CitaParaAgregado {
+  fechaHora: Date;
+  estado: EstadoCitaPsicologica;
+  tipo: TipoCitaPsicologica;
+  usuariaId: string;
+  municipio: string | null;
+}
+
+export interface ListarCitasEnRangoParams {
+  psicologaId: string;
+  desde: Date;
+  hasta: Date;
+}
+
+export interface ListarHistorialParams {
+  atencionId: string;
+  estado?: EstadoCitaPsicologica;
+  cursor?: string;
+  limite: number;
+}
+
+/**
+ * CRUD de citas + búsqueda de acceso (§7.2 del plan). El documento de la consulta vive en
+ * `IDocumentosCitaRepository` y los agregados/reportes en `IIndicadoresPsicologiaRepository`
+ * — cada interfaz expone solo lo que su servicio consumidor necesita (ISP).
+ */
 export interface ICitasPsicologicasRepository {
   /**
-   * Único punto de verificación "¿esta cita pertenece a una atención de un expediente
-   * referido a PSICOLOGIA?" — se reusa antes de cada operación sobre una cita ya existente.
-   * `null` tanto si la cita no existe como si existe pero no tiene acceso (sin IDOR).
+   * Único punto de verificación "¿esta cita pertenece a una atención tomada por esta
+   * psicóloga?" — se reusa antes de cada operación sobre una cita ya existente. `null` tanto
+   * si la cita no existe como si existe pero no tiene acceso (expediente no referido, caso sin
+   * tomar, o tomado por otra) — sin distinción posible desde afuera (sin IDOR).
    */
-  buscarAccesoCita(citaId: string): Promise<AccesoCitaPsicologica | null>;
+  buscarAccesoCita(
+    citaId: string,
+    psicologaId: string,
+  ): Promise<AccesoCitaPsicologica | null>;
   crear(params: CrearCitaParams): Promise<CitaResumen>;
   actualizar(params: ActualizarCitaParams): Promise<CitaResumen>;
-  crearDocumento(params: CrearDocumentoCitaParams): Promise<DocumentoCitaDto>;
-  /** `null` tanto si la cita no tiene documento todavía como si no le pertenece. */
-  buscarDocumentoParaDescarga(
-    citaId: string,
-  ): Promise<DocumentoCitaParaDescarga | null>;
-  listarAgenda(rango: RangoFechas): Promise<AgendaCita[]>;
-  obtenerReporte(rango: RangoFechas): Promise<ReporteAgregado>;
+  listarAgenda(params: ListarAgendaParams): Promise<AgendaCita[]>;
+  /** Citas PROGRAMADA de esta psicóloga cuyo intervalo se solapa con el propuesto (§7.5: aviso, no bloqueo duro). */
+  buscarCitasSolapadas(
+    params: BuscarSolapamientoParams,
+  ): Promise<CitaResumen[]>;
+  /** `null` si la cita no existe — no valida acceso, se usa siempre después de `exigirAccesoCita`. */
+  obtenerDatosParaReprogramar(citaId: string): Promise<DatosCitaOrigen | null>;
+  /** Transaccional: crea la cita nueva y marca la anterior REPROGRAMADA, o nada. */
+  reprogramar(params: ReprogramarCitaParams): Promise<CitaResumen>;
+  registrarConsulta(params: RegistrarConsultaParams): Promise<CitaResumen>;
+  /**
+   * Filas crudas de citas de esta psicóloga dentro de un rango acotado — alimenta tanto
+   * `/agenda/resumen` (rango de un mes) como los agregados de `/indicadores` (rango de un
+   * año). Nunca agrupa por día/mes aquí: eso lo hace el servicio con `timezone.ts` (§7.5).
+   */
+  listarCitasEnRango(
+    params: ListarCitasEnRangoParams,
+  ): Promise<CitaParaAgregado[]>;
+  /** Historial paginado por cursor de una atención puntual (§5.3/§7.5 del plan). */
+  listarHistorial(
+    params: ListarHistorialParams,
+  ): Promise<PaginaConCursorRepo<CitaResumen>>;
+  /** Permalink de una cita — `null` solo si desaparece entre el guard de acceso y esta lectura. */
+  obtenerDetalle(citaId: string): Promise<CitaPsicologicaDetalle | null>;
 }

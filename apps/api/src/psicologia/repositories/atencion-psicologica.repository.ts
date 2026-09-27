@@ -1,18 +1,34 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
-import type { AtencionPsicologicaDetalle } from '@akyuam/shared';
+import { Prisma, MunicipioAltaVerapaz } from '@prisma/client';
+import type {
+  AtencionPsicologicaDetalle,
+  ExpedienteResumenBusqueda,
+  ReferenciaSinTomar,
+} from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   ActualizarEstadoAtencionParams,
+  BuscarExpedientesParams,
   ExpedienteAccesoPsicologia,
   IAtencionPsicologicaRepository,
   ObtenerOCrearAtencionParams,
+  PaginaConCursorRepo,
+  ResultadoTomarCaso,
+  TomarCasoParams,
 } from '../interfaces/atencion-psicologica-repository.interface';
 import { INCLUDE_CITA, mapearCita } from './citas-psicologicas.mapper';
 
+/** Un elemento de sobra para saber si hay siguiente página, sin un segundo `count` (§7.5 del plan). */
+const LIMITE_EXTRA_CURSOR = 1;
+
 const INCLUDE_ATENCION = {
   actualizadoPor: { select: { nombreCompleto: true } },
+  psicologaAsignada: { select: { nombreCompleto: true } },
   citas: { include: INCLUDE_CITA, orderBy: { fechaHora: 'desc' } },
+  cambiosEstado: {
+    include: { registradoPor: { select: { nombreCompleto: true } } },
+    orderBy: { createdAt: 'asc' },
+  },
 } satisfies Prisma.AtencionPsicologicaInclude;
 
 type AtencionConRelaciones = Prisma.AtencionPsicologicaGetPayload<{
@@ -26,9 +42,22 @@ function mapearAtencion(
     id: atencion.id,
     expedienteId: atencion.expedienteId,
     estado: atencion.estado,
+    psicologaAsignada: atencion.psicologaAsignada?.nombreCompleto ?? null,
+    tomadaEn: atencion.tomadaEn?.toISOString() ?? null,
+    fechaInicio: atencion.fechaInicio?.toISOString() ?? null,
+    fechaCierre: atencion.fechaCierre?.toISOString() ?? null,
+    motivoCierre: atencion.motivoCierre,
     actualizadoPor: atencion.actualizadoPor.nombreCompleto,
     actualizadoEn: atencion.updatedAt.toISOString(),
     citas: atencion.citas.map(mapearCita),
+    historialEstados: atencion.cambiosEstado.map((cambio) => ({
+      id: cambio.id,
+      estadoAnterior: cambio.estadoAnterior,
+      estadoNuevo: cambio.estadoNuevo,
+      motivo: cambio.motivo,
+      registradoPor: cambio.registradoPor.nombreCompleto,
+      createdAt: cambio.createdAt.toISOString(),
+    })),
   };
 }
 
@@ -38,9 +67,14 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
 
   async buscarExpedienteConAcceso(
     expedienteId: string,
+    psicologaId: string,
   ): Promise<ExpedienteAccesoPsicologia | null> {
     return this.prisma.expediente.findFirst({
-      where: { id: expedienteId, referidos: { some: { area: 'PSICOLOGIA' } } },
+      where: {
+        id: expedienteId,
+        referidos: { some: { area: 'PSICOLOGIA' } },
+        atencionPsicologica: { is: { psicologaAsignadaId: psicologaId } },
+      },
       select: { id: true },
     });
   }
@@ -63,21 +97,367 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
   async actualizarEstado(
     params: ActualizarEstadoAtencionParams,
   ): Promise<AtencionPsicologicaDetalle> {
-    // `upsert`, no `update`: si nunca se había consultado la atención (GET) antes del PATCH,
-    // igual debe poder fijarse el estado en vez de fallar por "no encontrado".
+    const actual = await this.prisma.atencionPsicologica.findUnique({
+      where: { expedienteId: params.expedienteId },
+      select: { id: true, estado: true, fechaInicio: true },
+    });
+
+    // Datos comunes a create/update — se calculan una vez para no repetir la condición
+    // "estado entrante" entre las dos ramas del upsert.
+    const entraSeguimiento =
+      params.estado === 'SEGUIMIENTO' && actual?.estado !== 'SEGUIMIENTO';
+    const entraCierre = params.estado === 'CIERRE';
+    const datosTransicion = {
+      estado: params.estado,
+      actualizadoPorId: params.actualizadoPorId,
+      // `fechaInicio` se fija una sola vez, la primera vez que se entra a SEGUIMIENTO — una
+      // reapertura posterior no la reinicia (§6.1 del plan).
+      ...(entraSeguimiento && !actual?.fechaInicio
+        ? { fechaInicio: new Date() }
+        : {}),
+      ...(entraCierre
+        ? { fechaCierre: new Date(), motivoCierre: params.motivo }
+        : {}),
+    };
+
     const atencion = await this.prisma.atencionPsicologica.upsert({
       where: { expedienteId: params.expedienteId },
-      update: {
-        estado: params.estado,
-        actualizadoPorId: params.actualizadoPorId,
-      },
-      create: {
-        expedienteId: params.expedienteId,
-        estado: params.estado,
-        actualizadoPorId: params.actualizadoPorId,
-      },
+      update: datosTransicion,
+      create: { expedienteId: params.expedienteId, ...datosTransicion },
       include: INCLUDE_ATENCION,
     });
-    return mapearAtencion(atencion);
+
+    await this.prisma.cambioEstadoAtencion.create({
+      data: {
+        atencionId: atencion.id,
+        estadoAnterior: actual?.estado ?? null,
+        estadoNuevo: params.estado,
+        motivo: params.motivo,
+        registradoPorId: params.actualizadoPorId,
+      },
+    });
+
+    // Recarga con el hito recién creado incluido, para que el detalle devuelto ya refleje el
+    // historial completo sin que el llamador tenga que pedirlo por separado.
+    const atencionActualizada =
+      await this.prisma.atencionPsicologica.findUniqueOrThrow({
+        where: { id: atencion.id },
+        include: INCLUDE_ATENCION,
+      });
+    return mapearAtencion(atencionActualizada);
+  }
+
+  async existeReferidoPsicologia(expedienteId: string): Promise<boolean> {
+    const referido = await this.prisma.referidoArea.findUnique({
+      where: { expedienteId_area: { expedienteId, area: 'PSICOLOGIA' } },
+      select: { expedienteId: true },
+    });
+    return referido !== null;
+  }
+
+  async tomarCaso(params: TomarCasoParams): Promise<ResultadoTomarCaso> {
+    const existente = await this.prisma.atencionPsicologica.findUnique({
+      where: { expedienteId: params.expedienteId },
+      select: { id: true, psicologaAsignadaId: true },
+    });
+
+    if (!existente) {
+      // Todavía no existe la atención: crearla ya con dueña es el reclamo en sí. Si dos
+      // psicólogas compiten por crearla al mismo tiempo, la restricción `@unique` en
+      // `expedienteId` hace que la segunda falle con P2002 — se resuelve reconsultando quién
+      // ganó, nunca asumiendo que "falló" significa "gané yo".
+      try {
+        await this.prisma.atencionPsicologica.create({
+          data: {
+            expedienteId: params.expedienteId,
+            psicologaAsignadaId: params.psicologaId,
+            tomadaEn: new Date(),
+            actualizadoPorId: params.psicologaId,
+          },
+        });
+        return 'TOMADO';
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          return 'YA_TOMADO';
+        }
+        throw error;
+      }
+    }
+
+    if (existente.psicologaAsignadaId !== null) {
+      return 'YA_TOMADO';
+    }
+
+    // Update condicional: el `WHERE psicologaAsignadaId IS NULL` re-evaluado por Postgres bajo
+    // el lock de fila hace que, si dos requests llegan aquí a la vez, solo uno afecte una fila —
+    // el otro recibe `count: 0` sin haber escrito nada (misma garantía que un `INSERT ...
+    // WHERE NOT EXISTS`, sin necesitar SQL crudo).
+    const resultado = await this.prisma.atencionPsicologica.updateMany({
+      where: { id: existente.id, psicologaAsignadaId: null },
+      data: {
+        psicologaAsignadaId: params.psicologaId,
+        tomadaEn: new Date(),
+        actualizadoPorId: params.psicologaId,
+      },
+    });
+    return resultado.count === 1 ? 'TOMADO' : 'YA_TOMADO';
+  }
+
+  async listarReferenciasSinTomar(): Promise<ReferenciaSinTomar[]> {
+    const referidos = await this.prisma.referidoArea.findMany({
+      where: {
+        area: 'PSICOLOGIA',
+        expediente: {
+          OR: [
+            { atencionPsicologica: null },
+            { atencionPsicologica: { is: { psicologaAsignadaId: null } } },
+          ],
+        },
+      },
+      select: {
+        createdAt: true,
+        expediente: {
+          select: {
+            id: true,
+            numero: true,
+            usuaria: { select: { nombres: true, apellidos: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 200,
+    });
+
+    return referidos.map((referido) => ({
+      expedienteId: referido.expediente.id,
+      numero: referido.expediente.numero,
+      usuariaNombreCompleto: `${referido.expediente.usuaria.nombres} ${referido.expediente.usuaria.apellidos}`,
+      fechaReferido: referido.createdAt.toISOString(),
+    }));
+  }
+
+  async contarCasosActivos(psicologaId: string): Promise<number> {
+    return this.prisma.atencionPsicologica.count({
+      where: { psicologaAsignadaId: psicologaId, estado: { not: 'CIERRE' } },
+    });
+  }
+
+  async contarIniciadosEnRango(
+    psicologaId: string,
+    desde: Date,
+    hasta: Date,
+  ): Promise<number> {
+    return this.prisma.atencionPsicologica.count({
+      where: {
+        psicologaAsignadaId: psicologaId,
+        createdAt: { gte: desde, lte: hasta },
+      },
+    });
+  }
+
+  async contarCerradosEnRango(
+    psicologaId: string,
+    desde: Date,
+    hasta: Date,
+  ): Promise<number> {
+    return this.prisma.atencionPsicologica.count({
+      where: {
+        psicologaAsignadaId: psicologaId,
+        estado: 'CIERRE',
+        fechaCierre: { gte: desde, lte: hasta },
+      },
+    });
+  }
+
+  async listarProcesosSinProximaCita(psicologaId: string) {
+    const atenciones = await this.prisma.atencionPsicologica.findMany({
+      where: {
+        psicologaAsignadaId: psicologaId,
+        estado: { not: 'CIERRE' },
+        citas: {
+          none: { estado: 'PROGRAMADA', fechaHora: { gte: new Date() } },
+        },
+      },
+      select: {
+        expedienteId: true,
+        estado: true,
+        expediente: {
+          select: {
+            numero: true,
+            usuaria: { select: { nombres: true, apellidos: true } },
+          },
+        },
+        citas: {
+          select: { fechaHora: true },
+          orderBy: { fechaHora: 'desc' },
+          take: 1,
+        },
+      },
+      orderBy: { updatedAt: 'asc' },
+    });
+
+    return atenciones.map((atencion) => ({
+      expedienteId: atencion.expedienteId,
+      numero: atencion.expediente.numero,
+      usuariaNombreCompleto: `${atencion.expediente.usuaria.nombres} ${atencion.expediente.usuaria.apellidos}`,
+      estado: atencion.estado,
+      ultimaCitaFechaHora: atencion.citas[0]?.fechaHora.toISOString() ?? null,
+    }));
+  }
+
+  async listarCerradosDesde(psicologaId: string, desde: Date) {
+    const atenciones = await this.prisma.atencionPsicologica.findMany({
+      where: {
+        psicologaAsignadaId: psicologaId,
+        estado: 'CIERRE',
+        fechaCierre: { gte: desde },
+      },
+      select: {
+        expedienteId: true,
+        fechaCierre: true,
+        motivoCierre: true,
+        expediente: {
+          select: {
+            numero: true,
+            usuaria: { select: { nombres: true, apellidos: true } },
+          },
+        },
+      },
+      orderBy: { fechaCierre: 'desc' },
+    });
+
+    return atenciones.map((atencion) => ({
+      expedienteId: atencion.expedienteId,
+      numero: atencion.expediente.numero,
+      usuariaNombreCompleto: `${atencion.expediente.usuaria.nombres} ${atencion.expediente.usuaria.apellidos}`,
+      // No-null: el `where` ya exige `estado: 'CIERRE'`, que siempre fija `fechaCierre` (ver `actualizarEstado`).
+      fechaCierre: atencion.fechaCierre!.toISOString(),
+      motivoCierre: atencion.motivoCierre,
+    }));
+  }
+
+  async buscarExpedientes(
+    params: BuscarExpedientesParams,
+  ): Promise<PaginaConCursorRepo<ExpedienteResumenBusqueda>> {
+    const atenciones = await this.prisma.atencionPsicologica.findMany({
+      where: {
+        psicologaAsignadaId: params.psicologaId,
+        estado: params.estado,
+        expediente: {
+          usuaria: params.municipio
+            ? { municipio: params.municipio as MunicipioAltaVerapaz }
+            : undefined,
+          OR: params.q
+            ? [
+                { numero: { contains: params.q, mode: 'insensitive' } },
+                {
+                  usuaria: {
+                    OR: [
+                      { nombres: { contains: params.q, mode: 'insensitive' } },
+                      {
+                        apellidos: { contains: params.q, mode: 'insensitive' },
+                      },
+                    ],
+                  },
+                },
+              ]
+            : undefined,
+        },
+      },
+      select: {
+        id: true,
+        expedienteId: true,
+        estado: true,
+        expediente: {
+          select: {
+            numero: true,
+            usuaria: {
+              select: { nombres: true, apellidos: true, municipio: true },
+            },
+          },
+        },
+      },
+      orderBy: { id: 'asc' },
+      take: params.limite + LIMITE_EXTRA_CURSOR,
+      ...(params.cursor ? { cursor: { id: params.cursor }, skip: 1 } : {}),
+    });
+
+    const hayMas = atenciones.length > params.limite;
+    const pagina = hayMas ? atenciones.slice(0, params.limite) : atenciones;
+
+    return {
+      items: pagina.map((atencion) => ({
+        expedienteId: atencion.expedienteId,
+        numero: atencion.expediente.numero,
+        usuariaNombreCompleto: `${atencion.expediente.usuaria.nombres} ${atencion.expediente.usuaria.apellidos}`,
+        estado: atencion.estado,
+        municipio: atencion.expediente.usuaria.municipio,
+      })),
+      siguienteCursor: hayMas ? pagina[pagina.length - 1].id : null,
+    };
+  }
+
+  async obtenerResumenExpediente(expedienteId: string) {
+    const atencion = await this.prisma.atencionPsicologica.findUnique({
+      where: { expedienteId },
+      include: INCLUDE_ATENCION,
+    });
+    if (!atencion) return null;
+
+    const [totalCitas, proximaCitaCruda] = await Promise.all([
+      this.prisma.citaPsicologica.count({
+        where: { atencionId: atencion.id },
+      }),
+      this.prisma.citaPsicologica.findFirst({
+        where: {
+          atencionId: atencion.id,
+          estado: 'PROGRAMADA',
+          fechaHora: { gte: new Date() },
+        },
+        include: INCLUDE_CITA,
+        orderBy: { fechaHora: 'asc' },
+      }),
+    ]);
+
+    const expediente = await this.prisma.expediente.findUniqueOrThrow({
+      where: { id: expedienteId },
+      select: {
+        numero: true,
+        usuaria: { select: { nombres: true, apellidos: true } },
+      },
+    });
+
+    const proximaCita = proximaCitaCruda
+      ? {
+          ...mapearCita(proximaCitaCruda),
+          expedienteId,
+          usuariaNombreCompleto: `${expediente.usuaria.nombres} ${expediente.usuaria.apellidos}`,
+        }
+      : null;
+
+    return {
+      expedienteId,
+      numero: expediente.numero,
+      usuariaNombreCompleto: `${expediente.usuaria.nombres} ${expediente.usuaria.apellidos}`,
+      estado: atencion.estado,
+      psicologaAsignada: atencion.psicologaAsignada?.nombreCompleto ?? null,
+      tomadaEn: atencion.tomadaEn?.toISOString() ?? null,
+      fechaInicio: atencion.fechaInicio?.toISOString() ?? null,
+      fechaCierre: atencion.fechaCierre?.toISOString() ?? null,
+      motivoCierre: atencion.motivoCierre,
+      historialEstados: atencion.cambiosEstado.map((cambio) => ({
+        id: cambio.id,
+        estadoAnterior: cambio.estadoAnterior,
+        estadoNuevo: cambio.estadoNuevo,
+        motivo: cambio.motivo,
+        registradoPor: cambio.registradoPor.nombreCompleto,
+        createdAt: cambio.createdAt.toISOString(),
+      })),
+      totalCitas,
+      proximaCita,
+    };
   }
 }
