@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-export type BadgeTono = 'neutral' | 'success' | 'warning' | 'danger'
+export type BadgeTono = 'neutral' | 'success' | 'warning' | 'danger' | 'brand'
 
 interface BadgeProps {
   tono?: BadgeTono
@@ -13,6 +13,7 @@ const CLASES_TONO: Record<BadgeTono, string> = {
   success: 'bg-green-100 text-green-700',
   warning: 'bg-amber-100 text-amber-700',
   danger: 'bg-red-100 text-red-700',
+  brand: 'bg-brand-100 text-brand-700',
 }
 
 export default function Badge({ tono = 'neutral', children }: BadgeProps) {
