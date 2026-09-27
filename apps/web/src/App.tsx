@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import AdminLayout from './pages/admin/AdminLayout'
 import Usuarios from './pages/admin/Usuarios'
 import AreaLayout from './pages/area-atencion/AreaLayout'
@@ -8,11 +8,20 @@ import JuridicaExpediente from './pages/JuridicaExpediente'
 import Login from './pages/Login'
 import Medica from './pages/Medica'
 import MedicaExpediente from './pages/MedicaExpediente'
-import AgendaPsicologia from './features/psicologia/AgendaPsicologia'
-import ReportePsicologia from './features/psicologia/ReportePsicologia'
+import AreaAtencion from './features/psicologia/atencion/AreaAtencion'
+import Agenda from './features/psicologia/agenda/Agenda'
+import BuscarExpedientes from './features/psicologia/expedientes/BuscarExpedientes'
+import ExpedienteUsuaria from './features/psicologia/expedientes/ExpedienteUsuaria'
+import PestanaResumen from './features/psicologia/expedientes/PestanaResumen'
+import PestanaHistorialCitas from './features/psicologia/expedientes/PestanaHistorialCitas'
+import PestanaConsultas from './features/psicologia/expedientes/PestanaConsultas'
+import PestanaDocumentos from './features/psicologia/expedientes/PestanaDocumentos'
+import PestanaDatosUsuaria from './features/psicologia/expedientes/PestanaDatosUsuaria'
+import ProgramarCita from './features/psicologia/citas/ProgramarCita'
+import DetalleCita from './features/psicologia/citas/DetalleCita'
+import RegistroConsulta from './features/psicologia/citas/RegistroConsulta'
+import Indicadores from './features/psicologia/indicadores/Indicadores'
 import PsicologiaLayout from './pages/psicologia/PsicologiaLayout'
-import Psicologica from './pages/Psicologica'
-import PsicologicaExpediente from './pages/PsicologicaExpediente'
 import Expediente from './pages/trabajo-social/Expediente'
 import Inicio from './pages/trabajo-social/Inicio'
 import TrabajoSocialLayout from './pages/trabajo-social/TrabajoSocialLayout'
@@ -20,6 +29,12 @@ import RegistrarUsuaria from './features/registro-usuaria/RegistrarUsuaria'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRoute'
 import { useAuthStore } from './store/auth.store'
+
+/** Redirect de compatibilidad para la ruta vieja `/psicologia/pacientes/:id` (§8.1 del plan). */
+function RedirigirAExpediente() {
+  const { id } = useParams<{ id: string }>()
+  return <Navigate to={`/psicologia/expedientes/${id}`} replace />
+}
 
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth)
@@ -49,10 +64,22 @@ function App() {
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['PSICOLOGIA']} />}>
         <Route path="/psicologia" element={<PsicologiaLayout />}>
-          <Route index element={<Psicologica />} />
-          <Route path="pacientes/:id" element={<PsicologicaExpediente />} />
-          <Route path="agenda" element={<AgendaPsicologia />} />
-          <Route path="reporte" element={<ReportePsicologia />} />
+          <Route index element={<AreaAtencion />} />
+          <Route path="agenda" element={<Agenda />} />
+          <Route path="expedientes" element={<BuscarExpedientes />} />
+          <Route path="expedientes/:expedienteId" element={<ExpedienteUsuaria />}>
+            <Route index element={<PestanaResumen />} />
+            <Route path="citas" element={<PestanaHistorialCitas />} />
+            <Route path="consultas" element={<PestanaConsultas />} />
+            <Route path="documentos" element={<PestanaDocumentos />} />
+            <Route path="datos" element={<PestanaDatosUsuaria />} />
+          </Route>
+          <Route path="expedientes/:expedienteId/citas/nueva" element={<ProgramarCita />} />
+          <Route path="citas/:citaId" element={<DetalleCita />} />
+          <Route path="citas/:citaId/atencion" element={<RegistroConsulta />} />
+          <Route path="indicadores" element={<Indicadores />} />
+          <Route path="pacientes/:id" element={<RedirigirAExpediente />} />
+          <Route path="reporte" element={<Navigate to="/psicologia/indicadores" replace />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['MEDICA']} />}>
