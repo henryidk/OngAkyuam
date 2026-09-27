@@ -60,3 +60,47 @@ export function edadEnAniosGT(fechaNacimientoIso: string): number {
   const hoy = DateTime.now().setZone(GUATEMALA_TZ)
   return Math.floor(hoy.diff(nacimiento, 'years').years)
 }
+
+/**
+ * Lunes 00:00 de la semana actual en Guatemala, como instante UTC. Usa aritmética explícita
+ * sobre `weekday` (1 = lunes ISO) en vez de `.startOf('week')` de Luxon, cuyo primer día
+ * depende del locale del proceso — aquí no puede quedar ambiguo entre domingo y lunes.
+ */
+export function inicioSemanaActualGT(): Date {
+  const hoy = DateTime.now().setZone(GUATEMALA_TZ)
+  return hoy
+    .minus({ days: hoy.weekday - 1 })
+    .startOf('day')
+    .toUTC()
+    .toJSDate()
+}
+
+/** Medianoche del primer día del mes (`anio`-`mes`) en Guatemala, como instante UTC — límite inferior para agregados mensuales. */
+export function inicioMesGT(anio: number, mes: number): Date {
+  return DateTime.fromObject({ year: anio, month: mes, day: 1 }, { zone: GUATEMALA_TZ })
+    .startOf('month')
+    .toUTC()
+    .toJSDate()
+}
+
+/** Último instante del mes (`anio`-`mes`) en Guatemala, como instante UTC — límite superior para agregados mensuales. */
+export function finMesGT(anio: number, mes: number): Date {
+  return DateTime.fromObject({ year: anio, month: mes, day: 1 }, { zone: GUATEMALA_TZ })
+    .endOf('month')
+    .toUTC()
+    .toJSDate()
+}
+
+/**
+ * Calendario "YYYY-MM-DD" en Guatemala al que pertenece un instante — para agrupar filas ya
+ * leídas de la base de datos por día/mes en zona horaria de Guatemala, nunca con `date_trunc`
+ * sobre UTC (§7.5 del plan de psicología).
+ */
+export function fechaCalendarioGT(fecha: Date): string {
+  return DateTime.fromJSDate(fecha).setZone(GUATEMALA_TZ).toISODate()!
+}
+
+/** Mes "MM" (01-12) en Guatemala al que pertenece un instante — clave de agrupación mensual en agregados. */
+export function mesCalendarioGT(fecha: Date): string {
+  return DateTime.fromJSDate(fecha).setZone(GUATEMALA_TZ).toFormat('LL')
+}
