@@ -142,6 +142,10 @@ export class ExpedientesRepository implements IExpedientesRepository {
         fecha,
         tipoRegistro: datosCaso.tipoRegistro,
         tipologiaDelito: datosCaso.tipologiaDelito,
+        // Mientras el wizard no capture la fecha de ingreso por separado (paso "Tipo de
+        // registro", etapa 5), coincide con la fecha del caso — mismo criterio que el backfill.
+        fechaIngresoAlbergue:
+          datosCaso.tipoRegistro === 'INTERNA' ? fecha : undefined,
         creadoPorId: datosCaso.creadoPorId,
         agresor: datosCaso.agresor ? { create: datosCaso.agresor } : undefined,
         ninos:
@@ -186,7 +190,6 @@ export class ExpedientesRepository implements IExpedientesRepository {
         agresor: true,
         ninos: true,
         referidos: { select: { area: true } },
-        documentos: true,
       },
     });
     if (!expediente) {
@@ -200,6 +203,13 @@ export class ExpedientesRepository implements IExpedientesRepository {
       tipoRegistro: expediente.tipoRegistro,
       tipologiaDelito: expediente.tipologiaDelito,
       usuariaId: expediente.usuariaId,
+      observaciones: expediente.observaciones,
+      fechaIngresoAlbergue: expediente.fechaIngresoAlbergue
+        ? fechaColumnaISO(expediente.fechaIngresoAlbergue)
+        : null,
+      fechaEgresoAlbergue: expediente.fechaEgresoAlbergue
+        ? fechaColumnaISO(expediente.fechaEgresoAlbergue)
+        : null,
       agresor: expediente.agresor
         ? {
             nombres: expediente.agresor.nombres,
@@ -219,13 +229,6 @@ export class ExpedientesRepository implements IExpedientesRepository {
       areasReferidas: expediente.referidos.map(
         (referido) => referido.area as AreaAtencion,
       ),
-      documentos: expediente.documentos.map((documento) => ({
-        id: documento.id,
-        tipo: documento.tipo,
-        nombreArchivo: documento.nombreArchivo,
-        tamanioBytes: documento.tamanioBytes,
-        createdAt: documento.createdAt.toISOString(),
-      })),
     };
   }
 }

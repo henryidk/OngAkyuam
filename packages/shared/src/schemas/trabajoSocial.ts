@@ -3,6 +3,7 @@ import { AREAS_ATENCION, TIPOS_REGISTRO } from '../catalogos/registroUsuaria.js'
 import { areaAtencionSchema } from './registroUsuaria.js'
 import type { AreaAtencion, TipoRegistro } from './registroUsuaria.js'
 import { tipoDocumentoSchema } from './documentos.js'
+import { booleanoQuerySchema } from './query.js'
 import type { TipoDocumento } from './documentos.js'
 import { ESTADOS_TS, PRIORIDADES_REFERIDO } from '../catalogos/trabajoSocial.js'
 
@@ -63,7 +64,7 @@ export const reportePoblacionQuerySchema = z.object({
   desde: fechaCalendarioSchema,
   hasta: fechaCalendarioSchema,
   tipoRegistro: filtroTipoRegistroReporteSchema.default('TODOS'),
-  incluirNinos: z.coerce.boolean().default(true),
+  incluirNinos: booleanoQuerySchema.default(true),
 })
 export type ReportePoblacionQuery = z.infer<typeof reportePoblacionQuerySchema>
 

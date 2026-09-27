@@ -72,4 +72,20 @@ export class R2StorageService implements IObjectStorage {
       { expiresIn: R2StorageService.EXPIRACION_DESCARGA_SEGUNDOS },
     );
   }
+
+  async generarUrlVistaPrevia(
+    clave: string,
+    mimeType: string,
+  ): Promise<string> {
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: clave,
+        ResponseContentDisposition: 'inline',
+        ResponseContentType: mimeType,
+      }),
+      { expiresIn: R2StorageService.EXPIRACION_DESCARGA_SEGUNDOS },
+    );
+  }
 }

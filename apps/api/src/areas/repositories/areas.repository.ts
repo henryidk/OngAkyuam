@@ -42,7 +42,10 @@ export class AreasRepository implements IAreasRepository {
         usuaria: true,
         agresor: true,
         ninos: true,
-        documentos: { where: { visibilidadAreas: { some: { area } } } },
+        // Las áreas nunca ven versiones reemplazadas: solo Trabajo Social ve el historial.
+        documentos: {
+          where: { vigente: true, visibilidadAreas: { some: { area } } },
+        },
       },
     });
     if (!expediente) {
@@ -102,6 +105,7 @@ export class AreasRepository implements IAreasRepository {
       where: {
         id: documentoId,
         expedienteId,
+        vigente: true,
         visibilidadAreas: { some: { area } },
       },
       select: { claveR2: true, nombreArchivo: true },

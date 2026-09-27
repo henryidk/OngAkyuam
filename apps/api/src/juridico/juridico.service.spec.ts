@@ -69,6 +69,7 @@ describe('JuridicoService', () => {
       generarUrlDescarga: jest
         .fn()
         .mockResolvedValue('https://descarga.firmada/x'),
+      generarUrlVistaPrevia: jest.fn(),
     };
     personalRepository = {
       listar: jest.fn(),

@@ -163,6 +163,10 @@ model Expediente {
   fecha           DateTime          @db.Date
   tipoRegistro    TipoRegistro
   tipologiaDelito TipologiaDelito[]
+  observaciones   String?           @db.Text
+  // Solo INTERNA. Fechas de calendario (no instantes): se capturan del formulario en papel.
+  fechaIngresoAlbergue DateTime? @db.Date
+  fechaEgresoAlbergue  DateTime? @db.Date
   creadoPorId     String
   creadoPor       Usuario           @relation(fields: [creadoPorId], references: [id])
   createdAt       DateTime          @default(now()) @db.Timestamptz(3)
@@ -229,6 +233,8 @@ enum TipoDocumento {
   CONVENIO_INGRESO
   RECEPCION_BIENES
   FORMATO_ATENCION_PSICOLOGICA
+  CONVENIO_EGRESO
+  ACCIONES_REALIZADAS
 }
 
 model Documento {
@@ -244,6 +250,15 @@ model Documento {
   subidoPor     Usuario       @relation(fields: [subidoPorId], references: [id])
   createdAt     DateTime      @default(now()) @db.Timestamptz(3)
 
+  // Versionado de los formularios de Trabajo Social: "Actualizar" nunca borra, crea la
+  // versión siguiente y marca esta como no vigente. `reemplazaAId` @unique impide que dos
+  // subidas concurrentes reemplacen la misma versión.
+  version        Int        @default(1)
+  vigente        Boolean    @default(true)
+  reemplazaAId   String?    @unique
+  reemplazaA     Documento? @relation("VersionDocumento", fields: [reemplazaAId], references: [id])
+  reemplazadoPor Documento? @relation("VersionDocumento")
+
   visibilidadAreas DocumentoVisibilidadArea[]
 
   // Vínculo opcional al "Formato General" escaneado de una cita de psicología. SetNull (no
@@ -254,6 +269,7 @@ model Documento {
 
   @@index([expedienteId])
   @@index([citaPsicologicaId])
+  @@index([expedienteId, tipo, vigente])
 }
 
 // Visibilidad de un documento para un área — permiso explícito y separado de ReferidoArea.

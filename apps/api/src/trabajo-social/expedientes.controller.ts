@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import {
   crearExpedienteSchema,
   type CrearExpedienteInput,
@@ -27,7 +35,7 @@ export class ExpedientesController {
 
   @Get(':id')
   async obtenerDetalle(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.expedientesService.obtenerDetalle(id, contexto);

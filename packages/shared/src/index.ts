@@ -14,6 +14,7 @@ export * from "./catalogos/personal.js";
 export * from "./catalogos/administracion.js";
 export * from "./catalogos/psicologia.js";
 export * from "./catalogos/trabajoSocial.js";
+export * from "./schemas/query.js";
 export * from "./schemas/registroUsuaria.js";
 export * from "./schemas/areas.js";
 export * from "./schemas/documentos.js";

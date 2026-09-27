@@ -218,13 +218,9 @@ export interface ExpedienteDetalleCaso {
     telefono: string | null
     direccion: string | null
   } | null
+  observaciones: string | null
+  fechaIngresoAlbergue: string | null
+  fechaEgresoAlbergue: string | null
   ninos: Nino[]
   areasReferidas: AreaAtencion[]
-  documentos: {
-    id: string
-    tipo: TipoDocumento
-    nombreArchivo: string
-    tamanioBytes: number
-    createdAt: string
-  }[]
 }

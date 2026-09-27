@@ -80,6 +80,7 @@ describe('RegistroConsultaService', () => {
       subirObjeto: jest.fn(),
       eliminarObjeto: jest.fn(),
       generarUrlDescarga: jest.fn(),
+      generarUrlVistaPrevia: jest.fn(),
     };
     auditService = {
       registrar: jest.fn(),

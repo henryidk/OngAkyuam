@@ -14,4 +14,10 @@ export interface IObjectStorage {
    * nunca se ejecute en el navegador de quien lo descarga.
    */
   generarUrlDescarga(clave: string, nombreDescarga?: string): Promise<string>;
+  /**
+   * URL firmada para mostrar el archivo dentro de la app (vista previa del drawer). Fuerza
+   * `Content-Type` al MIME registrado al subir — el caller solo debe pedirla para MIME de la
+   * lista blanca (PDF/imágenes), nunca para algo que el navegador pueda ejecutar.
+   */
+  generarUrlVistaPrevia(clave: string, mimeType: string): Promise<string>;
 }

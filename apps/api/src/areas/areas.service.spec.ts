@@ -39,6 +39,7 @@ describe('AreasService', () => {
       generarUrlDescarga: jest
         .fn()
         .mockResolvedValue('https://r2.example/firmada'),
+      generarUrlVistaPrevia: jest.fn(),
     };
     auditService = {
       registrar: jest.fn(),
