@@ -6,6 +6,9 @@ import type {
   DocumentosCaso,
   DocumentoSubido,
   ExpedienteCreado,
+  ExpedienteDetalleCaso,
+  ListarUsuariasQuery,
+  ListaUsuariasTs,
   MatrizAccesos,
   ProfesionalArea,
   ReferidoCreado,
@@ -91,6 +94,15 @@ export function crearCasoParaUsuaria(usuariaId: string, datosCaso: DatosCaso) {
   return api
     .post<ExpedienteCreado>(`/trabajo-social/usuarias/${usuariaId}/expedientes`, datosCaso)
     .then((res) => res.data)
+}
+
+/** Lista de Usuarias: filtro por estado, búsqueda (nombre, DPI o número) y página. */
+export function listarUsuarias(query: Partial<ListarUsuariasQuery>) {
+  return api.get<ListaUsuariasTs>('/trabajo-social/usuarias', { params: query }).then((res) => res.data)
+}
+
+export function obtenerDetalleExpediente(expedienteId: string) {
+  return api.get<ExpedienteDetalleCaso>(`/trabajo-social/expedientes/${expedienteId}`).then((res) => res.data)
 }
 
 export function obtenerUsuaria(usuariaId: string) {

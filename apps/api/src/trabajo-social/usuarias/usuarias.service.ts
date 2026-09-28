@@ -5,23 +5,61 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type {
-  BuscarUsuariaQuery,
-  EditarIdentidadUsuariaInput,
-  UsuariaExpedienteHub,
-  UsuariaResumenBusqueda,
+import {
+  USUARIAS_POR_PAGINA,
+  type BuscarUsuariaQuery,
+  type EditarIdentidadUsuariaInput,
+  type ExpedienteResumenCaso,
+  type ListarUsuariasQuery,
+  type ListaUsuariasTs,
+  type UsuariaExpedienteHub,
+  type UsuariaResumenBusqueda,
 } from '@akyuam/shared';
 import type { MunicipioAltaVerapaz } from '@prisma/client';
 import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
+import { EstadoTsService } from '../estado/estado-ts.service';
 import { USUARIAS_REPOSITORY } from './interfaces/usuarias-repository.interface';
 import type {
+  BusquedaListaUsuarias,
+  CasoHubRow,
   DatosIdentidadUsuariaParams,
   IUsuariasRepository,
+  UsuariaHubRow,
 } from './interfaces/usuarias-repository.interface';
 
 const LONGITUD_MINIMA_BUSQUEDA_NOMBRE = 3;
 const LIMITE_RESULTADOS_BUSQUEDA = 20;
+const PATRON_NUMERO_EXPEDIENTE = /^(\d{1,4})-(\d{4})$/;
+const PATRON_DPI = /^\d{13}$/;
+
+/**
+ * Qué quiso buscar quien escribió `q` en la lista: número de expediente (acepta "5-2026" por
+ * "05-2026"), DPI exacto o nombre (trigram, mínimo 3 letras).
+ */
+function interpretarBusqueda(
+  termino: string | undefined,
+): BusquedaListaUsuarias | undefined {
+  if (!termino) {
+    return undefined;
+  }
+  const numero = PATRON_NUMERO_EXPEDIENTE.exec(termino);
+  if (numero) {
+    return {
+      tipo: 'numeroExpediente',
+      valor: `${numero[1].padStart(2, '0')}-${numero[2]}`,
+    };
+  }
+  if (PATRON_DPI.test(termino)) {
+    return { tipo: 'dpi', valor: termino };
+  }
+  if (termino.length < LONGITUD_MINIMA_BUSQUEDA_NOMBRE) {
+    throw new BadRequestException(
+      `Escribe al menos ${LONGITUD_MINIMA_BUSQUEDA_NOMBRE} letras, un DPI o un número de expediente`,
+    );
+  }
+  return { tipo: 'nombre', valor: termino };
+}
 
 function vacioANulo(valor: string): string | null {
   return valor === '' ? null : valor;
@@ -53,7 +91,7 @@ function mapearParametrosIdentidad(
 
 // Nombres de campos de identidad que puede tocar `actualizarIdentidad`, en el mismo orden en
 // que se comparan para el detalle de auditoría — nunca sus valores (RNF-02).
-const CAMPOS_IDENTIDAD: (keyof UsuariaExpedienteHub)[] = [
+const CAMPOS_IDENTIDAD: (keyof UsuariaHubRow)[] = [
   'nombres',
   'apellidos',
   'dpi',
@@ -68,12 +106,27 @@ const CAMPOS_IDENTIDAD: (keyof UsuariaExpedienteHub)[] = [
 ];
 
 function camposCambiados(
-  anterior: UsuariaExpedienteHub,
-  actualizado: UsuariaExpedienteHub,
+  anterior: UsuariaHubRow,
+  actualizado: UsuariaHubRow,
 ): string[] {
   return CAMPOS_IDENTIDAD.filter(
     (campo) => anterior[campo] !== actualizado[campo],
   );
+}
+
+function resumirCaso(
+  caso: CasoHubRow,
+  estado: ExpedienteResumenCaso['estado'],
+): ExpedienteResumenCaso {
+  return {
+    id: caso.id,
+    numero: caso.numero,
+    fecha: caso.fecha,
+    tipoRegistro: caso.tipoRegistro,
+    enAlbergue: caso.enAlbergue,
+    areasReferidas: caso.referidos.map((referido) => referido.area),
+    estado,
+  };
 }
 
 @Injectable()
@@ -82,7 +135,39 @@ export class UsuariasService {
     @Inject(USUARIAS_REPOSITORY)
     private readonly usuariasRepository: IUsuariasRepository,
     private readonly auditService: AuditService,
+    private readonly estadoTsService: EstadoTsService,
   ) {}
+
+  async listar(
+    query: ListarUsuariasQuery,
+    contexto: ContextoAuditoria,
+  ): Promise<ListaUsuariasTs> {
+    const busqueda = interpretarBusqueda(query.q);
+    const lista = await this.usuariasRepository.listar({
+      filtro: query.estado,
+      busqueda,
+      pagina: query.pagina,
+      porPagina: USUARIAS_POR_PAGINA,
+    });
+
+    // Solo el tipo de búsqueda y el filtro — nunca el término escrito (RNF-02).
+    await this.auditService.registrar({
+      usuarioId: contexto.usuarioId,
+      username: contexto.username,
+      accion: 'USUARIAS_LISTADAS',
+      entidad: 'Usuaria',
+      ipAddress: contexto.ipAddress,
+      userAgent: contexto.userAgent,
+      detalles: {
+        filtro: query.estado ?? 'TODAS',
+        busqueda: busqueda?.tipo ?? null,
+        pagina: query.pagina,
+        resultados: lista.filas.length,
+      },
+    });
+
+    return lista;
+  }
 
   async buscar(
     query: BuscarUsuariaQuery,
@@ -141,7 +226,7 @@ export class UsuariasService {
       detalles: { totalCasos: hub.casos.length },
     });
 
-    return hub;
+    return this.conEstado(hub);
   }
 
   async actualizarIdentidad(
@@ -180,7 +265,29 @@ export class UsuariasService {
       detalles: { campos: camposCambiados(anterior, actualizado) },
     });
 
-    return actualizado;
+    return this.conEstado(actualizado);
+  }
+
+  /** Agrega el estado derivado de cada caso y el detalle por área del caso activo. */
+  private async conEstado(hub: UsuariaHubRow): Promise<UsuariaExpedienteHub> {
+    const estados = await Promise.all(
+      hub.casos.map((caso) =>
+        this.estadoTsService.resolverCaso(
+          caso.referidos.map((referido) => ({
+            ...referido,
+            expedienteId: caso.id,
+          })),
+        ),
+      ),
+    );
+    const [casoActivo] = hub.casos;
+    return {
+      ...hub,
+      casos: hub.casos.map((caso, indice) =>
+        resumirCaso(caso, estados[indice].estado),
+      ),
+      casoActivo: casoActivo ? { id: casoActivo.id, ...estados[0] } : null,
+    };
   }
 
   private async buscarPorDpiExacto(

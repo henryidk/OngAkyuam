@@ -5,17 +5,23 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { UsuariasService } from './usuarias.service';
-import type { IUsuariasRepository } from './interfaces/usuarias-repository.interface';
-import type { AuditService } from '../../auth/services/audit.service';
 import type {
-  UsuariaExpedienteHub,
+  CasoHubRow,
+  IUsuariasRepository,
+  UsuariaHubRow,
+} from './interfaces/usuarias-repository.interface';
+import type { AuditService } from '../../auth/services/audit.service';
+import type { EstadoTsService } from '../estado/estado-ts.service';
+import type {
   EditarIdentidadUsuariaInput,
+  ListaUsuariasTs,
 } from '@akyuam/shared';
 
 describe('UsuariasService', () => {
   let service: UsuariasService;
   let usuariasRepository: jest.Mocked<IUsuariasRepository>;
   let auditService: jest.Mocked<AuditService>;
+  let estadoTsService: jest.Mocked<EstadoTsService>;
 
   const contexto = {
     usuarioId: 'ts-1',
@@ -24,9 +30,7 @@ describe('UsuariasService', () => {
     userAgent: 'jest',
   };
 
-  function hub(
-    overrides: Partial<UsuariaExpedienteHub> = {},
-  ): UsuariaExpedienteHub {
+  function hub(overrides: Partial<UsuariaHubRow> = {}): UsuariaHubRow {
     return {
       id: 'u-1',
       createdAt: '2026-01-01T00:00:00.000Z',
@@ -66,8 +70,35 @@ describe('UsuariasService', () => {
     };
   }
 
+  function caso(overrides: Partial<CasoHubRow> = {}): CasoHubRow {
+    return {
+      id: 'e-1',
+      numero: '01-2026',
+      fecha: '2026-01-01',
+      tipoRegistro: 'EXTERNA',
+      enAlbergue: false,
+      referidos: [],
+      ...overrides,
+    };
+  }
+
+  const listaVacia: ListaUsuariasTs = {
+    filas: [],
+    pagina: 1,
+    porPagina: 20,
+    total: 0,
+    contadores: {
+      TODAS: 0,
+      SIN_REFERIR: 0,
+      EN_ATENCION: 0,
+      EN_ALBERGUE: 0,
+      SIN_ATENCION_ACTIVA: 0,
+    },
+  };
+
   beforeEach(() => {
     usuariasRepository = {
+      listar: jest.fn().mockResolvedValue(listaVacia),
       buscarPorDpi: jest.fn(),
       buscarPorNombre: jest.fn(),
       obtenerHub: jest.fn(),
@@ -78,7 +109,58 @@ describe('UsuariasService', () => {
       registrar: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
 
-    service = new UsuariasService(usuariasRepository, auditService);
+    estadoTsService = {
+      resolverCaso: jest
+        .fn()
+        .mockResolvedValue({ estado: 'SIN_REFERIR', areas: [] }),
+    } as unknown as jest.Mocked<EstadoTsService>;
+
+    service = new UsuariasService(
+      usuariasRepository,
+      auditService,
+      estadoTsService,
+    );
+  });
+
+  describe('listar', () => {
+    it.each([
+      ['5-2026', { tipo: 'numeroExpediente', valor: '05-2026' }],
+      ['12-2026', { tipo: 'numeroExpediente', valor: '12-2026' }],
+      ['0000000000000', { tipo: 'dpi', valor: '0000000000000' }],
+      ['Ana', { tipo: 'nombre', valor: 'Ana' }],
+    ])('interpreta "%s" como la búsqueda correcta', async (q, busqueda) => {
+      await service.listar({ q, pagina: 1 }, contexto);
+
+      expect(usuariasRepository.listar).toHaveBeenCalledWith({
+        filtro: undefined,
+        busqueda,
+        pagina: 1,
+        porPagina: 20,
+      });
+    });
+
+    it('rechaza un nombre de menos de 3 letras sin consultar', async () => {
+      await expect(
+        service.listar({ q: 'An', pagina: 1 }, contexto),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(usuariasRepository.listar).not.toHaveBeenCalled();
+    });
+
+    it('audita el tipo de búsqueda y el filtro, nunca el término escrito', async () => {
+      await service.listar(
+        { q: '0000000000000', estado: 'EN_ALBERGUE', pagina: 2 },
+        contexto,
+      );
+
+      const detalles = auditService.registrar.mock.calls[0][0].detalles;
+      expect(JSON.stringify(detalles)).not.toContain('0000000000000');
+      expect(detalles).toEqual({
+        filtro: 'EN_ALBERGUE',
+        busqueda: 'dpi',
+        pagina: 2,
+        resultados: 0,
+      });
+    });
   });
 
   describe('buscar', () => {
@@ -143,12 +225,68 @@ describe('UsuariasService', () => {
       const resultado = await service.obtenerHub('u-1', contexto);
 
       expect(resultado.id).toBe('u-1');
+      expect(resultado.casoActivo).toBeNull();
       expect(auditService.registrar).toHaveBeenCalledWith(
         expect.objectContaining({
           accion: 'EXPEDIENTE_CONSULTADO',
           entidad: 'Usuaria',
         }),
       );
+    });
+
+    it('agrega el estado de cada caso y el detalle por área del caso activo', async () => {
+      const referidoEn = new Date('2026-02-01T15:00:00.000Z');
+      usuariasRepository.obtenerHub.mockResolvedValue(
+        hub({
+          casos: [
+            caso({
+              id: 'e-2',
+              referidos: [
+                {
+                  area: 'JURIDICO',
+                  prioridad: 'NORMAL',
+                  profesional: null,
+                  createdAt: referidoEn,
+                },
+              ],
+            }),
+            caso({ id: 'e-1' }),
+          ],
+        }),
+      );
+      const areaJuridico = {
+        area: 'JURIDICO' as const,
+        estado: 'ACTIVA' as const,
+        detalle: 'Sin procesos abiertos todavía',
+        profesional: null,
+        prioridad: 'NORMAL' as const,
+        referidoEn: referidoEn.toISOString(),
+      };
+      estadoTsService.resolverCaso
+        .mockResolvedValueOnce({ estado: 'EN_ATENCION', areas: [areaJuridico] })
+        .mockResolvedValueOnce({ estado: 'SIN_REFERIR', areas: [] });
+
+      const resultado = await service.obtenerHub('u-1', contexto);
+
+      expect(estadoTsService.resolverCaso).toHaveBeenCalledWith([
+        {
+          area: 'JURIDICO',
+          prioridad: 'NORMAL',
+          profesional: null,
+          createdAt: referidoEn,
+          expedienteId: 'e-2',
+        },
+      ]);
+      expect(resultado.casos.map((c) => [c.id, c.estado])).toEqual([
+        ['e-2', 'EN_ATENCION'],
+        ['e-1', 'SIN_REFERIR'],
+      ]);
+      expect(resultado.casos[0].areasReferidas).toEqual(['JURIDICO']);
+      expect(resultado.casoActivo).toEqual({
+        id: 'e-2',
+        estado: 'EN_ATENCION',
+        areas: [areaJuridico],
+      });
     });
   });
 

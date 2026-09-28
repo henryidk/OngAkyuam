@@ -19,8 +19,15 @@ const DOCUMENTOS_VISIBLES_POR_DEFECTO: TipoDocumentoTrabajoSocial[] = ['ACCIONES
  * profesional (queda en "Referencias sin tomar"), pero desde este modal se exige elegirla para
  * que la usuaria no quede esperando en una cola sin dueña.
  */
-export function useReferir(expedienteId: string, areasReferidas: AreaAtencion[], onReferido: (referido: ReferidoCreado) => void) {
-  const [area, setAreaState] = useState<AreaAtencion | null>(null)
+export function useReferir(
+  expedienteId: string,
+  areasReferidas: AreaAtencion[],
+  onReferido: (referido: ReferidoCreado) => void,
+  areaInicial?: AreaAtencion,
+) {
+  const [area, setAreaState] = useState<AreaAtencion | null>(
+    areaInicial && !areasReferidas.includes(areaInicial) ? areaInicial : null,
+  )
   const [profesionalId, setProfesionalId] = useState('')
   const [prioridad, setPrioridad] = useState<PrioridadReferido>('NORMAL')
   const [motivo, setMotivo] = useState('')

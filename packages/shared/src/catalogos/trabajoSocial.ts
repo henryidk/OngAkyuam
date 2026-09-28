@@ -26,6 +26,35 @@ export const TONO_BADGE_ESTADO_TS: Record<
   SIN_ATENCION_ACTIVA: 'neutral',
 }
 
+/**
+ * Filtros de la lista de Usuarias, en el orden de los chips del prototipo. "En albergue" no es
+ * un estado: es `INTERNA` sin `fechaEgresoAlbergue` en el caso activo, y se cruza con los demás.
+ */
+export const FILTROS_LISTA_USUARIAS = ['SIN_REFERIR', 'EN_ATENCION', 'EN_ALBERGUE', 'SIN_ATENCION_ACTIVA'] as const
+
+export const ETIQUETAS_FILTRO_LISTA_USUARIAS: Record<(typeof FILTROS_LISTA_USUARIAS)[number], string> = {
+  SIN_REFERIR: ETIQUETAS_ESTADO_TS.SIN_REFERIR,
+  EN_ATENCION: ETIQUETAS_ESTADO_TS.EN_ATENCION,
+  EN_ALBERGUE: 'En albergue',
+  SIN_ATENCION_ACTIVA: ETIQUETAS_ESTADO_TS.SIN_ATENCION_ACTIVA,
+}
+
+/** Filas por página de la lista de Usuarias (plan §3.2). */
+export const USUARIAS_POR_PAGINA = 20
+
+/** Estado de un área sobre un caso que le fue referido — lo resuelve la estrategia de cada área. */
+export const ESTADOS_AREA = ['ACTIVA', 'CERRADA'] as const
+
+export const ETIQUETAS_ESTADO_AREA: Record<(typeof ESTADOS_AREA)[number], string> = {
+  ACTIVA: 'En atención',
+  CERRADA: 'Cerrada',
+}
+
+export const TONO_BADGE_ESTADO_AREA: Record<(typeof ESTADOS_AREA)[number], 'success' | 'neutral'> = {
+  ACTIVA: 'success',
+  CERRADA: 'neutral',
+}
+
 export const PRIORIDADES_REFERIDO = ['NORMAL', 'URGENTE'] as const
 
 export const ETIQUETAS_PRIORIDAD_REFERIDO: Record<(typeof PRIORIDADES_REFERIDO)[number], string> = {

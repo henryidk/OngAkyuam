@@ -50,18 +50,14 @@ export default function VerificarDpi({ dpi }: VerificarDpiProps) {
       </div>
       {resultado?.tipo === 'libre' && (
         <p className="text-xs text-green-700">
-          No existe ninguna usuaria con este DPI. Si ya fue atendida antes, búscala en Expediente y registra un
+          No existe ninguna usuaria con este DPI. Si ya fue atendida antes, búscala en Usuarias y registra un
           nuevo caso.
         </p>
       )}
       {resultado?.tipo === 'existe' && (
         <p className="text-xs text-amber-700">
           Ya existe una usuaria con este DPI.{' '}
-          <Link
-            to="/trabajo-social/expediente"
-            state={{ usuariaId: resultado.usuariaId }}
-            className="font-medium underline"
-          >
+          <Link to={`/trabajo-social/usuarias/${resultado.usuariaId}`} className="font-medium underline">
             Ver su ficha
           </Link>{' '}
           y registra ahí un nuevo caso.

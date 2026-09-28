@@ -33,7 +33,7 @@ import PasoSituacion from './steps/PasoSituacion'
 import PasoTipoRegistro from './steps/PasoTipoRegistro'
 import { construirPasos, type PasoId } from './wizard'
 
-/** Estado de navegación que el hub "Expediente" (Fase 6) pasa vía React Router al arrancar el wizard directo en modo caso-existente. */
+/** Estado de navegación que la ficha de la usuaria (pestaña Casos) pasa vía React Router al arrancar el wizard directo en modo caso-existente. */
 interface EstadoNavegacionRegistro {
   usuariaId?: string
 }

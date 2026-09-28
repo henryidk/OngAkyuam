@@ -21,6 +21,8 @@ interface ModalReferirProps {
   /** Si se conoce, el título dice "Referir a {nombre}"; si no, "Referir caso {número}". */
   nombreUsuaria?: string
   areasReferidas: AreaAtencion[]
+  /** Área ya elegida al abrir (p. ej. botón "Referir" de un área no referida en el Resumen). */
+  areaInicial?: AreaAtencion
   onCerrar: () => void
   onReferido: (referido: ReferidoCreado) => void
 }
@@ -75,10 +77,11 @@ export default function ModalReferir({
   numeroExpediente,
   nombreUsuaria,
   areasReferidas,
+  areaInicial,
   onCerrar,
   onReferido,
 }: ModalReferirProps) {
-  const referir = useReferir(expedienteId, areasReferidas, onReferido)
+  const referir = useReferir(expedienteId, areasReferidas, onReferido, areaInicial)
   const { area } = referir
   // Jurídico tiene acceso completo por normativa: la visibilidad se muestra bloqueada y encendida.
   const esJuridico = area === 'JURIDICO'

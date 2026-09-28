@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  ParseUUIDPipe,
   Patch,
   Post,
   Query,
@@ -13,10 +14,12 @@ import {
 import {
   buscarUsuariaQuerySchema,
   editarIdentidadUsuariaSchema,
+  listarUsuariasQuerySchema,
   nuevoCasoSchema,
   type BuscarUsuariaQuery,
   type DatosCaso,
   type EditarIdentidadUsuariaInput,
+  type ListarUsuariasQuery,
 } from '@akyuam/shared';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -35,6 +38,15 @@ export class UsuariasController {
     private readonly expedientesService: ExpedientesService,
   ) {}
 
+  @Get()
+  async listar(
+    @Query(new ZodValidationPipe(listarUsuariasQuerySchema))
+    query: ListarUsuariasQuery,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.usuariasService.listar(query, contexto);
+  }
+
   // Debe declararse antes de `:id` para que Nest no lo confunda con un id.
   @Get('buscar')
   async buscar(
@@ -47,7 +59,7 @@ export class UsuariasController {
 
   @Get(':id')
   async obtenerHub(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.usuariasService.obtenerHub(id, contexto);
@@ -55,7 +67,7 @@ export class UsuariasController {
 
   @Patch(':id')
   async actualizarIdentidad(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(editarIdentidadUsuariaSchema))
     datos: EditarIdentidadUsuariaInput,
     @ContextoAuditoria() contexto: IContextoAuditoria,
@@ -66,7 +78,7 @@ export class UsuariasController {
   @Post(':id/expedientes')
   @HttpCode(HttpStatus.CREATED)
   async crearCaso(
-    @Param('id') id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(nuevoCasoSchema))
     datosCaso: DatosCaso,
     @ContextoAuditoria() contexto: IContextoAuditoria,

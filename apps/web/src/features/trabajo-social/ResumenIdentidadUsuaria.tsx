@@ -19,7 +19,7 @@ function ubicacion(usuaria: UsuariaExpedienteHub): string {
   return '—'
 }
 
-/** Tarjeta de identidad de solo lectura + edición explícita — reusada por el wizard y el hub "Expediente". */
+/** Tarjeta de identidad de solo lectura + edición explícita — usada por el wizard al registrar un caso para una usuaria existente. */
 export default function ResumenIdentidadUsuaria({ usuaria, onActualizado }: ResumenIdentidadUsuariaProps) {
   const [editando, setEditando] = useState(false)
 

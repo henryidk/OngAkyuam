@@ -5,13 +5,19 @@ import type { AreaAtencion, TipoRegistro } from './registroUsuaria.js'
 import { tipoDocumentoTrabajoSocialSchema } from './documentos.js'
 import { booleanoQuerySchema } from './query.js'
 import type { TipoDocumento, TipoDocumentoTrabajoSocial } from './documentos.js'
-import { ESTADOS_TS, PRIORIDADES_REFERIDO } from '../catalogos/trabajoSocial.js'
+import { ESTADOS_AREA, ESTADOS_TS, FILTROS_LISTA_USUARIAS, PRIORIDADES_REFERIDO } from '../catalogos/trabajoSocial.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
 
 export const estadoTsSchema = z.enum(ESTADOS_TS)
 export type EstadoTs = z.infer<typeof estadoTsSchema>
+
+export const estadoAreaSchema = z.enum(ESTADOS_AREA)
+export type EstadoArea = z.infer<typeof estadoAreaSchema>
+
+export const filtroListaUsuariasSchema = z.enum(FILTROS_LISTA_USUARIAS)
+export type FiltroListaUsuarias = z.infer<typeof filtroListaUsuariasSchema>
 
 export const prioridadReferidoSchema = z.enum(PRIORIDADES_REFERIDO)
 export type PrioridadReferido = z.infer<typeof prioridadReferidoSchema>
@@ -58,13 +64,64 @@ export const registrarEgresoSchema = z.object({
 })
 export type RegistrarEgresoInput = z.infer<typeof registrarEgresoSchema>
 
-/** `GET /trabajo-social/usuarias?estado=&q=&pagina=` — lista con filtro de estado y búsqueda. */
+/** Largo máximo del término de búsqueda de la lista — evita consultas trigram absurdamente largas. */
+export const BUSQUEDA_USUARIAS_MAX = 100
+
+/**
+ * `GET /trabajo-social/usuarias?estado=&q=&pagina=` — lista con filtro y búsqueda. Sin `estado` =
+ * "Todas". `q` busca por nombre (trigram), DPI exacto o número de expediente `NN-AAAA`.
+ */
 export const listarUsuariasQuerySchema = z.object({
-  estado: estadoTsSchema.optional(),
-  q: z.string().optional(),
+  estado: filtroListaUsuariasSchema.optional(),
+  q: z.string().trim().max(BUSQUEDA_USUARIAS_MAX).optional(),
   pagina: z.coerce.number().int().min(1).default(1),
 })
 export type ListarUsuariasQuery = z.infer<typeof listarUsuariasQuerySchema>
+
+/** Una fila de la lista de Usuarias: la usuaria y su caso activo (el más reciente). */
+export interface FilaListaUsuarias {
+  usuariaId: string
+  nombreCompleto: string
+  fechaNacimiento: string
+  expedienteId: string
+  numeroExpediente: string
+  tipoRegistro: TipoRegistro
+  enAlbergue: boolean
+  cantidadNinos: number
+  areasReferidas: AreaAtencion[]
+  estado: EstadoTs
+  /** Instante del último movimiento del caso activo (registro o referido). */
+  ultimaActividadEn: string
+  /** Área del último referido, o `null` si lo último fue el registro del caso. */
+  ultimaActividadArea: AreaAtencion | null
+}
+
+/** `GET /trabajo-social/usuarias` — página de filas + contadores de cada chip (con la búsqueda aplicada). */
+export interface ListaUsuariasTs {
+  filas: FilaListaUsuarias[]
+  pagina: number
+  porPagina: number
+  /** Total del filtro activo — para la paginación. */
+  total: number
+  contadores: { TODAS: number } & Record<FiltroListaUsuarias, number>
+}
+
+/** Cómo va un área referida con el caso — tarjeta "Áreas que la atienden" de la ficha. */
+export interface EstadoAreaCaso {
+  area: AreaAtencion
+  estado: EstadoArea
+  /** Próxima acción o situación del área, ya en lenguaje natural (p. ej. "Próxima cita 02/10/2026 09:00"). */
+  detalle: string
+  profesional: string | null
+  prioridad: PrioridadReferido
+  referidoEn: string
+}
+
+/** Estado derivado de un caso: el de Trabajo Social y el de cada área referida. */
+export interface EstadoCasoTs {
+  estado: EstadoTs
+  areas: EstadoAreaCaso[]
+}
 
 /** Filtro de tipo de registro del reporte — agrega "TODOS" a `TIPOS_REGISTRO`. */
 export const filtroTipoRegistroReporteSchema = z.enum(['TODOS', ...TIPOS_REGISTRO])

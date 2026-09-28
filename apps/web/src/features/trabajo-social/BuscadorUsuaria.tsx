@@ -13,7 +13,7 @@ interface BuscadorUsuariaProps {
 }
 
 /**
- * Buscador reusado tanto por el paso 0 del wizard de registro como por la sección "Expediente":
+ * Buscador del paso 0 del wizard de registro:
  * un solo lugar que sabe hablar con `GET /trabajo-social/usuarias/buscar` (SRP — este componente
  * no sabe qué pasa después de elegir una usuaria, eso lo decide quien lo use).
  */

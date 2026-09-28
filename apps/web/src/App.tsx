@@ -8,7 +8,6 @@ import JuridicaExpediente from './pages/JuridicaExpediente'
 import Login from './pages/Login'
 import Medica from './pages/Medica'
 import MedicaExpediente from './pages/MedicaExpediente'
-import AreaAtencion from './features/psicologia/atencion/AreaAtencion'
 import Agenda from './features/psicologia/agenda/Agenda'
 import BuscarExpedientes from './features/psicologia/expedientes/BuscarExpedientes'
 import ExpedienteUsuaria from './features/psicologia/expedientes/ExpedienteUsuaria'
@@ -22,10 +21,16 @@ import DetalleCita from './features/psicologia/citas/DetalleCita'
 import RegistroConsulta from './features/psicologia/citas/RegistroConsulta'
 import Indicadores from './features/psicologia/indicadores/Indicadores'
 import PsicologiaLayout from './pages/psicologia/PsicologiaLayout'
-import Expediente from './pages/trabajo-social/Expediente'
 import Inicio from './pages/trabajo-social/Inicio'
 import TrabajoSocialLayout from './pages/trabajo-social/TrabajoSocialLayout'
 import RegistrarUsuaria from './features/registro-usuaria/RegistrarUsuaria'
+import ListaUsuariasTs from './features/trabajo-social/usuarias/ListaUsuarias'
+import FichaUsuariaTs from './features/trabajo-social/ficha/FichaUsuaria'
+import PestanaResumenTs from './features/trabajo-social/ficha/pestanas/PestanaResumen'
+import PestanaDatosTs from './features/trabajo-social/ficha/pestanas/PestanaDatos'
+import PestanaCasosTs from './features/trabajo-social/ficha/pestanas/PestanaCasos'
+import RutaDocumentosTs from './features/trabajo-social/ficha/pestanas/RutaDocumentos'
+import RutaAccesosTs from './features/trabajo-social/ficha/pestanas/RutaAccesos'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRoute'
 import { useAuthStore } from './store/auth.store'
@@ -53,7 +58,16 @@ function App() {
         <Route path="/trabajo-social" element={<TrabajoSocialLayout />}>
           <Route index element={<Inicio />} />
           <Route path="registrar" element={<RegistrarUsuaria />} />
-          <Route path="expediente" element={<Expediente />} />
+          <Route path="usuarias" element={<ListaUsuariasTs />} />
+          <Route path="usuarias/:usuariaId" element={<FichaUsuariaTs />}>
+            <Route index element={<PestanaResumenTs />} />
+            <Route path="datos" element={<PestanaDatosTs />} />
+            <Route path="casos" element={<PestanaCasosTs />} />
+            <Route path="documentos" element={<RutaDocumentosTs />} />
+            <Route path="accesos" element={<RutaAccesosTs />} />
+          </Route>
+          {/* Ruta vieja de la sección "Expediente" (plan §5.1). */}
+          <Route path="expediente" element={<Navigate to="/trabajo-social/usuarias" replace />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['JURIDICO']} />}>
@@ -64,7 +78,8 @@ function App() {
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['PSICOLOGIA']} />}>
         <Route path="/psicologia" element={<PsicologiaLayout />}>
-          <Route index element={<AreaAtencion />} />
+          {/* AreaAtencion se borró en 21475c7; mientras llega la reestructura de psicología, el inicio es la agenda. */}
+          <Route index element={<Navigate to="agenda" replace />} />
           <Route path="agenda" element={<Agenda />} />
           <Route path="expedientes" element={<BuscarExpedientes />} />
           <Route path="expedientes/:expedienteId" element={<ExpedienteUsuaria />}>

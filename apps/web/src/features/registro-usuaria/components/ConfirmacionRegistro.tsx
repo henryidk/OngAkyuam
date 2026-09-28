@@ -37,9 +37,8 @@ export default function ConfirmacionRegistro({
   const todasReferidas = AREAS_ATENCION.every((area) => areasReferidas.includes(area))
 
   function irALaFicha() {
-    navigate('/trabajo-social/expediente', {
-      state: { usuariaId: expediente.usuariaId, expedienteId: expediente.id },
-    })
+    // Un caso nuevo siempre es el activo: la ficha lo muestra por defecto.
+    navigate(`/trabajo-social/usuarias/${expediente.usuariaId}`)
   }
 
   return (

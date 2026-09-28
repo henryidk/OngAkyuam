@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { edadEnAniosGT } from '../timezone.js'
 import type { TipoDocumento } from './documentos.js'
+import type { EstadoCasoTs, EstadoTs } from './trabajoSocial.js'
 import {
   AREAS_ATENCION,
   DEPARTAMENTOS_GUATEMALA,
@@ -193,6 +194,9 @@ export interface ExpedienteResumenCaso {
   fecha: string
   tipoRegistro: TipoRegistro
   areasReferidas: AreaAtencion[]
+  /** Estado derivado de Trabajo Social para este caso (ver `EstadoTsService`). */
+  estado: EstadoTs
+  enAlbergue: boolean
 }
 
 /** Identidad de la usuaria + todos sus casos — el hub de la sección "Expediente". */
@@ -210,7 +214,10 @@ export interface UsuariaExpedienteHub {
   departamentoOtro: string | null
   municipioOtro: string | null
   ubicacionGeografica: string | null
+  /** Más reciente primero; el primero es el caso activo. */
   casos: ExpedienteResumenCaso[]
+  /** Estado del caso activo y de cada área referida en él; `null` si la usuaria no tiene casos. */
+  casoActivo: ({ id: string } & EstadoCasoTs) | null
 }
 
 /** Detalle de un caso puntual, vista de solo lectura — mismo criterio que `ExpedienteDetalleArea`. */
