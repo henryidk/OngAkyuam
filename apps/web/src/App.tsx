@@ -21,7 +21,6 @@ import DetalleCita from './features/psicologia/citas/DetalleCita'
 import RegistroConsulta from './features/psicologia/citas/RegistroConsulta'
 import Indicadores from './features/psicologia/indicadores/Indicadores'
 import PsicologiaLayout from './pages/psicologia/PsicologiaLayout'
-import Inicio from './pages/trabajo-social/Inicio'
 import TrabajoSocialLayout from './pages/trabajo-social/TrabajoSocialLayout'
 import RegistrarUsuaria from './features/registro-usuaria/RegistrarUsuaria'
 import ListaUsuariasTs from './features/trabajo-social/usuarias/ListaUsuarias'
@@ -31,6 +30,8 @@ import PestanaDatosTs from './features/trabajo-social/ficha/pestanas/PestanaDato
 import PestanaCasosTs from './features/trabajo-social/ficha/pestanas/PestanaCasos'
 import RutaDocumentosTs from './features/trabajo-social/ficha/pestanas/RutaDocumentos'
 import RutaAccesosTs from './features/trabajo-social/ficha/pestanas/RutaAccesos'
+import PestanaBitacoraTs from './features/trabajo-social/ficha/pestanas/PestanaBitacora'
+import BandejaTs from './features/trabajo-social/bandeja/Bandeja'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRoute'
 import { useAuthStore } from './store/auth.store'
@@ -56,7 +57,7 @@ function App() {
 
       <Route element={<ProtectedRoute allowedRoles={['TRABAJO_SOCIAL']} />}>
         <Route path="/trabajo-social" element={<TrabajoSocialLayout />}>
-          <Route index element={<Inicio />} />
+          <Route index element={<BandejaTs />} />
           <Route path="registrar" element={<RegistrarUsuaria />} />
           <Route path="usuarias" element={<ListaUsuariasTs />} />
           <Route path="usuarias/:usuariaId" element={<FichaUsuariaTs />}>
@@ -65,6 +66,7 @@ function App() {
             <Route path="casos" element={<PestanaCasosTs />} />
             <Route path="documentos" element={<RutaDocumentosTs />} />
             <Route path="accesos" element={<RutaAccesosTs />} />
+            <Route path="bitacora" element={<PestanaBitacoraTs />} />
           </Route>
           {/* Ruta vieja de la sección "Expediente" (plan §5.1). */}
           <Route path="expediente" element={<Navigate to="/trabajo-social/usuarias" replace />} />

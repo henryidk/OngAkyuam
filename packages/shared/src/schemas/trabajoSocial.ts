@@ -165,8 +165,10 @@ export interface FilaEnAlbergue {
   usuariaId: string
   numeroExpediente: string
   nombreCompleto: string
-  fechaIngresoAlbergue: string
-  diasEnAlbergue: number
+  /** null si el caso interno se registró sin fecha de ingreso. */
+  fechaIngresoAlbergue: string | null
+  diasEnAlbergue: number | null
+  cantidadNinos: number
 }
 
 /** Fila de "Atendidas recientemente". */
@@ -179,11 +181,19 @@ export interface FilaAtendidaReciente {
   estado: EstadoTs
 }
 
+/** Cola de la bandeja: las primeras filas y el total real (el contador de la cabecera). */
+export interface ColaBandeja<TFila> {
+  filas: TFila[]
+  total: number
+}
+
 /** Ítem de "Novedades de las áreas" — un evento de `AuditLog` en lenguaje natural. */
 export interface NovedadArea {
+  id: string
   area: AreaAtencion
   expedienteId: string
   usuariaId: string
+  nombreCompleto: string
   texto: string
   createdAt: string
 }
@@ -196,9 +206,9 @@ export interface ResumenMesTs {
 
 /** `GET /trabajo-social/bandeja` — todo lo que necesita la pantalla de Inicio en una sola llamada. */
 export interface BandejaTs {
-  pendientesReferir: FilaColaReferir[]
-  documentosPendientes: FilaDocumentoPendiente[]
-  enAlbergue: FilaEnAlbergue[]
+  pendientesReferir: ColaBandeja<FilaColaReferir>
+  documentosPendientes: ColaBandeja<FilaDocumentoPendiente>
+  enAlbergue: ColaBandeja<FilaEnAlbergue>
   recientes: FilaAtendidaReciente[]
   novedades: NovedadArea[]
   resumenMes: ResumenMesTs
@@ -277,10 +287,16 @@ export interface FilaPoblacionBeneficiada {
 /** Fila de la Bitácora del expediente (lectura de `AuditLog`, solo lectura). */
 export interface EventoBitacora {
   id: string
+  /** Instante ISO del evento. */
   fecha: string
   accion: string
   texto: string
-  autor: string
+  /** Nombre del personal que lo hizo; null si la cuenta ya no existe. */
+  autor: string | null
+  /** Caso al que pertenece; null para cambios de los datos de la usuaria. */
+  numeroExpediente: string | null
+  /** Registro, referido o proceso: se marca con el punto de color en la línea de tiempo. */
+  destacado: boolean
 }
 
 /** Roles válidos como columna de la matriz de accesos — mismo orden que en el prototipo. */

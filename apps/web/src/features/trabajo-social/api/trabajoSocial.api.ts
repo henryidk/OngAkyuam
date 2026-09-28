@@ -1,10 +1,12 @@
 import type {
   ActualizarAccesoInput,
   AreaAtencion,
+  BandejaTs,
   CrearExpedienteInput,
   DatosCaso,
   DocumentosCaso,
   DocumentoSubido,
+  EventoBitacora,
   ExpedienteCreado,
   ExpedienteDetalleCaso,
   ListarUsuariasQuery,
@@ -114,4 +116,14 @@ export function buscarUsuariaPorDpi(dpi: string) {
   return api
     .get<UsuariaResumenBusqueda[]>('/trabajo-social/usuarias/buscar', { params: { dpi } })
     .then((res) => res.data)
+}
+
+/** Inicio de Trabajo Social: colas, recientes, novedades y resumen del mes en una sola llamada. */
+export function obtenerBandeja() {
+  return api.get<BandejaTs>('/trabajo-social/bandeja').then((res) => res.data)
+}
+
+/** Bitácora de la usuaria: lo que pasó en todos sus casos, del más reciente al más antiguo. */
+export function obtenerBitacora(usuariaId: string) {
+  return api.get<EventoBitacora[]>(`/trabajo-social/usuarias/${usuariaId}/bitacora`).then((res) => res.data)
 }

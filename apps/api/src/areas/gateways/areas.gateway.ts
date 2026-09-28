@@ -10,6 +10,9 @@ import type { Server, Socket } from 'socket.io';
 import { ACCESS_TOKEN_TTL_MS } from '../../auth/constants/auth.constants';
 import { SocketAuthService } from '../../auth/services/socket-auth.service';
 import type { IAreaNotifier } from '../interfaces/area-notifier.interface';
+import type { ITrabajoSocialNotifier } from '../interfaces/trabajo-social-notifier.interface';
+
+const SALA_TRABAJO_SOCIAL = 'trabajo-social';
 
 function salaDeArea(area: Rol): string {
   return `area:${area}`;
@@ -21,7 +24,9 @@ function salaDeArea(area: Rol): string {
   // segunda capa de defensa (CSWSH) sobre la cookie accessToken, que ya es sameSite=strict.
   cors: { origin: process.env.FRONTEND_URL, credentials: true },
 })
-export class AreasGateway implements OnGatewayConnection, IAreaNotifier {
+export class AreasGateway
+  implements OnGatewayConnection, IAreaNotifier, ITrabajoSocialNotifier
+{
   private readonly logger = new Logger(AreasGateway.name);
 
   @WebSocketServer()
@@ -32,12 +37,14 @@ export class AreasGateway implements OnGatewayConnection, IAreaNotifier {
   async handleConnection(client: Socket): Promise<void> {
     try {
       const usuario = await this.socketAuth.autenticar(client);
-      if (!(AREAS_ATENCION as readonly Rol[]).includes(usuario.rol)) {
+      if (usuario.rol === 'TRABAJO_SOCIAL') {
+        await client.join(SALA_TRABAJO_SOCIAL);
+      } else if ((AREAS_ATENCION as readonly Rol[]).includes(usuario.rol)) {
+        await client.join(salaDeArea(usuario.rol));
+      } else {
         client.disconnect(true);
         return;
       }
-
-      await client.join(salaDeArea(usuario.rol));
 
       // Ata la vida del socket a la del access token: pasado ese tiempo, el cliente
       // debe reconectar con una cookie fresca, igual que ya se re-verifica en cada
@@ -51,5 +58,11 @@ export class AreasGateway implements OnGatewayConnection, IAreaNotifier {
 
   notificarReferido(area: Rol, resumen: ExpedienteResumenArea): void {
     this.server.to(salaDeArea(area)).emit('referido:nuevo', resumen);
+  }
+
+  notificarCambioBandeja(): void {
+    // Sin datos: el evento solo dice "vuelve a pedir tu bandeja" — la bandeja ya filtra por
+    // usuario en el backend y así nunca viaja por el socket algo de un caso ajeno.
+    this.server.to(SALA_TRABAJO_SOCIAL).emit('bandeja:cambio');
   }
 }

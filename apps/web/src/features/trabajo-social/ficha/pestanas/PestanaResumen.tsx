@@ -1,12 +1,11 @@
 import {
   AREAS_ATENCION,
+  diasDesdeFechaGT,
   ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_ESTADO_AREA,
   ETIQUETAS_TIPO_DOCUMENTO,
   formatFechaGT,
   formatInstanteGT,
-  hoyGT,
-  inicioDiaGT,
   TONO_BADGE_ESTADO_AREA,
   type AreaAtencion,
   type EstadoAreaCaso,
@@ -15,13 +14,12 @@ import {
 } from '@akyuam/shared'
 import Badge from '../../../../components/ui/Badge'
 import Button from '../../../../components/ui/Button'
+import { ABREVIATURA_AREA } from '../../abreviaturaArea'
 import { useDocumentosCaso } from '../../documentos/useDocumentosCaso'
 import { useContextoFicha } from '../contextoFicha'
 import { textoAgresor, textoNino, textoTipologia } from '../textoCaso'
 import { useDetalleCaso } from '../useDetalleCaso'
 import Tarjeta, { Dato } from './Tarjeta'
-
-const ABREVIATURA_AREA: Record<AreaAtencion, string> = { JURIDICO: 'Ju', PSICOLOGIA: 'Ps', MEDICA: 'Mé' }
 
 /** Pestaña índice de la ficha (plan §12.5): cómo va la atención del caso actual, de un vistazo. */
 export default function PestanaResumen() {
@@ -132,11 +130,7 @@ function FilaAreaNoReferida({ area, onReferir }: { area: AreaAtencion; onReferir
 
 function TarjetaAlbergue({ caso, detalle }: { caso: ExpedienteResumenCaso; detalle: ExpedienteDetalleCaso }) {
   if (!caso.enAlbergue || !detalle.fechaIngresoAlbergue) return null
-  // Guatemala no tiene horario de verano: entre dos medianoches GT siempre hay días exactos.
-  const dias = Math.max(
-    0,
-    Math.round((inicioDiaGT(hoyGT()).getTime() - inicioDiaGT(detalle.fechaIngresoAlbergue).getTime()) / 86_400_000),
-  )
+  const dias = diasDesdeFechaGT(detalle.fechaIngresoAlbergue)
 
   return (
     <section className="rounded-xl border border-brand-200 bg-brand-50 p-4">

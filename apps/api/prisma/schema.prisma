@@ -81,6 +81,7 @@ model AuditLog {
 
   @@index([usuarioId])
   @@index([accion, createdAt]) // reportes/filtros por tipo de evento y rango de fecha
+  @@index([entidad, entidadId, createdAt]) // bitácora del expediente y novedades de la bandeja
 }
 
 enum TipoRegistro {

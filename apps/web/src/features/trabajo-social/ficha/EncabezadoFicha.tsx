@@ -70,6 +70,7 @@ export default function EncabezadoFicha({ usuaria, onReferir }: EncabezadoFichaP
           { to: 'casos', etiqueta: `Casos (${usuaria.casos.length})` },
           { to: 'documentos', etiqueta: 'Documentos' },
           { to: 'accesos', etiqueta: 'Accesos y referencias' },
+          { to: 'bitacora', etiqueta: 'Bitácora' },
         ]}
       />
     </header>

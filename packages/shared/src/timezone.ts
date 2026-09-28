@@ -39,6 +39,43 @@ export function formatInstanteGT(fecha: Date | string): string {
   return dt.setZone(GUATEMALA_TZ).toFormat('dd/LL/yyyy HH:mm')
 }
 
+/**
+ * Días calendario de Guatemala entre una fecha "YYYY-MM-DD" y hoy — p. ej. los días que lleva en
+ * albergue. Guatemala no tiene horario de verano: entre dos medianoches siempre hay días exactos.
+ */
+export function diasDesdeFechaGT(fechaIso: string): number {
+  const dia = DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).startOf('day')
+  const hoy = DateTime.now().setZone(GUATEMALA_TZ).startOf('day')
+  return Math.max(0, Math.round(hoy.diff(dia, 'days').days))
+}
+
+/** Hora actual (0-23) en Guatemala — para el saludo "Buenos días/tardes/noches". */
+export function horaActualGT(): number {
+  return DateTime.now().setZone(GUATEMALA_TZ).hour
+}
+
+/** Año y mes (1-12) actuales en Guatemala — para los agregados "de este mes" con `inicioMesGT`/`finMesGT`. */
+export function mesActualGT(): { anio: number; mes: number } {
+  const hoy = DateTime.now().setZone(GUATEMALA_TZ)
+  return { anio: hoy.year, mes: hoy.month }
+}
+
+/** Nombre del mes en español con mayúscula inicial (ej. "Septiembre"). */
+export function nombreMesGT(mes: number): string {
+  const nombre = DateTime.fromObject({ year: 2000, month: mes, day: 1 }, { zone: GUATEMALA_TZ })
+    .setLocale('es')
+    .toFormat('LLLL')
+  return nombre.charAt(0).toUpperCase() + nombre.slice(1)
+}
+
+/** Fecha "YYYY-MM-DD" en texto largo en español (ej. "Lunes 28 de septiembre"). */
+export function formatFechaLargaGT(fechaIso: string): string {
+  const texto = DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ })
+    .setLocale('es')
+    .toFormat("cccc d 'de' LLLL")
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
 /** Interpreta un valor de `<input type="datetime-local">` como hora de Guatemala explícita y devuelve el instante UTC correspondiente. */
 export function parseLocalGT(valorDatetimeLocal: string): Date {
   return DateTime.fromISO(valorDatetimeLocal, { zone: GUATEMALA_TZ }).toUTC().toJSDate()

@@ -10,7 +10,7 @@ import type {
 } from '@akyuam/shared';
 import { fechaColumnaISO } from '@akyuam/shared';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { ResolveresEstadoArea } from '../../estado/resolveres-estado-area';
+import { ConsultaListaTs } from '../../estado/consulta-lista-ts';
 import type {
   BusquedaListaUsuarias,
   DatosIdentidadUsuariaParams,
@@ -98,11 +98,13 @@ function mapearResumen(usuaria: UsuariaResumenRow): UsuariaResumenBusqueda {
 export class UsuariasRepository implements IUsuariasRepository {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly resolveresEstado: ResolveresEstadoArea,
+    private readonly consultaLista: ConsultaListaTs,
   ) {}
 
   async listar(params: ListarUsuariasParams): Promise<ListaUsuariasTs> {
-    const base = this.consultaBaseLista(params.busqueda);
+    const base = this.consultaLista.cteLista(
+      condicionBusqueda(params.busqueda),
+    );
     const [filas, [contadores]] = await Promise.all([
       this.prisma.$queryRaw<FilaListaRow[]>(Prisma.sql`
         ${base}
@@ -150,63 +152,6 @@ export class UsuariasRepository implements IUsuariasRepository {
         SIN_ATENCION_ACTIVA: contadores.SIN_ATENCION_ACTIVA,
       },
     };
-  }
-
-  /**
-   * CTE `lista`: una fila por usuaria con su caso activo (el más reciente) y el estado derivado.
-   * Filas y contadores salen de la misma CTE para que el número del chip coincida con la tabla.
-   */
-  private consultaBaseLista(
-    busqueda: BusquedaListaUsuarias | undefined,
-  ): Prisma.Sql {
-    return Prisma.sql`
-      WITH caso_activo AS (
-        SELECT DISTINCT ON (e."usuariaId")
-          e.id, e."usuariaId", e.numero, e."tipoRegistro", e."createdAt",
-          (e."tipoRegistro" = 'INTERNA' AND e."fechaEgresoAlbergue" IS NULL) AS "enAlbergue"
-        FROM "Expediente" e
-        ORDER BY e."usuariaId", e.fecha DESC, e."createdAt" DESC
-      ),
-      lista AS (
-        SELECT
-          u.id AS "usuariaId", u.nombres, u.apellidos, u."fechaNacimiento",
-          c.id AS "expedienteId", c.numero, c."tipoRegistro", c."enAlbergue",
-          (SELECT count(*)::int FROM "Nino" n WHERE n."expedienteId" = c.id) AS "cantidadNinos",
-          ARRAY(
-            SELECT r.area::text FROM "ReferidoArea" r WHERE r."expedienteId" = c.id ORDER BY r."createdAt"
-          ) AS areas,
-          ${this.expresionEstadoTs(Prisma.sql`c.id`)} AS estado,
-          GREATEST(
-            c."createdAt",
-            (SELECT max(r."createdAt") FROM "ReferidoArea" r WHERE r."expedienteId" = c.id)
-          ) AS "ultimaActividadEn",
-          (
-            SELECT r.area::text FROM "ReferidoArea" r WHERE r."expedienteId" = c.id
-            ORDER BY r."createdAt" DESC LIMIT 1
-          ) AS "ultimaActividadArea"
-        FROM "Usuaria" u
-        JOIN caso_activo c ON c."usuariaId" = u.id
-        WHERE ${condicionBusqueda(busqueda)}
-      )
-    `;
-  }
-
-  /**
-   * La regla de `combinarEstadoTs` en SQL, con la condición "área activa" que aporta la
-   * estrategia de cada área — agregar un área no toca esta consulta.
-   */
-  private expresionEstadoTs(columnaExpedienteId: Prisma.Sql): Prisma.Sql {
-    const areasActivas = this.resolveresEstado.todos().map(
-      (resolver) => Prisma.sql`(
-        EXISTS (SELECT 1 FROM "ReferidoArea" r WHERE r."expedienteId" = ${columnaExpedienteId} AND r.area::text = ${resolver.area})
-        AND ${resolver.condicionActivaSql(columnaExpedienteId)}
-      )`,
-    );
-    return Prisma.sql`CASE
-      WHEN NOT EXISTS (SELECT 1 FROM "ReferidoArea" r WHERE r."expedienteId" = ${columnaExpedienteId}) THEN 'SIN_REFERIR'
-      WHEN ${Prisma.join(areasActivas, ' OR ')} THEN 'EN_ATENCION'
-      ELSE 'SIN_ATENCION_ACTIVA'
-    END`;
   }
 
   async buscarPorDpi(dpi: string): Promise<UsuariaResumenBusqueda | null> {

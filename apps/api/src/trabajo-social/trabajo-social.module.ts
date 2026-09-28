@@ -7,8 +7,18 @@ import { AccesosController } from './accesos/accesos.controller';
 import { AccesosService } from './accesos/accesos.service';
 import { ACCESOS_REPOSITORY } from './accesos/interfaces/accesos-repository.interface';
 import { AccesosRepository } from './accesos/repositories/accesos.repository';
+import { AvisosBandejaListener } from './bandeja/avisos-bandeja.listener';
+import { BandejaController } from './bandeja/bandeja.controller';
+import { BandejaService } from './bandeja/bandeja.service';
+import { BANDEJA_REPOSITORY } from './bandeja/interfaces/bandeja-repository.interface';
+import { BandejaRepository } from './bandeja/repositories/bandeja.repository';
+import { BitacoraController } from './bitacora/bitacora.controller';
+import { BitacoraService } from './bitacora/bitacora.service';
+import { BITACORA_REPOSITORY } from './bitacora/interfaces/bitacora-repository.interface';
+import { BitacoraRepository } from './bitacora/repositories/bitacora.repository';
 import { DocumentosController } from './documentos.controller';
 import { DocumentosService } from './documentos.service';
+import { EstadoModule } from './estado/estado.module';
 import { ExpedientesModule } from './expedientes.module';
 import { DOCUMENTOS_REPOSITORY } from './interfaces/documentos-repository.interface';
 import { DocumentosRepository } from './repositories/documentos.repository';
@@ -26,8 +36,15 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     AreasModule,
     ExpedientesModule,
     UsuariasModule,
+    EstadoModule,
   ],
-  controllers: [DocumentosController, ReferidosController, AccesosController],
+  controllers: [
+    DocumentosController,
+    ReferidosController,
+    AccesosController,
+    BitacoraController,
+    BandejaController,
+  ],
   providers: [
     DocumentosService,
     { provide: DOCUMENTOS_REPOSITORY, useClass: DocumentosRepository },
@@ -35,6 +52,11 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     { provide: REFERIDOS_REPOSITORY, useClass: ReferidosRepository },
     AccesosService,
     { provide: ACCESOS_REPOSITORY, useClass: AccesosRepository },
+    BitacoraService,
+    { provide: BITACORA_REPOSITORY, useClass: BitacoraRepository },
+    BandejaService,
+    { provide: BANDEJA_REPOSITORY, useClass: BandejaRepository },
+    AvisosBandejaListener,
   ],
 })
 export class TrabajoSocialModule {}
