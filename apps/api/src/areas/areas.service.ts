@@ -1,5 +1,6 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import type {
+  AreaAtencion,
   ExpedienteDetalleArea,
   ExpedienteResumenArea,
 } from '@akyuam/shared';
@@ -9,7 +10,12 @@ import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import { OBJECT_STORAGE } from '../storage/interfaces/object-storage.interface';
 import type { IObjectStorage } from '../storage/interfaces/object-storage.interface';
 import { AREAS_REPOSITORY } from './interfaces/areas-repository.interface';
-import type { IAreasRepository } from './interfaces/areas-repository.interface';
+import type {
+  ExpedienteReferidoArea,
+  IAreasRepository,
+} from './interfaces/areas-repository.interface';
+import type { IPoliticaAccesoArea } from './politicas/politica-acceso-area.interface';
+import { PoliticasAcceso } from './politicas/politicas-acceso';
 
 const MENSAJE_SIN_ACCESO_DOCUMENTO = 'No tiene acceso a este documento';
 
@@ -21,6 +27,7 @@ export class AreasService {
     @Inject(OBJECT_STORAGE)
     private readonly objectStorage: IObjectStorage,
     private readonly auditService: AuditService,
+    private readonly politicasAcceso: PoliticasAcceso,
   ) {}
 
   async listarReferidos(
@@ -34,7 +41,7 @@ export class AreasService {
     usuario: AuthenticatedUser,
     contexto: ContextoAuditoria,
   ): Promise<ExpedienteDetalleArea> {
-    const expediente = await this.areasRepository.buscarConAcceso(
+    const expediente = await this.areasRepository.buscarReferido(
       id,
       usuario.rol,
     );
@@ -55,7 +62,7 @@ export class AreasService {
       detalles: { area: usuario.rol },
     });
 
-    return expediente;
+    return aplicarPolitica(expediente, this.politicaDe(usuario));
   }
 
   async obtenerUrlDescarga(
@@ -64,12 +71,12 @@ export class AreasService {
     usuario: AuthenticatedUser,
     contexto: ContextoAuditoria,
   ): Promise<{ url: string }> {
-    const documento = await this.areasRepository.buscarDocumentoVisible(
+    const documento = await this.areasRepository.buscarDocumentoDeReferido(
       documentoId,
       expedienteId,
       usuario.rol,
     );
-    if (!documento) {
+    if (!documento || !this.politicaDe(usuario).puedeVerDocumento(documento)) {
       // Mismo criterio uniforme que `obtenerDetalle`: no distinguir "no existe" de "existe
       // pero no visible para esta área" (sin IDOR).
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_DOCUMENTO);
@@ -94,4 +101,31 @@ export class AreasService {
 
     return { url };
   }
+
+  /** El controller solo admite roles de `AREAS_ATENCION` (`@Roles`), así que el rol es un área. */
+  private politicaDe(usuario: AuthenticatedUser): IPoliticaAccesoArea {
+    return this.politicasAcceso.para(usuario.rol as AreaAtencion);
+  }
+}
+
+/** Quita del expediente lo que la política del área no le permite ver. */
+function aplicarPolitica(
+  expediente: ExpedienteReferidoArea,
+  politica: IPoliticaAccesoArea,
+): ExpedienteDetalleArea {
+  const { referido, datosCaso, documentos, ...resto } = expediente;
+  return {
+    ...resto,
+    datosCaso: politica.puedeVerDatosCaso(referido) ? datosCaso : null,
+    documentos: documentos
+      .filter((documento) => politica.puedeVerDocumento(documento))
+      // `areasVisibles` es un dato interno de Trabajo Social: no se le muestra a las áreas.
+      .map((documento) => ({
+        id: documento.id,
+        tipo: documento.tipo,
+        nombreArchivo: documento.nombreArchivo,
+        tamanioBytes: documento.tamanioBytes,
+        createdAt: documento.createdAt,
+      })),
+  };
 }

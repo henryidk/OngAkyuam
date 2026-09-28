@@ -123,26 +123,40 @@ export default function ContenidoDetalleExpediente({ expedienteId }: ContenidoDe
           etiqueta="Grupo étnico"
           valor={ETIQUETAS_GRUPO_ETNICO[expediente.usuaria.grupoEtnico as keyof typeof ETIQUETAS_GRUPO_ETNICO]}
         />
-        <Fila
-          etiqueta="Tipología del delito"
-          valor={expediente.usuaria.tipologiaDelito
-            .map((tipo) => ETIQUETAS_TIPOLOGIA_DELITO[tipo as keyof typeof ETIQUETAS_TIPOLOGIA_DELITO])
-            .join(', ')}
-        />
       </Seccion>
 
-      <Seccion titulo="Datos del agresor">
-        {expediente.agresor ? (
-          <>
-            <Fila etiqueta="Nombres" valor={expediente.agresor.nombres ?? ''} />
-            <Fila etiqueta="Apellidos" valor={expediente.agresor.apellidos ?? ''} />
-            <Fila etiqueta="Teléfono" valor={expediente.agresor.telefono ?? ''} />
-            <Fila etiqueta="Dirección" valor={expediente.agresor.direccion ?? ''} />
-          </>
-        ) : (
-          <p className="py-1.5 text-sm text-gray-400">No se registraron datos del agresor.</p>
-        )}
-      </Seccion>
+      {expediente.datosCaso ? (
+        <>
+          <Seccion titulo="Situación de violencia">
+            <Fila
+              etiqueta="Tipología del delito"
+              valor={expediente.datosCaso.tipologiaDelito
+                .map((tipo) => ETIQUETAS_TIPOLOGIA_DELITO[tipo as keyof typeof ETIQUETAS_TIPOLOGIA_DELITO])
+                .join(', ')}
+            />
+            <Fila etiqueta="Observaciones" valor={expediente.datosCaso.observaciones ?? ''} />
+          </Seccion>
+
+          <Seccion titulo="Datos del agresor">
+            {expediente.datosCaso.agresor ? (
+              <>
+                <Fila etiqueta="Nombres" valor={expediente.datosCaso.agresor.nombres ?? ''} />
+                <Fila etiqueta="Apellidos" valor={expediente.datosCaso.agresor.apellidos ?? ''} />
+                <Fila etiqueta="Teléfono" valor={expediente.datosCaso.agresor.telefono ?? ''} />
+                <Fila etiqueta="Dirección" valor={expediente.datosCaso.agresor.direccion ?? ''} />
+              </>
+            ) : (
+              <p className="py-1.5 text-sm text-gray-400">No se registraron datos del agresor.</p>
+            )}
+          </Seccion>
+        </>
+      ) : (
+        <Seccion titulo="Situación de violencia">
+          <p className="py-1.5 text-sm text-gray-400">
+            Trabajo Social no compartió la tipología, el agresor ni las observaciones de este caso con tu área.
+          </p>
+        </Seccion>
+      )}
 
       {expediente.ninos.length > 0 && (
         <Seccion titulo="Niñas y niños">

@@ -36,19 +36,20 @@ model Usuario {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  refreshTokens            RefreshToken[]
-  expedientesCreados       Expediente[]
-  referidosOtorgados       ReferidoArea[]
-  documentosSubidos        Documento[]
-  visibilidadesOtorgadas   DocumentoVisibilidadArea[]
-  procesosJuridicosCreados ProcesoJuridico[]
-  notasAvanceRegistradas   NotaAvanceProceso[]
-  documentosProcesoSubidos DocumentoProceso[]
-  abandonosRegistrados     AbandonoProceso[]
-  atencionesPsicologicasActualizadas AtencionPsicologica[]  @relation("AtencionPsicologicaActualizadaPor")
-  atencionesPsicologicasAsignadas    AtencionPsicologica[]  @relation("AtencionPsicologicaAsignada")
-  cambiosEstadoAtencionRegistrados   CambioEstadoAtencion[] @relation("CambioEstadoAtencionRegistradoPor")
-  citasPsicologicasAtendidas         CitaPsicologica[]      @relation("CitaPsicologicaAtendidaPor")
+  refreshTokens                      RefreshToken[]
+  expedientesCreados                 Expediente[]
+  referidosOtorgados                 ReferidoArea[]             @relation("ReferidoOtorgadoPor")
+  referidosAsignados                 ReferidoArea[]             @relation("ReferidoProfesionalAsignado")
+  documentosSubidos                  Documento[]
+  visibilidadesOtorgadas             DocumentoVisibilidadArea[]
+  procesosJuridicosCreados           ProcesoJuridico[]
+  notasAvanceRegistradas             NotaAvanceProceso[]
+  documentosProcesoSubidos           DocumentoProceso[]
+  abandonosRegistrados               AbandonoProceso[]
+  atencionesPsicologicasActualizadas AtencionPsicologica[]      @relation("AtencionPsicologicaActualizadaPor")
+  atencionesPsicologicasAsignadas    AtencionPsicologica[]      @relation("AtencionPsicologicaAsignada")
+  cambiosEstadoAtencionRegistrados   CambioEstadoAtencion[]     @relation("CambioEstadoAtencionRegistradoPor")
+  citasPsicologicasAtendidas         CitaPsicologica[]          @relation("CitaPsicologicaAtendidaPor")
 }
 
 model RefreshToken {
@@ -131,12 +132,12 @@ enum MunicipioAltaVerapaz {
 // Identidad de la persona atendida — capturada una sola vez, reutilizada
 // entre expedientes (RNF-09, RF-08).
 model Usuaria {
-  id              String      @id @default(uuid())
-  dpi             String?     @unique // único cuando existe; NULL permitido varias veces (mujeres sin DPI)
-  nombres         String
-  apellidos       String
-  telefono        String?
-  direccion       String?
+  id                  String                @id @default(uuid())
+  dpi                 String?               @unique // único cuando existe; NULL permitido varias veces (mujeres sin DPI)
+  nombres             String
+  apellidos           String
+  telefono            String?
+  direccion           String?
   // Datos de dónde vive la usuaria — identidad, no del caso puntual: se capturan una vez y se
   // editan explícitamente si cambian (ver Usuarios → Expediente → "editar datos"), nunca se
   // vuelven a pedir al registrar un caso nuevo de una usuaria ya existente.
@@ -144,10 +145,10 @@ model Usuaria {
   departamentoOtro    String? // excepción: usuaria de fuera de Alta Verapaz
   municipioOtro       String?
   ubicacionGeografica String? // aldea/zona/colonia, texto libre
-  fechaNacimiento DateTime    @db.Date
-  grupoEtnico     GrupoEtnico
-  createdAt       DateTime    @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime    @updatedAt @db.Timestamptz(3)
+  fechaNacimiento     DateTime              @db.Date
+  grupoEtnico         GrupoEtnico
+  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
 
   expedientes Expediente[]
 
@@ -156,21 +157,21 @@ model Usuaria {
 }
 
 model Expediente {
-  id              String            @id @default(uuid())
-  numero          String            @unique // "NN-AAAA", ver ExpedienteContador
-  usuariaId       String
-  usuaria         Usuaria           @relation(fields: [usuariaId], references: [id])
-  fecha           DateTime          @db.Date
-  tipoRegistro    TipoRegistro
-  tipologiaDelito TipologiaDelito[]
-  observaciones   String?           @db.Text
+  id                   String            @id @default(uuid())
+  numero               String            @unique // "NN-AAAA", ver ExpedienteContador
+  usuariaId            String
+  usuaria              Usuaria           @relation(fields: [usuariaId], references: [id])
+  fecha                DateTime          @db.Date
+  tipoRegistro         TipoRegistro
+  tipologiaDelito      TipologiaDelito[]
+  observaciones        String?           @db.Text
   // Solo INTERNA. Fechas de calendario (no instantes): se capturan del formulario en papel.
-  fechaIngresoAlbergue DateTime? @db.Date
-  fechaEgresoAlbergue  DateTime? @db.Date
-  creadoPorId     String
-  creadoPor       Usuario           @relation(fields: [creadoPorId], references: [id])
-  createdAt       DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime          @updatedAt @db.Timestamptz(3)
+  fechaIngresoAlbergue DateTime?         @db.Date
+  fechaEgresoAlbergue  DateTime?         @db.Date
+  creadoPorId          String
+  creadoPor            Usuario           @relation(fields: [creadoPorId], references: [id])
+  createdAt            DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime          @updatedAt @db.Timestamptz(3)
 
   agresor             Agresor?
   ninos               Nino[]
@@ -188,16 +189,28 @@ model Expediente {
 // PSICOLOGIA, MEDICA — validado en capa de aplicación) sobre un expediente puntual.
 // Ver CLAUDE.md: "Cada área solo ve lo que trabajo social le autoriza explícitamente".
 model ReferidoArea {
-  id            String     @id @default(uuid())
-  expedienteId  String
-  expediente    Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
-  area          Rol
-  otorgadoPorId String
-  otorgadoPor   Usuario    @relation(fields: [otorgadoPorId], references: [id])
-  createdAt     DateTime   @default(now()) @db.Timestamptz(3)
+  id                    String            @id @default(uuid())
+  expedienteId          String
+  expediente            Expediente        @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  area                  Rol
+  otorgadoPorId         String
+  otorgadoPor           Usuario           @relation("ReferidoOtorgadoPor", fields: [otorgadoPorId], references: [id])
+  createdAt             DateTime          @default(now()) @db.Timestamptz(3)
+  motivo                String?           @db.Text
+  prioridad             PrioridadReferido @default(NORMAL)
+  // Usuario del área (psicóloga, doctora); null = queda en la cola del área.
+  profesionalAsignadoId String?
+  profesionalAsignado   Usuario?          @relation("ReferidoProfesionalAsignado", fields: [profesionalAsignadoId], references: [id])
+  // Agresor, tipología y observaciones. Jurídico los ve siempre (ver PoliticaJuridico).
+  puedeVerDatosCaso     Boolean           @default(true)
 
   @@unique([expedienteId, area])
   @@index([area])
+}
+
+enum PrioridadReferido {
+  NORMAL
+  URGENTE
 }
 
 model Agresor {

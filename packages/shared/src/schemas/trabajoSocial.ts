@@ -2,9 +2,9 @@ import { z } from 'zod'
 import { AREAS_ATENCION, TIPOS_REGISTRO } from '../catalogos/registroUsuaria.js'
 import { areaAtencionSchema } from './registroUsuaria.js'
 import type { AreaAtencion, TipoRegistro } from './registroUsuaria.js'
-import { tipoDocumentoSchema } from './documentos.js'
+import { tipoDocumentoTrabajoSocialSchema } from './documentos.js'
 import { booleanoQuerySchema } from './query.js'
-import type { TipoDocumento } from './documentos.js'
+import type { TipoDocumento, TipoDocumentoTrabajoSocial } from './documentos.js'
 import { ESTADOS_TS, PRIORIDADES_REFERIDO } from '../catalogos/trabajoSocial.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
@@ -17,14 +17,19 @@ export const prioridadReferidoSchema = z.enum(PRIORIDADES_REFERIDO)
 export type PrioridadReferido = z.infer<typeof prioridadReferidoSchema>
 
 /** `POST /trabajo-social/expedientes/:id/referidos` — abre el modal "Referir a un área". */
+export const MOTIVO_REFERIDO_MAX = 1000
+
 export const referirSchema = z.object({
   area: areaAtencionSchema,
+  // Opcional en el contrato: sin profesional, el referido queda en la cola del área (flujo de
+  // reclamación de Psicología intacto). El modal lo exige para Psicología.
   profesionalAsignadoId: z.uuid().optional(),
   prioridad: prioridadReferidoSchema,
-  motivo: z.string(),
+  motivo: z.string().trim().max(MOTIVO_REFERIDO_MAX),
   visibilidad: z.object({
     datosCaso: z.boolean(),
-    documentos: z.array(tipoDocumentoSchema),
+    // Solo los formularios de Trabajo Social son restringibles por área.
+    documentos: z.array(tipoDocumentoTrabajoSocialSchema),
   }),
 })
 export type ReferirInput = z.infer<typeof referirSchema>
@@ -35,10 +40,16 @@ export type ReferirInput = z.infer<typeof referirSchema>
  * optimista fila por fila, no el formulario completo). 400 en el backend si `area = JURIDICO`
  * o el área no ha sido referida.
  */
-export const actualizarAccesoSchema = z.object({
-  datosCaso: z.boolean().optional(),
-  documentos: z.record(tipoDocumentoSchema, z.boolean()).optional(),
-})
+export const actualizarAccesoSchema = z
+  .object({
+    datosCaso: z.boolean().optional(),
+    // `partialRecord`: en Zod v4 un `z.record` con clave enum exige todas las claves.
+    documentos: z.partialRecord(tipoDocumentoTrabajoSocialSchema, z.boolean()).optional(),
+  })
+  .refine(
+    (datos) => datos.datosCaso !== undefined || Object.keys(datos.documentos ?? {}).length > 0,
+    { message: 'Debe indicar al menos un acceso a modificar' },
+  )
 export type ActualizarAccesoInput = z.infer<typeof actualizarAccesoSchema>
 
 /** `POST /trabajo-social/expedientes/:id/egreso` — solo válido para `INTERNA` sin egreso previo. */
@@ -139,20 +150,51 @@ export interface BandejaTs {
 /** Una celda de la matriz: cómo se ve el switch y si el usuario puede tocarlo. */
 export interface CeldaAcceso {
   visible: boolean
+  /** Jurídico: acceso completo por normativa, no se puede restringir. */
   bloqueado: boolean
+  /** Área no referida, o documento que todavía no se ha subido. */
   deshabilitado: boolean
 }
 
-/** Una fila de la matriz: "Datos de la usuaria e hijas/hijos" o un tipo de documento. */
+/** Una fila de la matriz: agresor/tipología/observaciones o un tipo de documento. */
 export interface FilaMatrizAccesos {
-  clave: 'DATOS_CASO' | TipoDocumento
+  clave: 'DATOS_CASO' | TipoDocumentoTrabajoSocial
   etiqueta: string
+  descripcion: string
   celdas: Record<AreaAtencion, CeldaAcceso>
+}
+
+export interface ColumnaMatrizAccesos {
+  area: AreaAtencion
+  referida: boolean
+  restringible: boolean
 }
 
 /** `GET /trabajo-social/expedientes/:id/accesos` — matriz ya calculada por el backend. */
 export interface MatrizAccesos {
+  expedienteId: string
+  numero: string
+  columnas: ColumnaMatrizAccesos[]
   filas: FilaMatrizAccesos[]
+}
+
+/** Resultado de `POST /trabajo-social/expedientes/:id/referidos`. */
+export interface ReferidoCreado {
+  id: string
+  area: AreaAtencion
+  prioridad: PrioridadReferido
+  profesionalAsignadoId: string | null
+  createdAt: string
+}
+
+/** `GET /trabajo-social/profesionales?area=` — select del modal Referir. */
+export const listarProfesionalesQuerySchema = z.object({ area: areaAtencionSchema })
+export type ListarProfesionalesQuery = z.infer<typeof listarProfesionalesQuerySchema>
+
+export interface ProfesionalArea {
+  id: string
+  nombreCompleto: string
+  puesto: string | null
 }
 
 /** Una fila del Excel/vista previa de población beneficiada (usuaria o hija/hijo). */

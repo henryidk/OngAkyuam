@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import type { Rol } from '@prisma/client';
-import {
-  fechaColumnaISO,
-  type ExpedienteDetalleArea,
-  type ExpedienteResumenArea,
-} from '@akyuam/shared';
+import { fechaColumnaISO, type ExpedienteResumenArea } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   DocumentoParaDescargaArea,
+  ExpedienteReferidoArea,
   IAreasRepository,
 } from '../interfaces/areas-repository.interface';
+
+const SELECT_AREAS_VISIBLES = {
+  visibilidadAreas: { select: { area: true } },
+} as const;
 
 @Injectable()
 export class AreasRepository implements IAreasRepository {
@@ -18,7 +19,10 @@ export class AreasRepository implements IAreasRepository {
   async listarPorArea(area: Rol): Promise<ExpedienteResumenArea[]> {
     const expedientes = await this.prisma.expediente.findMany({
       where: { referidos: { some: { area } } },
-      include: { usuaria: true },
+      include: {
+        usuaria: true,
+        referidos: { where: { area }, select: { prioridad: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -29,26 +33,30 @@ export class AreasRepository implements IAreasRepository {
       municipio: expediente.usuaria.municipio,
       tipoRegistro: expediente.tipoRegistro,
       usuariaNombreCompleto: `${expediente.usuaria.nombres} ${expediente.usuaria.apellidos}`,
+      prioridad: expediente.referidos[0]?.prioridad,
     }));
   }
 
-  async buscarConAcceso(
+  async buscarReferido(
     expedienteId: string,
     area: Rol,
-  ): Promise<ExpedienteDetalleArea | null> {
+  ): Promise<ExpedienteReferidoArea | null> {
     const expediente = await this.prisma.expediente.findFirst({
       where: { id: expedienteId, referidos: { some: { area } } },
       include: {
         usuaria: true,
         agresor: true,
         ninos: true,
+        referidos: { where: { area }, select: { puedeVerDatosCaso: true } },
         // Las áreas nunca ven versiones reemplazadas: solo Trabajo Social ve el historial.
         documentos: {
-          where: { vigente: true, visibilidadAreas: { some: { area } } },
+          where: { vigente: true },
+          include: SELECT_AREAS_VISIBLES,
         },
       },
     });
-    if (!expediente) {
+    const referido = expediente?.referidos[0];
+    if (!expediente || !referido) {
       return null;
     }
 
@@ -67,19 +75,23 @@ export class AreasRepository implements IAreasRepository {
         direccion: expediente.usuaria.direccion,
         fechaNacimiento: fechaColumnaISO(expediente.usuaria.fechaNacimiento),
         grupoEtnico: expediente.usuaria.grupoEtnico,
-        tipologiaDelito: expediente.tipologiaDelito,
         ubicacionGeografica: expediente.usuaria.ubicacionGeografica,
         departamentoOtro: expediente.usuaria.departamentoOtro,
         municipioOtro: expediente.usuaria.municipioOtro,
       },
-      agresor: expediente.agresor
-        ? {
-            nombres: expediente.agresor.nombres,
-            apellidos: expediente.agresor.apellidos,
-            telefono: expediente.agresor.telefono,
-            direccion: expediente.agresor.direccion,
-          }
-        : null,
+      referido: { puedeVerDatosCaso: referido.puedeVerDatosCaso },
+      datosCaso: {
+        tipologiaDelito: expediente.tipologiaDelito,
+        observaciones: expediente.observaciones,
+        agresor: expediente.agresor
+          ? {
+              nombres: expediente.agresor.nombres,
+              apellidos: expediente.agresor.apellidos,
+              telefono: expediente.agresor.telefono,
+              direccion: expediente.agresor.direccion,
+            }
+          : null,
+      },
       ninos: expediente.ninos.map((nino) => ({
         nombres: nino.nombres,
         apellidos: nino.apellidos,
@@ -92,23 +104,42 @@ export class AreasRepository implements IAreasRepository {
         nombreArchivo: documento.nombreArchivo,
         tamanioBytes: documento.tamanioBytes,
         createdAt: documento.createdAt.toISOString(),
+        areasVisibles: documento.visibilidadAreas.map(
+          (visibilidad) => visibilidad.area,
+        ),
       })),
     };
   }
 
-  async buscarDocumentoVisible(
+  async buscarDocumentoDeReferido(
     documentoId: string,
     expedienteId: string,
     area: Rol,
   ): Promise<DocumentoParaDescargaArea | null> {
-    return this.prisma.documento.findFirst({
+    const documento = await this.prisma.documento.findFirst({
       where: {
         id: documentoId,
         expedienteId,
         vigente: true,
-        visibilidadAreas: { some: { area } },
+        expediente: { referidos: { some: { area } } },
       },
-      select: { claveR2: true, nombreArchivo: true },
+      select: {
+        claveR2: true,
+        nombreArchivo: true,
+        tipo: true,
+        ...SELECT_AREAS_VISIBLES,
+      },
     });
+    if (!documento) {
+      return null;
+    }
+    return {
+      claveR2: documento.claveR2,
+      nombreArchivo: documento.nombreArchivo,
+      tipo: documento.tipo,
+      areasVisibles: documento.visibilidadAreas.map(
+        (visibilidad) => visibilidad.area,
+      ),
+    };
   }
 }

@@ -1,5 +1,6 @@
 import type { Nino, TipoRegistro } from './registroUsuaria.js'
 import type { TipoDocumento } from './documentos.js'
+import type { PrioridadReferido } from './trabajoSocial.js'
 
 /**
  * Forma de un expediente tal como lo ve un área de atención (jurídica/médica/psicológica)
@@ -12,6 +13,8 @@ export interface ExpedienteResumenArea {
   municipio: string | null
   tipoRegistro: TipoRegistro
   usuariaNombreCompleto: string
+  /** Solo en el aviso por socket de un referido nuevo: `URGENTE` se destaca en la bandeja. */
+  prioridad?: PrioridadReferido
 }
 
 /** Detalle completo — ver GET /areas/expedientes/:id. */
@@ -24,11 +27,22 @@ export interface ExpedienteDetalleArea extends ExpedienteResumenArea {
     direccion: string | null
     fechaNacimiento: string
     grupoEtnico: string
-    tipologiaDelito: string[]
     ubicacionGeografica: string | null
     departamentoOtro: string | null
     municipioOtro: string | null
   }
+  /**
+   * Agresor, tipología y observaciones del caso. `null` cuando Trabajo Social no autorizó a esta
+   * área a verlos (`ReferidoArea.puedeVerDatosCaso = false`); Jurídico los recibe siempre.
+   */
+  datosCaso: DatosCasoArea | null
+  ninos: Nino[]
+  documentos: DocumentoVisibleArea[]
+}
+
+export interface DatosCasoArea {
+  tipologiaDelito: string[]
+  observaciones: string | null
   // No reutiliza `DatosAgresor` (representación de formulario, "" = sin dato): esta es una
   // vista de solo lectura de lo ya guardado, donde la ausencia se representa como `null`.
   agresor: {
@@ -37,8 +51,6 @@ export interface ExpedienteDetalleArea extends ExpedienteResumenArea {
     telefono: string | null
     direccion: string | null
   } | null
-  ninos: Nino[]
-  documentos: DocumentoVisibleArea[]
 }
 
 /**

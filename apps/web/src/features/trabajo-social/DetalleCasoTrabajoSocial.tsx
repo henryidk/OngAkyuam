@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_GENERO,
@@ -7,10 +7,15 @@ import {
   ETIQUETAS_TIPOLOGIA_DELITO,
   formatFechaGT,
   type ExpedienteDetalleCaso,
+  type ReferidoCreado,
 } from '@akyuam/shared'
+import Button from '../../components/ui/Button'
 import { api } from '../../lib/api'
 import { extraerMensajeError } from '../../lib/errors'
+import { useMatrizAccesos } from './accesos/useMatrizAccesos'
+import PestanaAccesos from './ficha/pestanas/PestanaAccesos'
 import PestanaDocumentos from './ficha/pestanas/PestanaDocumentos'
+import ModalReferir from './referir/ModalReferir'
 
 interface DetalleCasoTrabajoSocialProps {
   expedienteId: string
@@ -39,32 +44,60 @@ function Seccion({ titulo, children }: { titulo: string; children: ReactNode }) 
  * Detalle de un caso puntual visto desde Trabajo Social — a diferencia de
  * `ContenidoDetalleExpediente` (áreas de atención), no repite identidad de la usuaria (vive en
  * el hub) y no filtra documentos por visibilidad de área: Trabajo Social ve todo lo que subió.
- * Los documentos se montan aquí con la pestaña de la ficha hasta que exista la ficha con rutas.
+ * Documentos, Accesos y el modal Referir se montan aquí hasta que exista la ficha con rutas.
  */
 export default function DetalleCasoTrabajoSocial({ expedienteId, onVolver }: DetalleCasoTrabajoSocialProps) {
   const [expediente, setExpediente] = useState<ExpedienteDetalleCaso | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [referirAbierto, setReferirAbierto] = useState(false)
+  // Sin Toast todavía (§12.10): la confirmación de "Referir" se muestra inline sobre el caso.
+  const [avisoReferido, setAvisoReferido] = useState<string | null>(null)
+  const accesos = useMatrizAccesos(expedienteId)
+  const recargarAccesos = accesos.recargar
 
-  useEffect(() => {
-    let cancelado = false
-    api
-      .get<ExpedienteDetalleCaso>(`/trabajo-social/expedientes/${expedienteId}`)
-      .then(({ data }) => {
-        if (!cancelado) setExpediente(data)
-      })
-      .catch((err: unknown) => {
-        if (!cancelado) setError(extraerMensajeError(err))
-      })
-    return () => {
-      cancelado = true
+  const cargarExpediente = useCallback(async () => {
+    try {
+      const { data } = await api.get<ExpedienteDetalleCaso>(`/trabajo-social/expedientes/${expedienteId}`)
+      setExpediente(data)
+    } catch (err) {
+      setError(extraerMensajeError(err))
     }
   }, [expedienteId])
 
+  useEffect(() => {
+    setExpediente(null)
+    setError(null)
+    void cargarExpediente()
+  }, [cargarExpediente])
+
+  const onReferido = useCallback(
+    (referido: ReferidoCreado) => {
+      setReferirAbierto(false)
+      setAvisoReferido(`Referida a ${ETIQUETAS_AREA_ATENCION[referido.area]} · ya aparece en su bandeja`)
+      void cargarExpediente()
+      void recargarAccesos()
+    },
+    [cargarExpediente, recargarAccesos],
+  )
+
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <button type="button" onClick={onVolver} className="text-sm font-medium text-brand-600 hover:text-brand-700">
-        ← Volver al expediente
-      </button>
+      <div className="flex items-center justify-between gap-4">
+        <button type="button" onClick={onVolver} className="text-sm font-medium text-brand-600 hover:text-brand-700">
+          ← Volver al expediente
+        </button>
+        {expediente && (
+          <Button tamano="md" onClick={() => setReferirAbierto(true)}>
+            Referir a un área
+          </Button>
+        )}
+      </div>
+
+      {avisoReferido && (
+        <p role="status" className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+          {avisoReferido}
+        </p>
+      )}
 
       {error && <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
@@ -117,7 +150,19 @@ export default function DetalleCasoTrabajoSocial({ expedienteId, onVolver }: Det
           )}
 
           <PestanaDocumentos expedienteId={expedienteId} />
+
+          <PestanaAccesos accesos={accesos} />
         </div>
+      )}
+
+      {expediente && referirAbierto && (
+        <ModalReferir
+          expedienteId={expedienteId}
+          numeroExpediente={expediente.numero}
+          areasReferidas={expediente.areasReferidas}
+          onCerrar={() => setReferirAbierto(false)}
+          onReferido={onReferido}
+        />
       )}
     </div>
   )

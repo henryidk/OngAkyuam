@@ -1,6 +1,12 @@
 import type {
+  ActualizarAccesoInput,
+  AreaAtencion,
   DocumentosCaso,
   DocumentoSubido,
+  MatrizAccesos,
+  ProfesionalArea,
+  ReferidoCreado,
+  ReferirInput,
   TipoDocumentoTrabajoSocial,
   VersionDocumento,
 } from '@akyuam/shared'
@@ -44,4 +50,28 @@ export function obtenerUrlDocumento(expedienteId: string, documentoId: string, i
   return api
     .get<{ url: string }>(`${rutaDocumentos(expedienteId)}/${documentoId}/url`, { params: { inline } })
     .then((res) => res.data.url)
+}
+
+export function referirCaso(expedienteId: string, datos: ReferirInput) {
+  return api
+    .post<ReferidoCreado>(`/trabajo-social/expedientes/${expedienteId}/referidos`, datos)
+    .then((res) => res.data)
+}
+
+/** Usuarios activos del área, para el select "Profesional que atenderá" del modal Referir. */
+export function listarProfesionales(area: AreaAtencion) {
+  return api
+    .get<ProfesionalArea[]>('/trabajo-social/profesionales', { params: { area } })
+    .then((res) => res.data)
+}
+
+export function obtenerMatrizAccesos(expedienteId: string) {
+  return api.get<MatrizAccesos>(`/trabajo-social/expedientes/${expedienteId}/accesos`).then((res) => res.data)
+}
+
+/** Guarda un solo cambio de la matriz y devuelve la matriz ya recalculada por el backend. */
+export function actualizarAccesoArea(expedienteId: string, area: AreaAtencion, cambios: ActualizarAccesoInput) {
+  return api
+    .put<MatrizAccesos>(`/trabajo-social/expedientes/${expedienteId}/accesos/${area}`, cambios)
+    .then((res) => res.data)
 }
