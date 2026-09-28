@@ -142,10 +142,10 @@ export class ExpedientesRepository implements IExpedientesRepository {
         fecha,
         tipoRegistro: datosCaso.tipoRegistro,
         tipologiaDelito: datosCaso.tipologiaDelito,
-        // Mientras el wizard no capture la fecha de ingreso por separado (paso "Tipo de
-        // registro", etapa 5), coincide con la fecha del caso — mismo criterio que el backfill.
-        fechaIngresoAlbergue:
-          datosCaso.tipoRegistro === 'INTERNA' ? fecha : undefined,
+        fechaIngresoAlbergue: datosCaso.fechaIngresoAlbergue
+          ? new Date(datosCaso.fechaIngresoAlbergue)
+          : undefined,
+        observaciones: datosCaso.observaciones,
         creadoPorId: datosCaso.creadoPorId,
         agresor: datosCaso.agresor ? { create: datosCaso.agresor } : undefined,
         ninos:
@@ -161,16 +161,6 @@ export class ExpedientesRepository implements IExpedientesRepository {
             : undefined,
       },
     });
-
-    if (datosCaso.areasReferidas.length > 0) {
-      await tx.referidoArea.createMany({
-        data: datosCaso.areasReferidas.map((area) => ({
-          expedienteId: expediente.id,
-          area,
-          otorgadoPorId: datosCaso.creadoPorId,
-        })),
-      });
-    }
 
     return {
       id: expediente.id,

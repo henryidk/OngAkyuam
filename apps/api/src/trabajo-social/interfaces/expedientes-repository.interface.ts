@@ -1,7 +1,6 @@
 import type {
   GrupoEtnico,
   MunicipioAltaVerapaz,
-  Rol,
   TipologiaDelito,
   TipoRegistro,
 } from '@prisma/client';
@@ -59,10 +58,12 @@ export interface DatosCasoParams {
   fecha: string;
   tipoRegistro: TipoRegistro;
   tipologiaDelito: TipologiaDelito[];
+  /** "YYYY-MM-DD", solo en casos INTERNA. */
+  fechaIngresoAlbergue: string | null;
+  observaciones: string | null;
   creadoPorId: string;
   agresor: DatosAgresor | null;
   ninos: DatosNino[];
-  areasReferidas: Rol[];
 }
 
 export interface CrearExpedienteConUsuariaNuevaParams {

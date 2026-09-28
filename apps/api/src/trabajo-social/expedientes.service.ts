@@ -13,8 +13,6 @@ import type {
   IdentidadUsuaria,
 } from '@akyuam/shared';
 import type { MunicipioAltaVerapaz } from '@prisma/client';
-import { AREA_NOTIFIER } from '../areas/interfaces/area-notifier.interface';
-import type { IAreaNotifier } from '../areas/interfaces/area-notifier.interface';
 import { AuditService } from '../auth/services/audit.service';
 import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import {
@@ -51,8 +49,6 @@ export class ExpedientesService {
     @Inject(EXPEDIENTES_REPOSITORY)
     private readonly expedientesRepository: IExpedientesRepository,
     private readonly auditService: AuditService,
-    @Inject(AREA_NOTIFIER)
-    private readonly areaNotifier: IAreaNotifier,
   ) {}
 
   async crear(
@@ -76,11 +72,7 @@ export class ExpedientesService {
       throw error;
     }
 
-    await this.registrarCreacionYReferidos(
-      resultado,
-      datos.datosCaso.areasReferidas,
-      contexto,
-    );
+    await this.registrarCreacion(resultado, contexto);
     return resultado;
   }
 
@@ -102,11 +94,7 @@ export class ExpedientesService {
       throw error;
     }
 
-    await this.registrarCreacionYReferidos(
-      resultado,
-      datosCaso.areasReferidas,
-      contexto,
-    );
+    await this.registrarCreacion(resultado, contexto);
     return resultado;
   }
 
@@ -132,12 +120,12 @@ export class ExpedientesService {
     return expediente;
   }
 
-  private async registrarCreacionYReferidos(
+  private async registrarCreacion(
     resultado: ExpedienteCreado,
-    areasReferidas: DatosCaso['areasReferidas'],
     contexto: ContextoAuditoria,
   ): Promise<void> {
     // Nunca nombres/DPI en `detalles` — solo el número, que no es dato sensible por sí mismo (RNF-02).
+    // Referir ya no ocurre aquí: se audita y notifica en ReferidosService.
     await this.auditService.registrar({
       usuarioId: contexto.usuarioId,
       username: contexto.username,
@@ -148,28 +136,6 @@ export class ExpedientesService {
       userAgent: contexto.userAgent,
       detalles: { numero: resultado.numero },
     });
-
-    for (const area of areasReferidas) {
-      await this.auditService.registrar({
-        usuarioId: contexto.usuarioId,
-        username: contexto.username,
-        accion: 'EXPEDIENTE_REFERIDO',
-        entidad: 'Expediente',
-        entidadId: resultado.id,
-        ipAddress: contexto.ipAddress,
-        userAgent: contexto.userAgent,
-        detalles: { area },
-      });
-
-      this.areaNotifier.notificarReferido(area, {
-        id: resultado.id,
-        numero: resultado.numero,
-        fecha: resultado.fecha,
-        municipio: resultado.municipio,
-        tipoRegistro: resultado.tipoRegistro,
-        usuariaNombreCompleto: resultado.usuariaNombreCompleto,
-      });
-    }
   }
 
   private mapearIdentidad(
@@ -204,7 +170,11 @@ export class ExpedientesService {
       fecha: datosCaso.fecha,
       tipoRegistro: datosCaso.tipoRegistro,
       tipologiaDelito: datosCaso.tipologiaDelito,
-      areasReferidas: datosCaso.areasReferidas,
+      fechaIngresoAlbergue:
+        datosCaso.tipoRegistro === 'INTERNA'
+          ? datosCaso.fechaIngresoAlbergue
+          : null,
+      observaciones: vacioANulo(datosCaso.observaciones),
       creadoPorId,
       agresor: tieneDatosAgresor(datosCaso.datosAgresor)
         ? {

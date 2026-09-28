@@ -11,33 +11,41 @@ export default function IndicadorPasosVertical({ pasos, pasoActualId, onIrAPaso 
   const estados = calcularEstadoPasos(pasos, pasoActualId)
 
   return (
-    <ol className="flex flex-col gap-1">
+    <ol className="flex flex-col">
       {estados.map(({ paso, indice, completado, activo, alcanzable }) => (
         <li key={paso.id}>
           <button
             type="button"
             disabled={!alcanzable}
             onClick={() => onIrAPaso(paso.id)}
-            className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors ${
-              activo ? 'bg-brand-50' : alcanzable ? 'hover:bg-gray-50' : 'cursor-not-allowed opacity-50'
-            }`}
+            aria-current={activo ? 'step' : undefined}
+            className={`flex w-full gap-3 text-left ${alcanzable && !activo ? 'group' : 'cursor-default'}`}
           >
-            <span
-              className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                activo
-                  ? 'bg-brand-600 text-white'
-                  : completado
-                    ? 'bg-brand-100 text-brand-700'
-                    : 'bg-gray-100 text-gray-400'
-              }`}
-            >
-              {completado ? <Check size={13} strokeWidth={3} /> : indice + 1}
+            <span className="flex flex-col items-center">
+              <span
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 text-xs font-semibold ${
+                  completado
+                    ? 'border-brand-600 bg-brand-600 text-white'
+                    : activo
+                      ? 'border-brand-600 bg-white text-brand-600'
+                      : 'border-gray-300 bg-white text-gray-400'
+                }`}
+              >
+                {completado ? <Check size={14} strokeWidth={3} /> : indice + 1}
+              </span>
+              {indice < estados.length - 1 && (
+                <span className={`h-[26px] w-0.5 ${completado ? 'bg-brand-600' : 'bg-gray-200'}`} />
+              )}
             </span>
-            <span className="min-w-0">
-              <span className={`block text-sm font-medium ${activo ? 'text-brand-900' : 'text-gray-700'}`}>
+            <span className="min-w-0 pt-1">
+              <span
+                className={`block text-sm group-hover:underline ${
+                  activo ? 'font-semibold text-gray-900' : 'font-medium text-gray-500'
+                }`}
+              >
                 {paso.titulo}
               </span>
-              <span className="block text-xs text-gray-500">{paso.descripcion}</span>
+              <span className="block text-xs text-gray-400">{paso.descripcion}</span>
             </span>
           </button>
         </li>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import type { UsuariaResumenBusqueda } from '@akyuam/shared'
 import BuscadorUsuaria from '../../features/trabajo-social/BuscadorUsuaria'
 import DetalleCasoTrabajoSocial from '../../features/trabajo-social/DetalleCasoTrabajoSocial'
@@ -9,8 +10,23 @@ type Vista =
   | { tipo: 'hub'; usuariaId: string }
   | { tipo: 'caso'; usuariaId: string; expedienteId: string }
 
+/** Estado de navegación para abrir directo una usuaria (o uno de sus casos) — p. ej. desde el wizard. */
+interface EstadoNavegacionExpediente {
+  usuariaId?: string
+  expedienteId?: string
+}
+
+function vistaInicial(estado: EstadoNavegacionExpediente | null): Vista {
+  if (!estado?.usuariaId) return { tipo: 'buscando' }
+  if (estado.expedienteId) return { tipo: 'caso', usuariaId: estado.usuariaId, expedienteId: estado.expedienteId }
+  return { tipo: 'hub', usuariaId: estado.usuariaId }
+}
+
 export default function Expediente() {
-  const [vista, setVista] = useState<Vista>({ tipo: 'buscando' })
+  const location = useLocation()
+  const [vista, setVista] = useState<Vista>(() =>
+    vistaInicial((location.state ?? null) as EstadoNavegacionExpediente | null),
+  )
 
   if (vista.tipo === 'buscando') {
     return (

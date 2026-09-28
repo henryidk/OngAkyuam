@@ -1,15 +1,16 @@
 import type { ReactNode } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
 import {
-  ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_GENERO,
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   ETIQUETAS_TIPO_REGISTRO,
+  ETIQUETAS_TIPO_DOCUMENTO,
   ETIQUETAS_TIPOLOGIA_DELITO,
   formatFechaGT,
   type RegistroUsuariaNuevaFormValues,
 } from '@akyuam/shared'
+import type { DocumentoStaging } from '../hooks/useDocumentosStaging'
 import type { PasoId } from '../wizard'
 
 interface PasoRevisionProps {
@@ -17,6 +18,7 @@ interface PasoRevisionProps {
   onEditar: (pasoId: PasoId) => void
   /** Cuando la usuaria ya existe, su identidad no es parte de este wizard — no hay nada que revisar aquí. */
   usuariaExistente: boolean
+  documentos: DocumentoStaging[]
 }
 
 function Fila({ etiqueta, valor }: { etiqueta: string; valor: string }) {
@@ -40,9 +42,9 @@ function Seccion({
   children: ReactNode
 }) {
   return (
-    <section className="rounded border border-gray-200 p-4">
+    <section className="rounded-lg border border-gray-200 px-4 py-3.5">
       <div className="mb-1 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-800">{titulo}</h3>
+        <h3 className="text-[13px] font-semibold text-gray-700">{titulo}</h3>
         <button
           type="button"
           onClick={() => onEditar(pasoId)}
@@ -56,24 +58,20 @@ function Seccion({
   )
 }
 
-export default function PasoRevision({ form, onEditar, usuariaExistente }: PasoRevisionProps) {
+export default function PasoRevision({ form, onEditar, usuariaExistente, documentos }: PasoRevisionProps) {
   const datos = form.getValues()
-  const agresor = datos.datosCaso.datosAgresor
+  const caso = datos.datosCaso
+  const agresor = caso.datosAgresor
+  const esInterna = caso.tipoRegistro === 'INTERNA'
+  const documentosValidos = documentos.filter((documento) => !documento.error)
 
   const tieneDatosAgresor = agresor.nombres || agresor.apellidos || agresor.telefono || agresor.direccion
 
   return (
-    <div className="space-y-4">
-      <Seccion titulo="Datos del caso" pasoId="caso" onEditar={onEditar}>
-        <Fila etiqueta="Fecha" valor={formatFechaGT(datos.datosCaso.fecha)} />
-        <Fila
-          etiqueta="Tipología del delito"
-          valor={datos.datosCaso.tipologiaDelito.map((tipo) => ETIQUETAS_TIPOLOGIA_DELITO[tipo]).join(', ')}
-        />
-      </Seccion>
-
+    <div className="flex flex-col gap-4">
       {!usuariaExistente && (
-        <Seccion titulo="Datos de la usuaria" pasoId="usuaria" onEditar={onEditar}>
+        <Seccion titulo="Usuaria" pasoId="usuaria" onEditar={onEditar}>
+          <Fila etiqueta="Fecha de registro" valor={formatFechaGT(caso.fecha)} />
           <Fila etiqueta="Nombres" valor={datos.datosUsuaria.nombres} />
           <Fila etiqueta="Apellidos" valor={datos.datosUsuaria.apellidos} />
           <Fila etiqueta="DPI" valor={datos.datosUsuaria.dpi ?? ''} />
@@ -102,49 +100,54 @@ export default function PasoRevision({ form, onEditar, usuariaExistente }: PasoR
         </Seccion>
       )}
 
-      <Seccion titulo="Datos del agresor" pasoId="agresor" onEditar={onEditar}>
-        {tieneDatosAgresor ? (
-          <>
-            <Fila etiqueta="Nombres" valor={agresor.nombres ?? ''} />
-            <Fila etiqueta="Apellidos" valor={agresor.apellidos ?? ''} />
-            <Fila etiqueta="Teléfono" valor={agresor.telefono ?? ''} />
-            <Fila etiqueta="Dirección" valor={agresor.direccion ?? ''} />
-          </>
-        ) : (
-          <p className="py-1.5 text-sm text-gray-400">No se registraron datos del agresor.</p>
-        )}
+      <Seccion titulo="Situación de violencia" pasoId="situacion" onEditar={onEditar}>
+        {usuariaExistente && <Fila etiqueta="Fecha de registro" valor={formatFechaGT(caso.fecha)} />}
+        <Fila
+          etiqueta="Tipología del delito"
+          valor={caso.tipologiaDelito.map((tipo) => ETIQUETAS_TIPOLOGIA_DELITO[tipo]).join(', ')}
+        />
+        <Fila
+          etiqueta="Agresor"
+          valor={
+            tieneDatosAgresor
+              ? [`${agresor.nombres} ${agresor.apellidos}`.trim(), agresor.telefono, agresor.direccion]
+                  .filter(Boolean)
+                  .join(' · ')
+              : 'La usuaria no proporcionó datos'
+          }
+        />
+        <Fila etiqueta="Observaciones" valor={caso.observaciones.trim()} />
       </Seccion>
 
       <Seccion titulo="Tipo de registro" pasoId="registro" onEditar={onEditar}>
-        <Fila etiqueta="Tipo" valor={ETIQUETAS_TIPO_REGISTRO[datos.datosCaso.tipoRegistro]} />
-        {datos.datosCaso.tipoRegistro === 'INTERNA' && (
-          <div className="py-1.5">
-            <p className="text-sm text-gray-500">
-              {datos.datosCaso.ninos.length === 0
-                ? 'Sin niñas o niños registrados.'
-                : `${datos.datosCaso.ninos.length} niña(s)/niño(s) registrados:`}
-            </p>
-            {datos.datosCaso.ninos.length > 0 && (
-              <ul className="mt-1 space-y-1 text-sm">
-                {datos.datosCaso.ninos.map((nino, indice) => (
-                  <li key={indice} className="text-gray-700">
-                    {nino.nombres} {nino.apellidos} — {ETIQUETAS_GENERO[nino.genero]}, nacimiento{' '}
-                    {formatFechaGT(nino.fechaNacimiento)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+        <Fila etiqueta="Tipo" valor={ETIQUETAS_TIPO_REGISTRO[caso.tipoRegistro]} />
+        {esInterna && <Fila etiqueta="Ingreso al albergue" valor={formatFechaGT(caso.fechaIngresoAlbergue)} />}
       </Seccion>
 
-      <Seccion titulo="Áreas de atención" pasoId="areas" onEditar={onEditar}>
+      {esInterna && (
+        <Seccion titulo="Hijas e hijos" pasoId="hijos" onEditar={onEditar}>
+          {caso.ninos.length === 0 ? (
+            <p className="py-1.5 text-sm text-gray-400">Ingresa sin hijas ni hijos.</p>
+          ) : (
+            <ul className="space-y-1 py-1.5 text-sm">
+              {caso.ninos.map((nino, indice) => (
+                <li key={indice} className="text-gray-700">
+                  {nino.nombres} {nino.apellidos} — {ETIQUETAS_GENERO[nino.genero]}, nacimiento{' '}
+                  {formatFechaGT(nino.fechaNacimiento)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Seccion>
+      )}
+
+      <Seccion titulo="Documentos" pasoId="documentos" onEditar={onEditar}>
         <Fila
-          etiqueta="Referido a"
+          etiqueta="Se subirán al guardar"
           valor={
-            datos.datosCaso.areasReferidas.length > 0
-              ? datos.datosCaso.areasReferidas.map((area) => ETIQUETAS_AREA_ATENCION[area]).join(', ')
-              : 'Ninguna seleccionada'
+            documentosValidos.length > 0
+              ? documentosValidos.map((documento) => ETIQUETAS_TIPO_DOCUMENTO[documento.tipo]).join(', ')
+              : 'Ninguno por ahora'
           }
         />
       </Seccion>

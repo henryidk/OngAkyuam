@@ -1,13 +1,18 @@
 import type {
   ActualizarAccesoInput,
   AreaAtencion,
+  CrearExpedienteInput,
+  DatosCaso,
   DocumentosCaso,
   DocumentoSubido,
+  ExpedienteCreado,
   MatrizAccesos,
   ProfesionalArea,
   ReferidoCreado,
   ReferirInput,
   TipoDocumentoTrabajoSocial,
+  UsuariaExpedienteHub,
+  UsuariaResumenBusqueda,
   VersionDocumento,
 } from '@akyuam/shared'
 import { api } from '../../../lib/api'
@@ -73,5 +78,28 @@ export function obtenerMatrizAccesos(expedienteId: string) {
 export function actualizarAccesoArea(expedienteId: string, area: AreaAtencion, cambios: ActualizarAccesoInput) {
   return api
     .put<MatrizAccesos>(`/trabajo-social/expedientes/${expedienteId}/accesos/${area}`, cambios)
+    .then((res) => res.data)
+}
+
+/** Registro de una usuaria nueva junto con su primer caso. */
+export function crearExpedienteConUsuaria(datos: CrearExpedienteInput) {
+  return api.post<ExpedienteCreado>('/trabajo-social/expedientes', datos).then((res) => res.data)
+}
+
+/** Caso nuevo para una usuaria ya registrada — nunca vuelve a enviar su identidad. */
+export function crearCasoParaUsuaria(usuariaId: string, datosCaso: DatosCaso) {
+  return api
+    .post<ExpedienteCreado>(`/trabajo-social/usuarias/${usuariaId}/expedientes`, datosCaso)
+    .then((res) => res.data)
+}
+
+export function obtenerUsuaria(usuariaId: string) {
+  return api.get<UsuariaExpedienteHub>(`/trabajo-social/usuarias/${usuariaId}`).then((res) => res.data)
+}
+
+/** Botón "Verificar" del DPI en el wizard: mismo endpoint que el buscador. */
+export function buscarUsuariaPorDpi(dpi: string) {
+  return api
+    .get<UsuariaResumenBusqueda[]>('/trabajo-social/usuarias/buscar', { params: { dpi } })
     .then((res) => res.data)
 }

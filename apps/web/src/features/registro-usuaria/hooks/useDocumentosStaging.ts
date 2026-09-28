@@ -1,19 +1,24 @@
 import { useCallback, useMemo, useState } from 'react'
-import {
-  DOCUMENTO_TAMANIO_MAXIMO_BYTES,
-  mimeTypePermitido,
-  type AreaAtencion,
-  type TipoDocumento,
-} from '@akyuam/shared'
+import { DOCUMENTO_TAMANIO_MAXIMO_BYTES, mimeTypePermitido, type TipoDocumentoTrabajoSocial } from '@akyuam/shared'
 
+/**
+ * Un archivo elegido en el paso "Documentos". Sin visibilidad por área: todo documento nace
+ * privado para Trabajo Social y se comparte después, al referir o desde la pestaña Accesos.
+ */
 export interface DocumentoStaging {
-  tipo: TipoDocumento
+  tipo: TipoDocumentoTrabajoSocial
   archivo: File
-  areasVisibles: AreaAtencion[]
   error?: string
 }
 
-type DocumentosPorTipo = Partial<Record<TipoDocumento, DocumentoStaging>>
+export type EstadoSubidaDocumento = 'subiendo' | 'ok' | 'error'
+
+export interface DocumentoEnSubida extends DocumentoStaging {
+  estado: EstadoSubidaDocumento
+  mensajeError?: string
+}
+
+type DocumentosPorTipo = Partial<Record<TipoDocumentoTrabajoSocial, DocumentoStaging>>
 
 /**
  * Mantiene en memoria los archivos elegidos en el paso "Documentos" mientras el expediente
@@ -23,38 +28,21 @@ type DocumentosPorTipo = Partial<Record<TipoDocumento, DocumentoStaging>>
 export function useDocumentosStaging() {
   const [documentosPorTipo, setDocumentosPorTipo] = useState<DocumentosPorTipo>({})
 
-  const seleccionarArchivo = useCallback((tipo: TipoDocumento, archivo: File) => {
+  const seleccionarArchivo = useCallback((tipo: TipoDocumentoTrabajoSocial, archivo: File) => {
     const error = validarArchivo(archivo)
-    setDocumentosPorTipo((actual) => ({
-      ...actual,
-      [tipo]: { tipo, archivo, areasVisibles: [], error },
-    }))
+    setDocumentosPorTipo((actual) => ({ ...actual, [tipo]: { tipo, archivo, error } }))
   }, [])
 
-  const quitarArchivo = useCallback((tipo: TipoDocumento) => {
+  const quitarArchivo = useCallback((tipo: TipoDocumentoTrabajoSocial) => {
     setDocumentosPorTipo((actual) => {
       const { [tipo]: _quitado, ...resto } = actual
       return resto
     })
   }, [])
 
-  const alternarAreaVisible = useCallback((tipo: TipoDocumento, area: AreaAtencion) => {
-    setDocumentosPorTipo((actual) => {
-      const documento = actual[tipo]
-      if (!documento) return actual
-      const yaIncluida = documento.areasVisibles.includes(area)
-      const areasVisibles = yaIncluida
-        ? documento.areasVisibles.filter((a) => a !== area)
-        : [...documento.areasVisibles, area]
-      return { ...actual, [tipo]: { ...documento, areasVisibles } }
-    })
-  }, [])
-
-  const limpiar = useCallback(() => setDocumentosPorTipo({}), [])
-
   const documentos = useMemo(() => Object.values(documentosPorTipo), [documentosPorTipo])
 
-  return { documentosPorTipo, documentos, seleccionarArchivo, quitarArchivo, alternarAreaVisible, limpiar }
+  return { documentosPorTipo, documentos, seleccionarArchivo, quitarArchivo }
 }
 
 export type UseDocumentosStaging = ReturnType<typeof useDocumentosStaging>

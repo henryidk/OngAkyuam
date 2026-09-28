@@ -6,7 +6,6 @@ import {
   UsuariaNoEncontradaError,
 } from './interfaces/expedientes-repository.interface';
 import type { IExpedientesRepository } from './interfaces/expedientes-repository.interface';
-import type { IAreaNotifier } from '../areas/interfaces/area-notifier.interface';
 import type { AuditService } from '../auth/services/audit.service';
 import type {
   CrearExpedienteInput,
@@ -19,7 +18,6 @@ describe('ExpedientesService', () => {
   let service: ExpedientesService;
   let expedientesRepository: jest.Mocked<IExpedientesRepository>;
   let auditService: jest.Mocked<AuditService>;
-  let areaNotifier: jest.Mocked<IAreaNotifier>;
 
   const contexto = {
     usuarioId: 'ts-1',
@@ -48,9 +46,10 @@ describe('ExpedientesService', () => {
       fecha: '2026-01-01',
       tipologiaDelito: ['VIOLENCIA_FISICA'],
       tipoRegistro: 'EXTERNA',
+      fechaIngresoAlbergue: '',
       datosAgresor: { nombres: '', apellidos: '', telefono: '', direccion: '' },
+      observaciones: '',
       ninos: [],
-      areasReferidas: [],
       ...overrides,
     };
   }
@@ -87,13 +86,8 @@ describe('ExpedientesService', () => {
     auditService = {
       registrar: jest.fn(),
     } as unknown as jest.Mocked<AuditService>;
-    areaNotifier = { notificarReferido: jest.fn() };
 
-    service = new ExpedientesService(
-      expedientesRepository,
-      auditService,
-      areaNotifier,
-    );
+    service = new ExpedientesService(expedientesRepository, auditService);
   });
 
   describe('crear', () => {
@@ -134,20 +128,49 @@ describe('ExpedientesService', () => {
       expect(detalles).toEqual({ numero: '01-2026' });
     });
 
-    it('notifica a cada área referida', async () => {
+    it('guarda la fecha de ingreso solo si es Interna y observaciones vacías como null', async () => {
       expedientesRepository.crearConUsuariaNueva.mockResolvedValue(resultado());
 
       await service.crear(
         datosNuevaUsuaria({
-          datosCaso: datosCaso({ areasReferidas: ['JURIDICO'] }),
+          datosCaso: datosCaso({ fechaIngresoAlbergue: '2026-01-02' }),
+        }),
+        contexto,
+      );
+      await service.crear(
+        datosNuevaUsuaria({
+          datosCaso: datosCaso({
+            tipoRegistro: 'INTERNA',
+            fechaIngresoAlbergue: '2026-01-02',
+            observaciones: 'Texto ficticio',
+          }),
         }),
         contexto,
       );
 
-      expect(areaNotifier.notificarReferido).toHaveBeenCalledWith(
-        'JURIDICO',
-        expect.objectContaining({ id: 'exp-1' }),
-      );
+      const [externa, interna] =
+        expedientesRepository.crearConUsuariaNueva.mock.calls.map(
+          ([params]) => params.datosCaso,
+        );
+      expect(externa).toMatchObject({
+        fechaIngresoAlbergue: null,
+        observaciones: null,
+      });
+      expect(interna).toMatchObject({
+        fechaIngresoAlbergue: '2026-01-02',
+        observaciones: 'Texto ficticio',
+      });
+    });
+
+    it('crear un caso ya no refiere a ningún área (se hace desde la ficha)', async () => {
+      expedientesRepository.crearConUsuariaNueva.mockResolvedValue(resultado());
+
+      await service.crear(datosNuevaUsuaria(), contexto);
+
+      expect(auditService.registrar).toHaveBeenCalledTimes(1);
+      expect(
+        expedientesRepository.crearConUsuariaNueva.mock.calls[0][0].datosCaso,
+      ).not.toHaveProperty('areasReferidas');
     });
   });
 

@@ -100,23 +100,32 @@ export const ninoSchema = z.object({
   genero: generoSchema,
 })
 
+export const OBSERVACIONES_CASO_MAX = 2000
+
 /**
  * Todo lo que puede variar de un caso a otro de la misma usuaria: la tipología del delito, si
- * pide albergue, quién es el agresor (puede ser otra persona en cada caso), a qué áreas se
- * refiere y los niños que la acompañan en ese caso puntual. Es el body completo de "nuevo caso"
- * para una usuaria ya existente (`nuevoCasoSchema` = este schema, sin más), y la mitad de
- * `registroUsuariaNuevaSchema` cuando la usuaria es nueva.
+ * pide albergue (y desde cuándo), quién es el agresor (puede ser otra persona en cada caso), las
+ * observaciones de la entrevista y los niños que la acompañan en ese caso puntual. Es el body
+ * completo de "nuevo caso" para una usuaria ya existente (`nuevoCasoSchema` = este schema, sin
+ * más), y la mitad de `registroUsuariaNuevaSchema` cuando la usuaria es nueva.
+ * Referir a un área ya no es parte del registro: se hace después, desde la ficha del caso
+ * (`referirSchema`), para elegir profesional, prioridad y visibilidad en el mismo paso.
  */
 export const datosCasoSchema = z
   .object({
     fecha: fechaCalendarioSchema,
     tipologiaDelito: z.array(tipologiaDelitoSchema).min(1, 'Selecciona al menos una tipología'),
     tipoRegistro: tipoRegistroSchema,
+    // "" mientras sea Externa — mismo criterio de strings planos que el resto del archivo.
+    fechaIngresoAlbergue: z.string(),
     datosAgresor: datosAgresorSchema,
+    observaciones: z.string().trim().max(OBSERVACIONES_CASO_MAX, `Máximo ${OBSERVACIONES_CASO_MAX} caracteres`),
     ninos: z.array(ninoSchema),
-    // Referir es opcional: trabajo social puede no saber todavía a qué área corresponde.
-    areasReferidas: z.array(areaAtencionSchema),
   })
+  .refine(
+    (datos) => datos.tipoRegistro !== 'INTERNA' || /^\d{4}-\d{2}-\d{2}$/.test(datos.fechaIngresoAlbergue),
+    { message: 'Indica la fecha de ingreso al albergue', path: ['fechaIngresoAlbergue'] },
+  )
   .refine((datos) => datos.tipoRegistro === 'INTERNA' || datos.ninos.length === 0, {
     message: 'Solo se registran niñas y niños cuando la usuaria es Interna (solicita albergue)',
     path: ['ninos'],

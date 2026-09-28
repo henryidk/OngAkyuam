@@ -12,6 +12,7 @@ import {
 } from '@akyuam/shared'
 import SelectInput from '../../../components/form/SelectInput'
 import TextoInput from '../../../components/form/TextoInput'
+import VerificarDpi from '../components/VerificarDpi'
 
 interface PasoDatosUsuariaProps {
   form: UseFormReturn<RegistroUsuariaNuevaFormValues>
@@ -39,6 +40,7 @@ export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
   } = form
   const fechaNacimiento = useWatch({ control, name: 'datosUsuaria.fechaNacimiento' })
   const fueraDeAltaVerapaz = useWatch({ control, name: 'datosUsuaria.fueraDeAltaVerapaz' })
+  const dpi = useWatch({ control, name: 'datosUsuaria.dpi' })
   const rangoEdad = FECHA_ISO_REGEX.test(fechaNacimiento ?? '')
     ? calcularRangoEdad(edadEnAniosGT(fechaNacimiento))
     : null
@@ -59,15 +61,18 @@ export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextoInput
-          label="DPI"
-          opcional
-          inputMode="numeric"
-          maxLength={13}
-          ayuda="13 dígitos, sin espacios ni guiones."
-          registro={register('datosUsuaria.dpi')}
-          error={errors.datosUsuaria?.dpi?.message}
-        />
+        <div>
+          <TextoInput
+            label="DPI"
+            opcional
+            inputMode="numeric"
+            maxLength={13}
+            ayuda="13 dígitos, sin espacios ni guiones."
+            registro={register('datosUsuaria.dpi')}
+            error={errors.datosUsuaria?.dpi?.message}
+          />
+          <VerificarDpi dpi={dpi ?? ''} />
+        </div>
         <TextoInput
           label="Teléfono"
           opcional

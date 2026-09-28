@@ -32,14 +32,15 @@ export const valoresIniciales = {
     fecha: hoyGT(),
     tipologiaDelito: [],
     tipoRegistro: '',
+    fechaIngresoAlbergue: '',
     datosAgresor: {
       nombres: '',
       apellidos: '',
       telefono: '',
       direccion: '',
     },
+    observaciones: '',
     ninos: [],
-    areasReferidas: [],
   },
 } as unknown as RegistroUsuariaNuevaFormValues
 
@@ -90,6 +91,18 @@ export function useRegistroUsuariaForm(usuariaExistente: boolean) {
       ninosFieldArray.replace([])
     }
   }, [tipoRegistro, ninosFieldArray.fields.length, ninosFieldArray.replace])
+
+  // La fecha de ingreso solo existe en casos Interna; por defecto coincide con la fecha del
+  // registro (lo habitual), pero se puede corregir si ingresó otro día.
+  const { getValues, setValue } = form
+  useEffect(() => {
+    const fechaIngreso = getValues('datosCaso.fechaIngresoAlbergue')
+    if (tipoRegistro === 'INTERNA' && fechaIngreso === '') {
+      setValue('datosCaso.fechaIngresoAlbergue', getValues('datosCaso.fecha'))
+    } else if (tipoRegistro !== 'INTERNA' && fechaIngreso !== '') {
+      setValue('datosCaso.fechaIngresoAlbergue', '')
+    }
+  }, [tipoRegistro, getValues, setValue])
 
   return { form, ninosFieldArray }
 }

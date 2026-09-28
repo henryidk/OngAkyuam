@@ -1,84 +1,69 @@
-import { Plus } from 'lucide-react'
-import { useState } from 'react'
-import { useWatch, type UseFieldArrayReturn, type UseFormReturn } from 'react-hook-form'
-import { ETIQUETAS_TIPO_REGISTRO, TIPOS_REGISTRO, type RegistroUsuariaNuevaFormValues } from '@akyuam/shared'
-import GrupoRadio from '../../../components/form/GrupoRadio'
-import TarjetaNino from '../components/TarjetaNino'
+import { useWatch, type UseFormReturn } from 'react-hook-form'
+import {
+  documentosRequeridos,
+  ETIQUETAS_TIPO_DOCUMENTO,
+  type RegistroUsuariaNuevaFormValues,
+  type TipoRegistro,
+} from '@akyuam/shared'
+import TextoInput from '../../../components/form/TextoInput'
 
 interface PasoTipoRegistroProps {
   form: UseFormReturn<RegistroUsuariaNuevaFormValues>
-  ninosFieldArray: UseFieldArrayReturn<RegistroUsuariaNuevaFormValues, 'datosCaso.ninos'>
 }
 
-const opcionesTipoRegistro = TIPOS_REGISTRO.map((tipo) => ({ value: tipo, label: ETIQUETAS_TIPO_REGISTRO[tipo] }))
+const OPCIONES: { valor: TipoRegistro; titulo: string; descripcion: string }[] = [
+  { valor: 'EXTERNA', titulo: 'Externa', descripcion: 'Recibe atención y regresa a su hogar.' },
+  {
+    valor: 'INTERNA',
+    titulo: 'Interna · solicita albergue',
+    descripcion: 'Ingresa al albergue, con hijas/hijos menores de 12 años.',
+  },
+]
 
-export default function PasoTipoRegistro({ form, ninosFieldArray }: PasoTipoRegistroProps) {
+export default function PasoTipoRegistro({ form }: PasoTipoRegistroProps) {
   const {
     register,
     control,
     formState: { errors },
   } = form
   const tipoRegistro = useWatch({ control, name: 'datosCaso.tipoRegistro' })
-  const { fields, append, remove } = ninosFieldArray
-  const [indiceExpandido, setIndiceExpandido] = useState<number | null>(null)
-
-  function agregarNino() {
-    append({ nombres: '', apellidos: '', fechaNacimiento: '', genero: 'M' })
-    setIndiceExpandido(fields.length)
-  }
-
-  function quitarNino(indice: number) {
-    remove(indice)
-    setIndiceExpandido((actual) => (actual === indice ? null : actual))
-  }
 
   return (
-    <div className="space-y-6">
-      <GrupoRadio
-        label="Tipo de registro"
-        opciones={opcionesTipoRegistro}
-        registro={register('datosCaso.tipoRegistro')}
-        error={errors.datosCaso?.tipoRegistro?.message}
-      />
+    <div className="flex flex-col gap-5">
+      <fieldset>
+        <legend className="sr-only">Tipo de registro</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {OPCIONES.map((opcion) => (
+            <label
+              key={opcion.valor}
+              className="cursor-pointer rounded-[10px] border-2 border-gray-200 p-4 text-left transition-colors has-checked:border-brand-600 has-checked:bg-brand-50 has-focus-visible:ring-2 has-focus-visible:ring-brand-500"
+            >
+              <input type="radio" value={opcion.valor} className="sr-only" {...register('datosCaso.tipoRegistro')} />
+              <span className="block text-sm font-semibold text-gray-900">{opcion.titulo}</span>
+              <span className="mt-1 block text-xs text-gray-500">{opcion.descripcion}</span>
+            </label>
+          ))}
+        </div>
+        {errors.datosCaso?.tipoRegistro?.message && (
+          <p className="mt-2 text-sm text-red-600">{errors.datosCaso.tipoRegistro.message}</p>
+        )}
+      </fieldset>
 
       {tipoRegistro === 'INTERNA' && (
-        <div className="rounded-lg border border-brand-100 bg-brand-50/60 p-4">
-          <h3 className="text-sm font-semibold text-gray-800">Niñas y niños que ingresan con la usuaria</h3>
-          <p className="mt-1 text-xs text-gray-500">
-            Solo se aceptan menores de 12 años. La fecha, ubicación, tipología del delito y grupo étnico ya
-            capturados se comparten automáticamente — aquí solo se pide el dato propio de cada niña o niño.
+        <div className="grid gap-4 rounded-lg border border-brand-100 bg-brand-50 p-4 sm:grid-cols-2">
+          <TextoInput
+            label="Fecha de ingreso al albergue"
+            type="date"
+            registro={register('datosCaso.fechaIngresoAlbergue')}
+            error={errors.datosCaso?.fechaIngresoAlbergue?.message}
+          />
+          <p className="self-end text-xs text-brand-700">
+            Documentos requeridos para albergue:{' '}
+            {documentosRequeridos('INTERNA', false)
+              .map((tipo) => ETIQUETAS_TIPO_DOCUMENTO[tipo])
+              .join(', ')}
+            .
           </p>
-
-          {fields.length === 0 ? (
-            <p className="mt-3 text-xs text-gray-400">Si la usuaria no tiene hijas o hijos, deja esta sección vacía.</p>
-          ) : (
-            <div className="mt-4 max-h-80 space-y-2 overflow-y-auto pr-1">
-              {fields.map((field, indice) => (
-                <TarjetaNino
-                  key={field.id}
-                  form={form}
-                  indice={indice}
-                  expandido={indiceExpandido === indice}
-                  onExpandir={() => setIndiceExpandido(indice)}
-                  onColapsar={() => setIndiceExpandido(null)}
-                  onEliminar={() => quitarNino(indice)}
-                />
-              ))}
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={agregarNino}
-            className="mt-3 flex items-center gap-1.5 rounded border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
-          >
-            <Plus size={15} strokeWidth={2.25} />
-            Agregar niña o niño
-          </button>
-
-          {errors.datosCaso?.ninos?.message && (
-            <p className="mt-2 text-sm text-red-600">{errors.datosCaso.ninos.message}</p>
-          )}
         </div>
       )}
     </div>
