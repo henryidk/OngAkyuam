@@ -32,6 +32,7 @@ import RutaDocumentosTs from './features/trabajo-social/ficha/pestanas/RutaDocum
 import RutaAccesosTs from './features/trabajo-social/ficha/pestanas/RutaAccesos'
 import PestanaBitacoraTs from './features/trabajo-social/ficha/pestanas/PestanaBitacora'
 import BandejaTs from './features/trabajo-social/bandeja/Bandeja'
+import ReportesTs from './features/trabajo-social/reportes/Reportes'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRoute'
 import { useAuthStore } from './store/auth.store'
@@ -68,6 +69,7 @@ function App() {
             <Route path="accesos" element={<RutaAccesosTs />} />
             <Route path="bitacora" element={<PestanaBitacoraTs />} />
           </Route>
+          <Route path="reportes" element={<ReportesTs />} />
           {/* Ruta vieja de la sección "Expediente" (plan §5.1). */}
           <Route path="expediente" element={<Navigate to="/trabajo-social/usuarias" replace />} />
         </Route>

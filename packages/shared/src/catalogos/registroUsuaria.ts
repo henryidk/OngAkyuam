@@ -112,6 +112,12 @@ export const ETIQUETAS_TIPO_REGISTRO: Record<(typeof TIPOS_REGISTRO)[number], st
   EXTERNA: 'Externa',
 }
 
+/** Para columnas angostas (reporte de población beneficiada, tablas). */
+export const ETIQUETAS_CORTAS_TIPO_REGISTRO: Record<(typeof TIPOS_REGISTRO)[number], string> = {
+  INTERNA: 'Interna',
+  EXTERNA: 'Externa',
+}
+
 export type RangoEdad = '0-13' | '14-30' | '31-60' | 'MAYOR_60'
 
 export const ETIQUETAS_RANGO_EDAD: Record<RangoEdad, string> = {

@@ -127,13 +127,32 @@ export interface EstadoCasoTs {
 export const filtroTipoRegistroReporteSchema = z.enum(['TODOS', ...TIPOS_REGISTRO])
 export type FiltroTipoRegistroReporte = z.infer<typeof filtroTipoRegistroReporteSchema>
 
-/** `GET /trabajo-social/reportes/poblacion-beneficiada` — vista previa y agregados. */
-export const reportePoblacionQuerySchema = z.object({
-  desde: fechaCalendarioSchema,
-  hasta: fechaCalendarioSchema,
-  tipoRegistro: filtroTipoRegistroReporteSchema.default('TODOS'),
-  incluirNinos: booleanoQuerySchema.default(true),
-})
+/**
+ * El regex solo mira la forma: "2026-02-31" pasaría y Postgres fallaría al convertirla a `date`.
+ * Aquí se comprueba que el día exista; `Date.UTC` se usa solo para ese cálculo (desborda al
+ * mes siguiente si el día no existe), nunca para guardar ni mostrar la fecha.
+ */
+function esFechaCalendarioReal(iso: string): boolean {
+  const [anio, mes, dia] = iso.split('-').map(Number)
+  const fecha = new Date(Date.UTC(anio, mes - 1, dia))
+  return fecha.getUTCFullYear() === anio && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === dia
+}
+
+const fechaReporteSchema = fechaCalendarioSchema.refine(esFechaCalendarioReal, 'Fecha inválida')
+
+/** `GET /trabajo-social/reportes/poblacion-beneficiada` (vista previa y agregados) y su `.xlsx`. */
+export const reportePoblacionQuerySchema = z
+  .object({
+    desde: fechaReporteSchema,
+    hasta: fechaReporteSchema,
+    tipoRegistro: filtroTipoRegistroReporteSchema.default('TODOS'),
+    incluirNinos: booleanoQuerySchema.default(true),
+  })
+  // "YYYY-MM-DD" se ordena igual como texto que como fecha.
+  .refine((query) => query.desde <= query.hasta, {
+    message: 'La fecha "Desde" no puede ser posterior a "Hasta"',
+    path: ['hasta'],
+  })
 export type ReportePoblacionQuery = z.infer<typeof reportePoblacionQuerySchema>
 
 // ---- DTOs de respuesta (mismo criterio que ProcesoResumen/ProcesoDetalle en juridico.ts:
@@ -282,6 +301,36 @@ export interface FilaPoblacionBeneficiada {
   tipologia: string
   registro: TipoRegistro
   relacion: string
+  /** false en las filas de hijas/hijos. No es una columna del Excel. */
+  esUsuaria: boolean
+}
+
+/** Filas que trae la vista previa del reporte; el Excel lleva todas. */
+export const FILAS_VISTA_PREVIA_REPORTE = 20
+
+/** Una barra de un desglose del reporte (p. ej. "14 a 30 años: 12"). */
+export interface ConteoReporte {
+  clave: string
+  etiqueta: string
+  total: number
+}
+
+/** `GET /trabajo-social/reportes/poblacion-beneficiada`: totales, desgloses y las primeras filas. */
+export interface ReportePoblacionBeneficiada {
+  totales: {
+    personas: number
+    usuarias: number
+    ninos: number
+  }
+  desgloses: {
+    /** Usuarias e hijas/hijos, con la edad que tenían a la fecha del caso. */
+    rangoEdad: ConteoReporte[]
+    /** Usuarias e hijas/hijos (heredan el de la madre). */
+    grupoEtnico: ConteoReporte[]
+    /** Solo usuarias. Un caso puede tener varias tipologías: cada una suma 1. */
+    tipologia: ConteoReporte[]
+  }
+  vistaPrevia: FilaPoblacionBeneficiada[]
 }
 
 /** Fila de la Bitácora del expediente (lectura de `AuditLog`, solo lectura). */

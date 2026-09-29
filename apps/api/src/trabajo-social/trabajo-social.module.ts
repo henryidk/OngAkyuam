@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AreasModule } from '../areas/areas.module';
 import { AuthModule } from '../auth/auth.module';
+import { ExcelJsExportador } from '../common/hoja-calculo/exceljs-exportador';
+import { EXPORTADOR_HOJA_CALCULO } from '../common/hoja-calculo/exportador-hoja-calculo.interface';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
 import { AccesosController } from './accesos/accesos.controller';
@@ -26,6 +28,10 @@ import { REFERIDOS_REPOSITORY } from './referidos/interfaces/referidos-repositor
 import { ReferidosController } from './referidos/referidos.controller';
 import { ReferidosService } from './referidos/referidos.service';
 import { ReferidosRepository } from './referidos/repositories/referidos.repository';
+import { REPORTE_POBLACION_REPOSITORY } from './reportes/interfaces/reporte-poblacion-repository.interface';
+import { ReportePoblacionService } from './reportes/reporte-poblacion.service';
+import { ReportesController } from './reportes/reportes.controller';
+import { ReportePoblacionRepository } from './reportes/repositories/reporte-poblacion.repository';
 import { UsuariasModule } from './usuarias/usuarias.module';
 
 @Module({
@@ -44,6 +50,7 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     AccesosController,
     BitacoraController,
     BandejaController,
+    ReportesController,
   ],
   providers: [
     DocumentosService,
@@ -57,6 +64,12 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     BandejaService,
     { provide: BANDEJA_REPOSITORY, useClass: BandejaRepository },
     AvisosBandejaListener,
+    ReportePoblacionService,
+    {
+      provide: REPORTE_POBLACION_REPOSITORY,
+      useClass: ReportePoblacionRepository,
+    },
+    { provide: EXPORTADOR_HOJA_CALCULO, useClass: ExcelJsExportador },
   ],
 })
 export class TrabajoSocialModule {}

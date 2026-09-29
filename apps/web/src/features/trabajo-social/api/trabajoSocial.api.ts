@@ -15,6 +15,8 @@ import type {
   ProfesionalArea,
   ReferidoCreado,
   ReferirInput,
+  ReportePoblacionBeneficiada,
+  ReportePoblacionQuery,
   TipoDocumentoTrabajoSocial,
   UsuariaExpedienteHub,
   UsuariaResumenBusqueda,
@@ -126,4 +128,18 @@ export function obtenerBandeja() {
 /** Bitácora de la usuaria: lo que pasó en todos sus casos, del más reciente al más antiguo. */
 export function obtenerBitacora(usuariaId: string) {
   return api.get<EventoBitacora[]>(`/trabajo-social/usuarias/${usuariaId}/bitacora`).then((res) => res.data)
+}
+
+const RUTA_REPORTE_POBLACION = '/trabajo-social/reportes/poblacion-beneficiada'
+
+/** Totales, desgloses y las primeras filas del reporte de población beneficiada. */
+export function obtenerReportePoblacion(query: ReportePoblacionQuery) {
+  return api.get<ReportePoblacionBeneficiada>(RUTA_REPORTE_POBLACION, { params: query }).then((res) => res.data)
+}
+
+/** El Excel completo, como `Blob` en memoria: nunca se guarda una copia en el servidor. */
+export function descargarReportePoblacion(query: ReportePoblacionQuery) {
+  return api
+    .get<Blob>(`${RUTA_REPORTE_POBLACION}.xlsx`, { params: query, responseType: 'blob' })
+    .then((res) => res.data)
 }
