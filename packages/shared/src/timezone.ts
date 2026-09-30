@@ -40,6 +40,26 @@ export function formatInstanteGT(fecha: Date | string): string {
 }
 
 /**
+ * Suma (o resta, con delta negativo) días a una fecha de calendario "YYYY-MM-DD" devolviendo
+ * otra fecha de calendario. Se apoya en Luxon en vez de `new Date(...)` + `setDate` para no
+ * reintroducir el rollover de medianoche que esta disciplina de fechas existe para evitar.
+ */
+export function sumarDiasGT(fechaIso: string, dias: number): string {
+  return DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).plus({ days: dias }).toISODate()!
+}
+
+/**
+ * Días calendario completos transcurridos en Guatemala desde un instante hasta hoy — el "lleva
+ * N días esperando" de las colas de trabajo. Se compara día contra día (no horas entre
+ * instantes) para que una referencia de ayer a las 23:00 cuente como 1 y no como 0.
+ */
+export function diasDesdeGT(instanteIso: string): number {
+  const dia = DateTime.fromISO(instanteIso).setZone(GUATEMALA_TZ).startOf('day')
+  const hoy = DateTime.now().setZone(GUATEMALA_TZ).startOf('day')
+  return Math.max(0, Math.round(hoy.diff(dia, 'days').days))
+}
+
+/**
  * Días calendario de Guatemala entre una fecha "YYYY-MM-DD" y hoy — p. ej. los días que lleva en
  * albergue. Guatemala no tiene horario de verano: entre dos medianoches siempre hay días exactos.
  */

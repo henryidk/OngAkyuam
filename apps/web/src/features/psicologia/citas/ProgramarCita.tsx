@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
@@ -10,15 +10,18 @@ import {
   ETIQUETAS_TIPO_CITA_PSICOLOGICA,
   MODALIDADES_CITA,
   TIPOS_CITA_PSICOLOGICA,
+  fechaCalendarioGT,
   programarCitaSchema,
   type CitaResumen,
   type ProgramarCitaInput,
+  type TipoCitaPsicologica,
 } from '@akyuam/shared'
 import SelectInput from '../../../components/form/SelectInput'
 import TextoInput from '../../../components/form/TextoInput'
 import Button from '../../../components/ui/Button'
 import { extraerMensajeError } from '../../../lib/errors'
-import { programarCita, reprogramarCita } from '../api/psicologia.api'
+import { obtenerResumenExpediente, programarCita, reprogramarCita } from '../api/psicologia.api'
+import { RUTAS_PSICOLOGIA } from '../rutas'
 import FilaCita from './FilaCita'
 
 const OPCIONES_MODALIDAD = MODALIDADES_CITA.map((modalidad) => ({
@@ -30,10 +33,19 @@ const OPCIONES_TIPO = TIPOS_CITA_PSICOLOGICA.map((tipo) => ({
   label: ETIQUETAS_TIPO_CITA_PSICOLOGICA[tipo],
 }))
 
+/** Hora a la que se abre el formulario cuando el origen solo aportó el día. */
+const HORA_INICIAL_POR_DEFECTO = '09:00'
+
+function esTipoValido(valor: string | null): valor is TipoCitaPsicologica {
+  return valor !== null && (TIPOS_CITA_PSICOLOGICA as readonly string[]).includes(valor)
+}
+
 export default function ProgramarCita() {
-  const { expedienteId } = useParams<{ expedienteId: string }>()
   const [searchParams] = useSearchParams()
+  const expedienteId = searchParams.get('expediente')
   const citaAReprogramar = searchParams.get('reprograma')
+  const tipoPrecargado = searchParams.get('tipo')
+  const fechaPrecargada = searchParams.get('fecha')
   const navigate = useNavigate()
 
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
@@ -43,22 +55,45 @@ export default function ProgramarCita() {
     register,
     handleSubmit,
     getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<z.input<typeof programarCitaSchema>, any, ProgramarCitaInput>({
     resolver: zodResolver(programarCitaSchema),
     defaultValues: {
-      fechaHora: '',
+      fechaHora: fechaPrecargada ? `${fechaPrecargada}T${HORA_INICIAL_POR_DEFECTO}` : '',
       modalidad: undefined,
       lugar: '',
       motivo: '',
-      tipo: 'SEGUIMIENTO',
+      tipo: esTipoValido(tipoPrecargado) ? tipoPrecargado : 'SEGUIMIENTO',
       duracionMinutos: DURACION_CITA_PSICOLOGICA_MINUTOS_DEFAULT,
       confirmarTraslape: false,
     },
   })
 
+  // El tipo se deriva del proceso, no se asume: un expediente sin citas va a primera atención.
+  // Si el origen ya lo sabía (`?tipo=`), se respeta y no se consulta.
+  useEffect(() => {
+    if (!expedienteId || citaAReprogramar || esTipoValido(tipoPrecargado)) return
+    let vigente = true
+    void obtenerResumenExpediente(expedienteId)
+      .then((resumen) => {
+        if (vigente) setValue('tipo', resumen.totalCitas === 0 ? 'PRIMERA_ATENCION' : 'SEGUIMIENTO')
+      })
+      .catch(() => {
+        // El valor por defecto del formulario sigue siendo válido; no se interrumpe al usuario.
+      })
+    return () => {
+      vigente = false
+    }
+  }, [expedienteId, citaAReprogramar, tipoPrecargado, setValue])
+
+  /** Tras guardar se vuelve al calendario, abierto en el día de la cita: es donde se ve el efecto. */
+  function volverAlDiaDeLaCita(fechaHoraLocal: string) {
+    const dia = fechaHoraLocal.slice(0, 10) || fechaCalendarioGT(new Date())
+    navigate(RUTAS_PSICOLOGIA.agenda(dia))
+  }
+
   async function enviar(datos: ProgramarCitaInput, confirmarTraslape: boolean) {
-    if (!expedienteId) return
     setErrorEnvio(null)
     try {
       if (citaAReprogramar) {
@@ -70,9 +105,10 @@ export default function ProgramarCita() {
           confirmarTraslape,
         })
       } else {
+        if (!expedienteId) return
         await programarCita(expedienteId, { ...datos, confirmarTraslape })
       }
-      navigate(`/psicologia/expedientes/${expedienteId}`)
+      volverAlDiaDeLaCita(datos.fechaHora)
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {
         const data = err.response.data as { mensaje?: string; citasEnConflicto?: CitaResumen[] }
@@ -93,7 +129,20 @@ export default function ProgramarCita() {
     void enviar(getValues() as ProgramarCitaInput, true)
   }
 
-  if (!expedienteId) return null
+  if (!expedienteId && !citaAReprogramar) {
+    return (
+      <div className="max-w-xl space-y-3">
+        <h1 className="text-lg font-semibold text-gray-800">Programar cita</h1>
+        <p className="rounded border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Elige primero el expediente desde la agenda o desde el expediente de la usuaria — el buscador
+          integrado llega en una fase posterior.
+        </p>
+        <Button variante="secondary" onClick={() => navigate(RUTAS_PSICOLOGIA.agenda())}>
+          Volver a la agenda
+        </Button>
+      </div>
+    )
+  }
 
   return (
     <div className="max-w-xl space-y-4">

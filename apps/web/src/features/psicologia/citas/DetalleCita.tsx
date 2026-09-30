@@ -10,6 +10,7 @@ import {
 import Badge from '../../../components/ui/Badge'
 import { extraerMensajeError } from '../../../lib/errors'
 import { obtenerDetalleCita } from '../api/psicologia.api'
+import { RUTAS_PSICOLOGIA } from '../rutas'
 
 export default function DetalleCita() {
   const { citaId } = useParams<{ citaId: string }>()
@@ -75,10 +76,10 @@ export default function DetalleCita() {
       </dl>
 
       <div className="flex flex-wrap gap-3 text-sm font-medium">
-        <Link to={`/psicologia/citas/${cita.id}/atencion`} className="text-brand-600 hover:underline">
+        <Link to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id)} className="text-brand-600 hover:underline">
           Registrar consulta
         </Link>
-        <Link to={`/psicologia/expedientes/${cita.expedienteId}`} className="text-gray-600 hover:underline">
+        <Link to={RUTAS_PSICOLOGIA.expediente(cita.expedienteId)} className="text-gray-600 hover:underline">
           Ver expediente
         </Link>
       </div>

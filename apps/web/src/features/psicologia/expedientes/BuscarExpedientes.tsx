@@ -7,6 +7,7 @@ import Button from '../../../components/ui/Button'
 import EmptyState from '../../../components/ui/EmptyState'
 import { extraerMensajeError } from '../../../lib/errors'
 import { buscarExpedientes } from '../api/psicologia.api'
+import { RUTAS_PSICOLOGIA } from '../rutas'
 
 export default function BuscarExpedientes() {
   const [q, setQ] = useState('')
@@ -80,7 +81,7 @@ export default function BuscarExpedientes() {
                 <tr key={expediente.expedienteId} className="hover:bg-gray-50">
                   <td className="px-4 py-3">
                     <Link
-                      to={`/psicologia/expedientes/${expediente.expedienteId}`}
+                      to={RUTAS_PSICOLOGIA.expediente(expediente.expedienteId)}
                       className="font-medium text-brand-600 hover:underline"
                     >
                       {expediente.usuariaNombreCompleto}

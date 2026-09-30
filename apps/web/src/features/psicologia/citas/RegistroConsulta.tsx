@@ -9,6 +9,7 @@ import TextareaInput from '../../../components/form/TextareaInput'
 import Button from '../../../components/ui/Button'
 import { extraerMensajeError } from '../../../lib/errors'
 import { obtenerDetalleCita, registrarConsulta } from '../api/psicologia.api'
+import { RUTAS_PSICOLOGIA } from '../rutas'
 
 const OPCIONES_ESTADO = [
   { value: 'ATENDIDA', label: 'Atendida' },
@@ -79,7 +80,7 @@ export default function RegistroConsulta() {
     setGuardando('borrador')
     try {
       await registrarConsulta(citaId, { ...getValues(), borrador: true })
-      navigate(`/psicologia/citas/${citaId}`)
+      navigate(RUTAS_PSICOLOGIA.detalleCita(citaId))
     } catch (err) {
       setErrorEnvio(extraerMensajeError(err))
     } finally {
@@ -93,7 +94,7 @@ export default function RegistroConsulta() {
     setGuardando('final')
     try {
       await registrarConsulta(citaId, { ...datos, borrador: false })
-      navigate(`/psicologia/citas/${citaId}`)
+      navigate(RUTAS_PSICOLOGIA.detalleCita(citaId))
     } catch (err) {
       setErrorEnvio(extraerMensajeError(err))
     } finally {

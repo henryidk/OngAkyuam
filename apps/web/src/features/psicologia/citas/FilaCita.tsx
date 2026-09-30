@@ -7,6 +7,7 @@ import {
   type EstadoCitaPsicologica,
 } from '@akyuam/shared'
 import Badge, { type BadgeTono } from '../../../components/ui/Badge'
+import { RUTAS_PSICOLOGIA } from '../rutas'
 
 const TONO_ESTADO: Record<EstadoCitaPsicologica, BadgeTono> = {
   PROGRAMADA: 'neutral',
@@ -20,7 +21,7 @@ interface FilaCitaProps {
   cita: CitaResumen
   /** Nombre de la usuaria — se muestra solo cuando la fila no está ya en el contexto de un expediente puntual (tablero, agenda). */
   usuariaNombreCompleto?: string
-  /** Requerido para los links de "Ver expediente"/"Reprogramar". */
+  /** Requerido para el link de "Ver expediente". */
   expedienteId?: string
   /** Historial de citas: toda la fila navega al detalle de la cita. */
   enlazarDetalleCita?: boolean
@@ -52,13 +53,12 @@ export default function FilaCita({
     </div>
   )
 
-  const hayAcciones =
-    mostrarRegistrarConsulta || (mostrarVerExpediente && expedienteId) || (mostrarReprogramar && expedienteId)
+  const hayAcciones = mostrarRegistrarConsulta || (mostrarVerExpediente && expedienteId) || mostrarReprogramar
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm shadow-sm">
       {enlazarDetalleCita ? (
-        <Link to={`/psicologia/citas/${cita.id}`} className="min-w-0 flex-1 hover:underline">
+        <Link to={RUTAS_PSICOLOGIA.detalleCita(cita.id)} className="min-w-0 flex-1 hover:underline">
           {contenido}
         </Link>
       ) : (
@@ -69,7 +69,7 @@ export default function FilaCita({
         <div className="flex flex-wrap items-center gap-3">
           {mostrarRegistrarConsulta && (
             <Link
-              to={`/psicologia/citas/${cita.id}/atencion`}
+              to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id)}
               className="text-xs font-medium text-brand-600 hover:underline"
             >
               Registrar consulta
@@ -77,15 +77,15 @@ export default function FilaCita({
           )}
           {mostrarVerExpediente && expedienteId && (
             <Link
-              to={`/psicologia/expedientes/${expedienteId}`}
+              to={RUTAS_PSICOLOGIA.expediente(expedienteId)}
               className="text-xs font-medium text-gray-600 hover:underline"
             >
               Ver expediente
             </Link>
           )}
-          {mostrarReprogramar && expedienteId && (
+          {mostrarReprogramar && (
             <Link
-              to={`/psicologia/expedientes/${expedienteId}/citas/nueva?reprograma=${cita.id}`}
+              to={RUTAS_PSICOLOGIA.reprogramarCita(cita.id)}
               className="text-xs font-medium text-gray-600 hover:underline"
             >
               Reprogramar

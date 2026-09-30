@@ -7,13 +7,26 @@ import { useAuthStore } from '../store/auth.store'
 export interface ItemNav {
   ruta: string
   etiqueta: string
+  /** `true` = calce exacto. Necesario cuando la ruta es prefijo de las demás (el índice del área). */
   fin: boolean
+  /**
+   * Rutas que no cuelgan de `ruta` pero pertenecen a esta sección — p. ej. el formulario
+   * `/psicologia/agenda/nueva-cita` frente al índice `/psicologia`. Sin esto, una sección con
+   * `fin: true` deja el sidebar sin nada resaltado en sus propias pantallas hijas.
+   */
+  rutasRelacionadas?: string[]
   Icono: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
 }
 
 interface SidebarLayoutProps {
   items: ItemNav[]
   subtitulo: string
+}
+
+/** Una sola definición de "estoy en esta sección", usada por el resaltado y por el título. */
+function estaActivo(item: ItemNav, pathname: string) {
+  const calzaRutaPrincipal = item.fin ? pathname === item.ruta : pathname.startsWith(item.ruta)
+  return calzaRutaPrincipal || (item.rutasRelacionadas?.some((ruta) => pathname.startsWith(ruta)) ?? false)
 }
 
 function obtenerIniciales(nombreCompleto: string) {
@@ -28,9 +41,7 @@ export default function SidebarLayout({ items, subtitulo }: SidebarLayoutProps) 
   const usuario = useAuthStore((state) => state.usuario)
   const location = useLocation()
 
-  const paginaActual = items.find((item) =>
-    item.fin ? location.pathname === item.ruta : location.pathname.startsWith(item.ruta),
-  )
+  const paginaActual = items.find((item) => estaActivo(item, location.pathname))
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -64,26 +75,23 @@ export default function SidebarLayout({ items, subtitulo }: SidebarLayoutProps) 
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 px-3">
-          {items.map(({ ruta, etiqueta, fin, Icono }) => (
-            <NavLink
-              key={ruta}
-              to={ruta}
-              end={fin}
-              onClick={() => setSidebarAbierto(false)}
-              className={({ isActive }) =>
-                `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                  isActive ? 'bg-white/10 text-white' : 'text-brand-200 hover:bg-white/5 hover:text-white'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <Icono size={18} strokeWidth={1.75} className={isActive ? 'text-white' : 'text-brand-300'} />
-                  {etiqueta}
-                </>
-              )}
-            </NavLink>
-          ))}
+          {items.map((item) => {
+            const { ruta, etiqueta, Icono } = item
+            const activo = item === paginaActual
+            return (
+              <NavLink
+                key={ruta}
+                to={ruta}
+                onClick={() => setSidebarAbierto(false)}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                  activo ? 'bg-white/10 text-white' : 'text-brand-200 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <Icono size={18} strokeWidth={1.75} className={activo ? 'text-white' : 'text-brand-300'} />
+                {etiqueta}
+              </NavLink>
+            )
+          })}
         </nav>
 
         <div className="border-t border-white/10 p-4">

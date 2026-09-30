@@ -1,8 +1,9 @@
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { ETIQUETAS_ESTADO_ATENCION_PSICOLOGICA, formatInstanteGT } from '@akyuam/shared'
 import Badge from '../../../components/ui/Badge'
 import { useExpedientePsicologia } from '../hooks/useExpedientePsicologia'
 import FilaCita from '../citas/FilaCita'
+import { RUTAS_PSICOLOGIA } from '../rutas'
 
 export default function PestanaResumen() {
   const { expedienteId } = useParams<{ expedienteId: string }>()
@@ -60,7 +61,15 @@ export default function PestanaResumen() {
             mostrarReprogramar
           />
         ) : (
-          <p className="text-sm text-gray-400">No hay una próxima cita agendada.</p>
+          <p className="text-sm text-gray-500">
+            No hay una próxima cita agendada.{' '}
+            <Link
+              to={RUTAS_PSICOLOGIA.nuevaCita({ expedienteId: resumen.expedienteId })}
+              className="font-medium text-brand-600 hover:underline"
+            >
+              Agendar cita
+            </Link>
+          </p>
         )}
       </section>
 
