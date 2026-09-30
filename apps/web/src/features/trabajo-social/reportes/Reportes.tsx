@@ -72,12 +72,9 @@ export default function Reportes() {
 
   return (
     <div className="mx-auto flex max-w-[1240px] flex-col gap-4">
-      <header>
-        <h1 className="text-[22px] font-semibold tracking-tight text-gray-900">Reportes</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Población beneficiada: usuarias atendidas y sus hijas e hijos, con las mismas columnas del Excel.
-        </p>
-      </header>
+      <p className="text-sm text-gray-500">
+        Población beneficiada: usuarias atendidas y sus hijas e hijos, con las mismas columnas del Excel.
+      </p>
 
       <FiltrosReporte
         filtros={filtros}

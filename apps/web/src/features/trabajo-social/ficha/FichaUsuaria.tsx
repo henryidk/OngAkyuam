@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { Link, Outlet, useParams } from 'react-router-dom'
 import { ETIQUETAS_AREA_ATENCION, type AreaAtencion, type ReferidoCreado } from '@akyuam/shared'
+import { useToast } from '../../../components/ui/Toast'
 import ModalReferir from '../referir/ModalReferir'
 import type { ContextoFicha } from './contextoFicha'
 import EncabezadoFicha from './EncabezadoFicha'
@@ -15,9 +16,8 @@ import { useFichaUsuaria } from './useFichaUsuaria'
 export default function FichaUsuaria() {
   const { usuariaId = '' } = useParams()
   const { usuaria, setUsuaria, error, recargar } = useFichaUsuaria(usuariaId)
+  const { mostrar } = useToast()
   const [referir, setReferir] = useState<{ area?: AreaAtencion } | null>(null)
-  // Sin Toast todavía (§12.10): la confirmación de "Referir" se muestra bajo el encabezado.
-  const [aviso, setAviso] = useState<string | null>(null)
   const [version, setVersion] = useState(0)
 
   const abrirReferir = useCallback((area?: AreaAtencion) => setReferir({ area }), [])
@@ -25,11 +25,11 @@ export default function FichaUsuaria() {
   const onReferido = useCallback(
     (referido: ReferidoCreado) => {
       setReferir(null)
-      setAviso(`Referida a ${ETIQUETAS_AREA_ATENCION[referido.area]} · ya aparece en su bandeja`)
+      mostrar(`Referida a ${ETIQUETAS_AREA_ATENCION[referido.area]} · ya aparece en su bandeja`)
       setVersion((actual) => actual + 1)
       void recargar()
     },
-    [recargar],
+    [recargar, mostrar],
   )
 
   if (error) {
@@ -63,12 +63,6 @@ export default function FichaUsuaria() {
       </nav>
 
       <EncabezadoFicha usuaria={usuaria} onReferir={() => abrirReferir()} />
-
-      {aviso && (
-        <p role="status" className="rounded border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
-          {aviso}
-        </p>
-      )}
 
       <Outlet context={contexto} />
 

@@ -101,6 +101,7 @@ describe('UsuariasService', () => {
       listar: jest.fn().mockResolvedValue(listaVacia),
       buscarPorDpi: jest.fn(),
       buscarPorNombre: jest.fn(),
+      buscarPorNumero: jest.fn(),
       obtenerHub: jest.fn(),
       existeDpi: jest.fn().mockResolvedValue(false),
       actualizarIdentidad: jest.fn(),
@@ -185,6 +186,7 @@ describe('UsuariasService', () => {
         apellidos: 'Perez',
         dpi: '1234567890123',
         fechaNacimiento: '1990-01-01',
+        numeroExpediente: '05-2026',
       });
 
       const resultado = await service.buscar(
@@ -207,6 +209,62 @@ describe('UsuariasService', () => {
         'Maria Perez',
         20,
       );
+    });
+
+    describe('con `q` (buscador global)', () => {
+      it('interpreta un número de expediente y lo busca por número', async () => {
+        usuariasRepository.buscarPorNumero.mockResolvedValue([]);
+
+        await service.buscar({ q: '5-2026' }, contexto);
+
+        expect(usuariasRepository.buscarPorNumero).toHaveBeenCalledWith(
+          '05-2026',
+          20,
+        );
+      });
+
+      it('interpreta un DPI de 13 dígitos y lo busca exacto', async () => {
+        usuariasRepository.buscarPorDpi.mockResolvedValue(null);
+
+        await service.buscar({ q: '1234567890123' }, contexto);
+
+        expect(usuariasRepository.buscarPorDpi).toHaveBeenCalledWith(
+          '1234567890123',
+        );
+      });
+
+      it('interpreta cualquier otro término como nombre', async () => {
+        usuariasRepository.buscarPorNombre.mockResolvedValue([]);
+
+        await service.buscar({ q: 'Maria' }, contexto);
+
+        expect(usuariasRepository.buscarPorNombre).toHaveBeenCalledWith(
+          'Maria',
+          20,
+        );
+      });
+
+      it('rechaza un `q` de menos de 3 letras que no sea número ni DPI', async () => {
+        await expect(
+          service.buscar({ q: 'an' }, contexto),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(usuariasRepository.buscarPorNombre).not.toHaveBeenCalled();
+      });
+
+      it('`q` manda sobre `dpi`/`nombre` si vinieran los tres', async () => {
+        usuariasRepository.buscarPorNombre.mockResolvedValue([]);
+
+        await service.buscar(
+          { q: 'Maria', dpi: '1234567890123', nombre: 'Otro' },
+          contexto,
+        );
+
+        expect(usuariasRepository.buscarPorNombre).toHaveBeenCalledWith(
+          'Maria',
+          20,
+        );
+        expect(usuariasRepository.buscarPorDpi).not.toHaveBeenCalled();
+      });
     });
   });
 

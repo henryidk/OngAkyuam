@@ -10,13 +10,13 @@ import {
   type ResumenMesTs,
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
+import { useContextoTrabajoSocial } from '../../../pages/trabajo-social/TrabajoSocialLayout'
 import { useAuthStore } from '../../../store/auth.store'
 import ModalReferir from '../referir/ModalReferir'
 import ColaBandeja, { ColaEsqueleto, FilaCola } from './ColaBandeja'
 import ListaNovedades from './ListaNovedades'
 import TablaRecientes from './TablaRecientes'
 import { cuandoTexto, saludoSegunHora, textoDias } from './textoBandeja'
-import { useBandeja } from './useBandeja'
 
 /** "Ver todas" solo tiene sentido cuando la cola trae más de lo que cabe en la tarjeta. */
 function verTodasSiHayMas(total: number, mostradas: number, ruta: string) {
@@ -26,7 +26,7 @@ function verTodasSiHayMas(total: number, mostradas: number, ruta: string) {
 /** Inicio de Trabajo Social (plan §12.3): lo que requiere atención hoy, en vivo por socket. */
 export default function Bandeja() {
   const usuario = useAuthStore((estado) => estado.usuario)
-  const { bandeja, error, recargar } = useBandeja()
+  const { bandeja, error, recargar } = useContextoTrabajoSocial()
   const [referir, setReferir] = useState<FilaColaReferir | null>(null)
 
   const primerNombre = usuario?.nombreCompleto.split(' ')[0] ?? ''
@@ -35,10 +35,10 @@ export default function Bandeja() {
     <div className="mx-auto flex max-w-[1240px] flex-col gap-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[22px] font-semibold tracking-tight text-gray-900">
+          <p className="text-[22px] font-semibold tracking-tight text-gray-900">
             {saludoSegunHora()}
             {primerNombre && `, ${primerNombre}`}
-          </h1>
+          </p>
           <p className="mt-1 text-sm text-gray-500">
             {formatFechaLargaGT(hoyGT())} · esto es lo que requiere tu atención hoy.
           </p>

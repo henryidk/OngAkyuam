@@ -72,6 +72,11 @@ export interface IUsuariasRepository {
     nombre: string,
     limite: number,
   ): Promise<UsuariaResumenBusqueda[]>;
+  /** Por número de expediente exacto ("05-2026"). Puede haber más de una si el número se reusara entre usuarias (no ocurre hoy, pero el contrato es una lista). */
+  buscarPorNumero(
+    numero: string,
+    limite: number,
+  ): Promise<UsuariaResumenBusqueda[]>;
   obtenerHub(id: string): Promise<UsuariaHubRow | null>;
   existeDpi(dpi: string, excluirId?: string): Promise<boolean>;
   /** `null` si el id no corresponde a una `Usuaria` existente. */

@@ -79,12 +79,7 @@ export default function ListaUsuarias() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight text-gray-900">Usuarias</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Todas las usuarias registradas y cómo va la atención de su caso actual.
-        </p>
-      </header>
+      <p className="text-sm text-gray-500">Todas las usuarias registradas y cómo va la atención de su caso actual.</p>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FiltrosEstado

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
+import { ToastProvider } from './components/ui/Toast'
 import AdminLayout from './pages/admin/AdminLayout'
 import Usuarios from './pages/admin/Usuarios'
 import AreaLayout from './pages/area-atencion/AreaLayout'
@@ -67,73 +68,75 @@ function App() {
   }, [checkAuth])
 
   return (
-    <Routes>
-      <Route element={<PublicRoute />}>
-        <Route path="/login" element={<Login />} />
-      </Route>
+    <ToastProvider>
+      <Routes>
+        <Route element={<PublicRoute />}>
+          <Route path="/login" element={<Login />} />
+        </Route>
 
-      <Route element={<ProtectedRoute allowedRoles={['TRABAJO_SOCIAL']} />}>
-        <Route path="/trabajo-social" element={<TrabajoSocialLayout />}>
-          <Route index element={<BandejaTs />} />
-          <Route path="registrar" element={<RegistrarUsuaria />} />
-          <Route path="usuarias" element={<ListaUsuariasTs />} />
-          <Route path="usuarias/:usuariaId" element={<FichaUsuariaTs />}>
-            <Route index element={<PestanaResumenTs />} />
-            <Route path="datos" element={<PestanaDatosTs />} />
-            <Route path="casos" element={<PestanaCasosTs />} />
-            <Route path="documentos" element={<RutaDocumentosTs />} />
-            <Route path="accesos" element={<RutaAccesosTs />} />
-            <Route path="bitacora" element={<PestanaBitacoraTs />} />
+        <Route element={<ProtectedRoute allowedRoles={['TRABAJO_SOCIAL']} />}>
+          <Route path="/trabajo-social" element={<TrabajoSocialLayout />}>
+            <Route index element={<BandejaTs />} />
+            <Route path="registrar" element={<RegistrarUsuaria />} />
+            <Route path="usuarias" element={<ListaUsuariasTs />} />
+            <Route path="usuarias/:usuariaId" element={<FichaUsuariaTs />}>
+              <Route index element={<PestanaResumenTs />} />
+              <Route path="datos" element={<PestanaDatosTs />} />
+              <Route path="casos" element={<PestanaCasosTs />} />
+              <Route path="documentos" element={<RutaDocumentosTs />} />
+              <Route path="accesos" element={<RutaAccesosTs />} />
+              <Route path="bitacora" element={<PestanaBitacoraTs />} />
+            </Route>
+            <Route path="reportes" element={<ReportesTs />} />
+            {/* Ruta vieja de la sección "Expediente" (plan §5.1). */}
+            <Route path="expediente" element={<Navigate to="/trabajo-social/usuarias" replace />} />
           </Route>
-          <Route path="reportes" element={<ReportesTs />} />
-          {/* Ruta vieja de la sección "Expediente" (plan §5.1). */}
-          <Route path="expediente" element={<Navigate to="/trabajo-social/usuarias" replace />} />
         </Route>
-      </Route>
-      <Route element={<ProtectedRoute allowedRoles={['JURIDICO']} />}>
-        <Route path="/juridico" element={<AreaLayout subtitulo="Jurídica" basePath="/juridico" />}>
-          <Route index element={<Juridica />} />
-          <Route path=":id/casos" element={<JuridicaExpediente />} />
-        </Route>
-      </Route>
-      <Route element={<ProtectedRoute allowedRoles={['PSICOLOGIA']} />}>
-        <Route path="/psicologia" element={<PsicologiaLayout />}>
-          <Route index element={<Agenda />} />
-          <Route path="agenda/nueva-cita" element={<ProgramarCita />} />
-          <Route path="expedientes" element={<BuscarExpedientes />} />
-          <Route path="expedientes/:expedienteId" element={<ExpedienteUsuaria />}>
-            <Route index element={<PestanaResumen />} />
-            <Route path="citas" element={<PestanaHistorialCitas />} />
-            <Route path="consultas" element={<PestanaConsultas />} />
-            <Route path="documentos" element={<PestanaDocumentos />} />
-            <Route path="datos" element={<PestanaDatosUsuaria />} />
+        <Route element={<ProtectedRoute allowedRoles={['JURIDICO']} />}>
+          <Route path="/juridico" element={<AreaLayout subtitulo="Jurídica" basePath="/juridico" />}>
+            <Route index element={<Juridica />} />
+            <Route path=":id/casos" element={<JuridicaExpediente />} />
           </Route>
-          <Route path="citas/:citaId" element={<DetalleCita />} />
-          <Route path="citas/:citaId/atencion" element={<RegistroConsulta />} />
-          <Route path="indicadores" element={<Indicadores />} />
-          {/* Redirects de compatibilidad de la reestructura (§8.1 del plan). */}
-          <Route path="agenda" element={<Navigate to="/psicologia" replace />} />
-          <Route path="expedientes/:expedienteId/citas/nueva" element={<RedirigirANuevaCita />} />
-          <Route path="pacientes/:id" element={<RedirigirAExpediente />} />
-          <Route path="reporte" element={<Navigate to="/psicologia/indicadores" replace />} />
         </Route>
-      </Route>
-      <Route element={<ProtectedRoute allowedRoles={['MEDICA']} />}>
-        <Route path="/medica" element={<AreaLayout subtitulo="Médica" basePath="/medica" />}>
-          <Route index element={<Medica />} />
-          <Route path=":id" element={<MedicaExpediente />} />
+        <Route element={<ProtectedRoute allowedRoles={['PSICOLOGIA']} />}>
+          <Route path="/psicologia" element={<PsicologiaLayout />}>
+            <Route index element={<Agenda />} />
+            <Route path="agenda/nueva-cita" element={<ProgramarCita />} />
+            <Route path="expedientes" element={<BuscarExpedientes />} />
+            <Route path="expedientes/:expedienteId" element={<ExpedienteUsuaria />}>
+              <Route index element={<PestanaResumen />} />
+              <Route path="citas" element={<PestanaHistorialCitas />} />
+              <Route path="consultas" element={<PestanaConsultas />} />
+              <Route path="documentos" element={<PestanaDocumentos />} />
+              <Route path="datos" element={<PestanaDatosUsuaria />} />
+            </Route>
+            <Route path="citas/:citaId" element={<DetalleCita />} />
+            <Route path="citas/:citaId/atencion" element={<RegistroConsulta />} />
+            <Route path="indicadores" element={<Indicadores />} />
+            {/* Redirects de compatibilidad de la reestructura (§8.1 del plan). */}
+            <Route path="agenda" element={<Navigate to="/psicologia" replace />} />
+            <Route path="expedientes/:expedienteId/citas/nueva" element={<RedirigirANuevaCita />} />
+            <Route path="pacientes/:id" element={<RedirigirAExpediente />} />
+            <Route path="reporte" element={<Navigate to="/psicologia/indicadores" replace />} />
+          </Route>
         </Route>
-      </Route>
-      <Route element={<ProtectedRoute allowedRoles={['ADMINISTRACION']} />}>
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<Navigate to="usuarios" replace />} />
-          <Route path="usuarios" element={<Usuarios />} />
+        <Route element={<ProtectedRoute allowedRoles={['MEDICA']} />}>
+          <Route path="/medica" element={<AreaLayout subtitulo="Médica" basePath="/medica" />}>
+            <Route index element={<Medica />} />
+            <Route path=":id" element={<MedicaExpediente />} />
+          </Route>
         </Route>
-      </Route>
+        <Route element={<ProtectedRoute allowedRoles={['ADMINISTRACION']} />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="usuarios" replace />} />
+            <Route path="usuarios" element={<Usuarios />} />
+          </Route>
+        </Route>
 
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="*" element={<Navigate to="/login" replace />} />
-    </Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </ToastProvider>
   )
 }
 

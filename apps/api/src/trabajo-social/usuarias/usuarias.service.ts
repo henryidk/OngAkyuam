@@ -173,11 +173,14 @@ export class UsuariasService {
     query: BuscarUsuariaQuery,
     contexto: ContextoAuditoria,
   ): Promise<UsuariaResumenBusqueda[]> {
+    const q = query.q?.trim();
     const dpi = query.dpi?.trim();
     const nombre = query.nombre?.trim();
 
-    if (!dpi && !nombre) {
-      throw new BadRequestException('Indica un DPI o un nombre para buscar');
+    if (!q && !dpi && !nombre) {
+      throw new BadRequestException(
+        'Indica un DPI, un nombre o un número de expediente para buscar',
+      );
     }
     if (nombre && nombre.length < LONGITUD_MINIMA_BUSQUEDA_NOMBRE) {
       throw new BadRequestException(
@@ -185,12 +188,16 @@ export class UsuariasService {
       );
     }
 
-    const resultados = dpi
-      ? await this.buscarPorDpiExacto(dpi)
-      : await this.usuariasRepository.buscarPorNombre(
-          nombre as string,
-          LIMITE_RESULTADOS_BUSQUEDA,
-        );
+    // `q` es el término único del buscador global: se interpreta igual que en `listar` (número
+    // de expediente, DPI exacto o nombre), y manda sobre `dpi`/`nombre` si viniera alguno también.
+    const resultados = q
+      ? await this.buscarPorCriterio(interpretarBusqueda(q)!)
+      : dpi
+        ? await this.buscarPorDpiExacto(dpi)
+        : await this.usuariasRepository.buscarPorNombre(
+            nombre as string,
+            LIMITE_RESULTADOS_BUSQUEDA,
+          );
 
     // Nunca el término buscado ni el DPI en `detalles` — solo cuántos resultados dio (RNF-02).
     await this.auditService.registrar({
@@ -204,6 +211,25 @@ export class UsuariasService {
     });
 
     return resultados;
+  }
+
+  private async buscarPorCriterio(
+    criterio: BusquedaListaUsuarias,
+  ): Promise<UsuariaResumenBusqueda[]> {
+    switch (criterio.tipo) {
+      case 'dpi':
+        return this.buscarPorDpiExacto(criterio.valor);
+      case 'numeroExpediente':
+        return this.usuariasRepository.buscarPorNumero(
+          criterio.valor,
+          LIMITE_RESULTADOS_BUSQUEDA,
+        );
+      case 'nombre':
+        return this.usuariasRepository.buscarPorNombre(
+          criterio.valor,
+          LIMITE_RESULTADOS_BUSQUEDA,
+        );
+    }
   }
 
   async obtenerHub(

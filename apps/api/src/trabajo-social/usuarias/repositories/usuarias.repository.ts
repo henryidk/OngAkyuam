@@ -19,23 +19,23 @@ import type {
   UsuariaHubRow,
 } from '../interfaces/usuarias-repository.interface';
 
-// Select explícito, mismo hábito que `USUARIO_ADMIN_SELECT` — nunca traer más de lo que la
-// fila de resultados de búsqueda necesita mostrar.
-const USUARIA_RESUMEN_SELECT = {
-  id: true,
-  nombres: true,
-  apellidos: true,
-  dpi: true,
-  fechaNacimiento: true,
-} as const;
-
 type UsuariaResumenRow = {
   id: string;
   nombres: string;
   apellidos: string;
   dpi: string | null;
   fechaNacimiento: Date;
+  numeroExpediente: string | null;
 };
+
+// Subquery reusada por las 3 búsquedas de resumen: el número de su caso más reciente (o `null`
+// si aún no tiene ninguno). Por `SELECT`, no `JOIN`, para no duplicar filas de `Usuaria`.
+const SUBQUERY_NUMERO_EXPEDIENTE = Prisma.sql`(
+  SELECT x.numero FROM "Expediente" x
+  WHERE x."usuariaId" = u.id
+  ORDER BY x.fecha DESC, x."createdAt" DESC
+  LIMIT 1
+)`;
 
 type FilaListaRow = {
   usuariaId: string;
@@ -91,6 +91,7 @@ function mapearResumen(usuaria: UsuariaResumenRow): UsuariaResumenBusqueda {
     apellidos: usuaria.apellidos,
     dpi: usuaria.dpi,
     fechaNacimiento: fechaColumnaISO(usuaria.fechaNacimiento),
+    numeroExpediente: usuaria.numeroExpediente,
   };
 }
 
@@ -155,11 +156,14 @@ export class UsuariasRepository implements IUsuariasRepository {
   }
 
   async buscarPorDpi(dpi: string): Promise<UsuariaResumenBusqueda | null> {
-    const usuaria = await this.prisma.usuaria.findUnique({
-      where: { dpi },
-      select: USUARIA_RESUMEN_SELECT,
-    });
-    return usuaria ? mapearResumen(usuaria) : null;
+    const filas = await this.prisma.$queryRaw<UsuariaResumenRow[]>(Prisma.sql`
+      SELECT u.id, u.nombres, u.apellidos, u.dpi, u."fechaNacimiento",
+        ${SUBQUERY_NUMERO_EXPEDIENTE} AS "numeroExpediente"
+      FROM "Usuaria" u
+      WHERE u.dpi = ${dpi}
+      LIMIT 1
+    `);
+    return filas[0] ? mapearResumen(filas[0]) : null;
   }
 
   async buscarPorNombre(
@@ -173,10 +177,26 @@ export class UsuariasRepository implements IUsuariasRepository {
     // `word_similarity()` compara el término contra cualquier substring de la cadena, que es el
     // caso real de uso aquí. Mismo índice GIN, soporta ambos operadores.
     const filas = await this.prisma.$queryRaw<UsuariaResumenRow[]>(Prisma.sql`
-      SELECT id, nombres, apellidos, dpi, "fechaNacimiento"
-      FROM "Usuaria"
-      WHERE ${nombre} <% (nombres || ' ' || apellidos)
-      ORDER BY word_similarity(${nombre}, nombres || ' ' || apellidos) DESC
+      SELECT u.id, u.nombres, u.apellidos, u.dpi, u."fechaNacimiento",
+        ${SUBQUERY_NUMERO_EXPEDIENTE} AS "numeroExpediente"
+      FROM "Usuaria" u
+      WHERE ${nombre} <% (u.nombres || ' ' || u.apellidos)
+      ORDER BY word_similarity(${nombre}, u.nombres || ' ' || u.apellidos) DESC
+      LIMIT ${limite}
+    `);
+    return filas.map(mapearResumen);
+  }
+
+  async buscarPorNumero(
+    numero: string,
+    limite: number,
+  ): Promise<UsuariaResumenBusqueda[]> {
+    const filas = await this.prisma.$queryRaw<UsuariaResumenRow[]>(Prisma.sql`
+      SELECT u.id, u.nombres, u.apellidos, u.dpi, u."fechaNacimiento", x.numero AS "numeroExpediente"
+      FROM "Usuaria" u
+      JOIN "Expediente" x ON x."usuariaId" = u.id
+      WHERE x.numero = ${numero}
+      ORDER BY x.fecha DESC
       LIMIT ${limite}
     `);
     return filas.map(mapearResumen);

@@ -1,7 +1,8 @@
-import { Menu, X } from 'lucide-react'
-import { type ComponentType, useState } from 'react'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { ChevronRight, Menu, X } from 'lucide-react'
+import { type ComponentType, type ReactNode, useState } from 'react'
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import LogoutButton from './LogoutButton'
+import { TituloPaginaProvider, useTituloPaginaActual } from './TituloPagina'
 import { useAuthStore } from '../store/auth.store'
 
 export interface ItemNav {
@@ -21,6 +22,12 @@ export interface ItemNav {
 interface SidebarLayoutProps {
   items: ItemNav[]
   subtitulo: string
+  /** Contenido a la derecha del header — p. ej. el buscador global de Trabajo Social. */
+  accionesHeader?: ReactNode
+  /** Contador por `ruta` de `ItemNav` — p. ej. pendientes de Inicio. Solo se muestra si es mayor a 0. */
+  contadores?: Partial<Record<string, number>>
+  /** Se reenvía tal cual al `Outlet` — para que el layout cargue datos una sola vez y las páginas los lean con `useOutletContext`. */
+  outletContext?: unknown
 }
 
 /** Una sola definición de "estoy en esta sección", usada por el resaltado y por el título. */
@@ -36,12 +43,23 @@ function obtenerIniciales(nombreCompleto: string) {
   return (primera + ultima).toUpperCase()
 }
 
-export default function SidebarLayout({ items, subtitulo }: SidebarLayoutProps) {
+export default function SidebarLayout(props: SidebarLayoutProps) {
+  return (
+    <TituloPaginaProvider>
+      <SidebarLayoutInterno {...props} />
+    </TituloPaginaProvider>
+  )
+}
+
+function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, outletContext }: SidebarLayoutProps) {
   const [sidebarAbierto, setSidebarAbierto] = useState(false)
   const usuario = useAuthStore((state) => state.usuario)
   const location = useLocation()
+  const tituloPagina = useTituloPaginaActual()
 
   const paginaActual = items.find((item) => estaActivo(item, location.pathname))
+  const titulo = tituloPagina?.titulo ?? paginaActual?.etiqueta ?? subtitulo
+  const migas = tituloPagina?.migas
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -78,6 +96,7 @@ export default function SidebarLayout({ items, subtitulo }: SidebarLayoutProps) 
           {items.map((item) => {
             const { ruta, etiqueta, Icono } = item
             const activo = item === paginaActual
+            const contador = contadores?.[ruta]
             return (
               <NavLink
                 key={ruta}
@@ -89,6 +108,11 @@ export default function SidebarLayout({ items, subtitulo }: SidebarLayoutProps) 
               >
                 <Icono size={18} strokeWidth={1.75} className={activo ? 'text-white' : 'text-brand-300'} />
                 {etiqueta}
+                {!!contador && (
+                  <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-600 px-1.5 text-xs font-semibold text-white">
+                    {contador}
+                  </span>
+                )}
               </NavLink>
             )
           })}
@@ -120,11 +144,31 @@ export default function SidebarLayout({ items, subtitulo }: SidebarLayoutProps) 
           >
             <Menu size={20} />
           </button>
-          <h1 className="text-xl font-semibold text-gray-900">{paginaActual?.etiqueta ?? subtitulo}</h1>
+          <div className="min-w-0 flex-1">
+            {migas && migas.length > 0 && (
+              <nav aria-label="Ruta de navegación" className="mb-0.5 flex items-center gap-1 text-xs text-gray-500">
+                {migas.map((miga, indice) => (
+                  <span key={`${miga.etiqueta}-${indice}`} className="flex items-center gap-1">
+                    {indice > 0 && <ChevronRight size={12} className="shrink-0" />}
+                    {miga.ruta ? (
+                      <Link to={miga.ruta} className="truncate hover:text-gray-700 hover:underline">
+                        {miga.etiqueta}
+                      </Link>
+                    ) : (
+                      <span className="truncate">{miga.etiqueta}</span>
+                    )}
+                  </span>
+                ))}
+              </nav>
+            )}
+            <h1 className="truncate text-xl font-semibold text-gray-900">{titulo}</h1>
+          </div>
+
+          {accionesHeader && <div className="flex shrink-0 items-center gap-2">{accionesHeader}</div>}
         </header>
 
         <main className="flex-1 px-4 py-6 lg:px-8 lg:py-10">
-          <Outlet />
+          <Outlet context={outletContext} />
         </main>
       </div>
     </div>

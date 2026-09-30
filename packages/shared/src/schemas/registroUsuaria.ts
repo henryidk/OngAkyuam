@@ -141,12 +141,16 @@ export const registroUsuariaNuevaSchema = z.object({
 /** Para una usuaria ya existente: solo el caso nuevo — nunca vuelve a pedir identidad. */
 export const nuevoCasoSchema = datosCasoSchema
 
-/** Query de `GET /trabajo-social/usuarias/buscar` — el mínimo de 3 caracteres para `nombre` y la
- * exigencia de que venga uno de los dos criterios se valida en el service (defensa en
- * profundidad), no aquí: aquí solo se valida la forma de los parámetros de query. */
+/** Query de `GET /trabajo-social/usuarias/buscar` — el mínimo de 3 caracteres para `nombre`/`q` y
+ * la exigencia de que venga al menos un criterio se valida en el service (defensa en
+ * profundidad), no aquí: aquí solo se valida la forma de los parámetros de query.
+ * `q` es el término único del buscador global (`BuscadorGlobalTs`): el service decide si es un
+ * número de expediente, un DPI o un nombre. `dpi`/`nombre` siguen aparte para los formularios
+ * que ya piden el criterio explícito (verificar DPI, buscador del wizard). */
 export const buscarUsuariaQuerySchema = z.object({
   dpi: z.string().optional(),
   nombre: z.string().optional(),
+  q: z.string().optional(),
 })
 export type BuscarUsuariaQuery = z.infer<typeof buscarUsuariaQuerySchema>
 
@@ -185,6 +189,8 @@ export interface UsuariaResumenBusqueda {
   apellidos: string
   dpi: string | null
   fechaNacimiento: string
+  /** Número de su caso más reciente (o el que coincidió, si se buscó por número). `null` si aún no tiene ninguno. */
+  numeroExpediente: string | null
 }
 
 /** Un caso dentro del historial de una usuaria — ver GET /trabajo-social/usuarias/:id. */
