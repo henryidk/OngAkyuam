@@ -1,23 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import type { EstadoProcesoJuridico } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import type {
   AtencionPsicologicaParaEstado,
   IEstadoAreasRepository,
+  ProcesoJuridicoParaEstado,
 } from '../interfaces/estado-areas-repository.interface';
 
 @Injectable()
 export class EstadoAreasRepository implements IEstadoAreasRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async estadosProcesosJuridicos(
+  async procesosJuridicos(
     expedienteId: string,
-  ): Promise<EstadoProcesoJuridico[]> {
-    const procesos = await this.prisma.procesoJuridico.findMany({
+  ): Promise<ProcesoJuridicoParaEstado[]> {
+    return this.prisma.procesoJuridico.findMany({
       where: { expedienteId },
-      select: { estado: true },
+      select: { fase: true, situacion: true },
     });
-    return procesos.map((proceso) => proceso.estado);
   }
 
   async atencionPsicologica(

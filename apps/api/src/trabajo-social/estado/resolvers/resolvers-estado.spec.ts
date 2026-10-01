@@ -1,4 +1,7 @@
-import type { IEstadoAreasRepository } from '../interfaces/estado-areas-repository.interface';
+import type {
+  IEstadoAreasRepository,
+  ProcesoJuridicoParaEstado,
+} from '../interfaces/estado-areas-repository.interface';
 import { JuridicoEstadoResolver } from './juridico-estado.resolver';
 import { MedicaEstadoResolver } from './medica-estado.resolver';
 import { PsicologiaEstadoResolver } from './psicologia-estado.resolver';
@@ -7,7 +10,7 @@ const referido = { expedienteId: 'e-1', profesional: null };
 
 function repositorio(): jest.Mocked<IEstadoAreasRepository> {
   return {
-    estadosProcesosJuridicos: jest.fn().mockResolvedValue([]),
+    procesosJuridicos: jest.fn().mockResolvedValue([]),
     atencionPsicologica: jest.fn().mockResolvedValue(null),
   };
 }
@@ -15,12 +18,52 @@ function repositorio(): jest.Mocked<IEstadoAreasRepository> {
 describe('JuridicoEstadoResolver', () => {
   it.each([
     [[], 'ACTIVA', 'Sin procesos abiertos todavía'],
-    [['INICIADO'], 'ACTIVA', '1 proceso activo'],
-    [['INICIADO', 'INICIADO', 'CERRADO'], 'ACTIVA', '2 procesos activos'],
-    [['CERRADO', 'CERRADO'], 'CERRADA', 'Procesos cerrados'],
-  ] as const)('procesos %j → %s', async (estados, estado, detalle) => {
+    [[['INICIADO', 'ACTIVO']], 'ACTIVA', '1 proceso activo'],
+    [
+      [
+        ['INICIADO', 'ACTIVO'],
+        ['EN_PROCESO', 'ACTIVO'],
+        ['FINALIZADO', 'ACTIVO'],
+      ],
+      'ACTIVA',
+      '2 procesos activos',
+    ],
+    [
+      [
+        ['FINALIZADO', 'ACTIVO'],
+        ['FINALIZADO', 'ACTIVO'],
+      ],
+      'CERRADA',
+      'Procesos cerrados',
+    ],
+    // Suspendido es una pausa: Jurídico sigue llevando el caso.
+    [[['EN_PROCESO', 'SUSPENDIDO']], 'ACTIVA', '1 proceso activo'],
+    // Abandonado deja de contar como activo…
+    [[['EN_PROCESO', 'ABANDONADO']], 'CERRADA', 'Procesos cerrados'],
+    [
+      [
+        ['INICIADO', 'ABANDONADO'],
+        ['FINALIZADO', 'ACTIVO'],
+      ],
+      'CERRADA',
+      'Procesos cerrados',
+    ],
+    // …pero no arrastra a los demás procesos de la usuaria.
+    [
+      [
+        ['EN_PROCESO', 'ABANDONADO'],
+        ['INICIADO', 'ACTIVO'],
+      ],
+      'ACTIVA',
+      '1 proceso activo',
+    ],
+  ] as const)('procesos %j → %s', async (pares, estado, detalle) => {
+    const procesos: ProcesoJuridicoParaEstado[] = pares.map(
+      (par: readonly [string, string]) =>
+        ({ fase: par[0], situacion: par[1] }) as ProcesoJuridicoParaEstado,
+    );
     const repo = repositorio();
-    repo.estadosProcesosJuridicos.mockResolvedValue([...estados]);
+    repo.procesosJuridicos.mockResolvedValue(procesos);
 
     await expect(
       new JuridicoEstadoResolver(repo).resolver(referido),

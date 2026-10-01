@@ -1,5 +1,6 @@
 import type {
-  EstadoProcesoJuridico,
+  FaseProcesoJuridico,
+  SituacionProcesoJuridico,
   Rol,
   TipoProcesoJuridico,
 } from '@prisma/client';
@@ -8,7 +9,8 @@ export const COMPARTIDO_REPOSITORY = Symbol('COMPARTIDO_REPOSITORY');
 
 export interface ProcesoJuridicoCompartido {
   tipo: TipoProcesoJuridico;
-  estado: EstadoProcesoJuridico;
+  fase: FaseProcesoJuridico;
+  situacion: SituacionProcesoJuridico;
   abogada: string | null;
   procuradora: string | null;
 }

@@ -59,13 +59,15 @@ describe('CompartidoService', () => {
     repositorio.procesosJuridicos.mockResolvedValue([
       {
         tipo: 'GUARDA_CUSTODIA',
-        estado: 'INICIADO',
+        fase: 'INICIADO',
+        situacion: 'ACTIVO',
         abogada: 'Abogada Ficticia',
         procuradora: 'Procuradora Ficticia',
       },
       {
         tipo: 'MEDIDAS_SEGURIDAD',
-        estado: 'CERRADO',
+        fase: 'FINALIZADO',
+        situacion: 'ACTIVO',
         abogada: null,
         procuradora: null,
       },
@@ -79,6 +81,31 @@ describe('CompartidoService', () => {
     expect(juridico.lineas[0]).toContain('Procuradora: Procuradora Ficticia');
     expect(juridico.lineas[1]).not.toContain('Abogada');
   });
+
+  it.each([
+    ['EN_PROCESO', 'ACTIVO', 'En proceso'],
+    ['EN_PROCESO', 'SUSPENDIDO', 'Suspendido'],
+    ['INICIADO', 'ABANDONADO', 'Abandonado'],
+    // Un proceso finalizado se anuncia como tal aunque su situación haya quedado en otra cosa.
+    ['FINALIZADO', 'ABANDONADO', 'Finalizado'],
+  ] as const)(
+    'Jurídico anuncia %s/%s como "%s"',
+    async (fase, situacion, etiqueta) => {
+      repositorio.procesosJuridicos.mockResolvedValue([
+        {
+          tipo: 'GUARDA_CUSTODIA',
+          fase,
+          situacion,
+          abogada: null,
+          procuradora: null,
+        },
+      ]);
+
+      const [juridico] = await service.obtener('exp-1', contexto);
+
+      expect(juridico.lineas[0]).toContain(etiqueta);
+    },
+  );
 
   it('Psicología comparte solo la próxima cita', async () => {
     repositorio.proximaCitaPsicologica.mockResolvedValue(

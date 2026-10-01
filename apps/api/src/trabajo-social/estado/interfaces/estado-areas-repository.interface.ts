@@ -1,9 +1,15 @@
 import type {
   EstadoAtencionPsicologica,
-  EstadoProcesoJuridico,
+  FaseProcesoJuridico,
+  SituacionProcesoJuridico,
 } from '@prisma/client';
 
 export const ESTADO_AREAS_REPOSITORY = Symbol('ESTADO_AREAS_REPOSITORY');
+
+export interface ProcesoJuridicoParaEstado {
+  fase: FaseProcesoJuridico;
+  situacion: SituacionProcesoJuridico;
+}
 
 export interface AtencionPsicologicaParaEstado {
   estado: EstadoAtencionPsicologica;
@@ -13,9 +19,7 @@ export interface AtencionPsicologicaParaEstado {
 
 /** Lecturas mínimas que necesitan las estrategias de estado — una por área que la requiere. */
 export interface IEstadoAreasRepository {
-  estadosProcesosJuridicos(
-    expedienteId: string,
-  ): Promise<EstadoProcesoJuridico[]>;
+  procesosJuridicos(expedienteId: string): Promise<ProcesoJuridicoParaEstado[]>;
   atencionPsicologica(
     expedienteId: string,
   ): Promise<AtencionPsicologicaParaEstado | null>;

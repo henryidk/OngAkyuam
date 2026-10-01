@@ -21,7 +21,7 @@ describe('EstadoTsService', () => {
 
   beforeEach(() => {
     repositorio = {
-      estadosProcesosJuridicos: jest.fn().mockResolvedValue([]),
+      procesosJuridicos: jest.fn().mockResolvedValue([]),
       atencionPsicologica: jest.fn().mockResolvedValue(null),
     };
     service = new EstadoTsService(new ResolveresEstadoArea(repositorio));
@@ -32,12 +32,14 @@ describe('EstadoTsService', () => {
       estado: 'SIN_REFERIR',
       areas: [],
     });
-    expect(repositorio.estadosProcesosJuridicos).not.toHaveBeenCalled();
+    expect(repositorio.procesosJuridicos).not.toHaveBeenCalled();
     expect(repositorio.atencionPsicologica).not.toHaveBeenCalled();
   });
 
   it('combina el estado de cada área referida y conserva prioridad y fecha del referido', async () => {
-    repositorio.estadosProcesosJuridicos.mockResolvedValue(['CERRADO']);
+    repositorio.procesosJuridicos.mockResolvedValue([
+      { fase: 'FINALIZADO', situacion: 'ACTIVO' },
+    ]);
     repositorio.atencionPsicologica.mockResolvedValue({
       estado: 'CIERRE',
       psicologa: 'Psicóloga Ficticia',
@@ -71,11 +73,13 @@ describe('EstadoTsService', () => {
         referidoEn: referidoEn.toISOString(),
       }),
     ]);
-    expect(repositorio.estadosProcesosJuridicos).toHaveBeenCalledWith('e-1');
+    expect(repositorio.procesosJuridicos).toHaveBeenCalledWith('e-1');
   });
 
   it('con una sola área activa el caso sigue en atención', async () => {
-    repositorio.estadosProcesosJuridicos.mockResolvedValue(['CERRADO']);
+    repositorio.procesosJuridicos.mockResolvedValue([
+      { fase: 'FINALIZADO', situacion: 'ACTIVO' },
+    ]);
 
     const resultado = await service.resolverCaso([
       {

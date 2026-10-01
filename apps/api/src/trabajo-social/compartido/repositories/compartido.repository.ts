@@ -28,14 +28,16 @@ export class CompartidoRepository implements ICompartidoRepository {
       orderBy: { fechaInicio: 'asc' },
       select: {
         tipo: true,
-        estado: true,
+        fase: true,
+        situacion: true,
         abogada: { select: { nombre: true } },
         procuradora: { select: { nombre: true } },
       },
     });
     return procesos.map((proceso) => ({
       tipo: proceso.tipo,
-      estado: proceso.estado,
+      fase: proceso.fase,
+      situacion: proceso.situacion,
       abogada: proceso.abogada?.nombre ?? null,
       procuradora: proceso.procuradora?.nombre ?? null,
     }));

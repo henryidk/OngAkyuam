@@ -51,23 +51,6 @@ export const ETIQUETAS_TIPO_PERSONAL_JURIDICO: Record<(typeof TIPOS_PERSONAL_JUR
   PROCURADORA: 'Procuradora',
 }
 
-/** Únicos 2 estados de un proceso (decisión de negocio confirmada, ver planjuridico.md). */
-export const ESTADOS_PROCESO_JURIDICO = ['INICIADO', 'CERRADO'] as const
-
-export const ETIQUETAS_ESTADO_PROCESO_JURIDICO: Record<(typeof ESTADOS_PROCESO_JURIDICO)[number], string> = {
-  INICIADO: 'Iniciado',
-  CERRADO: 'Cerrado',
-}
-
-/**
- * Filtro de la vista global "Procesos" — no es un estado de la base de datos: un proceso es
- * "FINALIZADO" si está `CERRADO` o tiene un abandono registrado, "EN_CURSO" en otro caso.
- */
-export const FILTROS_PROCESO_JURIDICO = ['EN_CURSO', 'FINALIZADO'] as const
-
-// ---- Rediseño del módulo (IMPLEMENTACION_JURIDICO.md). Los catálogos de arriba marcados como
-// "estado viejo" siguen existiendo hasta la migración M4 (contraer). ----
-
 type TipoProcesoCatalogo = (typeof TIPOS_PROCESO_JURIDICO)[number]
 
 /** Avance del proceso: solo camina hacia adelante. */

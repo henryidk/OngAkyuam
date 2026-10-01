@@ -33,9 +33,6 @@ export class TransicionesRepository implements ITransicionesRepository {
       (tx) =>
         this.actualizarProceso(tx, params, {
           fase: 'FINALIZADO',
-          // Columna anterior al rediseño: se mantiene al día para quien todavía la lee
-          // (el estado que ve Trabajo Social) hasta la migración de contracción.
-          estado: 'CERRADO',
           formaFinalizacion: params.forma,
           detalleFinalizacion: params.detalle,
           fechaCierre: new Date(params.fechaCierre),
