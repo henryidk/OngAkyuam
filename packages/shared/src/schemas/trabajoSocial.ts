@@ -7,6 +7,7 @@ import { booleanoQuerySchema } from './query.js'
 import { hoyGT } from '../timezone.js'
 import type { TipoDocumento, TipoDocumentoTrabajoSocial } from './documentos.js'
 import { ESTADOS_AREA, ESTADOS_TS, FILTROS_LISTA_USUARIAS, PRIORIDADES_REFERIDO } from '../catalogos/trabajoSocial.js'
+import { TIPOS_PROCESO_JURIDICO } from '../catalogos/juridico.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -33,6 +34,13 @@ export const referirSchema = z.object({
   profesionalAsignadoId: z.uuid().optional(),
   prioridad: prioridadReferidoSchema,
   motivo: z.string().trim().max(MOTIVO_REFERIDO_MAX),
+  // Solo aplica al referir a Jurídico: qué procesos cree Trabajo Social que hacen falta. Es una
+  // sugerencia — Jurídico decide cuáles registra.
+  procesosSugeridos: z
+    .array(z.enum(TIPOS_PROCESO_JURIDICO))
+    .max(TIPOS_PROCESO_JURIDICO.length)
+    .refine((tipos) => new Set(tipos).size === tipos.length, 'Proceso sugerido repetido')
+    .default([]),
   visibilidad: z.object({
     datosCaso: z.boolean(),
     // Solo los formularios de Trabajo Social son restringibles por área.
