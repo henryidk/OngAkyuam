@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./features/medicina/medicina.css";
 
 /* Paleta de marca tomada del logo de Centro Ak'Yu'am (tonos de morado medidos directamente del archivo). */
 @theme {

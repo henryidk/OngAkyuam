@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import AdminLayout from './pages/admin/AdminLayout'
 import Usuarios from './pages/admin/Usuarios'
@@ -6,7 +6,7 @@ import AreaLayout from './pages/area-atencion/AreaLayout'
 import Juridica from './pages/Juridica'
 import JuridicaExpediente from './pages/JuridicaExpediente'
 import Login from './pages/Login'
-import Medica from './pages/Medica'
+
 import MedicaExpediente from './pages/MedicaExpediente'
 import AgendaPsicologia from './features/psicologia/AgendaPsicologia'
 import ReportePsicologia from './features/psicologia/ReportePsicologia'
@@ -20,6 +20,8 @@ import RegistrarUsuaria from './features/registro-usuaria/RegistrarUsuaria'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRoute'
 import { useAuthStore } from './store/auth.store'
+
+const MedicineWorkspace = lazy(() => import('./features/medicina/medicine-workspace').then((module) => ({ default: module.MedicineWorkspace })))
 
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth)
@@ -56,9 +58,9 @@ function App() {
         </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['MEDICA']} />}>
-        <Route path="/medica" element={<AreaLayout subtitulo="Médica" basePath="/medica" />}>
-          <Route index element={<Medica />} />
-          <Route path=":id" element={<MedicaExpediente />} />
+        <Route path="/medica" element={<Suspense fallback={<div className="p-8">Cargando Medicina…</div>}><MedicineWorkspace /></Suspense>} />
+        <Route path="/medica/:id" element={<AreaLayout subtitulo="Médica" basePath="/medica" />}>
+          <Route index element={<MedicaExpediente />} />
         </Route>
       </Route>
       <Route element={<ProtectedRoute allowedRoles={['ADMINISTRACION']} />}>

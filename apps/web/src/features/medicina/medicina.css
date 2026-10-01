@@ -1,0 +1,53 @@
+@import 'tw-animate-css';
+
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+.medicina-theme {
+  color-scheme: light;
+  --background: #FDFDF5;
+  --foreground: #281F65;
+  --card: #FDFDF5;
+  --card-foreground: #281F65;
+  --popover: #FDFDF5;
+  --popover-foreground: #281F65;
+  --primary: #613E9D;
+  --primary-foreground: #FDFDF5;
+  --secondary: #7444A8;
+  --secondary-foreground: #FDFDF5;
+  --muted: color-mix(in srgb, #613E9D 7%, #FDFDF5);
+  --muted-foreground: color-mix(in srgb, #281F65 68%, #FDFDF5);
+  --accent: #B16DC6;
+  --accent-foreground: #281F65;
+  --destructive: #7444A8;
+  --border: color-mix(in srgb, #613E9D 17%, #FDFDF5);
+  --input: color-mix(in srgb, #613E9D 22%, #FDFDF5);
+  --ring: #7444A8;
+  --radius: .75rem;
+  --radius-sm: .4875rem; --radius-md: .615rem; --radius-lg: .75rem; --radius-xl: 1.0125rem;
+}
+
+@layer base {
+  .medicina-theme, .medicina-theme * { @apply border-border outline-ring/50; }
+}
