@@ -46,6 +46,9 @@ model Usuario {
   notasAvanceRegistradas             NotaAvanceProceso[]
   documentosProcesoSubidos           DocumentoProceso[]
   abandonosRegistrados               AbandonoProceso[]
+  suspensionesProcesoRegistradas     SuspensionProceso[]
+  carpetasProcesoCreadas             CarpetaDocumentoProceso[]
+  referidosDevueltos                 ReferidoArea[]             @relation("ReferidoDevueltoPor")
   atencionesPsicologicasActualizadas AtencionPsicologica[]      @relation("AtencionPsicologicaActualizadaPor")
   atencionesPsicologicasAsignadas    AtencionPsicologica[]      @relation("AtencionPsicologicaAsignada")
   cambiosEstadoAtencionRegistrados   CambioEstadoAtencion[]     @relation("CambioEstadoAtencionRegistradoPor")
@@ -205,6 +208,16 @@ model ReferidoArea {
   // Agresor, tipología y observaciones. Jurídico los ve siempre (ver PoliticaJuridico).
   puedeVerDatosCaso     Boolean           @default(true)
 
+  // Solo Jurídico. Una referencia está pendiente mientras no se atienda ni se devuelva; se
+  // atiende al registrar el primer lote de procesos desde ella.
+  procesosSugeridos TipoProcesoJuridico[] @default([])
+  atendidoEn        DateTime?             @db.Timestamptz(3)
+  devueltoEn        DateTime?             @db.Timestamptz(3)
+  motivoDevolucion  String?               @db.VarChar(500)
+  devueltoPorId     String?
+  devueltoPor       Usuario?              @relation("ReferidoDevueltoPor", fields: [devueltoPorId], references: [id])
+  procesosJuridicos ProcesoJuridico[]
+
   @@unique([expedienteId, area])
   @@index([area])
 }
@@ -343,63 +356,174 @@ enum TipoProcesoJuridico {
   INSCRIPCION_RENAP
 }
 
+// Estado anterior al rediseño. La columna sigue existiendo (y se mantiene sincronizada) hasta
+// la migración de contracción; el código nuevo decide con `fase` y `situacion`.
 enum EstadoProcesoJuridico {
   INICIADO
   CERRADO
+}
+
+// Avance del proceso: solo camina hacia adelante.
+enum FaseProcesoJuridico {
+  INICIADO
+  EN_PROCESO
+  FINALIZADO
+}
+
+// Si el caso se está trabajando — eje independiente de la fase.
+enum SituacionProcesoJuridico {
+  ACTIVO
+  SUSPENDIDO
+  ABANDONADO
+}
+
+enum FormaFinalizacionProceso {
+  CONVENIO
+  SENTENCIA
+  DESISTIMIENTO
+  OTROS
+}
+
+enum MotivoAbandonoProceso {
+  NO_RESPONDE
+  CAMBIO_DOMICILIO
+  ABOGADO_PARTICULAR
+  RECONCILIACION
+  NO_SE_PRESENTO_AUDIENCIAS
+  OTRO
+}
+
+enum TipoEntradaBitacora {
+  SEGUIMIENTO
+  ESCRITO
+  NOTIFICACION
+  RESOLUCION
+  AUDIENCIA
+  DILIGENCIA
+  CONTACTO_USUARIA
+  SISTEMA // generada por el backend: creación, cambios de estado, subida de documentos
 }
 
 // Un proceso judicial que jurídico lleva para una usuaria dentro de un expediente que le fue
 // referido. Una usuaria puede tener varios procesos, incluso del mismo tipo repetido en el
 // tiempo (ej. fijación y luego modificación de la misma pensión alimenticia).
 model ProcesoJuridico {
-  id            String                @id @default(uuid())
-  expedienteId  String
-  expediente    Expediente            @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
-  tipo          TipoProcesoJuridico
-  estado        EstadoProcesoJuridico @default(INICIADO)
-  abogadaId     String?
-  abogada       Personal?             @relation("AbogadaDeProceso", fields: [abogadaId], references: [id])
-  procuradoraId String?
-  procuradora   Personal?             @relation("ProcuradoraDeProceso", fields: [procuradoraId], references: [id])
-  fechaInicio   DateTime              @db.Date
-  fechaCierre   DateTime?             @db.Date
-  creadoPorId   String
-  creadoPor     Usuario               @relation(fields: [creadoPorId], references: [id])
-  createdAt     DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime              @updatedAt @db.Timestamptz(3)
+  id                  String                    @id @default(uuid())
+  expedienteId        String
+  expediente          Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  tipo                TipoProcesoJuridico
+  estado              EstadoProcesoJuridico     @default(INICIADO)
+  // El código visible "J{consecutivo}-{numero de expediente}" se deriva, no se guarda.
+  consecutivo         Int
+  fase                FaseProcesoJuridico       @default(INICIADO)
+  situacion           SituacionProcesoJuridico  @default(ACTIVO)
+  formaFinalizacion   FormaFinalizacionProceso?
+  detalleFinalizacion String?                   @db.VarChar(300)
+  numeroJudicial      String?                   @db.VarChar(60)
+  organoJudicial      String?                   @db.VarChar(160)
+  contraparte         String?                   @db.VarChar(160)
+  // "Vincular con proceso anterior" (ej. la ejecución de una pensión ya fijada).
+  procesoOrigenId     String?
+  procesoOrigen       ProcesoJuridico?          @relation("VinculoProceso", fields: [procesoOrigenId], references: [id], onDelete: SetNull)
+  derivados           ProcesoJuridico[]         @relation("VinculoProceso")
+  // Referencia de Trabajo Social que lo originó; null si se registró desde la ficha.
+  referidoId          String?
+  referido            ReferidoArea?             @relation(fields: [referidoId], references: [id], onDelete: SetNull)
+  ultimaActuacionEn   DateTime                  @default(now()) @db.Timestamptz(3)
+  // Concurrencia optimista: cada escritura exige la versión leída y la incrementa.
+  version             Int                       @default(1)
+  abogadaId           String?
+  abogada             Personal?                 @relation("AbogadaDeProceso", fields: [abogadaId], references: [id])
+  procuradoraId       String?
+  procuradora         Personal?                 @relation("ProcuradoraDeProceso", fields: [procuradoraId], references: [id])
+  fechaInicio         DateTime                  @db.Date
+  fechaCierre         DateTime?                 @db.Date
+  creadoPorId         String
+  creadoPor           Usuario                   @relation(fields: [creadoPorId], references: [id])
+  createdAt           DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                  @updatedAt @db.Timestamptz(3)
 
-  notas      NotaAvanceProceso[]
-  documentos DocumentoProceso[]
-  abandono   AbandonoProceso?
+  notas        NotaAvanceProceso[]
+  documentos   DocumentoProceso[]
+  abandonos    AbandonoProceso[]
+  suspensiones SuspensionProceso[]
+  carpetas     CarpetaDocumentoProceso[]
 
-  @@index([expedienteId])
+  @@unique([expedienteId, consecutivo])
   @@index([estado])
+  @@index([fase, situacion])
+  @@index([formaFinalizacion])
+  @@index([ultimaActuacionEn])
 }
 
 // Abandono del proceso por inasistencia de la usuaria — evento aparte, no un estado: puede
 // registrarse sobre un proceso en cualquier momento, sin importar su estado actual (decisión
 // de negocio confirmada, ver planjuridico.md).
 model AbandonoProceso {
-  id              String          @id @default(uuid())
-  procesoId       String          @unique
-  proceso         ProcesoJuridico @relation(fields: [procesoId], references: [id], onDelete: Cascade)
-  fecha           DateTime        @db.Date
-  motivo          String?
-  registradoPorId String
-  registradoPor   Usuario         @relation(fields: [registradoPorId], references: [id])
-  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
+  id               String                @id @default(uuid())
+  procesoId        String
+  proceso          ProcesoJuridico       @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  fecha            DateTime              @db.Date
+  // Observaciones en texto libre; el motivo clasificado es `motivoCatalogo`.
+  motivo           String?
+  motivoCatalogo   MotivoAbandonoProceso
+  ultimoContacto   DateTime?             @db.Date
+  intentosContacto Int                   @default(0)
+  notificadoATs    Boolean               @default(false)
+  // null = abandono vigente. Al reactivar el proceso se conserva la fila como historial.
+  reactivadoEn     DateTime?             @db.Timestamptz(3)
+  registradoPorId  String
+  registradoPor    Usuario               @relation(fields: [registradoPorId], references: [id])
+  createdAt        DateTime              @default(now()) @db.Timestamptz(3)
+
+  // "Un solo abandono vigente por proceso" lo garantiza un índice único parcial creado a
+  // mano en la migración juridico_restricciones (Prisma no los expresa).
+  @@index([procesoId])
 }
 
-model NotaAvanceProceso {
+// Pausa temporal de un proceso (ej. a la espera de un documento). Historial: al reactivar se
+// cierra con `hasta`, no se borra.
+model SuspensionProceso {
   id              String          @id @default(uuid())
   procesoId       String
   proceso         ProcesoJuridico @relation(fields: [procesoId], references: [id], onDelete: Cascade)
-  contenido       String
+  motivo          String          @db.VarChar(300)
+  desde           DateTime        @default(now()) @db.Timestamptz(3)
+  hasta           DateTime?       @db.Timestamptz(3) // null = vigente
   registradoPorId String
   registradoPor   Usuario         @relation(fields: [registradoPorId], references: [id])
-  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
 
   @@index([procesoId])
+}
+
+model NotaAvanceProceso {
+  id              String              @id @default(uuid())
+  procesoId       String
+  proceso         ProcesoJuridico     @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  contenido       String
+  tipo            TipoEntradaBitacora @default(SEGUIMIENTO)
+  registradoPorId String
+  registradoPor   Usuario             @relation(fields: [registradoPorId], references: [id])
+  createdAt       DateTime            @default(now()) @db.Timestamptz(3)
+
+  @@index([procesoId, createdAt])
+}
+
+// Carpeta de documentos de un proceso, con nombre libre. `nombreNorm` (minúsculas, sin
+// espacios a los lados) es lo que decide si dos nombres son el mismo.
+model CarpetaDocumentoProceso {
+  id          String             @id @default(uuid())
+  procesoId   String
+  proceso     ProcesoJuridico    @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  nombre      String             @db.VarChar(80)
+  nombreNorm  String             @db.VarChar(80)
+  creadaPorId String
+  creadaPor   Usuario            @relation(fields: [creadaPorId], references: [id])
+  createdAt   DateTime           @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime           @updatedAt @db.Timestamptz(3)
+  documentos  DocumentoProceso[]
+
+  @@unique([procesoId, nombreNorm])
 }
 
 // Documento propio de un proceso jurídico. `nombreVisible` es el identificador elegido por
@@ -407,19 +531,22 @@ model NotaAvanceProceso {
 // `nombreArchivo`, el nombre original del archivo. Mismo criterio que `Documento`: `claveR2`
 // nunca se deriva de input del usuario.
 model DocumentoProceso {
-  id            String          @id @default(uuid())
+  id            String                  @id @default(uuid())
   procesoId     String
-  proceso       ProcesoJuridico @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  proceso       ProcesoJuridico         @relation(fields: [procesoId], references: [id], onDelete: Cascade)
   nombreVisible String
   nombreArchivo String
-  claveR2       String          @unique
+  claveR2       String                  @unique
   mimeType      String
   tamanioBytes  Int
   subidoPorId   String
-  subidoPor     Usuario         @relation(fields: [subidoPorId], references: [id])
-  createdAt     DateTime        @default(now()) @db.Timestamptz(3)
+  subidoPor     Usuario                 @relation(fields: [subidoPorId], references: [id])
+  createdAt     DateTime                @default(now()) @db.Timestamptz(3)
+  carpetaId     String
+  carpeta       CarpetaDocumentoProceso @relation(fields: [carpetaId], references: [id], onDelete: Restrict)
 
   @@index([procesoId])
+  @@index([carpetaId])
 }
 
 enum EstadoAtencionPsicologica {
