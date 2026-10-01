@@ -44,7 +44,7 @@ export default function Switch({
           }`}
         />
       </button>
-      {etiqueta && <span className="text-[11px] text-gray-400">{etiqueta}</span>}
+      {etiqueta && <span className="text-[11px] text-gray-500">{etiqueta}</span>}
     </div>
   )
 }

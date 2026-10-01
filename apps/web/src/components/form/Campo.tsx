@@ -22,7 +22,7 @@ export default function Campo({
     <div>
       <label className="block text-sm font-medium text-gray-800" htmlFor={htmlFor}>
         {label}
-        {opcional && <span className="ml-1 font-normal text-gray-400">(opcional)</span>}
+        {opcional && <span className="ml-1 font-normal text-gray-500">(opcional)</span>}
       </label>
       {children}
       {error ? (

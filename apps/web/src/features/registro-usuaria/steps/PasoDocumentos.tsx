@@ -56,7 +56,7 @@ function SlotDocumento({ tipo, staging }: SlotDocumentoProps) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-800">
           {ETIQUETAS_TIPO_DOCUMENTO[tipo]}
-          <span className="text-xs font-normal text-gray-400">
+          <span className="text-xs font-normal text-gray-500">
             {' '}
             · {esDeAlbergue ? 'requerido para albergue' : 'obligatorio'}
           </span>
@@ -66,7 +66,7 @@ function SlotDocumento({ tipo, staging }: SlotDocumentoProps) {
             {staged.error ?? `${staged.archivo.name} · ${(staged.archivo.size / 1024 / 1024).toFixed(2)} MB`}
           </p>
         ) : (
-          <p className="mt-0.5 text-xs text-gray-400">Pendiente</p>
+          <p className="mt-0.5 text-xs text-gray-500">Pendiente</p>
         )}
       </div>
       <input ref={inputRef} type="file" accept=".pdf,image/*" className="hidden" onChange={onCambiarArchivo} />

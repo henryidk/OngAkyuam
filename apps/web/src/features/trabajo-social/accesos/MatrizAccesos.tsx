@@ -37,7 +37,7 @@ export default function MatrizAccesos({ matriz, onCambiar }: MatrizAccesosProps)
           {matriz.columnas.map((columna) => (
             <span key={columna.area} className="text-center">
               {ETIQUETAS_AREA_ATENCION[columna.area]}
-              <span className="block font-normal normal-case tracking-normal text-gray-400">{subtituloColumna(columna)}</span>
+              <span className="block font-normal normal-case tracking-normal text-gray-500">{subtituloColumna(columna)}</span>
             </span>
           ))}
         </div>

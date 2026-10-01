@@ -32,7 +32,7 @@ export default function ListaNovedades({ novedades }: { novedades: NovedadArea[]
                   {' · '}
                   {novedad.texto}
                 </p>
-                <p className="text-xs text-gray-400">{cuandoTexto(novedad.createdAt)}</p>
+                <p className="text-xs text-gray-500">{cuandoTexto(novedad.createdAt)}</p>
               </div>
             </li>
           ))}

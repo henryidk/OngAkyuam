@@ -1,6 +1,14 @@
 @import "tailwindcss";
 
 /* Paleta de marca tomada del logo de Centro Ak'Yu'am (tonos de morado medidos directamente del archivo). */
+/* Foco de teclado visible en toda la app; los campos con su propio `focus:ring` lo sustituyen. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
 @theme {
   --color-brand-50: #f7f3fc;
   --color-brand-100: #eee4f8;

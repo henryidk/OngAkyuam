@@ -127,7 +127,7 @@ export default function PasoRevision({ form, onEditar, usuariaExistente, documen
       {esInterna && (
         <Seccion titulo="Hijas e hijos" pasoId="hijos" onEditar={onEditar}>
           {caso.ninos.length === 0 ? (
-            <p className="py-1.5 text-sm text-gray-400">Ingresa sin hijas ni hijos.</p>
+            <p className="py-1.5 text-sm text-gray-500">Ingresa sin hijas ni hijos.</p>
           ) : (
             <ul className="space-y-1 py-1.5 text-sm">
               {caso.ninos.map((nino, indice) => (

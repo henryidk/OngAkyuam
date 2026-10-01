@@ -221,7 +221,12 @@ function WizardRegistro({
   }
 
   if (usuariaExistente && cargandoUsuaria) {
-    return <p className="text-sm text-gray-500">Cargando datos de la usuaria…</p>
+    return (
+      <div role="status" aria-label="Cargando datos de la usuaria" className="mx-auto max-w-6xl space-y-4">
+        <div className="h-16 animate-pulse rounded-xl bg-gray-100" />
+        <div className="h-96 animate-pulse rounded-xl bg-gray-100" />
+      </div>
+    )
   }
 
   if (usuariaExistente && (errorUsuaria || !usuaria)) {

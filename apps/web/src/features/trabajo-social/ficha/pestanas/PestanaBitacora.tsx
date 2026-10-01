@@ -1,4 +1,6 @@
+import { History } from 'lucide-react'
 import { formatInstanteGT, type EventoBitacora } from '@akyuam/shared'
+import EmptyState from '../../../../components/ui/EmptyState'
 import { useContextoFicha } from '../contextoFicha'
 import { useBitacora } from '../useBitacora'
 import Tarjeta from './Tarjeta'
@@ -12,7 +14,11 @@ export default function PestanaBitacora() {
   return (
     <Tarjeta titulo="Bitácora del expediente">
       <p className="-mt-2 mb-5 text-[13px] text-gray-500">Registro automático de quién hizo qué. No se edita.</p>
-      {error && <p className="text-sm text-red-700">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-red-700">
+          {error}
+        </p>
+      )}
       {!error && !eventos && (
         <div className="space-y-3">
           {[0, 1, 2, 3].map((indice) => (
@@ -20,7 +26,13 @@ export default function PestanaBitacora() {
           ))}
         </div>
       )}
-      {eventos && eventos.length === 0 && <p className="text-sm text-gray-500">Todavía no hay movimientos.</p>}
+      {eventos && eventos.length === 0 && (
+        <EmptyState
+          Icono={History}
+          titulo="Todavía no hay movimientos"
+          descripcion="Aquí aparecerá cada referido, documento subido y cambio de acceso de este expediente."
+        />
+      )}
       {eventos && eventos.length > 0 && (
         <ol>
           {eventos.map((evento, indice) => (
@@ -61,7 +73,7 @@ function FilaEvento({ evento, ultimo, mostrarCaso }: FilaEventoProps) {
         {mostrarCaso && evento.numeroExpediente && (
           <span className="tabular-nums text-gray-500"> · caso {evento.numeroExpediente}</span>
         )}
-        {evento.autor && <span className="text-gray-400"> · {evento.autor}</span>}
+        {evento.autor && <span className="text-gray-500"> · {evento.autor}</span>}
       </p>
     </li>
   )

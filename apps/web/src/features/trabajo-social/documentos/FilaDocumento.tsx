@@ -56,7 +56,7 @@ export default function FilaDocumento({ fila, subiendo, bloqueada, onVer, onEleg
       </div>
 
       <div className="min-w-0">
-        <p className="text-[11px] uppercase tracking-wider text-gray-400">Visible para</p>
+        <p className="text-[11px] uppercase tracking-wider text-gray-500">Visible para</p>
         <p className="mt-0.5 text-[13px] text-gray-700">{subido ? textoVisiblePara(fila.areasVisibles) : '—'}</p>
       </div>
 

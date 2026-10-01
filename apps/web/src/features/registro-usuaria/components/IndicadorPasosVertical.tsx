@@ -45,7 +45,7 @@ export default function IndicadorPasosVertical({ pasos, pasoActualId, onIrAPaso 
               >
                 {paso.titulo}
               </span>
-              <span className="block text-xs text-gray-400">{paso.descripcion}</span>
+              <span className="block text-xs text-gray-500">{paso.descripcion}</span>
             </span>
           </button>
         </li>

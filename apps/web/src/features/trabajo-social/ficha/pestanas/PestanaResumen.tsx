@@ -108,7 +108,7 @@ function FilaAreaReferida({ estado }: { estado: EstadoAreaCaso }) {
           {estado.detalle}
           {estado.profesional && ` · ${estado.profesional}`}
         </p>
-        <p className="text-xs tabular-nums text-gray-400">Referida el {formatInstanteGT(estado.referidoEn)}</p>
+        <p className="text-xs tabular-nums text-gray-500">Referida el {formatInstanteGT(estado.referidoEn)}</p>
       </div>
     </div>
   )

@@ -67,7 +67,7 @@ export default function TarjetaNino({ form, indice, expandido, onExpandir, onCol
   return (
     <div className="rounded border border-brand-200 bg-white p-3">
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-semibold tracking-wide text-gray-400 uppercase">Niña o niño {indice + 1}</span>
+        <span className="text-xs font-semibold tracking-wide text-gray-500 uppercase">Niña o niño {indice + 1}</span>
         <div className="flex items-center gap-3">
           <button type="button" onClick={onEliminar} className="text-xs font-medium text-red-600 hover:underline">
             Quitar

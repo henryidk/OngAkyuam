@@ -13,6 +13,7 @@ import {
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import Switch from '../../../components/ui/Switch'
+import { useDialogoModal } from '../../../components/ui/useDialogoModal'
 import { useReferir } from './useReferir'
 
 interface ModalReferirProps {
@@ -83,14 +84,22 @@ export default function ModalReferir({
 }: ModalReferirProps) {
   const referir = useReferir(expedienteId, areasReferidas, onReferido, areaInicial)
   const { area } = referir
+  const panel = useDialogoModal<HTMLDivElement>(true, onCerrar)
   // Jurídico tiene acceso completo por normativa: la visibilidad se muestra bloqueada y encendida.
   const esJuridico = area === 'JURIDICO'
   const todasReferidas = AREAS_ATENCION.every((opcion) => areasReferidas.includes(opcion))
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-gray-900/50 px-4 py-10">
-      <button aria-label="Cancelar" className="absolute inset-0 cursor-default" onClick={onCerrar} />
-      <div role="dialog" aria-modal="true" aria-labelledby="titulo-modal-referir" className="relative w-full max-w-[640px] rounded-xl bg-white shadow-2xl">
+      <div aria-hidden="true" className="absolute inset-0" onClick={onCerrar} />
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-modal-referir"
+        tabIndex={-1}
+        className="relative w-full max-w-[640px] rounded-xl bg-white shadow-2xl outline-none"
+      >
         <div className="border-b border-gray-200 px-6 py-5">
           <h2 id="titulo-modal-referir" className="text-lg font-semibold text-gray-900">
             {nombreUsuaria ? `Referir a ${nombreUsuaria}` : `Referir caso ${numeroExpediente}`}

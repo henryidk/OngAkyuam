@@ -1,6 +1,7 @@
-import { useEffect, type ReactNode } from 'react'
+import { type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
+import { useDialogoModal } from './useDialogoModal'
 
 interface DrawerProps {
   abierto: boolean
@@ -19,36 +20,33 @@ interface DrawerProps {
  * para escapar cualquier contenedor con `overflow` de un ancestro.
  */
 export default function Drawer({ abierto, titulo, subtitulo, onCerrar, children, pie }: DrawerProps) {
-  useEffect(() => {
-    if (!abierto) return
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === 'Escape') onCerrar()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [abierto, onCerrar])
+  const panel = useDialogoModal<HTMLDivElement>(abierto, onCerrar)
 
   if (!abierto) return null
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex justify-end">
-      <button
-        aria-label="Cerrar"
-        className="absolute inset-0 bg-black/30"
-        onClick={onCerrar}
-      />
-      <div className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-xl">
+      <div aria-hidden="true" className="absolute inset-0 bg-black/30" onClick={onCerrar} />
+      <div
+        ref={panel}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-drawer"
+        tabIndex={-1}
+        className="relative flex h-full w-full max-w-lg flex-col bg-white shadow-xl outline-none"
+      >
         <div className="flex items-start justify-between gap-3 border-b border-gray-200 px-5 py-4">
           <div className="min-w-0">
-            <h2 className={subtitulo ? 'text-[17px] font-semibold text-gray-900' : 'text-sm font-semibold text-gray-800'}>
+            <h2 id="titulo-drawer" className={subtitulo ? 'text-[17px] font-semibold text-gray-900' : 'text-sm font-semibold text-gray-800'}>
               {titulo}
             </h2>
             {subtitulo && <p className="mt-0.5 text-xs text-gray-500 tabular-nums">{subtitulo}</p>}
           </div>
           <button
+            type="button"
             aria-label="Cerrar"
             onClick={onCerrar}
-            className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+            className="rounded p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
           >
             <X className="h-4 w-4" />
           </button>

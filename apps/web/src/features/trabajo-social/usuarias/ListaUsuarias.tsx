@@ -151,7 +151,7 @@ export default function ListaUsuarias() {
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm tabular-nums text-gray-600">
                       {formatInstanteGT(fila.ultimaActividadEn)}
-                      <span className="block text-xs text-gray-400">
+                      <span className="block text-xs text-gray-500">
                         {fila.ultimaActividadArea
                           ? `Referida a ${ETIQUETAS_AREA_ATENCION[fila.ultimaActividadArea]}`
                           : 'Registro del caso'}

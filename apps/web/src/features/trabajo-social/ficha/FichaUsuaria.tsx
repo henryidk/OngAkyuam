@@ -10,6 +10,17 @@ import EncabezadoFicha from './EncabezadoFicha'
 import { nombreCompleto } from './textoUsuaria'
 import { useFichaUsuaria } from './useFichaUsuaria'
 
+/** Mismo alto que las migas, el encabezado y la primera tarjeta, para que la página no salte al cargar. */
+function EsqueletoFicha() {
+  return (
+    <div role="status" aria-label="Cargando ficha de la usuaria" className="mx-auto max-w-6xl space-y-4">
+      <div className="h-4 w-48 animate-pulse rounded bg-gray-100" />
+      <div className="h-[132px] animate-pulse rounded-xl bg-gray-100" />
+      <div className="h-64 animate-pulse rounded-xl bg-gray-100" />
+    </div>
+  )
+}
+
 /** Estado de navegación que deja la confirmación del wizard al pulsar "Referir ahora". */
 interface EstadoNavegacionFicha {
   abrirReferir?: boolean
@@ -62,7 +73,7 @@ export default function FichaUsuaria() {
 
   if (error) {
     return (
-      <div className="mx-auto max-w-lg rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+      <div role="alert" className="mx-auto max-w-lg rounded-xl border border-red-200 bg-red-50 p-6 text-center">
         <p className="text-sm text-red-700">{error}</p>
         <Link to="/trabajo-social/usuarias" className="mt-4 inline-block text-sm font-medium text-brand-600 hover:underline">
           Volver a Usuarias
@@ -72,7 +83,7 @@ export default function FichaUsuaria() {
   }
 
   if (!usuaria) {
-    return <p className="text-sm text-gray-500">Cargando ficha de la usuaria…</p>
+    return <EsqueletoFicha />
   }
 
   const casoActual = usuaria.casos[0] ?? null
