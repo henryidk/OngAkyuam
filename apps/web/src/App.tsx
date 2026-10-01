@@ -4,8 +4,15 @@ import { ToastProvider } from './components/ui/Toast'
 import AdminLayout from './pages/admin/AdminLayout'
 import Usuarios from './pages/admin/Usuarios'
 import AreaLayout from './pages/area-atencion/AreaLayout'
-import Juridica from './pages/Juridica'
-import JuridicaExpediente from './pages/JuridicaExpediente'
+import JuridicoLayout from './pages/juridico/JuridicoLayout'
+import BandejaJuridico from './features/juridico/bandeja/BandejaJuridico'
+import ListaProcesosJuridico from './features/juridico/procesos/ListaProcesos'
+import RegistrarProcesosJuridico, { RedirigirARegistro } from './features/juridico/registro/RegistrarProcesos'
+import DetalleProcesoJuridico from './features/juridico/detalle/DetalleProceso'
+import PestanaBitacoraJuridico from './features/juridico/detalle/PestanaBitacora'
+import PestanaDocumentosJuridico from './features/juridico/documentos/PestanaDocumentos'
+import BuscarUsuariasJuridico from './features/juridico/expedientes/BuscarUsuarias'
+import HistorialUsuariaJuridico from './features/juridico/expedientes/HistorialUsuaria'
 import Login from './pages/Login'
 import Medica from './pages/Medica'
 import MedicaExpediente from './pages/MedicaExpediente'
@@ -93,9 +100,19 @@ function App() {
           </Route>
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['JURIDICO']} />}>
-          <Route path="/juridico" element={<AreaLayout subtitulo="Jurídica" basePath="/juridico" />}>
-            <Route index element={<Juridica />} />
-            <Route path=":id/casos" element={<JuridicaExpediente />} />
+          <Route path="/juridico" element={<JuridicoLayout />}>
+            <Route index element={<BandejaJuridico />} />
+            <Route path="procesos" element={<ListaProcesosJuridico />} />
+            {/* Antes que "procesos/:procesoId": "registrar" no es un id. */}
+            <Route path="procesos/registrar" element={<RegistrarProcesosJuridico />} />
+            <Route path="procesos/:procesoId" element={<DetalleProcesoJuridico />}>
+              <Route index element={<PestanaBitacoraJuridico />} />
+              <Route path="documentos" element={<PestanaDocumentosJuridico />} />
+            </Route>
+            <Route path="expedientes" element={<BuscarUsuariasJuridico />} />
+            <Route path="usuarias/:usuariaId" element={<HistorialUsuariaJuridico />} />
+            {/* Ruta vieja del espacio de trabajo por expediente. */}
+            <Route path=":id/casos" element={<RedirigirARegistro />} />
           </Route>
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['PSICOLOGIA']} />}>

@@ -2,6 +2,11 @@ import type { ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import {
   AREAS_ATENCION,
+  CATEGORIA_POR_TIPO_PROCESO,
+  CATEGORIAS_PROCESO_JURIDICO,
+  ETIQUETAS_CATEGORIA_PROCESO,
+  ETIQUETAS_TIPO_PROCESO_JURIDICO,
+  TIPOS_PROCESO_JURIDICO,
   ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_PRIORIDAD_REFERIDO,
   ETIQUETAS_TIPO_DOCUMENTO,
@@ -207,6 +212,44 @@ export default function ModalReferir({
                     className={CLASE_CAMPO}
                   />
                 </label>
+                {esJuridico && (
+                  <fieldset className="space-y-2">
+                    <legend className="text-xs font-medium text-gray-600">
+                      Procesos sugeridos (opcional) — Jurídico decide cuáles registra
+                    </legend>
+                    {CATEGORIAS_PROCESO_JURIDICO.map((categoria) => {
+                      const tipos = TIPOS_PROCESO_JURIDICO.filter((tipo) => CATEGORIA_POR_TIPO_PROCESO[tipo] === categoria)
+                      if (tipos.length === 0) return null
+                      return (
+                        <div key={categoria}>
+                          <p className="text-[11px] uppercase tracking-wide text-gray-500">
+                            {ETIQUETAS_CATEGORIA_PROCESO[categoria]}
+                          </p>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {tipos.map((tipo) => {
+                              const marcado = referir.procesosSugeridos.includes(tipo)
+                              return (
+                                <button
+                                  key={tipo}
+                                  type="button"
+                                  aria-pressed={marcado}
+                                  onClick={() => referir.alternarProcesoSugerido(tipo)}
+                                  className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+                                    marcado
+                                      ? 'border-brand-600 bg-brand-600 text-white'
+                                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                                  }`}
+                                >
+                                  {ETIQUETAS_TIPO_PROCESO_JURIDICO[tipo]}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </fieldset>
+                )}
               </section>
 
               <section className="space-y-1">
