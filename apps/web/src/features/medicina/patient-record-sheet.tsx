@@ -1,3 +1,6 @@
+import { useMedicineData } from "./medicine-context"
+import { perfilMedicoSchema } from "@akyuam/shared"
+import { extraerMensajeError } from "../../lib/errors"
 import { useState } from "react"
 import { ArrowRight, CalendarPlus, ChevronRight, Pencil } from "lucide-react"
 import { Badge } from "./ui/badge"
@@ -7,7 +10,7 @@ import { Input } from "./ui/input"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet"
 import { Textarea } from "./ui/textarea"
 import { cn } from "./utils"
-import { bmi, formatDate, lastAttended, nextScheduled, patientConsultations, type Consultation, type MedicalHistory, type MedPatient } from "./medicine-data"
+import { bmi, formatDate, type Consultation, type MedicalHistory, type MedPatient } from "./medicine-data"
 import type { ScheduleSeed } from "./medicine-agenda"
 import { AllergyAlert, ConsultationStatusBadge, DiagnosisChips, PatientStatusBadge, SectionLabel } from "./medicine-ui"
 
@@ -37,6 +40,7 @@ export function PatientRecordSheet({ patient, onClose, onConsultation, onSchedul
 }
 
 function PatientRecord({ patient, onConsultation, onSchedule }: { patient: MedPatient; onConsultation: (item: Consultation) => void; onSchedule: (seed: ScheduleSeed) => void }) {
+  const { patientConsultations, lastAttended, nextScheduled } = useMedicineData()
   const [tab, setTab] = useState<Tab>("evolucion")
   const records = patientConsultations(patient.id)
   const attended = records.filter((item) => item.status === "Atendida")
@@ -58,7 +62,7 @@ function PatientRecord({ patient, onConsultation, onSchedule }: { patient: MedPa
         </div>
         <SheetTitle className="mt-3 text-xl">{patient.name}</SheetTitle>
         <SheetDescription>
-          {patient.age} años · {patient.municipality} · Tipo de sangre {patient.bloodType}
+          {patient.age} años · {patient.municipality} · Tipo de sangre {patient.bloodType || "Sin registrar"}
         </SheetDescription>
       </SheetHeader>
 
@@ -101,7 +105,7 @@ function PatientRecord({ patient, onConsultation, onSchedule }: { patient: MedPa
       <div role="tabpanel" id={`panel-${tab}`} aria-labelledby={`tab-${tab}`} className="p-6">
         {tab === "evolucion" && <EvolutionTimeline records={records} onOpen={onConsultation} />}
         {tab === "signos" && <VitalsHistory records={attended} />}
-        {tab === "antecedentes" && <HistoryPanel history={patient.history} />}
+        {tab === "antecedentes" && <HistoryPanel patient={patient} />}
         {tab === "datos" && <GeneralData patient={patient} />}
       </div>
     </>
@@ -245,103 +249,84 @@ const historyLabels: { key: keyof MedicalHistory; label: string }[] = [
   { key: "medication", label: "Medicamentos actuales" },
 ]
 
-function HistoryPanel({ history }: { history: MedicalHistory }) {
+function HistoryPanel({ patient }: { patient: MedPatient }) {
+  const { updateProfile } = useMedicineData()
   const [editing, setEditing] = useState(false)
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <SectionLabel>Antecedentes importantes</SectionLabel>
-        <Button size="sm" variant="outline" onClick={() => setEditing(!editing)}>
-          <Pencil data-icon="inline-start" />
-          {editing ? "Cancelar" : "Editar"}
-        </Button>
-      </div>
-      {editing ? (
-        <FieldGroup>
-          {historyLabels.map((item) => (
-            <Field key={item.key}>
-              <FieldLabel htmlFor={`record-history-${item.key}`}>{item.label}</FieldLabel>
-              <Textarea id={`record-history-${item.key}`} rows={2} defaultValue={history[item.key]} />
-            </Field>
-          ))}
-          <Button className="w-fit" onClick={() => setEditing(false)}>Guardar antecedentes</Button>
-        </FieldGroup>
-      ) : (
-        <dl className="divide-y rounded-lg border">
-          {historyLabels.map((item) => (
-            <div key={item.key} className="grid gap-1 p-4 sm:grid-cols-[180px_1fr]">
-              <dt className="text-sm text-muted-foreground">{item.label}</dt>
-              <dd className="text-sm leading-relaxed">{history[item.key] || "Sin registrar"}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
+  const [history, setHistory] = useState(patient.history)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  async function save() {
+    const parsed = perfilMedicoSchema.safeParse({ bloodType: patient.bloodType, allergies: patient.allergies, chronicConditions: patient.chronicConditions, history })
+    if (!parsed.success) { setError("Revisa los antecedentes; cada campo admite hasta 10,000 caracteres."); return }
+    setBusy(true); setError(null)
+    try { await updateProfile(patient, parsed.data); setEditing(false) }
+    catch (err) { setError(extraerMensajeError(err)) }
+    finally { setBusy(false) }
+  }
+  return <div className="flex flex-col gap-4">
+    <div className="flex items-center justify-between">
+      <SectionLabel>Antecedentes importantes</SectionLabel>
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => { setHistory(patient.history); setError(null); setEditing(!editing) }}>
+        <Pencil data-icon="inline-start" />{editing ? "Cancelar" : "Editar"}
+      </Button>
     </div>
-  )
+    {editing ? <FieldGroup>
+      {historyLabels.map(item => <Field key={item.key}>
+        <FieldLabel htmlFor={"record-history-" + item.key}>{item.label}</FieldLabel>
+        <Textarea id={"record-history-" + item.key} rows={2} maxLength={10000} value={history[item.key]} onChange={event => setHistory({ ...history, [item.key]: event.target.value })} />
+      </Field>)}
+      <Button className="w-fit" disabled={busy} onClick={() => void save()}>Guardar antecedentes</Button>
+    </FieldGroup> : <dl className="divide-y rounded-lg border">
+      {historyLabels.map(item => <div key={item.key} className="grid gap-1 p-4 sm:grid-cols-[180px_1fr]">
+        <dt className="text-sm text-muted-foreground">{item.label}</dt>
+        <dd className="text-sm leading-relaxed">{patient.history[item.key] || "Sin registrar"}</dd>
+      </div>)}
+    </dl>}
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+  </div>
 }
 
 function GeneralData({ patient }: { patient: MedPatient }) {
+  const { updateProfile } = useMedicineData()
   const [editing, setEditing] = useState(false)
+  const [bloodType, setBloodType] = useState(patient.bloodType)
+  const [allergies, setAllergies] = useState(patient.allergies.join(", "))
+  const [conditions, setConditions] = useState(patient.chronicConditions.join(", "))
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const rows = [
-    ["No. de expediente", patient.id],
-    ["Nombre completo", patient.name],
-    ["Fecha de nacimiento", formatDate(patient.birthDate, { day: "numeric", month: "long", year: "numeric" })],
-    ["Edad", `${patient.age} años`],
-    ["Municipio", patient.municipality],
-    ["Teléfono", patient.phone],
-    ["Tipo de sangre", patient.bloodType],
-    ["Referida por", patient.referredBy],
-    ["Fecha de referencia", formatDate(patient.referredOn, { day: "numeric", month: "long", year: "numeric" })],
+    ["No. de expediente", patient.id], ["Nombre completo", patient.name],
+    ["Fecha de nacimiento", formatDate(patient.birthDate)], ["Edad", patient.age + " años"],
+    ["Municipio", patient.municipality], ["Teléfono", patient.phone || "Sin registrar"],
+    ["Tipo de sangre", patient.bloodType || "Sin registrar"], ["Referida por", patient.referredBy],
+    ["Fecha de referencia", formatDate(patient.referredOn)],
   ]
-  return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <SectionLabel>Información personal</SectionLabel>
-        <Button size="sm" variant="outline" onClick={() => setEditing(!editing)}>
-          <Pencil data-icon="inline-start" />
-          {editing ? "Cancelar" : "Editar"}
-        </Button>
-      </div>
-      {editing ? (
-        <FieldGroup>
-          <Field>
-            <FieldLabel htmlFor="edit-name">Nombre completo</FieldLabel>
-            <Input id="edit-name" defaultValue={patient.name} />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field>
-              <FieldLabel htmlFor="edit-birth">Fecha de nacimiento</FieldLabel>
-              <Input id="edit-birth" type="date" defaultValue={patient.birthDate} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="edit-blood">Tipo de sangre</FieldLabel>
-              <Input id="edit-blood" defaultValue={patient.bloodType} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="edit-municipality">Municipio</FieldLabel>
-              <Input id="edit-municipality" defaultValue={patient.municipality} />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="edit-phone">Teléfono</FieldLabel>
-              <Input id="edit-phone" type="tel" defaultValue={patient.phone} />
-            </Field>
-          </div>
-          <Field>
-            <FieldLabel htmlFor="edit-allergies">Alergias</FieldLabel>
-            <Input id="edit-allergies" defaultValue={patient.allergies.join(", ")} placeholder="Separadas por coma" />
-          </Field>
-          <Button className="w-fit" onClick={() => setEditing(false)}>Guardar cambios</Button>
-        </FieldGroup>
-      ) : (
-        <dl className="grid gap-x-6 gap-y-4 rounded-lg border p-4 sm:grid-cols-2">
-          {rows.map(([label, value]) => (
-            <div key={label}>
-              <dt className="text-xs text-muted-foreground">{label}</dt>
-              <dd className="mt-0.5 text-sm font-medium">{value}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
+  async function save() {
+    const list = (value: string) => value.split(",").map(item => item.trim()).filter(Boolean)
+    const parsed = perfilMedicoSchema.safeParse({ bloodType, allergies: list(allergies), chronicConditions: list(conditions), history: patient.history })
+    if (!parsed.success) { setError("Revisa el tipo de sangre, las alergias y las condiciones crónicas."); return }
+    setBusy(true); setError(null)
+    try { await updateProfile(patient, parsed.data); setEditing(false) }
+    catch (err) { setError(extraerMensajeError(err)) }
+    finally { setBusy(false) }
+  }
+  return <div className="flex flex-col gap-4">
+    <div className="flex items-center justify-between">
+      <SectionLabel>Información personal</SectionLabel>
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => {
+        setBloodType(patient.bloodType); setAllergies(patient.allergies.join(", ")); setConditions(patient.chronicConditions.join(", ")); setError(null); setEditing(!editing)
+      }}><Pencil data-icon="inline-start" />{editing ? "Cancelar" : "Editar datos clínicos"}</Button>
     </div>
-  )
+    <dl className="grid gap-x-6 gap-y-4 rounded-lg border p-4 sm:grid-cols-2">
+      {rows.map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5 text-sm font-medium">{value}</dd></div>)}
+    </dl>
+    <p className="text-xs text-muted-foreground">Los datos personales provienen del expediente de Trabajo Social.</p>
+    {editing && <FieldGroup>
+      <Field><FieldLabel htmlFor="edit-blood">Tipo de sangre</FieldLabel><Input id="edit-blood" maxLength={30} value={bloodType} onChange={event => setBloodType(event.target.value)} /></Field>
+      <Field><FieldLabel htmlFor="edit-allergies">Alergias (separadas por coma)</FieldLabel><Input id="edit-allergies" value={allergies} onChange={event => setAllergies(event.target.value)} /></Field>
+      <Field><FieldLabel htmlFor="edit-conditions">Condiciones crónicas (separadas por coma)</FieldLabel><Input id="edit-conditions" value={conditions} onChange={event => setConditions(event.target.value)} /></Field>
+      <Button className="w-fit" disabled={busy} onClick={() => void save()}>Guardar cambios</Button>
+    </FieldGroup>}
+    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+  </div>
 }

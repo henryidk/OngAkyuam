@@ -1,15 +1,17 @@
+import { useMedicineData } from "./medicine-context"
 import { useState } from "react"
 import { ChevronRight, Search } from "lucide-react"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
 import { Input } from "./ui/input"
-import { formatDate, lastAttended, medPatients, type MedPatient, type PatientStatus } from "./medicine-data"
+import { formatDate, type MedPatient, type PatientStatus } from "./medicine-data"
 import { AllergyMarker, initials, PatientStatusBadge } from "./medicine-ui"
 
-const filters: ("Todas" | PatientStatus)[] = ["Todas", "Nuevo ingreso", "En tratamiento", "Alta"]
+const filters: ("Todas" | PatientStatus)[] = ["Todas", "Nuevo ingreso", "En tratamiento"]
 
 export function MedicinePatients({ onOpen }: { onOpen: (item: MedPatient) => void }) {
+  const { medPatients, lastAttended } = useMedicineData()
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<(typeof filters)[number]>("Todas")
   const rows = medPatients.map((patient) => ({ patient, last: lastAttended(patient.id) }))

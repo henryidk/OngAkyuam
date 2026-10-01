@@ -1,3 +1,4 @@
+import { MedicineDataProvider, useMedicineData } from "./medicine-context"
 import { useState } from "react"
 import { useSearchParams } from "react-router-dom"
 import { useAuthStore } from "../../store/auth.store"
@@ -12,7 +13,7 @@ import { cn } from "./utils"
 import { ConsultationDetailSheet } from "./consultation-detail-sheet"
 import { ConsultationFormSheet } from "./consultation-form-sheet"
 import { MedicineAgenda, type ScheduleSeed } from "./medicine-agenda"
-import { PROFESSIONAL, type Consultation, type MedPatient } from "./medicine-data"
+import { type Consultation, type MedPatient } from "./medicine-data"
 import { MedicinePatients } from "./medicine-patients"
 import { MedicineReports } from "./medicine-reports"
 import { PatientRecordSheet } from "./patient-record-sheet"
@@ -40,7 +41,10 @@ function Brand() {
   )
 }
 
-export function MedicineWorkspace() {
+export function MedicineWorkspace() { return <MedicineDataProvider><Workspace /></MedicineDataProvider> }
+
+function Workspace() {
+  const { loading, error, reload, findPatient } = useMedicineData()
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedView = searchParams.get("vista")
   const view: View = selectedView === "pacientes" || selectedView === "reportes" ? selectedView : "agenda"
@@ -110,10 +114,10 @@ export function MedicineWorkspace() {
               <Button variant="ghost" size="sm" onClick={() => void logout()}>Cerrar sesión</Button>
               <Separator orientation="vertical" className="h-7" />
               <Avatar className="size-9">
-                <AvatarFallback className="bg-secondary text-secondary-foreground">{usuario?.nombreCompleto.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("") ?? "LF"}</AvatarFallback>
+                <AvatarFallback className="bg-secondary text-secondary-foreground">{usuario?.nombreCompleto.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]).join("") ?? "MD"}</AvatarFallback>
               </Avatar>
               <div className="hidden sm:block">
-                <p className="text-sm font-medium">{usuario?.nombreCompleto ?? PROFESSIONAL}</p>
+                <p className="text-sm font-medium">{usuario?.nombreCompleto ?? "Personal médico"}</p>
                 <p className="text-xs text-muted-foreground">Médica general</p>
               </div>
             </div>
@@ -131,17 +135,18 @@ export function MedicineWorkspace() {
           </Sheet>
 
           <div className="mx-auto max-w-7xl p-4 md:p-8">
-            <p role="note" className="mb-5 rounded-lg border bg-muted/40 px-4 py-2 text-xs text-muted-foreground">Vista de demostración · Datos ficticios de v0. Los formularios aún no guardan en el servidor.</p>
-            {view === "agenda" && <MedicineAgenda onSchedule={setScheduleSeed} onStart={setActiveConsultation} onPatient={setSelectedPatient} />}
-            {view === "pacientes" && <MedicinePatients onOpen={setSelectedPatient} />}
-            {view === "reportes" && <MedicineReports onOpen={setConsultationDetail} />}
+            {loading && <p role="status">Cargando usuarias referidas a Medicina…</p>}
+            {error && <div role="alert" className="rounded-lg border p-4"><p>{error}</p><Button className="mt-3" onClick={() => void reload()}>Reintentar</Button></div>}
+            {!loading && !error && view === "agenda" && <MedicineAgenda onSchedule={setScheduleSeed} onStart={setActiveConsultation} onPatient={setSelectedPatient} />}
+            {!loading && !error && view === "pacientes" && <MedicinePatients onOpen={setSelectedPatient} />}
+            {!loading && !error && view === "reportes" && <MedicineReports onOpen={setConsultationDetail} />}
           </div>
         </div>
       </div>
 
       <ScheduleConsultationSheet seed={scheduleSeed} onClose={() => setScheduleSeed(null)} />
       <ConsultationFormSheet consultation={activeConsultation} onClose={() => setActiveConsultation(null)} onOpenRecord={setSelectedPatient} />
-      <PatientRecordSheet patient={selectedPatient} onClose={() => setSelectedPatient(null)} onConsultation={setConsultationDetail} onSchedule={setScheduleSeed} />
+      <PatientRecordSheet patient={selectedPatient ? findPatient(selectedPatient.id) ?? null : null} onClose={() => setSelectedPatient(null)} onConsultation={setConsultationDetail} onSchedule={setScheduleSeed} />
       <ConsultationDetailSheet consultation={consultationDetail} onClose={() => setConsultationDetail(null)} />
     </main>
   )

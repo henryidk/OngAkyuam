@@ -1,7 +1,7 @@
 import { AlertTriangle, ShieldCheck } from "lucide-react"
 import { Badge } from "./ui/badge"
 import { cn } from "./utils"
-import { bmi, bmiCategory, type ConsultationStatus, type Diagnosis, type PatientStatus, type ReferralPriority, type VitalSigns } from "./medicine-data"
+import { bmi, bmiCategory, type ConsultationStatus, type Diagnosis, type PatientStatus, type VitalSigns } from "./medicine-data"
 
 export function initials(name: string) {
   return name.split(" ").slice(0, 2).map((part) => part[0]).join("")
@@ -13,14 +13,6 @@ export function ConsultationStatusBadge({ status }: { status: ConsultationStatus
 
 export function PatientStatusBadge({ status }: { status: PatientStatus }) {
   return <Badge variant={status === "Nuevo ingreso" ? "default" : status === "Alta" ? "secondary" : "outline"}>{status}</Badge>
-}
-
-export function PriorityBadge({ priority }: { priority: ReferralPriority }) {
-  return (
-    <Badge variant={priority === "Alta" ? "default" : "outline"} className={cn(priority === "Baja" && "text-muted-foreground")}>
-      Prioridad {priority.toLowerCase()}
-    </Badge>
-  )
 }
 
 export function SectionLabel({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -45,7 +37,7 @@ export function AllergyAlert({ allergies }: { allergies: string[] }) {
     return (
       <div className="flex items-center gap-2 rounded-lg border px-3 py-2 text-xs text-muted-foreground">
         <ShieldCheck className="size-4 text-primary" aria-hidden="true" />
-        Sin alergias conocidas
+        Sin alergias registradas
       </div>
     )
   }

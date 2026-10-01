@@ -46,6 +46,7 @@ model Usuario {
   documentosProcesoSubidos DocumentoProceso[]
   abandonosRegistrados     AbandonoProceso[]
   atencionesPsicologicasActualizadas AtencionPsicologica[] @relation("AtencionPsicologicaActualizadaPor")
+  citasMedicasAtendidas             CitaMedica[]
   citasPsicologicasAtendidas         CitaPsicologica[]     @relation("CitaPsicologicaAtendidaPor")
 }
 
@@ -172,6 +173,7 @@ model Expediente {
   documentos          Documento[]
   procesosJuridicos   ProcesoJuridico[]
   atencionPsicologica AtencionPsicologica?
+  atencionMedica      AtencionMedica?
 
   @@index([usuariaId])
   @@index([fecha])
@@ -448,4 +450,33 @@ model CitaPsicologica {
 
   @@index([atencionId])
   @@index([fechaHora])
+}
+
+// Las usuarias ingresan por ReferidoArea(MEDICA). Nunca se crean pacientes separados.
+model AtencionMedica {
+  id           String @id @default(uuid())
+  expedienteId String @unique
+  expediente   Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  perfil       Json
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+  citas        CitaMedica[]
+}
+
+model CitaMedica {
+  id            String @id @default(uuid())
+  atencionId    String
+  atencion      AtencionMedica @relation(fields: [atencionId], references: [id], onDelete: Cascade)
+  fecha         DateTime @db.Date
+  hora          String
+  lugar         String
+  motivo        String @db.Text
+  estado        String @default("Programada")
+  nota          Json?
+  atendidoPorId String
+  atendidoPor   Usuario @relation(fields: [atendidoPorId], references: [id])
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(3)
+  @@index([atencionId])
+  @@unique([atendidoPorId, fecha, hora])
 }

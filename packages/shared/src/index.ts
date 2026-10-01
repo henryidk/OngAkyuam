@@ -20,3 +20,4 @@ export * from "./schemas/juridico.js";
 export * from "./schemas/personal.js";
 export * from "./schemas/administracion.js";
 export * from "./schemas/psicologia.js";
+export * from "./schemas/medicina.js";

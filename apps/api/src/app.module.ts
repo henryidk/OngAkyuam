@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AdministracionModule } from './administracion/administracion.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { MedicinaModule } from './medicina/medicina.module';
 import { AreasModule } from './areas/areas.module';
 import { AuthModule } from './auth/auth.module';
 import { CsrfGuard } from './auth/guards/csrf.guard';
@@ -32,6 +33,7 @@ import { TrabajoSocialModule } from './trabajo-social/trabajo-social.module';
     PersonalModule,
     JuridicoModule,
     PsicologiaModule,
+    MedicinaModule,
     AdministracionModule,
   ],
   controllers: [AppController],

@@ -1,26 +1,28 @@
+import { useMedicineData } from "./medicine-context"
 import { useState } from "react"
 import { Download } from "lucide-react"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
 import { Field, FieldLabel } from "./ui/field"
 import { Input } from "./ui/input"
-import { consultations, findPatient, historySummary, TODAY, type Consultation } from "./medicine-data"
+import { historySummary, TODAY, type Consultation, type MedPatient } from "./medicine-data"
 import { ConsultationStatusBadge } from "./medicine-ui"
 
 const presets = [
-  { label: "Este mes", from: "2026-08-01", to: "2026-08-31" },
-  { label: "Últimos 3 meses", from: "2026-05-18", to: TODAY },
-  { label: "Año en curso", from: "2026-01-01", to: "2026-12-31" },
+  { label: "Este mes", from: TODAY.slice(0, 7) + "-01", to: TODAY },
+  { label: "Últimos 3 meses", from: new Date(new Date(TODAY + "T12:00:00Z").setUTCMonth(new Date(TODAY + "T12:00:00Z").getUTCMonth() - 3)).toISOString().slice(0, 10), to: TODAY },
+  { label: "Año en curso", from: TODAY.slice(0, 4) + "-01-01", to: TODAY },
 ]
 
 const exportColumns = ["No. de expediente", "Fecha", "Paciente", "Edad", "Tipo", "Estado", "Motivo de consulta", "Antecedentes importantes", "Positivo en EF", "Diagnóstico", "Plan", "Evolución"]
 
 function csvCell(value: string | number | undefined) {
-  const text = String(value ?? "")
-  return /[",\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+  const raw = String(value ?? "")
+  const text = /^\s*[=+@-]/.test(raw) ? "'" + raw : raw
+  return /[",\r\n;]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 
-function exportCsv(records: Consultation[], from: string, to: string) {
+function exportCsv(records: Consultation[], from: string, to: string, findPatient: (id: string) => MedPatient | undefined) {
   const rows = records.map((item) => {
     const patient = findPatient(item.patientId)
     return [
@@ -31,7 +33,7 @@ function exportCsv(records: Consultation[], from: string, to: string) {
       item.type,
       item.status,
       item.reason,
-      patient ? historySummary(patient.history) : "",
+      item.history ? historySummary(item.history) : "",
       item.physicalExam,
       item.diagnoses?.map((dx) => `${dx.code} ${dx.label}`).join(" / "),
       item.plan,
@@ -48,6 +50,7 @@ function exportCsv(records: Consultation[], from: string, to: string) {
 }
 
 export function MedicineReports({ onOpen }: { onOpen: (item: Consultation) => void }) {
+  const { consultations, findPatient } = useMedicineData()
   const [from, setFrom] = useState(presets[1].from)
   const [to, setTo] = useState(presets[1].to)
   const records = consultations
@@ -79,7 +82,7 @@ export function MedicineReports({ onOpen }: { onOpen: (item: Consultation) => vo
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-balance md:text-3xl">Reporte de atención médica</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Consultas, diagnósticos y ausencias por rango de fechas.</p>
         </div>
-        <Button variant="outline" onClick={() => exportCsv(records, from, to)} disabled={!records.length}>
+        <Button variant="outline" onClick={() => exportCsv(records, from, to, findPatient)} disabled={!records.length}>
           <Download data-icon="inline-start" />
           Exportar CSV (Excel)
         </Button>

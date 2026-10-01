@@ -1,3 +1,7 @@
+import { useMedicineData } from "./medicine-context"
+import { registrarConsultaMedicaSchema } from "@akyuam/shared"
+import { extraerMensajeError } from "../../lib/errors"
+import { useAuthStore } from "../../store/auth.store"
 import { useMemo, useState } from "react"
 import { AlertTriangle, CheckCircle2, FolderOpen, History, Pencil, Plus, Printer, Search, Trash2, X } from "lucide-react"
 import { Badge } from "./ui/badge"
@@ -12,9 +16,6 @@ import {
   bmi,
   bmiCategory,
   cie10Catalog,
-  findPatient,
-  lastAttended,
-  PROFESSIONAL,
   REFERRAL_TARGETS,
   type Consultation,
   type Diagnosis,
@@ -36,7 +37,7 @@ export function ConsultationFormSheet({ consultation, onClose, onOpenRecord }: P
       <SheetContent className="overflow-y-auto data-[side=right]:w-full data-[side=right]:sm:max-w-2xl">
         <SheetHeader className="border-b p-6">
           <SheetTitle>Registro de consulta médica</SheetTitle>
-          <SheetDescription>Completa una nota de demostración. No se guardará en el servidor.</SheetDescription>
+          <SheetDescription>Registra la atención en el expediente médico de la paciente.</SheetDescription>
         </SheetHeader>
         {consultation && <ConsultationForm key={consultation.id} consultation={consultation} onClose={onClose} onOpenRecord={onOpenRecord} />}
       </SheetContent>
@@ -55,8 +56,13 @@ const historyFields: { key: keyof MedicalHistory; label: string; placeholder: st
 const emptyPrescription: Prescription = { medication: "", dose: "", frequency: "", duration: "" }
 
 function ConsultationForm({ consultation, onClose, onOpenRecord }: { consultation: Consultation; onClose: () => void; onOpenRecord: (patient: MedPatient) => void }) {
+  const { findPatient, lastAttended, attend, absent } = useMedicineData()
+  const professional = useAuthStore(state => state.usuario?.nombreCompleto) ?? "Personal médico"
+  const [nextDate, setNextDate] = useState("")
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const patient = findPatient(consultation.patientId)
-  const previous = lastAttended(consultation.patientId, consultation.isoDate)
+  const previous = lastAttended(consultation.patientId, `${consultation.isoDate}${consultation.time}`)
   const isFollowUp = Boolean(previous)
 
   const [reason, setReason] = useState(consultation.reason)
@@ -87,13 +93,31 @@ function ConsultationForm({ consultation, onClose, onOpenRecord }: { consultatio
   const updatePrescription = (index: number, key: keyof Prescription, value: string) =>
     setPrescriptions(prescriptions.map((item, position) => (position === index ? { ...item, [key]: value } : item)))
 
+  async function save(isAbsent = false) {
+    setBusy(true); setError(null)
+    try {
+      if (isAbsent) { await absent(consultation.id); onClose(); return }
+      const measured = Object.entries(vitals).some(([key, value]) => key !== "height" && value.trim())
+      if (measured && Object.values(vitals).some(value => !value.trim())) throw new Error("Completa todos los signos vitales o déjalos sin registrar.")
+      if (measured && !/^\d{2,3}\s*\/\s*\d{2,3}$/.test(vitals.bp)) throw new Error("Ingresa la presión arterial como 120/80.")
+      const [systolic, diastolic] = vitals.bp.split("/").map(Number)
+      const parsed = registrarConsultaMedicaSchema.safeParse({ reason, physicalExam: exam, evolution, plan, diagnoses,
+        prescriptions: prescriptions.filter(item => item.medication.trim()), history, referral: referral === "No aplica" ? undefined : referral,
+        nextDate: nextDate || undefined,
+        vitals: measured ? { systolic, diastolic, heartRate: Number(vitals.heartRate), respiratoryRate: Number(vitals.respiratoryRate), temperature: Number(vitals.temperature), oxygenSaturation: Number(vitals.oxygenSaturation), weight: Number(vitals.weight), height: Number(vitals.height) } : undefined })
+      if (!parsed.success) throw new Error("Revisa los datos de la nota: motivo, diagnóstico, plan y signos vitales válidos.")
+      await attend(consultation, parsed.data); setSaved(true)
+    } catch (err) { setError(err instanceof Error && !("response" in err) ? err.message : extraerMensajeError(err)) }
+    finally { setBusy(false) }
+  }
+
   if (saved) {
     return (
       <div className="flex flex-col items-center gap-3 p-10 text-center">
         <CheckCircle2 className="size-10 text-primary" aria-hidden="true" />
-        <p className="text-lg font-semibold">Simulación de consulta completada</p>
+        <p className="text-lg font-semibold">Consulta registrada</p>
         <p className="max-w-sm text-sm leading-relaxed text-muted-foreground">
-          La nota de {consultation.patientName} es una demostración y no se guardó en su expediente.
+          La nota de {consultation.patientName} quedó guardada en su expediente.
         </p>
         <DiagnosisChips items={diagnoses} className="mt-2 justify-center" />
         <div className="mt-4 flex flex-wrap justify-center gap-2">
@@ -305,11 +329,11 @@ function ConsultationForm({ consultation, onClose, onOpenRecord }: { consultatio
         <div className="grid gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel htmlFor="next-date">Próxima cita</FieldLabel>
-            <Input id="next-date" type="date" min={consultation.isoDate} />
-            <FieldDescription>Fecha de seguimiento de demostración.</FieldDescription>
+            <Input id="next-date" type="date" min={consultation.isoDate} value={nextDate} onChange={event => setNextDate(event.target.value)} />
+            <FieldDescription>Se agenda a la misma hora y en la misma clínica.</FieldDescription>
           </Field>
           <Field>
-            <FieldLabel>Referir a</FieldLabel>
+            <FieldLabel>Indicación de interconsulta</FieldLabel>
             <Select value={referral} onValueChange={(value) => value && setReferral(value as string)}>
               <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -318,7 +342,7 @@ function ConsultationForm({ consultation, onClose, onOpenRecord }: { consultatio
                 </SelectGroup>
               </SelectContent>
             </Select>
-            <FieldDescription>Interconsulta con otra área o institución.</FieldDescription>
+            <FieldDescription>Se guarda como indicación en la nota clínica.</FieldDescription>
           </Field>
         </div>
       </FormSection>
@@ -326,18 +350,19 @@ function ConsultationForm({ consultation, onClose, onOpenRecord }: { consultatio
       <Separator />
 
       <div className="flex flex-col gap-3">
-        <ClinicalText label="Profesional que atiende">{PROFESSIONAL} · {consultation.place}</ClinicalText>
+        <ClinicalText label="Profesional que atiende">{professional} · {consultation.place}</ClinicalText>
         {!canSave && <p className="text-xs text-muted-foreground">Para guardar se requiere motivo, al menos un diagnóstico y el plan.</p>}
       </div>
 
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-        <Button disabled title="Registro de ausencias pendiente de conexión al servidor" variant="outline" className="text-destructive">
+        <Button disabled={busy} onClick={() => void save(true)} variant="outline" className="text-destructive">
           <AlertTriangle data-icon="inline-start" />
           Marcar ausente
         </Button>
         <div className="flex gap-2">
           <Button variant="outline" onClick={onClose} className="flex-1 sm:flex-none">Cancelar</Button>
-          <Button disabled={!canSave} onClick={() => setSaved(true)} className="flex-1 sm:flex-none">
+          <Button disabled={busy || !canSave} onClick={() => void save()} className="flex-1 sm:flex-none">
             <CheckCircle2 data-icon="inline-start" />
             Guardar consulta
           </Button>

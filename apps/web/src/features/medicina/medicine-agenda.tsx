@@ -1,3 +1,4 @@
+import { useMedicineData } from "./medicine-context"
 import { useState } from "react"
 import { CalendarDays, FolderOpen, Inbox, Plus, Stethoscope } from "lucide-react"
 import { Avatar, AvatarFallback } from "./ui/avatar"
@@ -5,8 +6,8 @@ import { Badge } from "./ui/badge"
 import { Button } from "./ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card"
 import { cn } from "./utils"
-import { consultations, findPatient, formatDate, medReferrals, TODAY, type Consultation, type MedPatient, type MedReferral } from "./medicine-data"
-import { AllergyMarker, ConsultationStatusBadge, initials, PriorityBadge } from "./medicine-ui"
+import { formatDate, TODAY, type Consultation, type MedPatient, type MedReferral } from "./medicine-data"
+import { AllergyMarker, ConsultationStatusBadge, initials } from "./medicine-ui"
 
 export type ScheduleSeed = {
   patientId: string
@@ -23,10 +24,11 @@ type AgendaProps = {
 }
 
 export function MedicineAgenda({ onSchedule, onStart, onPatient }: AgendaProps) {
+  const { consultations } = useMedicineData()
   const [mode, setMode] = useState<"Día" | "Próximas">("Día")
   const [selectedDay, setSelectedDay] = useState(TODAY)
   const visible = mode === "Próximas"
-    ? consultations.filter((item) => item.status === "Programada")
+    ? consultations.filter((item) => item.status === "Programada" && item.isoDate >= TODAY)
     : consultations.filter((item) => item.isoDate === selectedDay)
   const firstVisits = visible.filter((item) => item.type === "Primera consulta").length
   const title = mode === "Próximas"
@@ -110,6 +112,7 @@ type RowProps = {
 }
 
 function ConsultationRow({ item, showDate, onStart, onPatient, onReschedule }: RowProps) {
+  const { findPatient } = useMedicineData()
   const patient = findPatient(item.patientId)
   return (
     <li className="flex flex-col gap-4 p-4 md:p-5">
@@ -152,7 +155,7 @@ function ConsultationRow({ item, showDate, onStart, onPatient, onReschedule }: R
               <CalendarDays data-icon="inline-start" />
               Reprogramar
             </Button>
-            <Button size="sm" onClick={() => onStart(item)}>
+            <Button size="sm" disabled={item.isoDate > TODAY} onClick={() => onStart(item)}>
               <Stethoscope data-icon="inline-start" />
               Iniciar consulta
             </Button>
@@ -164,6 +167,7 @@ function ConsultationRow({ item, showDate, onStart, onPatient, onReschedule }: R
 }
 
 function ReferralInbox({ onSchedule }: { onSchedule: (seed: ScheduleSeed) => void }) {
+  const { medReferrals } = useMedicineData()
   return (
     <Card>
       <CardHeader>
@@ -177,6 +181,7 @@ function ReferralInbox({ onSchedule }: { onSchedule: (seed: ScheduleSeed) => voi
         <CardDescription>Pacientes referidas sin consulta asignada.</CardDescription>
       </CardHeader>
       <CardContent>
+        {!medReferrals.length && <p className="text-sm text-muted-foreground">No hay referencias pendientes de agendar.</p>}
         <ul className="flex flex-col gap-3">
           {medReferrals.map((item) => (
             <li key={item.id} className="rounded-lg border p-3">
@@ -187,9 +192,8 @@ function ReferralInbox({ onSchedule }: { onSchedule: (seed: ScheduleSeed) => voi
                     {item.patientId} · {item.received}
                   </p>
                 </div>
-                <PriorityBadge priority={item.priority} />
               </div>
-              <p className="mt-2 text-sm leading-relaxed">{item.reason}</p>
+              {item.reason && <p className="mt-2 text-sm leading-relaxed">{item.reason}</p>}
               <p className="mt-1 text-xs text-muted-foreground">Refiere: {item.socialWorker}</p>
               <Button
                 className="mt-3 w-full"
@@ -209,19 +213,25 @@ function ReferralInbox({ onSchedule }: { onSchedule: (seed: ScheduleSeed) => voi
 }
 
 function MiniCalendar({ selectedDay, onSelect }: { selectedDay: string; onSelect: (day: string) => void }) {
+  const { consultations } = useMedicineData()
+  const month = selectedDay.slice(0, 7)
+  const [year, monthNumber] = month.split("-").map(Number)
+  const padding = (new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay() + 6) % 7
+  const monthLabel = formatDate(month + "-01", { month: "long", year: "numeric" })
   const counts = consultations
-    .filter((item) => item.isoDate.startsWith("2026-08"))
+    .filter((item) => item.isoDate.startsWith(month))
     .reduce<Record<number, number>>((acc, item) => {
       const day = Number(item.isoDate.slice(-2))
       acc[day] = (acc[day] ?? 0) + 1
       return acc
     }, {})
-  const days = Array.from({ length: 31 }, (_, index) => index + 1)
+  const days = Array.from({ length: new Date(Date.UTC(year, monthNumber, 0)).getUTCDate() }, (_, index) => index + 1)
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Agosto 2026</CardTitle>
+        <CardTitle className="text-base capitalize">{monthLabel}</CardTitle>
+        <input type="month" aria-label="Mes de la agenda" className="rounded-md border bg-background px-2 py-1 text-sm" value={month} onChange={event => event.target.value && onSelect(event.target.value + "-01")} />
         <CardDescription>Selecciona un día para ver sus consultas.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -231,16 +241,16 @@ function MiniCalendar({ selectedDay, onSelect }: { selectedDay: string; onSelect
           ))}
         </div>
         <div className="mt-1 grid grid-cols-7 gap-1">
-          {Array.from({ length: 5 }).map((_, index) => <span key={`empty-${index}`} />)}
+          {Array.from({ length: padding }).map((_, index) => <span key={`empty-${index}`} />)}
           {days.map((day) => {
-            const iso = `2026-08-${String(day).padStart(2, "0")}`
+            const iso = `${month}-${String(day).padStart(2, "0")}`
             const selected = selectedDay === iso
             return (
               <button
                 key={day}
                 onClick={() => onSelect(iso)}
                 aria-pressed={selected}
-                aria-label={`${day} de agosto${counts[day] ? `, ${counts[day]} consultas` : ""}`}
+                aria-label={`${formatDate(iso)}${counts[day] ? `, ${counts[day]} consultas` : ""}`}
                 className={cn(
                   "flex min-h-11 flex-col items-center justify-center rounded-md text-sm hover:bg-muted",
                   iso === TODAY && !selected && "font-semibold text-primary ring-1 ring-primary/40",

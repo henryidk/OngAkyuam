@@ -1,12 +1,14 @@
+import { useMedicineData } from "./medicine-context"
 import { Printer, Share2 } from "lucide-react"
 import { Badge } from "./ui/badge"
 import { Button } from "./ui/button"
 import { Separator } from "./ui/separator"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "./ui/sheet"
-import { findPatient, historySummary, type Consultation } from "./medicine-data"
+import { historySummary, type Consultation } from "./medicine-data"
 import { AllergyAlert, ClinicalText, ConsultationStatusBadge, DiagnosisChips, SectionLabel, VitalsGrid } from "./medicine-ui"
 
 export function ConsultationDetailSheet({ consultation, onClose }: { consultation: Consultation | null; onClose: () => void }) {
+  const { findPatient } = useMedicineData()
   const patient = consultation ? findPatient(consultation.patientId) : undefined
   return (
     <Sheet open={Boolean(consultation)} onOpenChange={(open) => !open && onClose()}>
@@ -60,7 +62,7 @@ export function ConsultationDetailSheet({ consultation, onClose }: { consultatio
                     <div className="mt-2"><VitalsGrid vitals={consultation.vitals} /></div>
                   </div>
                 )}
-                {patient && <ClinicalText label="Antecedentes importantes">{historySummary(patient.history)}</ClinicalText>}
+                {consultation.history && <ClinicalText label="Antecedentes importantes">{historySummary(consultation.history) || "Sin registrar"}</ClinicalText>}
                 {consultation.physicalExam && <ClinicalText label="Positivo en examen físico">{consultation.physicalExam}</ClinicalText>}
                 {consultation.diagnoses && (
                   <div>
@@ -87,7 +89,7 @@ export function ConsultationDetailSheet({ consultation, onClose }: { consultatio
                 {consultation.referral && (
                   <div className="flex items-center gap-3 rounded-lg border p-3">
                     <Share2 className="size-4 text-primary" aria-hidden="true" />
-                    <p className="text-sm"><span className="text-muted-foreground">Referida a: </span><span className="font-medium">{consultation.referral}</span></p>
+                    <p className="text-sm"><span className="text-muted-foreground">Indicación de interconsulta: </span><span className="font-medium">{consultation.referral}</span></p>
                   </div>
                 )}
                 <Separator />
