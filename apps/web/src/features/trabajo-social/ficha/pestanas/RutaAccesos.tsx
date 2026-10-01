@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
+import CompartidoConTs from '../../accesos/CompartidoConTs'
+import { useCompartido } from '../../accesos/useCompartido'
 import { useMatrizAccesos } from '../../accesos/useMatrizAccesos'
 import { useContextoFicha, useCasoSeleccionado } from '../contextoFicha'
 import SelectorCaso from '../SelectorCaso'
 import PestanaAccesos from './PestanaAccesos'
 
-/** Ruta `accesos` de la ficha: la matriz es por caso, con selector si hay varios. */
+/** Ruta `accesos` de la ficha: la matriz y lo compartido son por caso, con selector si hay varios. */
 export default function RutaAccesos() {
   const { usuaria } = useContextoFicha()
   const { caso, seleccionar } = useCasoSeleccionado(usuaria)
@@ -22,12 +24,22 @@ export default function RutaAccesos() {
 function MatrizDelCaso({ expedienteId }: { expedienteId: string }) {
   const { version } = useContextoFicha()
   const accesos = useMatrizAccesos(expedienteId)
+  const compartido = useCompartido(expedienteId)
   const { recargar } = accesos
+  const { recargar: recargarCompartido } = compartido
 
-  // Un referido hecho desde el encabezado agrega una columna a la matriz.
+  // Un referido hecho desde el encabezado agrega una columna a la matriz y un área que comparte.
   useEffect(() => {
-    if (version > 0) void recargar()
-  }, [version, recargar])
+    if (version > 0) {
+      void recargar()
+      void recargarCompartido()
+    }
+  }, [version, recargar, recargarCompartido])
 
-  return <PestanaAccesos accesos={accesos} />
+  return (
+    <>
+      <PestanaAccesos accesos={accesos} />
+      <CompartidoConTs compartido={compartido} />
+    </>
+  )
 }

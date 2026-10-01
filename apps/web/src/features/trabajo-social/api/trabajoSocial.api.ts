@@ -2,6 +2,7 @@ import type {
   ActualizarAccesoInput,
   AreaAtencion,
   BandejaTs,
+  CompartidoArea,
   CrearExpedienteInput,
   DatosCaso,
   DocumentosCaso,
@@ -88,6 +89,11 @@ export function listarProfesionales(area: AreaAtencion) {
 
 export function obtenerMatrizAccesos(expedienteId: string) {
   return api.get<MatrizAccesos>(`/trabajo-social/expedientes/${expedienteId}/accesos`).then((res) => res.data)
+}
+
+/** Lo que cada área publicó hacia Trabajo Social sobre el caso (solo lectura). */
+export function obtenerCompartido(expedienteId: string) {
+  return api.get<CompartidoArea[]>(`/trabajo-social/expedientes/${expedienteId}/compartido`).then((res) => res.data)
 }
 
 /** Guarda un solo cambio de la matriz y devuelve la matriz ya recalculada por el backend. */

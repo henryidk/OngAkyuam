@@ -276,6 +276,17 @@ export interface MatrizAccesos {
   filas: FilaMatrizAccesos[]
 }
 
+/**
+ * `GET /trabajo-social/expedientes/:id/compartido` — lo que un área publica hacia Trabajo Social
+ * sobre un caso, ya redactado por el backend. Solo lectura.
+ */
+export interface CompartidoArea {
+  area: AreaAtencion
+  referida: boolean
+  /** Vacío si el área no fue referida o todavía no ha compartido nada. */
+  lineas: string[]
+}
+
 /** Resultado de `POST /trabajo-social/expedientes/:id/referidos`. */
 export interface ReferidoCreado {
   id: string

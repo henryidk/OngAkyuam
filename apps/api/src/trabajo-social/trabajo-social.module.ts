@@ -18,6 +18,11 @@ import { BitacoraController } from './bitacora/bitacora.controller';
 import { BitacoraService } from './bitacora/bitacora.service';
 import { BITACORA_REPOSITORY } from './bitacora/interfaces/bitacora-repository.interface';
 import { BitacoraRepository } from './bitacora/repositories/bitacora.repository';
+import { CompartidoController } from './compartido/compartido.controller';
+import { CompartidoService } from './compartido/compartido.service';
+import { EstrategiasCompartido } from './compartido/estrategias-compartido';
+import { COMPARTIDO_REPOSITORY } from './compartido/interfaces/compartido-repository.interface';
+import { CompartidoRepository } from './compartido/repositories/compartido.repository';
 import { DocumentosController } from './documentos.controller';
 import { DocumentosService } from './documentos.service';
 import { EgresoController } from './egreso/egreso.controller';
@@ -53,6 +58,7 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     ReferidosController,
     AccesosController,
     EgresoController,
+    CompartidoController,
     BitacoraController,
     BandejaController,
     ReportesController,
@@ -66,6 +72,9 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     { provide: ACCESOS_REPOSITORY, useClass: AccesosRepository },
     EgresoService,
     { provide: EGRESO_REPOSITORY, useClass: EgresoRepository },
+    CompartidoService,
+    EstrategiasCompartido,
+    { provide: COMPARTIDO_REPOSITORY, useClass: CompartidoRepository },
     BitacoraService,
     { provide: BITACORA_REPOSITORY, useClass: BitacoraRepository },
     BandejaService,

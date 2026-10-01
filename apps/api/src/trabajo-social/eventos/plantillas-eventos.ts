@@ -69,7 +69,7 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
   },
   ACCESO_AREA_MODIFICADO: {
     area: null,
-    destacado: false,
+    destacado: true,
     texto: (detalles) => `Cambió lo que puede ver el ${nombreArea(detalles)}`,
   },
   DOCUMENTO_SUBIDO: {
