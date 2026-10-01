@@ -20,6 +20,10 @@ import { BITACORA_REPOSITORY } from './bitacora/interfaces/bitacora-repository.i
 import { BitacoraRepository } from './bitacora/repositories/bitacora.repository';
 import { DocumentosController } from './documentos.controller';
 import { DocumentosService } from './documentos.service';
+import { EgresoController } from './egreso/egreso.controller';
+import { EgresoService } from './egreso/egreso.service';
+import { EGRESO_REPOSITORY } from './egreso/interfaces/egreso-repository.interface';
+import { EgresoRepository } from './egreso/repositories/egreso.repository';
 import { EstadoModule } from './estado/estado.module';
 import { ExpedientesModule } from './expedientes.module';
 import { DOCUMENTOS_REPOSITORY } from './interfaces/documentos-repository.interface';
@@ -48,6 +52,7 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     DocumentosController,
     ReferidosController,
     AccesosController,
+    EgresoController,
     BitacoraController,
     BandejaController,
     ReportesController,
@@ -59,6 +64,8 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     { provide: REFERIDOS_REPOSITORY, useClass: ReferidosRepository },
     AccesosService,
     { provide: ACCESOS_REPOSITORY, useClass: AccesosRepository },
+    EgresoService,
+    { provide: EGRESO_REPOSITORY, useClass: EgresoRepository },
     BitacoraService,
     { provide: BITACORA_REPOSITORY, useClass: BitacoraRepository },
     BandejaService,

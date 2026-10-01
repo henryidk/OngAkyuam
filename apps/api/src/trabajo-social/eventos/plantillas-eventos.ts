@@ -62,6 +62,11 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
     texto: (detalles) =>
       `Refirió el caso al ${nombreArea(detalles)}${detalles?.prioridad === 'URGENTE' ? ' (urgente)' : ''}`,
   },
+  EGRESO_ALBERGUE_REGISTRADO: {
+    area: null,
+    destacado: true,
+    texto: () => 'Registró el egreso del albergue',
+  },
   ACCESO_AREA_MODIFICADO: {
     area: null,
     destacado: false,

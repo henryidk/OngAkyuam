@@ -4,6 +4,7 @@ import { areaAtencionSchema } from './registroUsuaria.js'
 import type { AreaAtencion, TipoRegistro } from './registroUsuaria.js'
 import { tipoDocumentoTrabajoSocialSchema } from './documentos.js'
 import { booleanoQuerySchema } from './query.js'
+import { hoyGT } from '../timezone.js'
 import type { TipoDocumento, TipoDocumentoTrabajoSocial } from './documentos.js'
 import { ESTADOS_AREA, ESTADOS_TS, FILTROS_LISTA_USUARIAS, PRIORIDADES_REFERIDO } from '../catalogos/trabajoSocial.js'
 
@@ -58,11 +59,22 @@ export const actualizarAccesoSchema = z
   )
 export type ActualizarAccesoInput = z.infer<typeof actualizarAccesoSchema>
 
-/** `POST /trabajo-social/expedientes/:id/egreso` — solo válido para `INTERNA` sin egreso previo. */
+/**
+ * `POST /trabajo-social/expedientes/:id/egreso` — solo válido para `INTERNA` sin egreso previo.
+ * Que no sea anterior al ingreso lo valida el backend, que es quien conoce esa fecha.
+ */
 export const registrarEgresoSchema = z.object({
-  fechaEgreso: fechaCalendarioSchema,
+  // Comparación de strings "YYYY-MM-DD": ordenan igual que las fechas, sin pasar por `Date`.
+  fechaEgreso: fechaCalendarioSchema.refine((fecha) => fecha <= hoyGT(), {
+    message: 'La fecha de egreso no puede ser futura',
+  }),
 })
 export type RegistrarEgresoInput = z.infer<typeof registrarEgresoSchema>
+
+export interface EgresoRegistrado {
+  expedienteId: string
+  fechaEgreso: string
+}
 
 /** Largo máximo del término de búsqueda de la lista — evita consultas trigram absurdamente largas. */
 export const BUSQUEDA_USUARIAS_MAX = 100

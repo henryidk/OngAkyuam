@@ -6,6 +6,7 @@ import type {
   DatosCaso,
   DocumentosCaso,
   DocumentoSubido,
+  EgresoRegistrado,
   EventoBitacora,
   ExpedienteCreado,
   ExpedienteDetalleCaso,
@@ -15,6 +16,7 @@ import type {
   ProfesionalArea,
   ReferidoCreado,
   ReferirInput,
+  RegistrarEgresoInput,
   ReportePoblacionBeneficiada,
   ReportePoblacionQuery,
   TipoDocumentoTrabajoSocial,
@@ -67,6 +69,13 @@ export function obtenerUrlDocumento(expedienteId: string, documentoId: string, i
 export function referirCaso(expedienteId: string, datos: ReferirInput) {
   return api
     .post<ReferidoCreado>(`/trabajo-social/expedientes/${expedienteId}/referidos`, datos)
+    .then((res) => res.data)
+}
+
+/** Salida del albergue del caso: a partir de aquí el Convenio de egreso pasa a ser requerido. */
+export function registrarEgreso(expedienteId: string, datos: RegistrarEgresoInput) {
+  return api
+    .post<EgresoRegistrado>(`/trabajo-social/expedientes/${expedienteId}/egreso`, datos)
     .then((res) => res.data)
 }
 

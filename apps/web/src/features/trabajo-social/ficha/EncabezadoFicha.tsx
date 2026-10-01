@@ -8,10 +8,11 @@ import { badgeRegistro, iniciales, nombreCompleto, textoGrupoEtnico, textoUbicac
 interface EncabezadoFichaProps {
   usuaria: UsuariaExpedienteHub
   onReferir: () => void
+  onRegistrarEgreso: () => void
 }
 
 /** Encabezado de la ficha (plan §12.5): identidad en una línea, badge de registro y pestañas. */
-export default function EncabezadoFicha({ usuaria, onReferir }: EncabezadoFichaProps) {
+export default function EncabezadoFicha({ usuaria, onReferir, onRegistrarEgreso }: EncabezadoFichaProps) {
   const casoActual = usuaria.casos[0] ?? null
   const badge = badgeRegistro(casoActual)
   const edad = edadEnAniosGT(usuaria.fechaNacimiento)
@@ -55,11 +56,18 @@ export default function EncabezadoFicha({ usuaria, onReferir }: EncabezadoFichaP
             </p>
           </div>
         </div>
-        {casoActual && !todasReferidas && (
-          <Button tamano="md" onClick={onReferir}>
-            Referir a un área
-          </Button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {casoActual?.enAlbergue && (
+            <Button variante="secondary" tamano="md" onClick={onRegistrarEgreso}>
+              Registrar egreso
+            </Button>
+          )}
+          {casoActual && !todasReferidas && (
+            <Button tamano="md" onClick={onReferir}>
+              Referir a un área
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs

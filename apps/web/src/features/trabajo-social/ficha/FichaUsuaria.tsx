@@ -2,6 +2,8 @@ import { useCallback, useState } from 'react'
 import { Link, Outlet, useParams } from 'react-router-dom'
 import { ETIQUETAS_AREA_ATENCION, type AreaAtencion, type ReferidoCreado } from '@akyuam/shared'
 import { useToast } from '../../../components/ui/Toast'
+import ModalEgreso from '../egreso/ModalEgreso'
+import { textoEgresoRegistrado, type ResultadoEgreso } from '../egreso/textoEgreso'
 import ModalReferir from '../referir/ModalReferir'
 import type { ContextoFicha } from './contextoFicha'
 import EncabezadoFicha from './EncabezadoFicha'
@@ -11,13 +13,14 @@ import { useFichaUsuaria } from './useFichaUsuaria'
 /**
  * Ficha de la usuaria como layout (plan §5.1): encabezado fijo y una pestaña por ruta anidada.
  * "Referir" vive aquí porque se abre desde el encabezado y desde el Resumen, y siempre sobre el
- * caso activo.
+ * caso activo; "Registrar egreso", por lo mismo.
  */
 export default function FichaUsuaria() {
   const { usuariaId = '' } = useParams()
   const { usuaria, setUsuaria, error, recargar } = useFichaUsuaria(usuariaId)
   const { mostrar } = useToast()
   const [referir, setReferir] = useState<{ area?: AreaAtencion } | null>(null)
+  const [egresoAbierto, setEgresoAbierto] = useState(false)
   const [version, setVersion] = useState(0)
 
   const abrirReferir = useCallback((area?: AreaAtencion) => setReferir({ area }), [])
@@ -26,6 +29,16 @@ export default function FichaUsuaria() {
     (referido: ReferidoCreado) => {
       setReferir(null)
       mostrar(`Referida a ${ETIQUETAS_AREA_ATENCION[referido.area]} · ya aparece en su bandeja`)
+      setVersion((actual) => actual + 1)
+      void recargar()
+    },
+    [recargar, mostrar],
+  )
+
+  const onEgresoRegistrado = useCallback(
+    (resultado: ResultadoEgreso) => {
+      setEgresoAbierto(false)
+      mostrar(textoEgresoRegistrado(resultado))
       setVersion((actual) => actual + 1)
       void recargar()
     },
@@ -62,7 +75,11 @@ export default function FichaUsuaria() {
         </span>
       </nav>
 
-      <EncabezadoFicha usuaria={usuaria} onReferir={() => abrirReferir()} />
+      <EncabezadoFicha
+        usuaria={usuaria}
+        onReferir={() => abrirReferir()}
+        onRegistrarEgreso={() => setEgresoAbierto(true)}
+      />
 
       <Outlet context={contexto} />
 
@@ -75,6 +92,15 @@ export default function FichaUsuaria() {
           areaInicial={referir.area}
           onCerrar={() => setReferir(null)}
           onReferido={onReferido}
+        />
+      )}
+
+      {egresoAbierto && casoActual && (
+        <ModalEgreso
+          expedienteId={casoActual.id}
+          numeroExpediente={casoActual.numero}
+          onCerrar={() => setEgresoAbierto(false)}
+          onRegistrado={onEgresoRegistrado}
         />
       )}
     </div>
