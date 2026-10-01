@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import { Link, Outlet, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ETIQUETAS_AREA_ATENCION, type AreaAtencion, type ReferidoCreado } from '@akyuam/shared'
 import { useToast } from '../../../components/ui/Toast'
 import ModalEgreso from '../egreso/ModalEgreso'
@@ -10,6 +10,11 @@ import EncabezadoFicha from './EncabezadoFicha'
 import { nombreCompleto } from './textoUsuaria'
 import { useFichaUsuaria } from './useFichaUsuaria'
 
+/** Estado de navegación que deja la confirmación del wizard al pulsar "Referir ahora". */
+interface EstadoNavegacionFicha {
+  abrirReferir?: boolean
+}
+
 /**
  * Ficha de la usuaria como layout (plan §5.1): encabezado fijo y una pestaña por ruta anidada.
  * "Referir" vive aquí porque se abre desde el encabezado y desde el Resumen, y siempre sobre el
@@ -19,11 +24,21 @@ export default function FichaUsuaria() {
   const { usuariaId = '' } = useParams()
   const { usuaria, setUsuaria, error, recargar } = useFichaUsuaria(usuariaId)
   const { mostrar } = useToast()
-  const [referir, setReferir] = useState<{ area?: AreaAtencion } | null>(null)
+  const location = useLocation()
+  const navigate = useNavigate()
+  const llegaAReferir = (location.state as EstadoNavegacionFicha | null)?.abrirReferir === true
+  const [referir, setReferir] = useState<{ area?: AreaAtencion } | null>(llegaAReferir ? {} : null)
   const [egresoAbierto, setEgresoAbierto] = useState(false)
   const [version, setVersion] = useState(0)
 
   const abrirReferir = useCallback((area?: AreaAtencion) => setReferir({ area }), [])
+
+  // El aviso de la ruta se consume una sola vez: sin él, recargar o volver atrás reabriría el modal.
+  useEffect(() => {
+    if (llegaAReferir) {
+      navigate(location.pathname, { replace: true, state: null })
+    }
+  }, [llegaAReferir, navigate, location.pathname])
 
   const onReferido = useCallback(
     (referido: ReferidoCreado) => {

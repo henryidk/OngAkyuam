@@ -3,24 +3,27 @@ import {
   calcularRangoEdad,
   edadEnAniosGT,
   DEPARTAMENTOS_FUERA_ALTA_VERAPAZ,
-  ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   ETIQUETAS_RANGO_EDAD,
-  GRUPOS_ETNICOS,
   MUNICIPIOS_ALTA_VERAPAZ,
   type RegistroUsuariaNuevaFormValues,
+  type UsuariaResumenBusqueda,
 } from '@akyuam/shared'
+import GrupoEtnicoSegmentado from '../../../components/form/GrupoEtnicoSegmentado'
 import SelectInput from '../../../components/form/SelectInput'
 import TextoInput from '../../../components/form/TextoInput'
+import AvisoPosibleDuplicada from '../components/AvisoPosibleDuplicada'
 import VerificarDpi from '../components/VerificarDpi'
 
 interface PasoDatosUsuariaProps {
   form: UseFormReturn<RegistroUsuariaNuevaFormValues>
+  /** Usuarias ya registradas que podrían ser la misma persona (solo se buscan si no hay DPI). */
+  posiblesDuplicadas: UsuariaResumenBusqueda[]
+  /** La usuaria ya existía: se abandona la captura de identidad y se registra un caso para ella. */
+  onRegistrarCasoPara: (usuariaId: string) => void
 }
 
 const FECHA_ISO_REGEX = /^\d{4}-\d{2}-\d{2}$/
-
-const opcionesGrupoEtnico = GRUPOS_ETNICOS.map((grupo) => ({ value: grupo, label: ETIQUETAS_GRUPO_ETNICO[grupo] }))
 
 const opcionesMunicipio = MUNICIPIOS_ALTA_VERAPAZ.map((municipio) => ({
   value: municipio,
@@ -32,7 +35,7 @@ const opcionesDepartamentoOtro = DEPARTAMENTOS_FUERA_ALTA_VERAPAZ.map((departame
   label: departamento,
 }))
 
-export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
+export default function PasoDatosUsuaria({ form, posiblesDuplicadas, onRegistrarCasoPara }: PasoDatosUsuariaProps) {
   const {
     register,
     control,
@@ -41,9 +44,8 @@ export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
   const fechaNacimiento = useWatch({ control, name: 'datosUsuaria.fechaNacimiento' })
   const fueraDeAltaVerapaz = useWatch({ control, name: 'datosUsuaria.fueraDeAltaVerapaz' })
   const dpi = useWatch({ control, name: 'datosUsuaria.dpi' })
-  const rangoEdad = FECHA_ISO_REGEX.test(fechaNacimiento ?? '')
-    ? calcularRangoEdad(edadEnAniosGT(fechaNacimiento))
-    : null
+  const edad = FECHA_ISO_REGEX.test(fechaNacimiento ?? '') ? edadEnAniosGT(fechaNacimiento) : null
+  const rangoEdad = edad !== null && edad >= 0 ? calcularRangoEdad(edad) : null
 
   return (
     <div className="space-y-4">
@@ -71,7 +73,7 @@ export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
             registro={register('datosUsuaria.dpi')}
             error={errors.datosUsuaria?.dpi?.message}
           />
-          <VerificarDpi dpi={dpi ?? ''} />
+          <VerificarDpi dpi={dpi ?? ''} onRegistrarCasoPara={onRegistrarCasoPara} />
         </div>
         <TextoInput
           label="Teléfono"
@@ -95,18 +97,15 @@ export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
           registro={register('datosUsuaria.fechaNacimiento')}
           error={errors.datosUsuaria?.fechaNacimiento?.message}
         />
-        {rangoEdad && (
-          <p className="mt-1 text-xs text-gray-500">
-            Rango de edad para estadística: <span className="font-medium text-brand-700">{ETIQUETAS_RANGO_EDAD[rangoEdad]}</span>{' '}
-            (calculado automáticamente).
+        {edad !== null && rangoEdad && (
+          <p className="mt-1 text-xs text-gray-500" aria-live="polite">
+            Edad: <span className="font-semibold text-brand-700">{edad} {edad === 1 ? 'año' : 'años'}</span> · Rango:{' '}
+            <span className="font-semibold text-brand-700">{ETIQUETAS_RANGO_EDAD[rangoEdad]}</span> (calculados)
           </p>
         )}
       </div>
 
-      <SelectInput
-        label="Grupo étnico"
-        placeholder="Selecciona un grupo étnico"
-        opciones={opcionesGrupoEtnico}
+      <GrupoEtnicoSegmentado
         registro={register('datosUsuaria.grupoEtnico')}
         error={errors.datosUsuaria?.grupoEtnico?.message}
       />
@@ -151,6 +150,10 @@ export default function PasoDatosUsuaria({ form }: PasoDatosUsuariaProps) {
         registro={register('datosUsuaria.ubicacionGeografica')}
         error={errors.datosUsuaria?.ubicacionGeografica?.message}
       />
+
+      {posiblesDuplicadas.length > 0 && (
+        <AvisoPosibleDuplicada coincidencias={posiblesDuplicadas} onRegistrarCasoPara={onRegistrarCasoPara} />
+      )}
     </div>
   )
 }

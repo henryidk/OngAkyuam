@@ -1,24 +1,14 @@
 import type { UseFormReturn } from 'react-hook-form'
-import {
-  ETIQUETAS_TIPOLOGIA_DELITO,
-  OBSERVACIONES_CASO_MAX,
-  TIPOLOGIAS_DELITO,
-  type RegistroUsuariaNuevaFormValues,
-} from '@akyuam/shared'
-import GrupoCheckbox from '../../../components/form/GrupoCheckbox'
+import { OBSERVACIONES_CASO_MAX, type RegistroUsuariaNuevaFormValues } from '@akyuam/shared'
 import TextareaInput from '../../../components/form/TextareaInput'
 import TextoInput from '../../../components/form/TextoInput'
+import TipologiaChips from '../../../components/form/TipologiaChips'
 
 interface PasoSituacionProps {
   form: UseFormReturn<RegistroUsuariaNuevaFormValues>
   sinDatosAgresor: boolean
   onCambiarSinDatosAgresor: (valor: boolean) => void
 }
-
-const opcionesTipologia = TIPOLOGIAS_DELITO.map((tipologia) => ({
-  value: tipologia,
-  label: ETIQUETAS_TIPOLOGIA_DELITO[tipologia],
-}))
 
 const CAMPOS_AGRESOR = ['nombres', 'apellidos', 'telefono', 'direccion'] as const
 
@@ -42,10 +32,7 @@ export default function PasoSituacion({ form, sinDatosAgresor, onCambiarSinDatos
 
   return (
     <div className="flex flex-col gap-5">
-      <GrupoCheckbox
-        label="Tipología del delito (Ley 22-2008)"
-        ayuda="Selecciona todas las que apliquen."
-        opciones={opcionesTipologia}
+      <TipologiaChips
         registro={register('datosCaso.tipologiaDelito')}
         error={errors.datosCaso?.tipologiaDelito?.message}
       />

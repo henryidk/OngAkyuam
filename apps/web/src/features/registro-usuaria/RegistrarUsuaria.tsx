@@ -7,7 +7,6 @@ import type {
   RegistroUsuariaNuevaFormValues,
   TipoDocumentoTrabajoSocial,
   UsuariaExpedienteHub,
-  UsuariaResumenBusqueda,
 } from '@akyuam/shared'
 import Button from '../../components/ui/Button'
 import { extraerMensajeError } from '../../lib/errors'
@@ -23,8 +22,8 @@ import FranjaRegistro from './components/FranjaRegistro'
 import IndicadorPasos from './components/IndicadorPasos'
 import IndicadorPasosVertical from './components/IndicadorPasosVertical'
 import { useDocumentosStaging, type DocumentoEnSubida } from './hooks/useDocumentosStaging'
+import { usePosiblesDuplicadas } from './hooks/usePosiblesDuplicadas'
 import { useRegistroUsuariaForm, valoresIniciales } from './hooks/useRegistroUsuariaForm'
-import PasoBuscarUsuaria from './steps/PasoBuscarUsuaria'
 import PasoDatosUsuaria from './steps/PasoDatosUsuaria'
 import PasoDocumentos from './steps/PasoDocumentos'
 import PasoHijos from './steps/PasoHijos'
@@ -38,41 +37,35 @@ interface EstadoNavegacionRegistro {
   usuariaId?: string
 }
 
-type ModoWizard = { tipo: 'buscando' } | { tipo: 'nueva' } | { tipo: 'existente'; usuariaId: string }
+type ModoWizard = { tipo: 'nueva' } | { tipo: 'existente'; usuariaId: string }
 
+/**
+ * Entra directo al paso "Usuaria": ya no hay una pantalla previa de búsqueda. Si al verificar el
+ * DPI (o por nombre y fecha de nacimiento) resulta que la usuaria ya existe, el wizard cambia a
+ * modo "existente" y solo pide los datos del caso.
+ */
 export default function RegistrarUsuaria() {
   const location = useLocation()
   const estadoRuta = (location.state ?? null) as EstadoNavegacionRegistro | null
 
   const [modo, setModo] = useState<ModoWizard>(
-    estadoRuta?.usuariaId ? { tipo: 'existente', usuariaId: estadoRuta.usuariaId } : { tipo: 'buscando' },
+    estadoRuta?.usuariaId ? { tipo: 'existente', usuariaId: estadoRuta.usuariaId } : { tipo: 'nueva' },
   )
+  // Cada registro arranca con un formulario limpio: cambiar la `key` desmonta el wizard anterior.
+  const [numeroRegistro, setNumeroRegistro] = useState(0)
 
-  if (modo.tipo === 'buscando') {
-    return (
-      <div className="mx-auto max-w-3xl">
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm lg:p-8">
-          <header className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900">Buscar usuaria</h2>
-            <p className="text-sm text-gray-500">
-              Antes de registrar, confirma que la usuaria no esté ya registrada.
-            </p>
-          </header>
-          <PasoBuscarUsuaria
-            onSeleccionar={(usuaria: UsuariaResumenBusqueda) => setModo({ tipo: 'existente', usuariaId: usuaria.id })}
-            onEsNueva={() => setModo({ tipo: 'nueva' })}
-          />
-        </div>
-      </div>
-    )
+  function iniciarRegistroNuevo() {
+    setModo({ tipo: 'nueva' })
+    setNumeroRegistro((actual) => actual + 1)
   }
 
   return (
     <WizardRegistro
-      key={modo.tipo === 'existente' ? modo.usuariaId : 'nueva'}
+      key={modo.tipo === 'existente' ? modo.usuariaId : `nueva-${numeroRegistro}`}
       usuariaExistente={modo.tipo === 'existente'}
       usuariaId={modo.tipo === 'existente' ? modo.usuariaId : undefined}
-      onVolverABuscar={() => setModo({ tipo: 'buscando' })}
+      onRegistrarOtraUsuaria={iniciarRegistroNuevo}
+      onRegistrarCasoPara={(usuariaId) => setModo({ tipo: 'existente', usuariaId })}
     />
   )
 }
@@ -80,12 +73,19 @@ export default function RegistrarUsuaria() {
 interface WizardRegistroProps {
   usuariaExistente: boolean
   usuariaId?: string
-  onVolverABuscar: () => void
+  onRegistrarOtraUsuaria: () => void
+  onRegistrarCasoPara: (usuariaId: string) => void
 }
 
-function WizardRegistro({ usuariaExistente, usuariaId, onVolverABuscar }: WizardRegistroProps) {
+function WizardRegistro({
+  usuariaExistente,
+  usuariaId,
+  onRegistrarOtraUsuaria,
+  onRegistrarCasoPara,
+}: WizardRegistroProps) {
   const { form, ninosFieldArray } = useRegistroUsuariaForm(usuariaExistente)
   const documentosStaging = useDocumentosStaging()
+  const { posiblesDuplicadas, hayAvisoNuevo } = usePosiblesDuplicadas()
   const tipoRegistro = useWatch({ control: form.control, name: 'datosCaso.tipoRegistro' })
   const pasos = construirPasos(usuariaExistente, tipoRegistro)
   const [pasoActual, setPasoActual] = useState(0)
@@ -129,9 +129,10 @@ function WizardRegistro({ usuariaExistente, usuariaId, onVolverABuscar }: Wizard
 
   async function irAlSiguientePaso() {
     const camposValidos = paso.campos.length === 0 || (await form.trigger(paso.campos))
-    if (camposValidos) {
-      setPasoActual(Math.min(indiceActual + 1, pasos.length - 1))
-    }
+    if (!camposValidos) return
+    // Sin bloquear: el aviso se muestra una vez y un segundo "Siguiente" continúa.
+    if (paso.id === 'usuaria' && (await hayAvisoNuevo(form.getValues('datosUsuaria')))) return
+    setPasoActual(Math.min(indiceActual + 1, pasos.length - 1))
   }
 
   function irAlPasoAnterior() {
@@ -214,7 +215,7 @@ function WizardRegistro({ usuariaExistente, usuariaId, onVolverABuscar }: Wizard
         cantidadHijos={cantidadHijos}
         documentosEnSubida={documentosEnSubida}
         onReintentarDocumento={reintentarDocumento}
-        onNuevoRegistro={onVolverABuscar}
+        onNuevoRegistro={onRegistrarOtraUsuaria}
       />
     )
   }
@@ -227,8 +228,8 @@ function WizardRegistro({ usuariaExistente, usuariaId, onVolverABuscar }: Wizard
     return (
       <div className="mx-auto max-w-lg rounded-xl border border-red-200 bg-red-50 p-6 text-center">
         <p className="text-sm text-red-700">{errorUsuaria ?? 'No se pudo cargar la usuaria.'}</p>
-        <Button type="button" tamano="md" onClick={onVolverABuscar} className="mt-4">
-          Volver a buscar
+        <Button type="button" tamano="md" onClick={onRegistrarOtraUsuaria} className="mt-4">
+          Registrar una usuaria nueva
         </Button>
       </div>
     )
@@ -271,14 +272,20 @@ function WizardRegistro({ usuariaExistente, usuariaId, onVolverABuscar }: Wizard
               <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 <p>{errorGuardado}</p>
                 {conflictoDpi && (
-                  <button type="button" onClick={onVolverABuscar} className="mt-1 font-medium underline">
-                    Volver a buscar
+                  <button type="button" onClick={() => irAPaso('usuaria')} className="mt-1 font-medium underline">
+                    Revisar el DPI
                   </button>
                 )}
               </div>
             )}
 
-            {paso.id === 'usuaria' && <PasoDatosUsuaria form={form} />}
+            {paso.id === 'usuaria' && (
+              <PasoDatosUsuaria
+                form={form}
+                posiblesDuplicadas={posiblesDuplicadas}
+                onRegistrarCasoPara={onRegistrarCasoPara}
+              />
+            )}
             {paso.id === 'situacion' && (
               <PasoSituacion
                 form={form}

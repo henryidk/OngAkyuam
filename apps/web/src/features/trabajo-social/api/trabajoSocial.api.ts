@@ -129,6 +129,13 @@ export function buscarUsuariaPorDpi(dpi: string) {
     .then((res) => res.data)
 }
 
+/** Aviso de posible duplicada en el wizard (usuaria sin DPI): mismo endpoint que el buscador. */
+export function buscarUsuariasPorNombre(nombre: string) {
+  return api
+    .get<UsuariaResumenBusqueda[]>('/trabajo-social/usuarias/buscar', { params: { nombre } })
+    .then((res) => res.data)
+}
+
 /** `BuscadorGlobalTs` de la barra superior: un solo término, el backend decide si es número de expediente, DPI o nombre. */
 export function buscarUsuariasGlobal(q: string) {
   return api

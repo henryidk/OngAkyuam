@@ -1,16 +1,11 @@
 import { Check } from 'lucide-react'
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  AREAS_ATENCION,
-  ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_TIPO_DOCUMENTO,
-  type AreaAtencion,
   type ExpedienteCreado,
   type TipoDocumentoTrabajoSocial,
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
-import ModalReferir from '../../trabajo-social/referir/ModalReferir'
 import type { DocumentoEnSubida } from '../hooks/useDocumentosStaging'
 
 interface ConfirmacionRegistroProps {
@@ -31,14 +26,16 @@ export default function ConfirmacionRegistro({
   onNuevoRegistro,
 }: ConfirmacionRegistroProps) {
   const navigate = useNavigate()
-  const [referirAbierto, setReferirAbierto] = useState(false)
-  // Referir ya no es parte del wizard: se hace aquí mismo, una área a la vez, con el modal de la ficha.
-  const [areasReferidas, setAreasReferidas] = useState<AreaAtencion[]>([])
-  const todasReferidas = AREAS_ATENCION.every((area) => areasReferidas.includes(area))
+  const rutaFicha = `/trabajo-social/usuarias/${expediente.usuariaId}`
 
+  // Un caso nuevo siempre es el activo: la ficha lo muestra por defecto.
   function irALaFicha() {
-    // Un caso nuevo siempre es el activo: la ficha lo muestra por defecto.
-    navigate(`/trabajo-social/usuarias/${expediente.usuariaId}`)
+    navigate(rutaFicha)
+  }
+
+  // Referir no es parte del wizard: la ficha abre su modal sobre el caso recién creado.
+  function referirAhora() {
+    navigate(rutaFicha, { state: { abrirReferir: true } })
   }
 
   return (
@@ -54,9 +51,7 @@ export default function ConfirmacionRegistro({
         {cantidadHijos > 0 && ` · ${cantidadHijos} ${cantidadHijos === 1 ? 'hija/hijo' : 'hijas/hijos'}`}
       </p>
       <p className="mt-2 text-[13px] text-gray-500">
-        {areasReferidas.length > 0
-          ? `Referida a ${areasReferidas.map((area) => ETIQUETAS_AREA_ATENCION[area]).join(', ')} · ya aparece en su bandeja.`
-          : 'Siguiente paso: referirla a las áreas que la atenderán. También puedes hacerlo después desde su ficha.'}
+        Siguiente paso: referirla a las áreas que la atenderán. También puedes hacerlo después desde su ficha.
       </p>
 
       {documentosEnSubida.length > 0 && (
@@ -90,29 +85,14 @@ export default function ConfirmacionRegistro({
         <Button type="button" variante="secondary" tamano="md" onClick={irALaFicha}>
           Ir a la ficha
         </Button>
-        {!todasReferidas && (
-          <Button type="button" tamano="md" onClick={() => setReferirAbierto(true)}>
-            {areasReferidas.length > 0 ? 'Referir a otra área' : 'Referir ahora'}
-          </Button>
-        )}
+        <Button type="button" tamano="md" onClick={referirAhora}>
+          Referir ahora
+        </Button>
       </div>
       <button type="button" onClick={onNuevoRegistro} className="mt-4 text-xs font-medium text-brand-600 hover:underline">
-        {usuariaExistente ? 'Volver a buscar' : 'Registrar otra usuaria'}
+        Registrar otra usuaria
       </button>
 
-      {referirAbierto && (
-        <ModalReferir
-          expedienteId={expediente.id}
-          numeroExpediente={expediente.numero}
-          nombreUsuaria={expediente.usuariaNombreCompleto}
-          areasReferidas={areasReferidas}
-          onCerrar={() => setReferirAbierto(false)}
-          onReferido={(referido) => {
-            setAreasReferidas((actual) => [...actual, referido.area])
-            setReferirAbierto(false)
-          }}
-        />
-      )}
     </div>
   )
 }
