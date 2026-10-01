@@ -12,6 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Arranque y despliegue no reinician datos
+        run: sh scripts/verificar-arranque-seguro.sh
+
       - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
