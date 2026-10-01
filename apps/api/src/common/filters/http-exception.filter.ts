@@ -37,9 +37,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
           ? respuesta.message
           : 'Error interno del servidor';
 
+    // `codigo` y `detalle` son opcionales: los usa un error que el frontend debe distinguir
+    // de otros con el mismo estado HTTP (p. ej. un 409 que pide confirmación).
+    const extras: Record<string, unknown> = {};
+    if (respuesta && typeof respuesta === 'object') {
+      const cuerpo = respuesta as Record<string, unknown>;
+      if (typeof cuerpo.codigo === 'string') {
+        extras.codigo = cuerpo.codigo;
+      }
+      if (cuerpo.detalle && typeof cuerpo.detalle === 'object') {
+        extras.detalle = cuerpo.detalle;
+      }
+    }
+
     response.status(status).json({
       statusCode: status,
       message,
+      ...extras,
       timestamp: new Date().toISOString(),
     });
   }

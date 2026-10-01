@@ -68,6 +68,7 @@ export class ReferidosRepository implements IReferidosRepository {
             area: params.area,
             prioridad: params.prioridad,
             motivo: params.motivo,
+            procesosSugeridos: params.procesosSugeridos,
             profesionalAsignadoId: params.profesionalAsignadoId,
             puedeVerDatosCaso: params.puedeVerDatosCaso,
             otorgadoPorId: params.otorgadoPorId,

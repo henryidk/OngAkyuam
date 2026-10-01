@@ -1,11 +1,38 @@
-import type { DocumentoProcesoDto } from '@akyuam/shared';
+import type { CarpetaDto, DocumentoProcesoDto } from '@akyuam/shared';
 
+export const CARPETAS_REPOSITORY = Symbol('CARPETAS_REPOSITORY');
 export const DOCUMENTOS_PROCESO_REPOSITORY = Symbol(
   'DOCUMENTOS_PROCESO_REPOSITORY',
 );
 
+export interface CrearCarpetaParams {
+  procesoId: string;
+  nombre: string;
+  creadaPorId: string;
+}
+
+export interface RenombrarCarpetaParams {
+  carpetaId: string;
+  procesoId: string;
+  nombre: string;
+}
+
+export type ResultadoRenombrarCarpeta =
+  'RENOMBRADA' | 'NOMBRE_DUPLICADO' | 'INEXISTENTE';
+
+export interface ICarpetasRepository {
+  /** Carpetas del proceso en el orden en que se crearon, cada una con sus documentos. */
+  listarConDocumentos(procesoId: string): Promise<CarpetaDto[]>;
+  /** `null` si el proceso ya tiene una carpeta con ese nombre (sin distinguir mayúsculas). */
+  crear(params: CrearCarpetaParams): Promise<CarpetaDto | null>;
+  renombrar(params: RenombrarCarpetaParams): Promise<ResultadoRenombrarCarpeta>;
+  /** La carpeta existe **y** es de ese proceso: nunca se busca solo por su id. */
+  perteneceAlProceso(carpetaId: string, procesoId: string): Promise<boolean>;
+}
+
 export interface CrearDocumentoProcesoParams {
   procesoId: string;
+  carpetaId: string;
   nombreVisible: string;
   nombreArchivo: string;
   claveR2: string;
@@ -14,19 +41,29 @@ export interface CrearDocumentoProcesoParams {
   subidoPorId: string;
 }
 
-export interface DocumentoParaDescarga {
-  claveR2: string;
+export interface RenombrarDocumentoParams {
+  documentoId: string;
+  procesoId: string;
   nombreVisible: string;
 }
 
-// Interfaz chica y específica (ISP): solo persistencia de DocumentoProceso, nada de notas
-// ni de reglas de acceso al expediente (eso vive en IProcesosJuridicosRepository).
+export interface DocumentoParaUrl {
+  claveR2: string;
+  nombreVisible: string;
+  mimeType: string;
+  carpetaId: string;
+}
+
 export interface IDocumentosProcesoRepository {
+  /** Guarda el documento y marca el proceso como recién trabajado (`ultimaActuacionEn`). */
   crear(params: CrearDocumentoProcesoParams): Promise<DocumentoProcesoDto>;
-  listarPorProceso(procesoId: string): Promise<DocumentoProcesoDto[]>;
-  /** `null` tanto si el documento no existe como si existe pero no pertenece a `procesoId` — sin IDOR. */
-  buscarParaDescarga(
+  /** `null` si el documento no existe o no es de ese proceso. */
+  renombrar(
+    params: RenombrarDocumentoParams,
+  ): Promise<DocumentoProcesoDto | null>;
+  /** `null` si el documento no existe o no es de ese proceso. */
+  buscarParaUrl(
     documentoId: string,
     procesoId: string,
-  ): Promise<DocumentoParaDescarga | null>;
+  ): Promise<DocumentoParaUrl | null>;
 }

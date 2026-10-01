@@ -2,6 +2,7 @@ import type {
   PrioridadReferido,
   Rol,
   TipoDocumento,
+  TipoProcesoJuridico,
   TipoRegistro,
 } from '@prisma/client';
 import type { ProfesionalArea } from '@akyuam/shared';
@@ -30,6 +31,8 @@ export interface CrearReferidoParams {
   area: Rol;
   prioridad: PrioridadReferido;
   motivo: string | null;
+  /** Solo al referir a Jurídico: los procesos que Trabajo Social sugiere. Vacío en las demás. */
+  procesosSugeridos: TipoProcesoJuridico[];
   profesionalAsignadoId: string | null;
   puedeVerDatosCaso: boolean;
   /** Tipos cuyos documentos vigentes quedarán visibles para el área. */

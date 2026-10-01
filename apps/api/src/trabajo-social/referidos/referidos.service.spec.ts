@@ -45,6 +45,7 @@ function datos(parcial: Partial<ReferirInput> = {}): ReferirInput {
     area: 'PSICOLOGIA',
     prioridad: 'NORMAL',
     motivo: '',
+    procesosSugeridos: [],
     visibilidad: { datosCaso: false, documentos: ['ACCIONES_REALIZADAS'] },
     ...parcial,
   };
@@ -162,6 +163,30 @@ describe('ReferidosService', () => {
         documentosVisibles: [],
         crearAtencionPsicologica: false,
       }),
+    );
+  });
+
+  it('guarda los procesos sugeridos solo al referir a Jurídico', async () => {
+    const procesosSugeridos: ReferirInput['procesosSugeridos'] = [
+      'MEDIDAS_SEGURIDAD',
+    ];
+    await service.referir(
+      EXPEDIENTE_ID,
+      datos({ area: 'JURIDICO', procesosSugeridos }),
+      contexto,
+    );
+    expect(repositorio.crear).toHaveBeenLastCalledWith(
+      expect.objectContaining({ procesosSugeridos }),
+    );
+
+    repositorio.buscarExpediente.mockResolvedValue(expediente());
+    await service.referir(
+      EXPEDIENTE_ID,
+      datos({ area: 'MEDICA', procesosSugeridos }),
+      contexto,
+    );
+    expect(repositorio.crear).toHaveBeenLastCalledWith(
+      expect.objectContaining({ procesosSugeridos: [] }),
     );
   });
 

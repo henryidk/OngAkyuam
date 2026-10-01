@@ -1,6 +1,7 @@
 import {
   ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_ESTADO_ATENCION_PSICOLOGICA,
+  ETIQUETAS_FORMA_FINALIZACION,
   ETIQUETAS_TIPO_DOCUMENTO,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
   type AreaAtencion,
@@ -104,6 +105,38 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
     area: 'JURIDICO',
     destacado: true,
     texto: () => 'Jurídico cerró un proceso',
+  },
+  PROCESOS_JURIDICOS_CREADOS_LOTE: {
+    area: 'JURIDICO',
+    destacado: true,
+    texto: (detalles) => {
+      const tipos = Array.isArray(detalles?.tipos)
+        ? detalles.tipos
+            .map((tipo) => etiqueta(ETIQUETAS_TIPO_PROCESO_JURIDICO, tipo))
+            .filter((tipo) => tipo !== null)
+        : [];
+      if (tipos.length === 0) {
+        return 'Jurídico registró procesos';
+      }
+      return tipos.length === 1
+        ? `Jurídico abrió un proceso (${tipos[0]})`
+        : `Jurídico abrió ${tipos.length} procesos (${tipos.join(', ')})`;
+    },
+  },
+  PROCESO_JURIDICO_FINALIZADO: {
+    area: 'JURIDICO',
+    destacado: true,
+    texto: (detalles) => {
+      const forma = etiqueta(ETIQUETAS_FORMA_FINALIZACION, detalles?.forma);
+      return forma
+        ? `Jurídico finalizó un proceso (${forma.toLowerCase()})`
+        : 'Jurídico finalizó un proceso';
+    },
+  },
+  REFERENCIA_JURIDICO_DEVUELTA: {
+    area: 'JURIDICO',
+    destacado: true,
+    texto: () => 'Jurídico devolvió la referencia a Trabajo Social',
   },
   ABANDONO_REGISTRADO: {
     area: 'JURIDICO',

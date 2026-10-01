@@ -82,6 +82,8 @@ export class ReferidosService {
         area: datos.area,
         prioridad: datos.prioridad,
         motivo: datos.motivo || null,
+        procesosSugeridos:
+          datos.area === 'JURIDICO' ? datos.procesosSugeridos : [],
         profesionalAsignadoId,
         puedeVerDatosCaso: restringible ? datos.visibilidad.datosCaso : true,
         documentosVisibles: restringible ? datos.visibilidad.documentos : [],
