@@ -6,7 +6,9 @@
 import {
   BadRequestException,
   ConflictException,
+  Logger,
   NotFoundException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import {
   construirFilasDocumentos,
@@ -315,6 +317,34 @@ describe('DocumentosService', () => {
       expect.stringMatching(/^expedientes\/exp-1\//),
     );
     expect(auditService.registrar).not.toHaveBeenCalled();
+  });
+
+  it('responde 503 y no registra nada si el almacenamiento no está disponible', async () => {
+    const logError = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => undefined);
+    objectStorage.subirObjeto.mockRejectedValue(
+      new Error('getaddrinfo EAI_AGAIN'),
+    );
+
+    await expect(
+      service.subir(
+        {
+          expedienteId: 'exp-1',
+          tipo: 'ENTREVISTA_USUARIA',
+          areasVisiblesRaw: '[]',
+          archivo: crearArchivo(),
+        },
+        contexto,
+      ),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(documentosRepository.crear).not.toHaveBeenCalled();
+    expect(auditService.registrar).not.toHaveBeenCalled();
+    expect(logError).toHaveBeenCalledWith(
+      expect.not.stringContaining('documento.pdf'),
+    );
+    logError.mockRestore();
   });
 
   it('rechaza con 409 si el caso ya tiene ese documento vigente', async () => {
