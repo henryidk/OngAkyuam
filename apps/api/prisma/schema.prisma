@@ -356,13 +356,6 @@ enum TipoProcesoJuridico {
   INSCRIPCION_RENAP
 }
 
-// Estado anterior al rediseño. La columna sigue existiendo (y se mantiene sincronizada) hasta
-// la migración de contracción; el código nuevo decide con `fase` y `situacion`.
-enum EstadoProcesoJuridico {
-  INICIADO
-  CERRADO
-}
-
 // Avance del proceso: solo camina hacia adelante.
 enum FaseProcesoJuridico {
   INICIADO
@@ -412,7 +405,6 @@ model ProcesoJuridico {
   expedienteId        String
   expediente          Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   tipo                TipoProcesoJuridico
-  estado              EstadoProcesoJuridico     @default(INICIADO)
   // El código visible "J{consecutivo}-{numero de expediente}" se deriva, no se guarda.
   consecutivo         Int
   fase                FaseProcesoJuridico       @default(INICIADO)
@@ -450,7 +442,6 @@ model ProcesoJuridico {
   carpetas     CarpetaDocumentoProceso[]
 
   @@unique([expedienteId, consecutivo])
-  @@index([estado])
   @@index([fase, situacion])
   @@index([formaFinalizacion])
   @@index([ultimaActuacionEn])
