@@ -60,6 +60,14 @@ export class AreasGateway
     this.server.to(salaDeArea(area)).emit('referido:nuevo', resumen);
   }
 
+  notificarUsuariaActualizada(area: Rol, expedienteId: string): void {
+    // Solo el id del expediente: el área vuelve a pedir los datos por HTTP, donde se valida
+    // su permiso — ningún dato personal viaja por el socket.
+    this.server
+      .to(salaDeArea(area))
+      .emit('usuaria:actualizada', { expedienteId });
+  }
+
   notificarCambioBandeja(): void {
     // Sin datos: el evento solo dice "vuelve a pedir tu bandeja" — la bandeja ya filtra por
     // usuario en el backend y así nunca viaja por el socket algo de un caso ajeno.

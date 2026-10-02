@@ -1,4 +1,6 @@
 import {
+  AREAS_ATENCION,
+  ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   type ExpedienteResumenCaso,
@@ -30,6 +32,29 @@ export function textoUbicacion(usuaria: UsuariaExpedienteHub): string | null {
     return [usuaria.municipioOtro, usuaria.departamentoOtro].filter(Boolean).join(', ')
   }
   return null
+}
+
+const DEPARTAMENTO_ALTA_VERAPAZ = 'Alta Verapaz'
+
+export function textoDepartamento(usuaria: UsuariaExpedienteHub): string | null {
+  return usuaria.municipio ? DEPARTAMENTO_ALTA_VERAPAZ : usuaria.departamentoOtro
+}
+
+/** Solo el municipio, sin el departamento (que va en su propio campo). */
+export function textoMunicipio(usuaria: UsuariaExpedienteHub): string | null {
+  if (!usuaria.municipio) return usuaria.municipioOtro
+  return (
+    ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[usuaria.municipio as keyof typeof ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ] ??
+    usuaria.municipio
+  )
+}
+
+/** Áreas que ven los datos personales: las referidas en el caso activo; Jurídico siempre. */
+export function textoAreasQueVenDatos(caso: ExpedienteResumenCaso | null): string {
+  const areas = AREAS_ATENCION.filter((area) => area === 'JURIDICO' || caso?.areasReferidas.includes(area)).map(
+    (area) => ETIQUETAS_AREA_ATENCION[area],
+  )
+  return areas.length === 1 ? areas[0] : `${areas.slice(0, -1).join(', ')} y ${areas[areas.length - 1]}`
 }
 
 /** Badge del encabezado: tipo de registro del caso actual y si sigue en el albergue. */

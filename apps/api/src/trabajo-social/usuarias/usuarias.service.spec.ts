@@ -10,8 +10,10 @@ import type {
   IUsuariasRepository,
   UsuariaHubRow,
 } from './interfaces/usuarias-repository.interface';
+import type { IAreaNotifier } from '../../areas/interfaces/area-notifier.interface';
 import type { AuditService } from '../../auth/services/audit.service';
 import type { EstadoTsService } from '../estado/estado-ts.service';
+import { DpiUsuariaDuplicadoError } from '../interfaces/expedientes-repository.interface';
 import type {
   EditarIdentidadUsuariaInput,
   ListaUsuariasTs,
@@ -22,6 +24,7 @@ describe('UsuariasService', () => {
   let usuariasRepository: jest.Mocked<IUsuariasRepository>;
   let auditService: jest.Mocked<AuditService>;
   let estadoTsService: jest.Mocked<EstadoTsService>;
+  let areaNotifier: jest.Mocked<IAreaNotifier>;
 
   const contexto = {
     usuarioId: 'ts-1',
@@ -116,10 +119,16 @@ describe('UsuariasService', () => {
         .mockResolvedValue({ estado: 'SIN_REFERIR', areas: [] }),
     } as unknown as jest.Mocked<EstadoTsService>;
 
+    areaNotifier = {
+      notificarReferido: jest.fn(),
+      notificarUsuariaActualizada: jest.fn(),
+    };
+
     service = new UsuariasService(
       usuariasRepository,
       auditService,
       estadoTsService,
+      areaNotifier,
     );
   });
 
@@ -390,6 +399,85 @@ describe('UsuariasService', () => {
         campos: string[];
       };
       expect(detalles.campos).toEqual(['telefono']);
+      expect(auditService.registrar.mock.calls[0][0].accion).toBe(
+        'USUARIA_ACTUALIZADA',
+      );
+    });
+
+    it('la auditoría no contiene ningún valor, ni el DPI ni el teléfono', async () => {
+      usuariasRepository.obtenerHub.mockResolvedValue(
+        hub({ dpi: '1111111111111', telefono: '00000000' }),
+      );
+      usuariasRepository.actualizarIdentidad.mockResolvedValue(
+        hub({ dpi: '2222222222222', telefono: '55554444' }),
+      );
+
+      await service.actualizarIdentidad(
+        'u-1',
+        identidadInput({ dpi: '2222222222222', telefono: '55554444' }),
+        contexto,
+      );
+
+      const auditoria = auditService.registrar.mock.calls[0][0];
+      expect(auditoria.accion).toBe('USUARIA_DPI_MODIFICADO');
+      expect(auditoria.detalles).toEqual({ campos: ['dpi', 'telefono'] });
+      const serializado = JSON.stringify(auditoria.detalles);
+      for (const valor of [
+        '1111111111111',
+        '2222222222222',
+        '00000000',
+        '55554444',
+      ]) {
+        expect(serializado).not.toContain(valor);
+      }
+    });
+
+    it('responde 409 si el índice único rechaza el DPI al guardar', async () => {
+      usuariasRepository.obtenerHub.mockResolvedValue(hub());
+      usuariasRepository.actualizarIdentidad.mockRejectedValue(
+        new DpiUsuariaDuplicadoError(),
+      );
+
+      await expect(
+        service.actualizarIdentidad(
+          'u-1',
+          identidadInput({ dpi: '9999999999999' }),
+          contexto,
+        ),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('avisa a cada área referida solo con el id del expediente', async () => {
+      const casos = [
+        caso({
+          id: 'e-1',
+          referidos: [
+            { area: 'JURIDICO' },
+            { area: 'PSICOLOGIA' },
+          ] as CasoHubRow['referidos'],
+        }),
+      ];
+      usuariasRepository.obtenerHub.mockResolvedValue(
+        hub({ telefono: '00000000', casos }),
+      );
+      usuariasRepository.actualizarIdentidad.mockResolvedValue(hub({ casos }));
+
+      await service.actualizarIdentidad('u-1', identidadInput(), contexto);
+
+      expect(areaNotifier.notificarUsuariaActualizada.mock.calls).toEqual([
+        ['JURIDICO', 'e-1'],
+        ['PSICOLOGIA', 'e-1'],
+      ]);
+    });
+
+    it('no avisa a las áreas si nada cambió', async () => {
+      usuariasRepository.obtenerHub.mockResolvedValue(hub());
+      usuariasRepository.actualizarIdentidad.mockResolvedValue(hub());
+
+      await service.actualizarIdentidad('u-1', identidadInput(), contexto);
+
+      expect(areaNotifier.notificarUsuariaActualizada).not.toHaveBeenCalled();
     });
   });
 });

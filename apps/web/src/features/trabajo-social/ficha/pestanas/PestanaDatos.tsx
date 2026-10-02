@@ -1,66 +1,119 @@
-import { useState, type ReactNode } from 'react'
-import { edadEnAniosGT, formatFechaGT } from '@akyuam/shared'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { edadEnAniosGT, fechaCalendarioGT, formatFechaGT, type UsuariaExpedienteHub } from '@akyuam/shared'
 import Button from '../../../../components/ui/Button'
-import Drawer from '../../../../components/ui/Drawer'
-import FormularioIdentidadUsuaria from '../../FormularioIdentidadUsuaria'
+import { useToast } from '../../../../components/ui/Toast'
+import EdicionIdentidadUsuaria from '../../identidad/EdicionIdentidadUsuaria'
 import { rangoEdadCorto } from '../../usuarias/filaUsuaria'
 import { useContextoFicha } from '../contextoFicha'
 import { textoNino } from '../textoCaso'
-import { textoGrupoEtnico, textoUbicacion } from '../textoUsuaria'
+import { textoAreasQueVenDatos, textoDepartamento, textoGrupoEtnico, textoMunicipio } from '../textoUsuaria'
 import { useDetalleCaso } from '../useDetalleCaso'
+import CampoLectura from './CampoLectura'
 import Tarjeta from './Tarjeta'
 
-function Campo({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
-  return (
-    <div>
-      <dt className="text-xs text-gray-500">{etiqueta}</dt>
-      <dd className="mt-0.5 text-sm text-gray-900">{children || '—'}</dd>
-    </div>
-  )
-}
+type Modo = 'lectura' | 'edicion'
 
-/** Datos personales (plan §12.5): un solo bloque de identidad, editable, + hijas e hijos. */
+/** Datos personales (plan §12.5): un solo bloque de identidad, editable en línea, + hijas e hijos. */
 export default function PestanaDatos() {
-  const { usuaria, onUsuariaActualizada, version } = useContextoFicha()
-  const [editando, setEditando] = useState(false)
+  const { usuaria, onUsuariaActualizada, version, setEditandoDatos } = useContextoFicha()
+  const { mostrar } = useToast()
+  const [modo, setModo] = useState<Modo>('lectura')
+  const botonEditar = useRef<HTMLButtonElement>(null)
+  const vuelveDeEditar = useRef(false)
   const casoActual = usuaria.casos[0] ?? null
   const { detalle } = useDetalleCaso(casoActual?.id ?? null, version)
   const edad = edadEnAniosGT(usuaria.fechaNacimiento)
 
+  // El encabezado de la ficha deshabilita egreso y referir mientras se edita.
+  useEffect(() => {
+    setEditandoDatos(modo === 'edicion')
+    return () => setEditandoDatos(false)
+  }, [modo, setEditandoDatos])
+
+  // Al salir de la edición, el foco vuelve al botón que la abrió.
+  useEffect(() => {
+    if (modo === 'lectura' && vuelveDeEditar.current) {
+      vuelveDeEditar.current = false
+      botonEditar.current?.focus()
+    }
+  }, [modo])
+
+  const salirDeEdicion = useCallback(() => {
+    vuelveDeEditar.current = true
+    setModo('lectura')
+  }, [])
+
+  const onGuardado = useCallback(
+    (actualizada: UsuariaExpedienteHub) => {
+      onUsuariaActualizada(actualizada)
+      salirDeEdicion()
+      mostrar('Datos actualizados · ya se ven en las áreas y en el reporte')
+    },
+    [onUsuariaActualizada, salirDeEdicion, mostrar],
+  )
+
   return (
     <div className="space-y-4">
-      <Tarjeta
-        titulo="Datos de la usuaria"
-        accion={
-          <Button variante="secondary" onClick={() => setEditando(true)}>
-            Editar
-          </Button>
-        }
-      >
-        <p className="-mt-1 mb-4 text-[13px] text-gray-500">
-          Un solo registro. Estos mismos datos alimentan el reporte de población beneficiada y los ven todas las áreas a
-          las que se refiere.
-        </p>
-        <dl className="grid gap-x-6 gap-y-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
-          <Campo etiqueta="Nombres">{usuaria.nombres}</Campo>
-          <Campo etiqueta="Apellidos">{usuaria.apellidos}</Campo>
-          <Campo etiqueta="DPI">
-            <span className="tabular-nums">{usuaria.dpi}</span>
-          </Campo>
-          <Campo etiqueta="Fecha de nacimiento">
-            <span className="tabular-nums">
-              {formatFechaGT(usuaria.fechaNacimiento)} · {edad} años ({rangoEdadCorto(edad)})
-            </span>
-          </Campo>
-          <Campo etiqueta="Grupo étnico">{textoGrupoEtnico(usuaria.grupoEtnico)}</Campo>
-          <Campo etiqueta="Municipio">{textoUbicacion(usuaria)}</Campo>
-          <Campo etiqueta="Teléfono">
-            <span className="tabular-nums">{usuaria.telefono}</span>
-          </Campo>
-          <Campo etiqueta="Dirección">{usuaria.direccion}</Campo>
-          <Campo etiqueta="Ubicación geográfica">{usuaria.ubicacionGeografica}</Campo>
-        </dl>
-      </Tarjeta>
+      {modo === 'lectura' ? (
+        <Tarjeta
+          titulo="Datos de la usuaria"
+          accion={
+            <Button ref={botonEditar} variante="secondary" onClick={() => setModo('edicion')}>
+              Editar
+            </Button>
+          }
+        >
+          <p className="-mt-1 mb-4 text-[13px] text-gray-500">
+            Un solo registro. Estos mismos datos alimentan el reporte de población beneficiada y los ven todas las áreas
+            a las que se refiere.
+          </p>
+          <dl className="grid gap-x-6 gap-y-4 [grid-template-columns:repeat(auto-fill,minmax(200px,1fr))]">
+            <CampoLectura etiqueta="Nombres" valor={usuaria.nombres} />
+            <CampoLectura etiqueta="Apellidos" valor={usuaria.apellidos} />
+            <CampoLectura etiqueta="DPI" valor={usuaria.dpi} formato="numerico" />
+            <CampoLectura
+              etiqueta="Fecha de nacimiento"
+              valor={`${formatFechaGT(usuaria.fechaNacimiento)} · ${edad} años (${rangoEdadCorto(edad)})`}
+              formato="numerico"
+            />
+            <CampoLectura etiqueta="Grupo étnico" valor={textoGrupoEtnico(usuaria.grupoEtnico)} />
+            <CampoLectura etiqueta="Teléfono" valor={usuaria.telefono} formato="numerico" />
+            <CampoLectura etiqueta="Departamento" valor={textoDepartamento(usuaria)} />
+            <CampoLectura etiqueta="Municipio" valor={textoMunicipio(usuaria)} />
+            <CampoLectura etiqueta="Ubicación geográfica" valor={usuaria.ubicacionGeografica} />
+            <CampoLectura etiqueta="Dirección" valor={usuaria.direccion} />
+            <CampoLectura
+              etiqueta="Registrada"
+              valor={formatFechaGT(fechaCalendarioGT(new Date(usuaria.createdAt)))}
+              formato="numerico"
+            />
+          </dl>
+        </Tarjeta>
+      ) : (
+        <section
+          aria-labelledby="titulo-edicion-datos"
+          className="rounded-xl border-2 border-brand-600 bg-white p-5 ring-4 ring-brand-50"
+        >
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h2 id="titulo-edicion-datos" className="text-[15px] font-semibold text-gray-900">
+              Editando datos de la usuaria
+            </h2>
+            <span className="text-xs text-gray-500">Esc para cancelar</span>
+          </div>
+          <p className="mb-5 rounded-lg border border-brand-100 bg-brand-50 px-3.5 py-2.5 text-[13px] text-brand-800">
+            Son datos compartidos: al guardar, el cambio se refleja en{' '}
+            <strong>{textoAreasQueVenDatos(casoActual)}</strong> y en el reporte de población beneficiada. Queda
+            registrado en la bitácora.
+          </p>
+          <EdicionIdentidadUsuaria
+            usuaria={usuaria}
+            disposicion="cuadricula"
+            onGuardado={onGuardado}
+            onSalir={salirDeEdicion}
+            clasePie="-mx-5 -mb-5 mt-5 rounded-b-xl px-5"
+          />
+        </section>
+      )}
 
       <Tarjeta titulo="Hijas e hijos">
         {!casoActual ? (
@@ -86,17 +139,6 @@ export default function PestanaDatos() {
           </>
         )}
       </Tarjeta>
-
-      <Drawer abierto={editando} titulo="Editar datos de la usuaria" onCerrar={() => setEditando(false)}>
-        <FormularioIdentidadUsuaria
-          usuaria={usuaria}
-          onGuardado={(actualizada) => {
-            onUsuariaActualizada(actualizada)
-            setEditando(false)
-          }}
-          onCancelar={() => setEditando(false)}
-        />
-      </Drawer>
     </div>
   )
 }

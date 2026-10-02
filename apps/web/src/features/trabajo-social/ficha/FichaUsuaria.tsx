@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { ETIQUETAS_AREA_ATENCION, type AreaAtencion, type ReferidoCreado } from '@akyuam/shared'
 import { useToast } from '../../../components/ui/Toast'
+import { pedirConfirmacionSalida, useEnlaceProtegido } from '../../../lib/guardiaSalida'
 import ModalEgreso from '../egreso/ModalEgreso'
 import { textoEgresoRegistrado, type ResultadoEgreso } from '../egreso/textoEgreso'
 import ModalReferir from '../referir/ModalReferir'
@@ -41,6 +42,8 @@ export default function FichaUsuaria() {
   const [referir, setReferir] = useState<{ area?: AreaAtencion } | null>(llegaAReferir ? {} : null)
   const [egresoAbierto, setEgresoAbierto] = useState(false)
   const [version, setVersion] = useState(0)
+  const [editandoDatos, setEditandoDatos] = useState(false)
+  const protegerEnlace = useEnlaceProtegido()
 
   const abrirReferir = useCallback((area?: AreaAtencion) => setReferir({ area }), [])
 
@@ -87,12 +90,23 @@ export default function FichaUsuaria() {
   }
 
   const casoActual = usuaria.casos[0] ?? null
-  const contexto: ContextoFicha = { usuaria, onUsuariaActualizada: setUsuaria, abrirReferir, version }
+  const contexto: ContextoFicha = {
+    usuaria,
+    onUsuariaActualizada: setUsuaria,
+    abrirReferir,
+    version,
+    setEditandoDatos,
+    pedirConfirmacionSalida,
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
       <nav aria-label="Migas" className="text-xs text-gray-500">
-        <Link to="/trabajo-social/usuarias" className="hover:text-gray-800 hover:underline">
+        <Link
+          to="/trabajo-social/usuarias"
+          onClick={(evento) => protegerEnlace(evento, '/trabajo-social/usuarias')}
+          className="hover:text-gray-800 hover:underline"
+        >
           Usuarias
         </Link>
         {' / '}
@@ -103,6 +117,7 @@ export default function FichaUsuaria() {
 
       <EncabezadoFicha
         usuaria={usuaria}
+        editandoDatos={editandoDatos}
         onReferir={() => abrirReferir()}
         onRegistrarEgreso={() => setEgresoAbierto(true)}
       />

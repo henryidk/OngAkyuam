@@ -16,9 +16,12 @@ import {
   type UsuariaResumenBusqueda,
 } from '@akyuam/shared';
 import type { MunicipioAltaVerapaz } from '@prisma/client';
+import { AREA_NOTIFIER } from '../../areas/interfaces/area-notifier.interface';
+import type { IAreaNotifier } from '../../areas/interfaces/area-notifier.interface';
 import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { EstadoTsService } from '../estado/estado-ts.service';
+import { DpiUsuariaDuplicadoError } from '../interfaces/expedientes-repository.interface';
 import { USUARIAS_REPOSITORY } from './interfaces/usuarias-repository.interface';
 import type {
   BusquedaListaUsuarias,
@@ -32,6 +35,7 @@ const LONGITUD_MINIMA_BUSQUEDA_NOMBRE = 3;
 const LIMITE_RESULTADOS_BUSQUEDA = 20;
 const PATRON_NUMERO_EXPEDIENTE = /^(\d{1,4})-(\d{4})$/;
 const PATRON_DPI = /^\d{13}$/;
+const MENSAJE_DPI_DUPLICADO = 'El DPI ya está registrado para otra usuaria';
 
 /**
  * Qué quiso buscar quien escribió `q` en la lista: número de expediente (acepta "5-2026" por
@@ -136,6 +140,8 @@ export class UsuariasService {
     private readonly usuariasRepository: IUsuariasRepository,
     private readonly auditService: AuditService,
     private readonly estadoTsService: EstadoTsService,
+    @Inject(AREA_NOTIFIER)
+    private readonly areaNotifier: IAreaNotifier,
   ) {}
 
   async listar(
@@ -267,31 +273,61 @@ export class UsuariasService {
 
     const dpi = vacioANulo(datos.dpi);
     if (dpi && (await this.usuariasRepository.existeDpi(dpi, id))) {
-      throw new ConflictException(
-        'El DPI ya está registrado para otra usuaria',
-      );
+      throw new ConflictException(MENSAJE_DPI_DUPLICADO);
     }
 
-    const actualizado = await this.usuariasRepository.actualizarIdentidad(
-      id,
-      mapearParametrosIdentidad(datos),
-    );
+    const actualizado = await this.guardarIdentidad(id, datos);
     if (!actualizado) {
       throw new NotFoundException('Usuaria no encontrada');
     }
 
+    // Solo los nombres de los campos, nunca sus valores (RNF-02). Un cambio de DPI lleva su
+    // propia acción: la bitácora lo destaca.
+    const campos = camposCambiados(anterior, actualizado);
     await this.auditService.registrar({
       usuarioId: contexto.usuarioId,
       username: contexto.username,
-      accion: 'USUARIA_ACTUALIZADA',
+      accion: campos.includes('dpi')
+        ? 'USUARIA_DPI_MODIFICADO'
+        : 'USUARIA_ACTUALIZADA',
       entidad: 'Usuaria',
       entidadId: id,
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      detalles: { campos: camposCambiados(anterior, actualizado) },
+      detalles: { campos },
     });
 
+    if (campos.length > 0) {
+      this.avisarAreasReferidas(actualizado);
+    }
+
     return this.conEstado(actualizado);
+  }
+
+  private async guardarIdentidad(
+    id: string,
+    datos: EditarIdentidadUsuariaInput,
+  ): Promise<UsuariaHubRow | null> {
+    try {
+      return await this.usuariasRepository.actualizarIdentidad(
+        id,
+        mapearParametrosIdentidad(datos),
+      );
+    } catch (error) {
+      if (error instanceof DpiUsuariaDuplicadoError) {
+        throw new ConflictException(MENSAJE_DPI_DUPLICADO);
+      }
+      throw error;
+    }
+  }
+
+  /** Cada área referida en alguno de sus casos refresca la ficha si la tiene abierta. */
+  private avisarAreasReferidas(usuaria: UsuariaHubRow): void {
+    for (const caso of usuaria.casos) {
+      for (const referido of caso.referidos) {
+        this.areaNotifier.notificarUsuariaActualizada(referido.area, caso.id);
+      }
+    }
   }
 
   /** Agrega el estado derivado de cada caso y el detalle por área del caso activo. */

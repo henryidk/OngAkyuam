@@ -1,5 +1,6 @@
 import {
   ETIQUETAS_AREA_ATENCION,
+  ETIQUETAS_CAMPO_IDENTIDAD_USUARIA,
   ETIQUETAS_ESTADO_ATENCION_PSICOLOGICA,
   ETIQUETAS_FORMA_FINALIZACION,
   ETIQUETAS_TIPO_DOCUMENTO,
@@ -41,6 +42,18 @@ function nombreArea(detalles: DetallesAuditoria): string {
 function nombreDocumento(detalles: DetallesAuditoria): string {
   const tipo = etiqueta(ETIQUETAS_TIPO_DOCUMENTO, detalles?.tipo);
   return tipo ? `«${tipo}»` : 'un documento';
+}
+
+/** "Datos de la usuaria actualizados (DPI, teléfono)": solo nombres de campo, nunca valores. */
+function textoDatosActualizados(detalles: DetallesAuditoria): string {
+  const campos = Array.isArray(detalles?.campos) ? detalles.campos : [];
+  const etiquetas = campos
+    .map((campo) => etiqueta(ETIQUETAS_CAMPO_IDENTIDAD_USUARIA, campo))
+    .filter((campo) => campo !== null);
+  const unicas = [...new Set(etiquetas)];
+  return unicas.length > 0
+    ? `Datos de la usuaria actualizados (${unicas.join(', ')})`
+    : 'Datos de la usuaria actualizados';
 }
 
 /**
@@ -89,7 +102,13 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
   USUARIA_ACTUALIZADA: {
     area: null,
     destacado: false,
-    texto: () => 'Actualizó los datos personales',
+    texto: textoDatosActualizados,
+  },
+  // Mismo cambio, pero tocó el DPI (el dato que evita expedientes duplicados): se destaca.
+  USUARIA_DPI_MODIFICADO: {
+    area: null,
+    destacado: true,
+    texto: textoDatosActualizados,
   },
   PROCESO_JURIDICO_CREADO: {
     area: 'JURIDICO',

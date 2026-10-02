@@ -8,6 +8,9 @@ interface ConfirmModalProps {
   titulo: string
   descripcion?: string
   confirmarLabel?: string
+  cancelarLabel?: string
+  /** Bloquea la confirmación mientras falte una condición (p. ej. una verificación en curso). */
+  confirmarDeshabilitado?: boolean
   cargando?: boolean
   error?: string | null
   peligro?: boolean
@@ -26,6 +29,8 @@ export default function ConfirmModal({
   titulo,
   descripcion,
   confirmarLabel = 'Confirmar',
+  cancelarLabel = 'Cancelar',
+  confirmarDeshabilitado = false,
   cargando = false,
   error,
   peligro = false,
@@ -64,12 +69,14 @@ export default function ConfirmModal({
         )}
 
         <div className="mt-5 flex justify-end gap-2">
-          <Button variante="secondary" onClick={onCancelar} disabled={cargando}>
-            Cancelar
+          <Button type="button" variante="secondary" onClick={onCancelar} disabled={cargando}>
+            {cancelarLabel}
           </Button>
           <Button
+            type="button"
             variante={peligro ? 'danger' : 'primary'}
             onClick={onConfirmar}
+            disabled={confirmarDeshabilitado}
             cargando={cargando}
           >
             {confirmarLabel}

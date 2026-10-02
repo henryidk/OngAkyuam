@@ -10,6 +10,7 @@ import type {
 } from '@akyuam/shared';
 import { fechaColumnaISO } from '@akyuam/shared';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { DpiUsuariaDuplicadoError } from '../../interfaces/expedientes-repository.interface';
 import { ConsultaListaTs } from '../../estado/consulta-lista-ts';
 import type {
   BusquedaListaUsuarias,
@@ -291,7 +292,14 @@ export class UsuariasRepository implements IUsuariasRepository {
           ubicacionGeografica: datos.ubicacionGeografica,
         },
       });
-    } catch {
+    } catch (error) {
+      // Otra petición tomó ese DPI entre la verificación del service y este UPDATE.
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new DpiUsuariaDuplicadoError();
+      }
       // P2025: registro no encontrado — mismo criterio uniforme del resto del proyecto.
       return null;
     }

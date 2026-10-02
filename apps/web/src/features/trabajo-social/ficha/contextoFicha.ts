@@ -9,6 +9,10 @@ export interface ContextoFicha {
   abrirReferir: (area?: AreaAtencion) => void
   /** Sube cada vez que algo del caso cambia (p. ej. un referido nuevo) — las pestañas recargan lo suyo. */
   version: number
+  /** La pestaña de datos avisa mientras edita: el encabezado deshabilita egreso y referir. */
+  setEditandoDatos: (editando: boolean) => void
+  /** Ejecuta `continuar` de inmediato, o tras confirmar si hay cambios sin guardar en la ficha. */
+  pedirConfirmacionSalida: (continuar: () => void) => void
 }
 
 export function useContextoFicha() {

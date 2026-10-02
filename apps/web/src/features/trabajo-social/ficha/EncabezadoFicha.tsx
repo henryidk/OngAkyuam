@@ -7,17 +7,25 @@ import { badgeRegistro, iniciales, nombreCompleto, textoGrupoEtnico, textoUbicac
 
 interface EncabezadoFichaProps {
   usuaria: UsuariaExpedienteHub
+  /** Mientras se editan los datos personales no se inicia otra acción sobre el caso. */
+  editandoDatos: boolean
   onReferir: () => void
   onRegistrarEgreso: () => void
 }
 
 /** Encabezado de la ficha (plan §12.5): identidad en una línea, badge de registro y pestañas. */
-export default function EncabezadoFicha({ usuaria, onReferir, onRegistrarEgreso }: EncabezadoFichaProps) {
+const AVISO_EDITANDO = 'Termina de editar los datos primero'
+
+export default function EncabezadoFicha({ usuaria, editandoDatos, onReferir, onRegistrarEgreso }: EncabezadoFichaProps) {
   const casoActual = usuaria.casos[0] ?? null
   const badge = badgeRegistro(casoActual)
   const edad = edadEnAniosGT(usuaria.fechaNacimiento)
   const ubicacion = textoUbicacion(usuaria)
   const todasReferidas = casoActual ? AREAS_ATENCION.every((area) => casoActual.areasReferidas.includes(area)) : true
+
+  const bloqueoPorEdicion = editandoDatos
+    ? { disabled: true, title: AVISO_EDITANDO, className: 'opacity-40' }
+    : {}
 
   const datos = [
     casoActual && (
@@ -58,12 +66,12 @@ export default function EncabezadoFicha({ usuaria, onReferir, onRegistrarEgreso 
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {casoActual?.enAlbergue && (
-            <Button variante="secondary" tamano="md" onClick={onRegistrarEgreso}>
+            <Button variante="secondary" tamano="md" onClick={onRegistrarEgreso} {...bloqueoPorEdicion}>
               Registrar egreso
             </Button>
           )}
           {casoActual && !todasReferidas && (
-            <Button tamano="md" onClick={onReferir}>
+            <Button tamano="md" onClick={onReferir} {...bloqueoPorEdicion}>
               Referir a un área
             </Button>
           )}

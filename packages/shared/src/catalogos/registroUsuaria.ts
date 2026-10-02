@@ -139,3 +139,23 @@ export function calcularRangoEdad(edadAnios: number): RangoEdad {
   if (edadAnios <= 60) return '31-60'
   return 'MAYOR_60'
 }
+
+/**
+ * Campos de identidad de la usuaria que el PATCH puede modificar → etiqueta para la bitácora.
+ * La auditoría guarda solo estos nombres de campo, nunca sus valores.
+ */
+export const ETIQUETAS_CAMPO_IDENTIDAD_USUARIA = {
+  nombres: 'nombres',
+  apellidos: 'apellidos',
+  dpi: 'DPI',
+  telefono: 'teléfono',
+  direccion: 'dirección',
+  fechaNacimiento: 'fecha de nacimiento',
+  grupoEtnico: 'grupo étnico',
+  municipio: 'municipio',
+  departamentoOtro: 'departamento',
+  municipioOtro: 'municipio',
+  ubicacionGeografica: 'ubicación geográfica',
+} as const
+
+export type CampoIdentidadUsuaria = keyof typeof ETIQUETAS_CAMPO_IDENTIDAD_USUARIA

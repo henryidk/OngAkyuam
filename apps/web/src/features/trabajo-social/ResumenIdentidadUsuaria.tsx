@@ -1,27 +1,50 @@
-import { useState } from 'react'
-import { ETIQUETAS_GRUPO_ETNICO, ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ, formatFechaGT, type UsuariaExpedienteHub } from '@akyuam/shared'
+import { useCallback, useState } from 'react'
+import { formatFechaGT, type UsuariaExpedienteHub } from '@akyuam/shared'
 import Button from '../../components/ui/Button'
-import Drawer from '../../components/ui/Drawer'
-import FormularioIdentidadUsuaria from './FormularioIdentidadUsuaria'
+import { useToast } from '../../components/ui/Toast'
+import { textoGrupoEtnico, textoUbicacion } from './ficha/textoUsuaria'
+import EdicionIdentidadUsuaria from './identidad/EdicionIdentidadUsuaria'
 
 interface ResumenIdentidadUsuariaProps {
   usuaria: UsuariaExpedienteHub
   onActualizado: (usuaria: UsuariaExpedienteHub) => void
 }
 
-function ubicacion(usuaria: UsuariaExpedienteHub): string {
-  if (usuaria.municipio) {
-    return ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[usuaria.municipio as keyof typeof ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ]
-  }
-  if (usuaria.municipioOtro) {
-    return `${usuaria.municipioOtro}, ${usuaria.departamentoOtro ?? ''}`.trim()
-  }
-  return '—'
-}
-
-/** Tarjeta de identidad de solo lectura + edición explícita — usada por el wizard al registrar un caso para una usuaria existente. */
+/**
+ * Tarjeta de identidad de solo lectura + edición en línea — usada por el wizard al registrar un
+ * caso para una usuaria existente. Guardar no avanza ni reinicia el wizard: solo vuelve al resumen.
+ */
 export default function ResumenIdentidadUsuaria({ usuaria, onActualizado }: ResumenIdentidadUsuariaProps) {
   const [editando, setEditando] = useState(false)
+  const { mostrar } = useToast()
+
+  const salirDeEdicion = useCallback(() => setEditando(false), [])
+  const onGuardado = useCallback(
+    (actualizada: UsuariaExpedienteHub) => {
+      onActualizado(actualizada)
+      setEditando(false)
+      mostrar('Datos actualizados · ya se ven en las áreas y en el reporte')
+    },
+    [onActualizado, mostrar],
+  )
+
+  if (editando) {
+    return (
+      <div className="rounded-xl border-2 border-brand-600 bg-white p-4 ring-4 ring-brand-50">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold text-gray-900">Editando datos de la usuaria</p>
+          <span className="text-xs text-gray-500">Esc para cancelar</span>
+        </div>
+        <EdicionIdentidadUsuaria
+          usuaria={usuaria}
+          disposicion="compacta"
+          onGuardado={onGuardado}
+          onSalir={salirDeEdicion}
+          clasePie="-mx-4 -mb-4 mt-4 rounded-b-xl px-4"
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
@@ -31,29 +54,18 @@ export default function ResumenIdentidadUsuaria({ usuaria, onActualizado }: Resu
             {usuaria.nombres} {usuaria.apellidos}
           </p>
           <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-gray-600 sm:grid-cols-3">
-            <div>DPI: {usuaria.dpi ?? '—'}</div>
-            <div>Teléfono: {usuaria.telefono ?? '—'}</div>
+            <div>DPI: {usuaria.dpi || '—'}</div>
+            <div>Teléfono: {usuaria.telefono || '—'}</div>
             <div>Nacimiento: {formatFechaGT(usuaria.fechaNacimiento)}</div>
-            <div>Grupo étnico: {ETIQUETAS_GRUPO_ETNICO[usuaria.grupoEtnico as keyof typeof ETIQUETAS_GRUPO_ETNICO] ?? usuaria.grupoEtnico}</div>
-            <div>Municipio: {ubicacion(usuaria)}</div>
-            <div>Dirección: {usuaria.direccion ?? '—'}</div>
+            <div>Grupo étnico: {textoGrupoEtnico(usuaria.grupoEtnico)}</div>
+            <div>Municipio: {textoUbicacion(usuaria) ?? '—'}</div>
+            <div>Dirección: {usuaria.direccion || '—'}</div>
           </dl>
         </div>
-        <Button variante="secondary" onClick={() => setEditando(true)}>
+        <Button type="button" variante="secondary" onClick={() => setEditando(true)}>
           Editar datos
         </Button>
       </div>
-
-      <Drawer abierto={editando} titulo="Editar datos de la usuaria" onCerrar={() => setEditando(false)}>
-        <FormularioIdentidadUsuaria
-          usuaria={usuaria}
-          onGuardado={(actualizado) => {
-            onActualizado(actualizado)
-            setEditando(false)
-          }}
-          onCancelar={() => setEditando(false)}
-        />
-      </Drawer>
     </div>
   )
 }

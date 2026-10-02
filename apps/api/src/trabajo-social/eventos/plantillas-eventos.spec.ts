@@ -52,4 +52,28 @@ describe('plantillas de eventos', () => {
     expect(ACCIONES_NOVEDAD_AREA).not.toContain('EXPEDIENTE_REFERIDO');
     expect(ACCIONES_NOVEDAD_AREA).not.toContain('USUARIA_ACTUALIZADA');
   });
+
+  it('describe el cambio de datos personales con etiquetas de campo, sin repetirlas', () => {
+    expect(
+      describirEvento('USUARIA_ACTUALIZADA', {
+        campos: ['telefono', 'municipio', 'municipioOtro'],
+      }),
+    ).toEqual({
+      area: null,
+      destacado: false,
+      texto: 'Datos de la usuaria actualizados (teléfono, municipio)',
+    });
+  });
+
+  it('destaca el cambio de DPI', () => {
+    expect(
+      describirEvento('USUARIA_DPI_MODIFICADO', {
+        campos: ['dpi', 'telefono'],
+      }),
+    ).toEqual({
+      area: null,
+      destacado: true,
+      texto: 'Datos de la usuaria actualizados (DPI, teléfono)',
+    });
+  });
 });

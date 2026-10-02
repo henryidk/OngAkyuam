@@ -79,7 +79,10 @@ export interface IUsuariasRepository {
   ): Promise<UsuariaResumenBusqueda[]>;
   obtenerHub(id: string): Promise<UsuariaHubRow | null>;
   existeDpi(dpi: string, excluirId?: string): Promise<boolean>;
-  /** `null` si el id no corresponde a una `Usuaria` existente. */
+  /**
+   * `null` si el id no corresponde a una `Usuaria` existente. Lanza `DpiUsuariaDuplicadoError`
+   * si el DPI ya pertenece a otra usuaria (índice único).
+   */
   actualizarIdentidad(
     id: string,
     datos: DatosIdentidadUsuariaParams,

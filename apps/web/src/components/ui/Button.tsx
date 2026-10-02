@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, Ref } from 'react'
 import { Loader2 } from 'lucide-react'
 
 export type BotonVariante = 'primary' | 'secondary' | 'danger' | 'acento'
@@ -8,6 +8,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variante?: BotonVariante
   tamano?: BotonTamano
   cargando?: boolean
+  ref?: Ref<HTMLButtonElement>
 }
 
 const CLASES_VARIANTE: Record<BotonVariante, string> = {

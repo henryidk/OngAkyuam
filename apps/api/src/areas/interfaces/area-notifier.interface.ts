@@ -10,4 +10,6 @@ export const AREA_NOTIFIER = Symbol('AREA_NOTIFIER');
  */
 export interface IAreaNotifier {
   notificarReferido(area: Rol, resumen: ExpedienteResumenArea): void;
+  /** Los datos personales de la usuaria de ese expediente cambiaron: el área vuelve a pedirlos. */
+  notificarUsuariaActualizada(area: Rol, expedienteId: string): void;
 }

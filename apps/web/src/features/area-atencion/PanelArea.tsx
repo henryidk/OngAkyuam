@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { ETIQUETAS_TIPO_REGISTRO, formatFechaGT, type ExpedienteResumenArea } from '@akyuam/shared'
 import { api } from '../../lib/api'
@@ -20,20 +20,18 @@ export default function PanelArea({ basePath, renderAcciones }: PanelAreaProps) 
   const [expedientes, setExpedientes] = useState<ExpedienteResumenArea[] | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    let cancelado = false
-    api
-      .get<ExpedienteResumenArea[]>('/areas/expedientes')
-      .then(({ data }) => {
-        if (!cancelado) setExpedientes(data)
-      })
-      .catch((err) => {
-        if (!cancelado) setError(extraerMensajeError(err))
-      })
-    return () => {
-      cancelado = true
+  const cargar = useCallback(async () => {
+    try {
+      const { data } = await api.get<ExpedienteResumenArea[]>('/areas/expedientes')
+      setExpedientes(data)
+    } catch (err) {
+      setError(extraerMensajeError(err))
     }
   }, [])
+
+  useEffect(() => {
+    void cargar()
+  }, [cargar])
 
   useEffect(() => {
     const socket = crearSocketArea()
@@ -45,10 +43,12 @@ export default function PanelArea({ basePath, renderAcciones }: PanelAreaProps) 
         return [resumen, ...actuales]
       })
     })
+    // Trabajo Social corrigió los datos personales: el aviso trae solo el id, los datos se vuelven a pedir.
+    socket.on('usuaria:actualizada', () => void cargar())
     return () => {
       socket.disconnect()
     }
-  }, [])
+  }, [cargar])
 
   return (
     <div>

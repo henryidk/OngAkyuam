@@ -1,5 +1,5 @@
 import type { UseFormRegisterReturn } from 'react-hook-form'
-import Campo from './Campo'
+import Campo, { claseBordeCampo, idDescripcionCampo } from './Campo'
 
 interface Opcion {
   value: string
@@ -14,6 +14,7 @@ interface SelectInputProps {
   error?: string
   ayuda?: string
   opcional?: boolean
+  modificado?: boolean
 }
 
 export default function SelectInput({
@@ -24,12 +25,22 @@ export default function SelectInput({
   error,
   ayuda,
   opcional,
+  modificado,
 }: SelectInputProps) {
   return (
-    <Campo label={label} htmlFor={registro.name} error={error} ayuda={ayuda} opcional={opcional}>
+    <Campo
+      label={label}
+      htmlFor={registro.name}
+      error={error}
+      ayuda={ayuda}
+      opcional={opcional}
+      modificado={modificado}
+    >
       <select
         id={registro.name}
-        className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+        aria-invalid={error ? true : undefined}
+        aria-describedby={idDescripcionCampo(registro.name, { error, ayuda })}
+        className={`mt-1 w-full rounded border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 ${claseBordeCampo({ error, modificado })}`}
         {...registro}
       >
         {placeholder && <option value="">{placeholder}</option>}

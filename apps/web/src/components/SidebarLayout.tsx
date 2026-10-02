@@ -3,6 +3,7 @@ import { type ComponentType, type ReactNode, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import LogoutButton from './LogoutButton'
 import { TituloPaginaProvider, useTituloPaginaActual } from './TituloPagina'
+import { useEnlaceProtegido } from '../lib/guardiaSalida'
 import { useAuthStore } from '../store/auth.store'
 
 export interface ItemNav {
@@ -56,6 +57,7 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
   const usuario = useAuthStore((state) => state.usuario)
   const location = useLocation()
   const tituloPagina = useTituloPaginaActual()
+  const protegerEnlace = useEnlaceProtegido()
 
   const paginaActual = items.find((item) => estaActivo(item, location.pathname))
   const titulo = tituloPagina?.titulo ?? paginaActual?.etiqueta ?? subtitulo
@@ -101,7 +103,10 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
               <NavLink
                 key={ruta}
                 to={ruta}
-                onClick={() => setSidebarAbierto(false)}
+                onClick={(evento) => {
+                  setSidebarAbierto(false)
+                  protegerEnlace(evento, ruta)
+                }}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                   activo ? 'bg-white/10 text-white' : 'text-brand-200 hover:bg-white/5 hover:text-white'
                 }`}
@@ -151,7 +156,11 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
                   <span key={`${miga.etiqueta}-${indice}`} className="flex items-center gap-1">
                     {indice > 0 && <ChevronRight size={12} className="shrink-0" />}
                     {miga.ruta ? (
-                      <Link to={miga.ruta} className="truncate hover:text-gray-700 hover:underline">
+                      <Link
+                        to={miga.ruta}
+                        onClick={(evento) => protegerEnlace(evento, miga.ruta!)}
+                        className="truncate hover:text-gray-700 hover:underline"
+                      >
                         {miga.etiqueta}
                       </Link>
                     ) : (
