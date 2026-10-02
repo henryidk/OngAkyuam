@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   CATEGORIA_POR_TIPO_PROCESO,
   ETIQUETAS_CATEGORIA_PROCESO,
@@ -13,11 +13,18 @@ import { RUTAS_JURIDICO } from '../rutas'
 
 export default function FilaProceso({ proceso }: { proceso: ProcesoResumen }) {
   const alerta = textoAlerta(proceso)
+  const navigate = useNavigate()
+  const destino = RUTAS_JURIDICO.proceso(proceso.id)
   return (
-    <tr className="border-t border-gray-100 hover:bg-gray-50">
+    // Toda la fila abre el detalle; el enlace del código es el que recibe el foco del teclado.
+    <tr
+      onClick={() => navigate(destino)}
+      className="cursor-pointer border-t border-gray-100 hover:bg-gray-50"
+    >
       <td className="px-4 py-3 align-top">
         <Link
-          to={RUTAS_JURIDICO.proceso(proceso.id)}
+          to={destino}
+          onClick={(evento) => evento.stopPropagation()}
           className="font-mono text-[13px] font-medium text-brand-700 hover:underline"
         >
           {proceso.codigo}
