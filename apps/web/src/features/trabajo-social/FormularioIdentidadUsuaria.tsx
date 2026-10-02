@@ -100,10 +100,9 @@ export default function FormularioIdentidadUsuaria({
       <div className="grid gap-4 sm:grid-cols-2">
         <TextoInput
           label="DPI"
-          opcional
           inputMode="numeric"
           maxLength={13}
-          ayuda="13 dígitos, sin espacios ni guiones."
+          ayuda="13 dígitos, sin espacios ni guiones. Solo puede quedar vacío si es menor de edad."
           registro={register('dpi')}
           error={errors.dpi?.message}
         />

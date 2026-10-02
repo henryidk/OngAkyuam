@@ -127,6 +127,9 @@ export const ETIQUETAS_RANGO_EDAD: Record<RangoEdad, string> = {
   MAYOR_60: 'Mayor de 60 años',
 }
 
+/** Desde esta edad la usuaria ya tiene DPI y es obligatorio capturarlo; antes, basta con nombres y fecha de nacimiento. */
+export const MAYORIA_DE_EDAD = 18
+
 /** Edad máxima (sin incluir) para registrar a un hijo/hija como población beneficiada junto a la usuaria. */
 export const EDAD_MAXIMA_NINOS = 12
 

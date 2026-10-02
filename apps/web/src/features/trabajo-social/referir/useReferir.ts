@@ -6,7 +6,6 @@ import {
   type PrioridadReferido,
   type ProfesionalArea,
   type ReferidoCreado,
-  type TipoProcesoJuridico,
   type TipoDocumentoTrabajoSocial,
 } from '@akyuam/shared'
 import { extraerMensajeError } from '../../../lib/errors'
@@ -32,8 +31,6 @@ export function useReferir(
   const [profesionalId, setProfesionalId] = useState('')
   const [prioridad, setPrioridad] = useState<PrioridadReferido>('NORMAL')
   const [motivo, setMotivo] = useState('')
-  // Solo al referir a Jurídico: una sugerencia, Jurídico decide qué procesos registra.
-  const [procesosSugeridos, setProcesosSugeridos] = useState<TipoProcesoJuridico[]>([])
   const [datosCaso, setDatosCaso] = useState(true)
   const [documentosVisibles, setDocumentosVisibles] = useState<TipoDocumentoTrabajoSocial[]>([])
 
@@ -87,7 +84,6 @@ export function useReferir(
       if (areasReferidas.includes(nueva)) return
       setAreaState(nueva)
       setProfesionalId('')
-      setProcesosSugeridos([])
       setError(null)
     },
     [areasReferidas],
@@ -96,12 +92,6 @@ export function useReferir(
   const alternarDocumento = useCallback((tipo: TipoDocumentoTrabajoSocial, visible: boolean) => {
     setDocumentosVisibles((actuales) =>
       visible ? [...new Set([...actuales, tipo])] : actuales.filter((actual) => actual !== tipo),
-    )
-  }, [])
-
-  const alternarProcesoSugerido = useCallback((tipo: TipoProcesoJuridico) => {
-    setProcesosSugeridos((actuales) =>
-      actuales.includes(tipo) ? actuales.filter((actual) => actual !== tipo) : [...actuales, tipo],
     )
   }, [])
 
@@ -119,7 +109,6 @@ export function useReferir(
       profesionalAsignadoId: profesionalId || undefined,
       prioridad,
       motivo,
-      procesosSugeridos: area === 'JURIDICO' ? procesosSugeridos : [],
       visibilidad: { datosCaso, documentos: documentosVisibles },
     })
     if (!validado.success) {
@@ -135,7 +124,7 @@ export function useReferir(
     } finally {
       setEnviando(false)
     }
-  }, [area, profesionalId, prioridad, motivo, procesosSugeridos, datosCaso, documentosVisibles, expedienteId, onReferido])
+  }, [area, profesionalId, prioridad, motivo, datosCaso, documentosVisibles, expedienteId, onReferido])
 
   return {
     area,
@@ -146,8 +135,6 @@ export function useReferir(
     setPrioridad,
     motivo,
     setMotivo,
-    procesosSugeridos,
-    alternarProcesoSugerido,
     datosCaso,
     setDatosCaso,
     documentosVisibles,

@@ -8,6 +8,7 @@ import {
   EDAD_MAXIMA_NINOS,
   GENEROS,
   GRUPOS_ETNICOS,
+  MAYORIA_DE_EDAD,
   MUNICIPIOS_ALTA_VERAPAZ,
   TIPOLOGIAS_DELITO,
   TIPOS_REGISTRO,
@@ -23,13 +24,14 @@ const fechaCalendarioSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
 
+// "" solo se acepta para una menor de edad (aún no tiene DPI): lo exige `identidadUsuariaSchema`.
+const dpiSchema = z.string().refine((valor) => valor === '' || /^\d{13}$/.test(valor), 'El DPI debe tener 13 dígitos')
+
 /**
  * Campos de texto opcionales: "" significa "no se capturó" — se valida así en vez de usar
  * `.optional()`/`.transform()` para que el tipo de entrada y de salida del schema sean
  * exactamente el mismo (`string`), que es lo que espera el resolver de react-hook-form.
  */
-const dpiSchema = z.string().refine((valor) => valor === '' || /^\d{13}$/.test(valor), 'El DPI debe tener 13 dígitos')
-
 const telefonoSchema = z.string().refine((valor) => valor === '' || valor.length >= 8, 'Teléfono inválido')
 
 const textoOpcionalSchema = z.string()
@@ -68,6 +70,15 @@ export const identidadUsuariaSchema = z
     municipioOtro: z.string(),
     ubicacionGeografica: z.string().min(1, 'Requerido'),
   })
+  // El DPI es obligatorio salvo para una menor de edad, que se registra con nombres y fecha de
+  // nacimiento. Con la fecha inválida no se evalúa: ese error ya lo reporta su propio campo.
+  .refine(
+    (datos) =>
+      datos.dpi !== '' ||
+      !fechaCalendarioSchema.safeParse(datos.fechaNacimiento).success ||
+      edadEnAniosGT(datos.fechaNacimiento) < MAYORIA_DE_EDAD,
+    { message: 'El DPI es obligatorio para mayores de edad', path: ['dpi'] },
+  )
   .refine(
     (datos) =>
       datos.fueraDeAltaVerapaz

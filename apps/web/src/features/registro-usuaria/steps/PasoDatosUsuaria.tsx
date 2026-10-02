@@ -17,7 +17,7 @@ import VerificarDpi from '../components/VerificarDpi'
 
 interface PasoDatosUsuariaProps {
   form: UseFormReturn<RegistroUsuariaNuevaFormValues>
-  /** Usuarias ya registradas que podrían ser la misma persona (solo se buscan si no hay DPI). */
+  /** Usuarias ya registradas que podrían ser la misma persona (solo se buscan si no hay DPI: menores de edad). */
   posiblesDuplicadas: UsuariaResumenBusqueda[]
   /** La usuaria ya existía: se abandona la captura de identidad y se registra un caso para ella. */
   onRegistrarCasoPara: (usuariaId: string) => void
@@ -66,10 +66,9 @@ export default function PasoDatosUsuaria({ form, posiblesDuplicadas, onRegistrar
         <div>
           <TextoInput
             label="DPI"
-            opcional
             inputMode="numeric"
             maxLength={13}
-            ayuda="13 dígitos, sin espacios ni guiones."
+            ayuda="13 dígitos, sin espacios ni guiones. Solo puede quedar vacío si es menor de edad."
             registro={register('datosUsuaria.dpi')}
             error={errors.datosUsuaria?.dpi?.message}
           />

@@ -30,6 +30,8 @@ const prisma = new PrismaClient();
 interface UsuariaReferidaSeed {
   nombres: string;
   apellidos: string;
+  /** Ficticio, 13 dígitos: toda usuaria mayor de edad lleva DPI. */
+  dpi: string;
   fechaNacimiento: string;
   grupoEtnico: GrupoEtnico;
   municipio: MunicipioAltaVerapaz;
@@ -45,6 +47,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
   {
     nombres: 'Ana Lucía',
     apellidos: 'Ficticia Caal',
+    dpi: '0000000051601',
     fechaNacimiento: '1991-04-12',
     grupoEtnico: 'MAYA_QECHI',
     municipio: 'COBAN',
@@ -58,6 +61,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
   {
     nombres: 'María Elena',
     apellidos: 'Ficticia Pop',
+    dpi: '0000000061601',
     fechaNacimiento: '1987-11-03',
     grupoEtnico: 'MAYA_POQOMCHI',
     municipio: 'TACTIC',
@@ -70,6 +74,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
   {
     nombres: 'Rosa Amelia',
     apellidos: 'Ficticia Tiul',
+    dpi: '0000000071601',
     fechaNacimiento: '1995-02-27',
     grupoEtnico: 'MAYA_QECHI',
     municipio: 'SAN_CRISTOBAL_VERAPAZ',
@@ -82,6 +87,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
   {
     nombres: 'Carmen Julia',
     apellidos: 'Ficticia Morales',
+    dpi: '0000000081601',
     fechaNacimiento: '1982-08-19',
     grupoEtnico: 'LADINO',
     municipio: 'COBAN',
@@ -94,6 +100,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
   {
     nombres: 'Sandra Paola',
     apellidos: 'Ficticia Xol',
+    dpi: '0000000091601',
     fechaNacimiento: '1999-06-05',
     grupoEtnico: 'MAYA_QECHI',
     municipio: 'SANTA_CRUZ_VERAPAZ',
@@ -107,6 +114,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     // Sin procesos sugeridos: Jurídico decide qué abrir.
     nombres: 'Gloria Isabel',
     apellidos: 'Ficticia Coc',
+    dpi: '0000000101601',
     fechaNacimiento: '1978-12-30',
     grupoEtnico: 'MAYA_QECHI',
     municipio: 'TAMAHU',
@@ -127,6 +135,7 @@ async function crear(
       data: {
         nombres: datos.nombres,
         apellidos: datos.apellidos,
+        dpi: datos.dpi,
         fechaNacimiento: new Date(datos.fechaNacimiento),
         grupoEtnico: datos.grupoEtnico,
         municipio: datos.municipio,
@@ -203,7 +212,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
   {
     nombres: 'Juana Patricia',
     apellidos: 'Ficticia Choc',
-    dpi: '0000 00001 1601',
+    dpi: '0000000011601',
     telefono: '0000-0001',
     fechaNacimiento: '1989-03-08',
     grupoEtnico: 'MAYA_QECHI',
@@ -246,7 +255,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
   {
     nombres: 'Marta Leticia',
     apellidos: 'Ficticia Ical',
-    dpi: '0000 00002 1601',
+    dpi: '0000000021601',
     telefono: '0000-0002',
     fechaNacimiento: '1984-07-21',
     grupoEtnico: 'MAYA_QECHI',
@@ -300,7 +309,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
   {
     nombres: 'Elvira Noemí',
     apellidos: 'Ficticia Bol',
-    dpi: '0000 00003 1601',
+    dpi: '0000000031601',
     telefono: '0000-0003',
     fechaNacimiento: '1993-10-14',
     grupoEtnico: 'MAYA_POQOMCHI',
@@ -345,7 +354,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
   {
     nombres: 'Dora Angélica',
     apellidos: 'Ficticia Maquín',
-    dpi: '0000 00004 1601',
+    dpi: '0000000041601',
     telefono: '0000-0004',
     fechaNacimiento: '1980-01-29',
     grupoEtnico: 'LADINO',
