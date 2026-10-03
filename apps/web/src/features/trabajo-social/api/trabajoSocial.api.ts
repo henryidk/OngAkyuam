@@ -142,13 +142,6 @@ export function buscarUsuariasPorNombre(nombre: string) {
     .then((res) => res.data)
 }
 
-/** `BuscadorGlobalTs` de la barra superior: un solo término, el backend decide si es número de expediente, DPI o nombre. */
-export function buscarUsuariasGlobal(q: string) {
-  return api
-    .get<UsuariaResumenBusqueda[]>('/trabajo-social/usuarias/buscar', { params: { q } })
-    .then((res) => res.data)
-}
-
 /** Inicio de Trabajo Social: colas, recientes, novedades y resumen del mes en una sola llamada. */
 export function obtenerBandeja() {
   return api.get<BandejaTs>('/trabajo-social/bandeja').then((res) => res.data)

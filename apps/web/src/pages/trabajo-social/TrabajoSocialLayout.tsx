@@ -3,7 +3,6 @@ import { useOutletContext } from 'react-router-dom'
 import type { BandejaTs } from '@akyuam/shared'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { useBandeja } from '../../features/trabajo-social/bandeja/useBandeja'
-import BuscadorGlobalTs from '../../features/trabajo-social/busqueda/BuscadorGlobalTs'
 
 const ITEMS_NAV: ItemNav[] = [
   { ruta: '/trabajo-social', etiqueta: 'Inicio', fin: true, Icono: LayoutDashboard },
@@ -34,7 +33,6 @@ export default function TrabajoSocialLayout() {
       items={ITEMS_NAV}
       subtitulo="Trabajo social"
       contadores={{ [RUTA_INICIO]: pendientes }}
-      accionesHeader={<BuscadorGlobalTs />}
       outletContext={{ bandeja, error, recargar } satisfies ContextoTrabajoSocial}
     />
   )

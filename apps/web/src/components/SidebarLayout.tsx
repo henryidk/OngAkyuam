@@ -23,7 +23,7 @@ export interface ItemNav {
 interface SidebarLayoutProps {
   items: ItemNav[]
   subtitulo: string
-  /** Contenido a la derecha del header — p. ej. el buscador global de Trabajo Social. */
+  /** Contenido opcional a la derecha del header (hoy ningún panel lo usa). */
   accionesHeader?: ReactNode
   /** Contador por `ruta` de `ItemNav` — p. ej. pendientes de Inicio. Solo se muestra si es mayor a 0. */
   contadores?: Partial<Record<string, number>>
