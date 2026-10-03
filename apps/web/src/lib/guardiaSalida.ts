@@ -16,6 +16,11 @@ export function registrarGuardiaSalida(guardia: GuardiaSalida): () => void {
   }
 }
 
+/** `true` si alguna pantalla tiene cambios sin guardar (su guardia ya pide confirmación). */
+export function hayGuardiaSalida(): boolean {
+  return guardiaActiva !== null
+}
+
 /** Sin guardia registrada, continúa de inmediato. */
 export function pedirConfirmacionSalida(continuar: () => void): void {
   if (guardiaActiva) guardiaActiva(continuar)

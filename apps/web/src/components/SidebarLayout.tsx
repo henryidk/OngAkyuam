@@ -75,11 +75,13 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col overflow-y-auto bg-brand-950 transition-transform duration-200 ease-out lg:static lg:translate-x-0 ${
+        // Alto de la ventana y fijo al hacer scroll: la cuenta y "Cerrar sesión" siempre a la vista,
+        // aunque la página sea larga. Si el menú no cabe, solo la lista de secciones hace scroll.
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col bg-brand-950 transition-transform duration-200 ease-out lg:sticky lg:top-0 lg:h-screen lg:translate-x-0 ${
           sidebarAbierto ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between px-5 pt-6 pb-5">
+        <div className="flex shrink-0 items-center justify-between px-5 pt-6 pb-5">
           <div>
             <p className="text-lg font-semibold tracking-tight text-white">AKyuam</p>
             <p className="text-xs font-medium tracking-wide text-brand-300">{subtitulo}</p>
@@ -94,7 +96,7 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
           </button>
         </div>
 
-        <nav className="flex flex-1 flex-col gap-1 px-3">
+        <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3">
           {items.map((item) => {
             const { ruta, etiqueta, Icono } = item
             const activo = item === paginaActual
@@ -123,7 +125,7 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
           })}
         </nav>
 
-        <div className="border-t border-white/10 p-4">
+        <div className="shrink-0 border-t border-white/10 p-4">
           <div className="flex items-center gap-3 rounded-lg bg-white/5 p-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
               {usuario ? obtenerIniciales(usuario.nombreCompleto) : ''}

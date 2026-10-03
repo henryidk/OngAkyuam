@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { hayGuardiaSalida, pedirConfirmacionSalida } from '../lib/guardiaSalida'
 import { useAuthStore } from '../store/auth.store'
+import ConfirmModal from './ui/ConfirmModal'
 
 interface LogoutButtonProps {
   /** 'claro' = uso por defecto en headers sobre fondo blanco. 'oscuro' = sidebars/superficies oscuras. */
@@ -14,9 +16,10 @@ const ESTILOS_VARIANTE = {
 
 export default function LogoutButton({ variante = 'claro' }: LogoutButtonProps) {
   const logout = useAuthStore((state) => state.logout)
+  const [confirmando, setConfirmando] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
-  async function handleClick() {
+  async function cerrarSesion() {
     setIsLoggingOut(true)
     try {
       // auth.store.logout() ya limpia la sesión local en su propio `finally`
@@ -27,17 +30,35 @@ export default function LogoutButton({ variante = 'claro' }: LogoutButtonProps) 
       // intencional: ver comentario arriba.
     } finally {
       setIsLoggingOut(false)
+      setConfirmando(false)
+    }
+  }
+
+  function alPulsar() {
+    // Con cambios sin guardar, "¿Descartar los cambios?" ya es la confirmación: no se encadenan
+    // dos modales seguidos.
+    if (hayGuardiaSalida()) {
+      pedirConfirmacionSalida(() => void cerrarSesion())
+    } else {
+      setConfirmando(true)
     }
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={isLoggingOut}
-      className={ESTILOS_VARIANTE[variante]}
-    >
-      {isLoggingOut ? 'Cerrando…' : 'Cerrar'}
-    </button>
+    <>
+      <button type="button" onClick={alPulsar} disabled={isLoggingOut} className={ESTILOS_VARIANTE[variante]}>
+        {isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
+      </button>
+      <ConfirmModal
+        abierto={confirmando}
+        titulo="¿Cerrar sesión?"
+        descripcion="Para volver a entrar necesitarás tu usuario y contraseña."
+        confirmarLabel="Cerrar sesión"
+        cancelarLabel="Seguir aquí"
+        cargando={isLoggingOut}
+        onConfirmar={() => void cerrarSesion()}
+        onCancelar={() => setConfirmando(false)}
+      />
+    </>
   )
 }
