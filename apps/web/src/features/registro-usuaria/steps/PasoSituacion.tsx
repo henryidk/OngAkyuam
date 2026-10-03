@@ -72,6 +72,9 @@ export default function PasoSituacion({ form, sinDatosAgresor, onCambiarSinDatos
             opcional
             readOnly={sinDatosAgresor}
             tabIndex={sinDatosAgresor ? -1 : undefined}
+            inputMode="numeric"
+            maxLength={8}
+            ayuda="8 dígitos, sin espacios ni guiones."
             registro={register('datosCaso.datosAgresor.telefono')}
             error={errors.datosCaso?.datosAgresor?.telefono?.message}
           />

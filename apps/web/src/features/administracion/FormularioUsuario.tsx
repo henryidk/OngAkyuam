@@ -99,6 +99,8 @@ function FormularioCrear({
       />
       <TextoInput
         label="Teléfono"
+        inputMode="numeric"
+        maxLength={8}
         registro={register('telefono')}
         error={errors.telefono?.message}
         ayuda="8 dígitos"
@@ -204,6 +206,8 @@ function FormularioEditar({
       />
       <TextoInput
         label="Teléfono"
+        inputMode="numeric"
+        maxLength={8}
         registro={register('telefono')}
         error={errors.telefono?.message}
         ayuda="8 dígitos"

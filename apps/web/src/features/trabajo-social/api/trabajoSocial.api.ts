@@ -14,7 +14,6 @@ import type {
   ListarUsuariasQuery,
   ListaUsuariasTs,
   MatrizAccesos,
-  ProfesionalArea,
   ReferidoCreado,
   ReferirInput,
   RegistrarEgresoInput,
@@ -77,13 +76,6 @@ export function referirCaso(expedienteId: string, datos: ReferirInput) {
 export function registrarEgreso(expedienteId: string, datos: RegistrarEgresoInput) {
   return api
     .post<EgresoRegistrado>(`/trabajo-social/expedientes/${expedienteId}/egreso`, datos)
-    .then((res) => res.data)
-}
-
-/** Usuarios activos del área, para el select "Profesional que atenderá" del modal Referir. */
-export function listarProfesionales(area: AreaAtencion) {
-  return api
-    .get<ProfesionalArea[]>('/trabajo-social/profesionales', { params: { area } })
     .then((res) => res.data)
 }
 

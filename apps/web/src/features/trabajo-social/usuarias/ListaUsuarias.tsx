@@ -4,7 +4,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_ESTADO_TS,
-  ETIQUETAS_TIPO_REGISTRO,
+  ETIQUETAS_TIPO_REGISTRO_CORTAS,
   formatInstanteGT,
   TONO_BADGE_ESTADO_TS,
   type FiltroListaUsuarias,
@@ -79,8 +79,6 @@ export default function ListaUsuarias() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
-      <p className="text-sm text-gray-500">Todas las usuarias registradas y cómo va la atención de su caso actual.</p>
-
       <div className="flex flex-wrap items-center justify-between gap-3">
         <FiltrosEstado
           activo={filtro}
@@ -142,7 +140,7 @@ export default function ListaUsuarias() {
                       {textoEdad(fila.fechaNacimiento)}
                     </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-700">
-                      {ETIQUETAS_TIPO_REGISTRO[fila.tipoRegistro]}
+                      {ETIQUETAS_TIPO_REGISTRO_CORTAS[fila.tipoRegistro]}
                       {fila.enAlbergue && <span className="block text-xs text-brand-700">En albergue</span>}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-700">{textoAreas(fila.areasReferidas)}</td>
@@ -189,15 +187,6 @@ export default function ListaUsuarias() {
             </div>
           </div>
         )}
-
-        <div className="flex items-center justify-between gap-3 border-t border-gray-200 bg-gray-50/50 px-4 py-3.5">
-          <p className="text-[13px] text-gray-500">
-            ¿No la encuentras? Verifica primero por DPI para no duplicar el expediente.
-          </p>
-          <Button variante="secondary" onClick={() => navigate('/trabajo-social/registrar')}>
-            Registrar usuaria
-          </Button>
-        </div>
       </section>
     </div>
   )

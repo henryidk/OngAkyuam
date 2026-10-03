@@ -3,12 +3,9 @@ import { createPortal } from 'react-dom'
 import {
   AREAS_ATENCION,
   ETIQUETAS_AREA_ATENCION,
-  ETIQUETAS_PRIORIDAD_REFERIDO,
   ETIQUETAS_TIPO_DOCUMENTO,
   MOTIVO_REFERIDO_MAX,
-  PRIORIDADES_REFERIDO,
   type AreaAtencion,
-  type PrioridadReferido,
   type ReferidoCreado,
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
@@ -72,7 +69,10 @@ function ControlVisibilidad({
   )
 }
 
-/** Modal ancho de §12.7: elegir área, quién atiende, prioridad, motivo y qué podrá ver el área. */
+/**
+ * Modal ancho de §12.7: elegir área, motivo y qué podrá ver el área. Quién atiende y la
+ * prioridad no se deciden aquí: cada área las define desde su panel.
+ */
 export default function ModalReferir({
   expedienteId,
   numeroExpediente,
@@ -146,58 +146,10 @@ export default function ModalReferir({
 
           {area && (
             <>
-              <section className="space-y-3">
-                <TituloSeccion numero={2}>Quién la atiende</TituloSeccion>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <label className="block space-y-1">
-                    <span className="text-xs font-medium text-gray-600">
-                      Profesional que atenderá{area === 'MEDICA' && ' (opcional)'}
-                    </span>
-                    {esJuridico ? (
-                      <p className="rounded-md bg-gray-50 px-3 py-2 text-[13px] text-gray-500">
-                        Jurídico asigna abogada y procuradora en cada proceso.
-                      </p>
-                    ) : (
-                      <select
-                        value={referir.profesionalId}
-                        onChange={(event) => referir.setProfesionalId(event.target.value)}
-                        disabled={!referir.profesionales}
-                        className={CLASE_CAMPO}
-                      >
-                        <option value="">
-                          {!referir.profesionales
-                            ? 'Cargando…'
-                            : referir.profesionales.length === 0
-                              ? 'No hay profesionales activas en el área'
-                              : area === 'PSICOLOGIA'
-                                ? 'Elige una psicóloga'
-                                : 'Sin asignar'}
-                        </option>
-                        {referir.profesionales?.map((profesional) => (
-                          <option key={profesional.id} value={profesional.id}>
-                            {profesional.nombreCompleto}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                  </label>
-                  <label className="block space-y-1">
-                    <span className="text-xs font-medium text-gray-600">Prioridad</span>
-                    <select
-                      value={referir.prioridad}
-                      onChange={(event) => referir.setPrioridad(event.target.value as PrioridadReferido)}
-                      className={CLASE_CAMPO}
-                    >
-                      {PRIORIDADES_REFERIDO.map((opcion) => (
-                        <option key={opcion} value={opcion}>
-                          {ETIQUETAS_PRIORIDAD_REFERIDO[opcion]}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                <label className="block space-y-1">
-                  <span className="text-xs font-medium text-gray-600">Motivo de la referencia</span>
+              <section className="space-y-2">
+                <TituloSeccion numero={2}>Motivo de la referencia</TituloSeccion>
+                <label className="block">
+                  <span className="sr-only">Motivo de la referencia</span>
                   <textarea
                     rows={2}
                     maxLength={MOTIVO_REFERIDO_MAX}

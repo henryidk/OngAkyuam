@@ -8,8 +8,8 @@ export interface PasoWizard {
   titulo: string
   /** Texto corto del stepper. */
   descripcion: string
-  /** Texto de ayuda debajo del título de la tarjeta del paso. */
-  ayuda: string
+  /** Texto de ayuda debajo del título de la tarjeta del paso (opcional). */
+  ayuda?: string
   /** Rutas del formulario a validar antes de avanzar a este paso. Vacío = sin datos propios que validar. */
   campos: FieldPath<RegistroUsuariaNuevaFormValues>[]
 }
@@ -40,8 +40,6 @@ const PASOS_BASE: PasoWizard[] = [
     id: 'usuaria',
     titulo: 'Usuaria',
     descripcion: 'Identidad y datos demográficos',
-    ayuda:
-      'Todo lo de la usuaria en un solo lugar: estos datos también alimentan el reporte de población beneficiada.',
     campos: ['datosCaso.fecha', 'datosUsuaria'],
   },
   {

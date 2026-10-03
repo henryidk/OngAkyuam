@@ -32,7 +32,7 @@ const dpiSchema = z.string().refine((valor) => valor === '' || /^\d{13}$/.test(v
  * `.optional()`/`.transform()` para que el tipo de entrada y de salida del schema sean
  * exactamente el mismo (`string`), que es lo que espera el resolver de react-hook-form.
  */
-const telefonoSchema = z.string().refine((valor) => valor === '' || valor.length >= 8, 'Teléfono inválido')
+const telefonoSchema = z.string().refine((valor) => valor === '' || /^\d{8}$/.test(valor), 'El teléfono debe tener 8 dígitos')
 
 const textoOpcionalSchema = z.string()
 
@@ -121,7 +121,7 @@ export const OBSERVACIONES_CASO_MAX = 2000
  * completo de "nuevo caso" para una usuaria ya existente (`nuevoCasoSchema` = este schema, sin
  * más), y la mitad de `registroUsuariaNuevaSchema` cuando la usuaria es nueva.
  * Referir a un área ya no es parte del registro: se hace después, desde la ficha del caso
- * (`referirSchema`), para elegir profesional, prioridad y visibilidad en el mismo paso.
+ * (`referirSchema`), para elegir el motivo y la visibilidad en el mismo paso.
  */
 export const datosCasoSchema = z
   .object({

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate, useParams } from 'react-router-dom'
-import { ETIQUETAS_AREA_ATENCION, type AreaAtencion, type ReferidoCreado } from '@akyuam/shared'
+import type { AreaAtencion } from '@akyuam/shared'
 import { useToast } from '../../../components/ui/Toast'
 import { pedirConfirmacionSalida, useEnlaceProtegido } from '../../../lib/guardiaSalida'
 import ModalEgreso from '../egreso/ModalEgreso'
@@ -54,15 +54,12 @@ export default function FichaUsuaria() {
     }
   }, [llegaAReferir, navigate, location.pathname])
 
-  const onReferido = useCallback(
-    (referido: ReferidoCreado) => {
-      setReferir(null)
-      mostrar(`Referida a ${ETIQUETAS_AREA_ATENCION[referido.area]} · ya aparece en su bandeja`)
-      setVersion((actual) => actual + 1)
-      void recargar()
-    },
-    [recargar, mostrar],
-  )
+  const onReferido = useCallback(() => {
+    setReferir(null)
+    mostrar('Usuaria referida')
+    setVersion((actual) => actual + 1)
+    void recargar()
+  }, [recargar, mostrar])
 
   const onEgresoRegistrado = useCallback(
     (resultado: ResultadoEgreso) => {

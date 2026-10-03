@@ -112,6 +112,12 @@ export const ETIQUETAS_TIPO_REGISTRO: Record<(typeof TIPOS_REGISTRO)[number], st
   EXTERNA: 'Externa',
 }
 
+/** Versión corta para columnas de tabla, donde la aclaración del albergue sobra. */
+export const ETIQUETAS_TIPO_REGISTRO_CORTAS: Record<(typeof TIPOS_REGISTRO)[number], string> = {
+  INTERNA: 'Interna',
+  EXTERNA: 'Externa',
+}
+
 /** Para columnas angostas (reporte de población beneficiada, tablas). */
 export const ETIQUETAS_CORTAS_TIPO_REGISTRO: Record<(typeof TIPOS_REGISTRO)[number], string> = {
   INTERNA: 'Interna',

@@ -29,9 +29,10 @@ export const MOTIVO_REFERIDO_MAX = 1000
 export const referirSchema = z.object({
   area: areaAtencionSchema,
   // Opcional en el contrato: sin profesional, el referido queda en la cola del área (flujo de
-  // reclamación de Psicología intacto). El modal lo exige para Psicología.
+  // reclamación de Psicología intacto). El modal de Trabajo Social ya no lo envía.
   profesionalAsignadoId: z.uuid().optional(),
-  prioridad: prioridadReferidoSchema,
+  // El modal tampoco la envía: cada área decide la urgencia desde su panel.
+  prioridad: prioridadReferidoSchema.default('NORMAL'),
   motivo: z.string().trim().max(MOTIVO_REFERIDO_MAX),
   visibilidad: z.object({
     datosCaso: z.boolean(),

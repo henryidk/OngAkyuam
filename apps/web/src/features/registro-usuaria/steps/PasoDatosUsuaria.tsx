@@ -77,6 +77,9 @@ export default function PasoDatosUsuaria({ form, posiblesDuplicadas, onRegistrar
         <TextoInput
           label="Teléfono"
           opcional
+          inputMode="numeric"
+          maxLength={8}
+          ayuda="8 dígitos, sin espacios ni guiones."
           registro={register('datosUsuaria.telefono')}
           error={errors.datosUsuaria?.telefono?.message}
         />

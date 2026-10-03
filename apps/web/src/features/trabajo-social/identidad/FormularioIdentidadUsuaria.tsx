@@ -146,7 +146,9 @@ export default function FormularioIdentidadUsuaria({
       <TextoInput
         label="Teléfono"
         opcional
-        inputMode="tel"
+        inputMode="numeric"
+        maxLength={8}
+        ayuda="8 dígitos, sin espacios ni guiones."
         className="tabular-nums"
         registro={register('telefono')}
         error={errors.telefono?.message}

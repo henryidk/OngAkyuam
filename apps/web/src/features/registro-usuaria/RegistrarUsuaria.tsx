@@ -263,7 +263,7 @@ function WizardRegistro({
               Paso {indiceActual + 1} de {pasos.length}
             </p>
             <h2 className="text-lg font-semibold text-gray-900">{paso.titulo}</h2>
-            <p className="text-[13px] text-gray-500">{paso.ayuda}</p>
+            {paso.ayuda && <p className="text-[13px] text-gray-500">{paso.ayuda}</p>}
           </header>
 
           <div className="flex flex-col gap-5 p-6">
