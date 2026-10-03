@@ -3,8 +3,9 @@ import type {
   AreaAtencion,
   BandejaTs,
   CompartidoArea,
+  CrearCasoInput,
   CrearExpedienteInput,
-  DatosCaso,
+  DocumentoPendienteSubido,
   DocumentosCaso,
   DocumentoSubido,
   EgresoRegistrado,
@@ -43,6 +44,32 @@ export function subirDocumentoCaso(expedienteId: string, tipo: TipoDocumentoTrab
   formData.append('tipo', tipo)
   formData.append('areasVisibles', JSON.stringify([]))
   return api.post<DocumentoSubido>(rutaDocumentos(expedienteId), formData).then((res) => res.data)
+}
+
+/**
+ * Paso "Documentos" del registro: sube el escaneo en cuanto se elige, antes de que exista el
+ * expediente. Al registrar se envían los `id` y el servidor los adjunta en la misma transacción.
+ */
+export function subirDocumentoPendiente(
+  tipo: TipoDocumentoTrabajoSocial,
+  archivo: File,
+  onProgreso: (porcentaje: number) => void,
+  signal?: AbortSignal,
+) {
+  const formData = new FormData()
+  formData.append('tipo', tipo)
+  formData.append('archivo', archivo)
+  return api
+    .post<DocumentoPendienteSubido>('/trabajo-social/documentos-pendientes', formData, {
+      signal,
+      onUploadProgress: (evento) => onProgreso(evento.total ? Math.round((evento.loaded / evento.total) * 100) : 0),
+    })
+    .then((res) => res.data)
+}
+
+/** "Quitar" o "Cambiar" en el paso Documentos: el servidor borra el archivo en el momento. */
+export function descartarDocumentoPendiente(id: string) {
+  return api.delete(`/trabajo-social/documentos-pendientes/${id}`).then(() => undefined)
 }
 
 export function subirVersionDocumento(expedienteId: string, documentoId: string, archivo: File) {
@@ -101,9 +128,9 @@ export function crearExpedienteConUsuaria(datos: CrearExpedienteInput) {
 }
 
 /** Caso nuevo para una usuaria ya registrada — nunca vuelve a enviar su identidad. */
-export function crearCasoParaUsuaria(usuariaId: string, datosCaso: DatosCaso) {
+export function crearCasoParaUsuaria(usuariaId: string, datos: CrearCasoInput) {
   return api
-    .post<ExpedienteCreado>(`/trabajo-social/usuarias/${usuariaId}/expedientes`, datosCaso)
+    .post<ExpedienteCreado>(`/trabajo-social/usuarias/${usuariaId}/expedientes`, datos)
     .then((res) => res.data)
 }
 

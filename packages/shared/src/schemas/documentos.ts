@@ -24,6 +24,24 @@ export const subirDocumentoSchema = z.object({
 })
 export type SubirDocumentoInput = z.infer<typeof subirDocumentoSchema>
 
+/**
+ * `POST /trabajo-social/documentos-pendientes` (multipart, campo `archivo`) — escaneo subido en
+ * el paso "Documentos" del registro, antes de que exista el expediente. Sin visibilidad por
+ * área: todo documento nace privado y se comparte después, al referir.
+ */
+export const subirDocumentoPendienteSchema = z.object({
+  tipo: tipoDocumentoTrabajoSocialSchema,
+})
+export type SubirDocumentoPendienteInput = z.infer<typeof subirDocumentoPendienteSchema>
+
+/** Respuesta de `POST /trabajo-social/documentos-pendientes` — nunca incluye la clave en R2. */
+export interface DocumentoPendienteSubido {
+  id: string
+  tipo: TipoDocumentoTrabajoSocial
+  nombreArchivo: string
+  tamanioBytes: number
+}
+
 /** `GET .../documentos/:documentoId/url?inline=true` — `inline` para la vista previa del drawer. */
 export const urlDocumentoQuerySchema = z.object({
   inline: booleanoQuerySchema.default(false),

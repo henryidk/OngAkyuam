@@ -23,6 +23,11 @@ import { CompartidoService } from './compartido/compartido.service';
 import { EstrategiasCompartido } from './compartido/estrategias-compartido';
 import { COMPARTIDO_REPOSITORY } from './compartido/interfaces/compartido-repository.interface';
 import { CompartidoRepository } from './compartido/repositories/compartido.repository';
+import { DocumentosPendientesController } from './documentos-pendientes/documentos-pendientes.controller';
+import { DocumentosPendientesService } from './documentos-pendientes/documentos-pendientes.service';
+import { DOCUMENTOS_PENDIENTES_REPOSITORY } from './documentos-pendientes/interfaces/documentos-pendientes-repository.interface';
+import { LimpiezaDocumentosPendientesService } from './documentos-pendientes/limpieza-documentos-pendientes.service';
+import { DocumentosPendientesRepository } from './documentos-pendientes/repositories/documentos-pendientes.repository';
 import { DocumentosController } from './documentos.controller';
 import { DocumentosService } from './documentos.service';
 import { EgresoController } from './egreso/egreso.controller';
@@ -55,6 +60,7 @@ import { UsuariasModule } from './usuarias/usuarias.module';
   ],
   controllers: [
     DocumentosController,
+    DocumentosPendientesController,
     ReferidosController,
     AccesosController,
     EgresoController,
@@ -66,6 +72,12 @@ import { UsuariasModule } from './usuarias/usuarias.module';
   providers: [
     DocumentosService,
     { provide: DOCUMENTOS_REPOSITORY, useClass: DocumentosRepository },
+    DocumentosPendientesService,
+    LimpiezaDocumentosPendientesService,
+    {
+      provide: DOCUMENTOS_PENDIENTES_REPOSITORY,
+      useClass: DocumentosPendientesRepository,
+    },
     ReferidosService,
     { provide: REFERIDOS_REPOSITORY, useClass: ReferidosRepository },
     AccesosService,

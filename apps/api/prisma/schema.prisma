@@ -53,6 +53,7 @@ model Usuario {
   atencionesPsicologicasAsignadas    AtencionPsicologica[]      @relation("AtencionPsicologicaAsignada")
   cambiosEstadoAtencionRegistrados   CambioEstadoAtencion[]     @relation("CambioEstadoAtencionRegistradoPor")
   citasPsicologicasAtendidas         CitaPsicologica[]          @relation("CitaPsicologicaAtendidaPor")
+  documentosPendientesSubidos        DocumentoPendiente[]
 }
 
 model RefreshToken {
@@ -297,6 +298,27 @@ model Documento {
   @@index([expedienteId])
   @@index([citaPsicologicaId])
   @@index([expedienteId, tipo, vigente])
+}
+
+// Escaneo subido en el paso "Documentos" del registro, cuando el expediente todavía no existe.
+// Se sube a R2 en cuanto se elige (progreso y errores visibles en ese mismo paso) y, al
+// registrar, la misma transacción que crea el expediente lo convierte en un `Documento` y borra
+// esta fila — la clave en R2 no cambia. Si el registro se abandona, la limpieza periódica
+// (`LimpiezaDocumentosPendientesService`) borra fila y objeto pasado su tiempo de vida, para no
+// dejar escaneos sensibles sin expediente. Solo quien lo subió puede adjuntarlo o descartarlo.
+model DocumentoPendiente {
+  id            String        @id @default(uuid())
+  tipo          TipoDocumento
+  nombreArchivo String // solo para mostrar en UI — nunca forma parte de la clave en R2
+  claveR2       String        @unique
+  mimeType      String
+  tamanioBytes  Int
+  subidoPorId   String
+  subidoPor     Usuario       @relation(fields: [subidoPorId], references: [id])
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+
+  @@index([subidoPorId])
+  @@index([createdAt])
 }
 
 // Visibilidad de un documento para un área — permiso explícito y separado de ReferidoArea.

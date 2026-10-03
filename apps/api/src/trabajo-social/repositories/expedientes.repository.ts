@@ -2,11 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   fechaColumnaISO,
+  tipoDocumentoAplicaARegistro,
   type AreaAtencion,
   type ExpedienteDetalleCaso,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { VIDA_UTIL_DOCUMENTO_PENDIENTE_MS } from '../documentos-pendientes/interfaces/documentos-pendientes-repository.interface';
 import {
+  DocumentoPendienteNoAplicaError,
+  DocumentoPendienteNoDisponibleError,
   DpiUsuariaDuplicadoError,
   UsuariaNoEncontradaError,
 } from '../interfaces/expedientes-repository.interface';
@@ -162,6 +166,12 @@ export class ExpedientesRepository implements IExpedientesRepository {
       },
     });
 
+    const documentosAdjuntados = await this.adjuntarDocumentosPendientes(
+      tx,
+      expediente.id,
+      datosCaso,
+    );
+
     return {
       id: expediente.id,
       numero: expediente.numero,
@@ -170,7 +180,68 @@ export class ExpedientesRepository implements IExpedientesRepository {
       fecha: datosCaso.fecha,
       municipio: usuaria.municipio,
       tipoRegistro: expediente.tipoRegistro,
+      documentosAdjuntados,
     };
+  }
+
+  /**
+   * Convierte los escaneos ya subidos en el paso "Documentos" en `Documento`s del expediente
+   * recién creado, dentro de la misma transacción: o queda el caso con todos sus documentos, o
+   * no queda nada. La clave en R2 se conserva tal cual — no se copia ni se mueve el archivo.
+   * Sin filas de visibilidad: todo es privado por defecto hasta que trabajo social lo comparta.
+   */
+  private async adjuntarDocumentosPendientes(
+    tx: TransaccionPrisma,
+    expedienteId: string,
+    datosCaso: DatosCasoParams,
+  ): Promise<ExpedienteCreadoResultado['documentosAdjuntados']> {
+    const ids = [...new Set(datosCaso.documentosPendientesIds)];
+    if (ids.length === 0) {
+      return [];
+    }
+
+    // Solo los que subió quien registra y que no vencieron: nadie puede adjuntar el escaneo de otra persona.
+    const pendientes = await tx.documentoPendiente.findMany({
+      where: {
+        id: { in: ids },
+        subidoPorId: datosCaso.creadoPorId,
+        createdAt: {
+          gte: new Date(Date.now() - VIDA_UTIL_DOCUMENTO_PENDIENTE_MS),
+        },
+      },
+    });
+    const tiposDistintos = new Set(
+      pendientes.map((pendiente) => pendiente.tipo),
+    );
+    if (
+      pendientes.length !== ids.length ||
+      tiposDistintos.size !== pendientes.length
+    ) {
+      throw new DocumentoPendienteNoDisponibleError();
+    }
+    if (
+      pendientes.some(
+        (pendiente) =>
+          !tipoDocumentoAplicaARegistro(pendiente.tipo, datosCaso.tipoRegistro),
+      )
+    ) {
+      throw new DocumentoPendienteNoAplicaError();
+    }
+
+    const adjuntados = await tx.documento.createManyAndReturn({
+      data: pendientes.map((pendiente) => ({
+        expedienteId,
+        tipo: pendiente.tipo,
+        nombreArchivo: pendiente.nombreArchivo,
+        claveR2: pendiente.claveR2,
+        mimeType: pendiente.mimeType,
+        tamanioBytes: pendiente.tamanioBytes,
+        subidoPorId: pendiente.subidoPorId,
+      })),
+      select: { id: true, tipo: true },
+    });
+    await tx.documentoPendiente.deleteMany({ where: { id: { in: ids } } });
+    return adjuntados;
   }
 
   async obtenerDetalle(id: string): Promise<ExpedienteDetalleCaso | null> {

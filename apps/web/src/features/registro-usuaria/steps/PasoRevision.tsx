@@ -8,9 +8,11 @@ import {
   ETIQUETAS_TIPO_DOCUMENTO,
   ETIQUETAS_TIPOLOGIA_DELITO,
   formatFechaGT,
+  tipoDocumentoAplicaARegistro,
   type RegistroUsuariaNuevaFormValues,
+  type TipoRegistro,
 } from '@akyuam/shared'
-import type { DocumentoStaging } from '../hooks/useDocumentosStaging'
+import type { DocumentoRegistro } from '../hooks/useDocumentosStaging'
 import type { PasoId } from '../wizard'
 
 interface PasoRevisionProps {
@@ -18,7 +20,8 @@ interface PasoRevisionProps {
   onEditar: (pasoId: PasoId) => void
   /** Cuando la usuaria ya existe, su identidad no es parte de este wizard — no hay nada que revisar aquí. */
   usuariaExistente: boolean
-  documentos: DocumentoStaging[]
+  documentos: DocumentoRegistro[]
+  tipoRegistro: TipoRegistro | ''
 }
 
 function Fila({ etiqueta, valor }: { etiqueta: string; valor: string }) {
@@ -58,12 +61,23 @@ function Seccion({
   )
 }
 
-export default function PasoRevision({ form, onEditar, usuariaExistente, documentos }: PasoRevisionProps) {
+export default function PasoRevision({ form, onEditar, usuariaExistente, documentos, tipoRegistro }: PasoRevisionProps) {
   const datos = form.getValues()
   const caso = datos.datosCaso
   const agresor = caso.datosAgresor
   const esInterna = caso.tipoRegistro === 'INTERNA'
-  const documentosValidos = documentos.filter((documento) => !documento.error)
+  // Mismo criterio que lo que se envía al registrar (`idsParaRegistrar`).
+  const aplicables = documentos.filter((documento) =>
+    tipoDocumentoAplicaARegistro(documento.tipo, tipoRegistro || 'EXTERNA'),
+  )
+  const nombres = (estado: DocumentoRegistro['estado']) =>
+    aplicables
+      .filter((documento) => documento.estado === estado)
+      .map((documento) => ETIQUETAS_TIPO_DOCUMENTO[documento.tipo])
+      .join(', ')
+  const subidos = nombres('subido')
+  const subiendo = nombres('subiendo')
+  const conError = nombres('error')
 
   const tieneDatosAgresor = agresor.nombres || agresor.apellidos || agresor.telefono || agresor.direccion
 
@@ -142,14 +156,9 @@ export default function PasoRevision({ form, onEditar, usuariaExistente, documen
       )}
 
       <Seccion titulo="Documentos" pasoId="documentos" onEditar={onEditar}>
-        <Fila
-          etiqueta="Se subirán al guardar"
-          valor={
-            documentosValidos.length > 0
-              ? documentosValidos.map((documento) => ETIQUETAS_TIPO_DOCUMENTO[documento.tipo]).join(', ')
-              : 'Ninguno por ahora'
-          }
-        />
+        <Fila etiqueta="Subidos" valor={subidos || 'Ninguno por ahora'} />
+        {subiendo && <Fila etiqueta="Todavía subiendo" valor={subiendo} />}
+        {conError && <Fila etiqueta="No se subieron (no se adjuntarán)" valor={conError} />}
       </Seccion>
     </div>
   )

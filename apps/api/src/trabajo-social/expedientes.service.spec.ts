@@ -1,16 +1,25 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { ExpedientesService } from './expedientes.service';
 import {
+  DocumentoPendienteNoAplicaError,
+  DocumentoPendienteNoDisponibleError,
   DpiUsuariaDuplicadoError,
   UsuariaNoEncontradaError,
 } from './interfaces/expedientes-repository.interface';
-import type { IExpedientesRepository } from './interfaces/expedientes-repository.interface';
+import type {
+  ExpedienteCreadoResultado,
+  IExpedientesRepository,
+} from './interfaces/expedientes-repository.interface';
 import type { AuditService } from '../auth/services/audit.service';
 import type {
   CrearExpedienteInput,
   DatosCaso,
-  ExpedienteCreado,
   ExpedienteDetalleCaso,
 } from '@akyuam/shared';
 
@@ -27,8 +36,8 @@ describe('ExpedientesService', () => {
   };
 
   function resultado(
-    overrides: Partial<ExpedienteCreado> = {},
-  ): ExpedienteCreado {
+    overrides: Partial<ExpedienteCreadoResultado> = {},
+  ): ExpedienteCreadoResultado {
     return {
       id: 'exp-1',
       numero: '01-2026',
@@ -37,6 +46,7 @@ describe('ExpedientesService', () => {
       fecha: '2026-01-01',
       municipio: 'COBAN',
       tipoRegistro: 'EXTERNA',
+      documentosAdjuntados: [],
       ...overrides,
     };
   }
@@ -172,6 +182,75 @@ describe('ExpedientesService', () => {
         expedientesRepository.crearConUsuariaNueva.mock.calls[0][0].datosCaso,
       ).not.toHaveProperty('areasReferidas');
     });
+
+    it('pasa los documentos ya subidos al repositorio (o lista vacía si no hay)', async () => {
+      expedientesRepository.crearConUsuariaNueva.mockResolvedValue(resultado());
+      const ids = ['8f1c2d3e-0000-4000-8000-000000000001'];
+
+      await service.crear(datosNuevaUsuaria(), contexto);
+      await service.crear(
+        datosNuevaUsuaria({ documentosPendientesIds: ids }),
+        contexto,
+      );
+
+      const [sinDocumentos, conDocumentos] =
+        expedientesRepository.crearConUsuariaNueva.mock.calls.map(
+          ([params]) => params.datosCaso,
+        );
+      expect(sinDocumentos.documentosPendientesIds).toEqual([]);
+      expect(conDocumentos.documentosPendientesIds).toEqual(ids);
+      expect(conDocumentos.creadoPorId).toBe('ts-1');
+    });
+
+    it('audita cada documento adjuntado sin nombre de archivo y no lo devuelve al cliente', async () => {
+      expedientesRepository.crearConUsuariaNueva.mockResolvedValue(
+        resultado({
+          documentosAdjuntados: [
+            { id: 'doc-1', tipo: 'ENTREVISTA_USUARIA' },
+            { id: 'doc-2', tipo: 'CONVENIO_INGRESO' },
+          ],
+        }),
+      );
+
+      const creado = await service.crear(datosNuevaUsuaria(), contexto);
+
+      expect(creado).not.toHaveProperty('documentosAdjuntados');
+      const subidas = auditService.registrar.mock.calls
+        .map(([params]) => params)
+        .filter((params) => params.accion === 'DOCUMENTO_SUBIDO');
+      expect(subidas).toEqual([
+        expect.objectContaining({
+          entidad: 'Documento',
+          entidadId: 'doc-1',
+          detalles: { expedienteId: 'exp-1', tipo: 'ENTREVISTA_USUARIA' },
+        }),
+        expect.objectContaining({
+          entidadId: 'doc-2',
+          detalles: { expedienteId: 'exp-1', tipo: 'CONVENIO_INGRESO' },
+        }),
+      ]);
+    });
+
+    it('documento pendiente no disponible → 422 (nunca 409, que el formulario lee como DPI duplicado)', async () => {
+      expedientesRepository.crearConUsuariaNueva.mockRejectedValue(
+        new DocumentoPendienteNoDisponibleError(),
+      );
+
+      await expect(
+        service.crear(datosNuevaUsuaria(), contexto),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('documento de albergue en un caso Externa → 400', async () => {
+      expedientesRepository.crearConUsuariaNueva.mockRejectedValue(
+        new DocumentoPendienteNoAplicaError(),
+      );
+
+      await expect(
+        service.crear(datosNuevaUsuaria(), contexto),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
   });
 
   describe('crearCasoParaUsuariaExistente', () => {
@@ -187,6 +266,33 @@ describe('ExpedientesService', () => {
       expect(usuariaId).toBe('u-1');
       expect(datosEnviados).not.toHaveProperty('nombres');
       expect(expedientesRepository.crearConUsuariaNueva).not.toHaveBeenCalled();
+    });
+
+    it('separa los documentos ya subidos de los datos del caso', async () => {
+      expedientesRepository.crearParaUsuariaExistente.mockResolvedValue(
+        resultado(),
+      );
+      const ids = ['8f1c2d3e-0000-4000-8000-000000000001'];
+
+      await service.crearCasoParaUsuariaExistente(
+        'u-1',
+        { ...datosCaso(), documentosPendientesIds: ids },
+        contexto,
+      );
+
+      const datosEnviados =
+        expedientesRepository.crearParaUsuariaExistente.mock.calls[0][1];
+      expect(datosEnviados.documentosPendientesIds).toEqual(ids);
+    });
+
+    it('documento pendiente no disponible → 422', async () => {
+      expedientesRepository.crearParaUsuariaExistente.mockRejectedValue(
+        new DocumentoPendienteNoDisponibleError(),
+      );
+
+      await expect(
+        service.crearCasoParaUsuariaExistente('u-1', datosCaso(), contexto),
+      ).rejects.toBeInstanceOf(UnprocessableEntityException);
     });
 
     it('lanza 404 si la usuaria no existe', async () => {

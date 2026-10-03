@@ -1,6 +1,7 @@
 import type {
   GrupoEtnico,
   MunicipioAltaVerapaz,
+  TipoDocumento,
   TipologiaDelito,
   TipoRegistro,
 } from '@prisma/client';
@@ -22,6 +23,21 @@ export class DpiUsuariaDuplicadoError extends Error {
 export class UsuariaNoEncontradaError extends Error {
   constructor() {
     super('Usuaria no encontrada');
+  }
+}
+
+/** Alguno de los documentos ya subidos no existe, venció, lo subió otra persona o hay dos del
+ * mismo tipo — el registro se revierte entero para que no quede un caso con documentos a medias. */
+export class DocumentoPendienteNoDisponibleError extends Error {
+  constructor() {
+    super('Documento pendiente no disponible');
+  }
+}
+
+/** Un documento de albergue en un caso EXTERNA (p. ej. se cambió el tipo de registro después de subirlo). */
+export class DocumentoPendienteNoAplicaError extends Error {
+  constructor() {
+    super('Documento pendiente no aplica al tipo de registro');
   }
 }
 
@@ -64,6 +80,8 @@ export interface DatosCasoParams {
   creadoPorId: string;
   agresor: DatosAgresor | null;
   ninos: DatosNino[];
+  /** Escaneos subidos en el paso "Documentos" que se adjuntan en la misma transacción. */
+  documentosPendientesIds: string[];
 }
 
 export interface CrearExpedienteConUsuariaNuevaParams {
@@ -79,6 +97,8 @@ export interface ExpedienteCreadoResultado {
   fecha: string;
   municipio: string | null;
   tipoRegistro: TipoRegistro;
+  /** Solo para auditar cada documento adjuntado — el service no lo devuelve al cliente. */
+  documentosAdjuntados: { id: string; tipo: TipoDocumento }[];
 }
 
 export interface IExpedientesRepository {

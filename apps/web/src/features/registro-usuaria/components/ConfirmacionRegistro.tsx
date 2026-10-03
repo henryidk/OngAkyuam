@@ -1,4 +1,4 @@
-import { Check, CircleAlert, CircleCheck, Loader2 } from 'lucide-react'
+import { Check, CircleCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import {
   ETIQUETAS_TIPO_DOCUMENTO,
@@ -6,14 +6,13 @@ import {
   type TipoDocumentoTrabajoSocial,
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
-import type { DocumentoEnSubida } from '../hooks/useDocumentosStaging'
 
 interface ConfirmacionRegistroProps {
   expediente: ExpedienteCreado
   usuariaExistente: boolean
   cantidadHijos: number
-  documentosEnSubida: DocumentoEnSubida[]
-  onReintentarDocumento: (tipo: TipoDocumentoTrabajoSocial) => void
+  /** Ya forman parte del caso: se subieron en el paso Documentos y se adjuntaron al registrar. */
+  documentosAdjuntados: TipoDocumentoTrabajoSocial[]
   onNuevoRegistro: () => void
 }
 
@@ -21,8 +20,7 @@ export default function ConfirmacionRegistro({
   expediente,
   usuariaExistente,
   cantidadHijos,
-  documentosEnSubida,
-  onReintentarDocumento,
+  documentosAdjuntados,
   onNuevoRegistro,
 }: ConfirmacionRegistroProps) {
   const navigate = useNavigate()
@@ -54,38 +52,12 @@ export default function ConfirmacionRegistro({
         Siguiente paso: referirla a las áreas que la atenderán. También puedes hacerlo después desde su ficha.
       </p>
 
-      {documentosEnSubida.length > 0 && (
-        <div className="mt-6 space-y-2 text-left">
-          <p className="text-xs font-medium text-gray-700" aria-live="polite">
-            {resumenSubida(documentosEnSubida)}
-          </p>
-          {documentosEnSubida.map((documento) => (
-            <div key={documento.tipo} className="overflow-hidden rounded-lg border border-gray-200 text-xs">
-              <div className="flex items-center justify-between gap-3 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="font-medium text-gray-800">{ETIQUETAS_TIPO_DOCUMENTO[documento.tipo]}</p>
-                  <p className="mt-0.5 truncate text-gray-500">{documento.archivo.name}</p>
-                  {documento.estado === 'error' && (
-                    <p className="mt-0.5 text-red-600">{documento.mensajeError ?? 'Error al subir el archivo.'}</p>
-                  )}
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <EstadoDocumento estado={documento.estado} />
-                  {documento.estado === 'error' && (
-                    <Button type="button" variante="acento" onClick={() => onReintentarDocumento(documento.tipo)}>
-                      Reintentar
-                    </Button>
-                  )}
-                </div>
-              </div>
-              {documento.estado === 'subiendo' && (
-                <div className="h-1 bg-brand-50">
-                  <div className="h-full w-full animate-pulse bg-brand-600" />
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+      {documentosAdjuntados.length > 0 && (
+        <p className="mt-4 inline-flex items-center gap-1.5 text-[13px] text-green-700">
+          <CircleCheck size={14} aria-hidden="true" />
+          {documentosAdjuntados.length === 1 ? 'Documento adjuntado' : 'Documentos adjuntados'}:{' '}
+          {documentosAdjuntados.map((tipo) => ETIQUETAS_TIPO_DOCUMENTO[tipo]).join(', ')}
+        </p>
       )}
 
       <div className="mt-6 flex flex-wrap justify-center gap-3">
@@ -99,44 +71,6 @@ export default function ConfirmacionRegistro({
       <button type="button" onClick={onNuevoRegistro} className="mt-4 text-xs font-medium text-brand-600 hover:underline">
         Registrar otra usuaria
       </button>
-
     </div>
-  )
-}
-
-function resumenSubida(documentos: DocumentoEnSubida[]): string {
-  const subiendo = documentos.filter((documento) => documento.estado === 'subiendo').length
-  if (subiendo > 0) {
-    return `Subiendo documentos… no cierres esta página (${documentos.length - subiendo} de ${documentos.length} listos)`
-  }
-  const conError = documentos.filter((documento) => documento.estado === 'error').length
-  if (conError > 0) {
-    return conError === 1 ? 'Un documento no se pudo subir' : `${conError} documentos no se pudieron subir`
-  }
-  return documentos.length === 1 ? 'Documento subido' : 'Documentos subidos'
-}
-
-function EstadoDocumento({ estado }: { estado: DocumentoEnSubida['estado'] }) {
-  if (estado === 'subiendo') {
-    return (
-      <span role="status" className="inline-flex items-center gap-1 text-gray-500">
-        <Loader2 size={14} className="animate-spin" aria-hidden="true" />
-        Subiendo…
-      </span>
-    )
-  }
-  if (estado === 'ok') {
-    return (
-      <span className="inline-flex items-center gap-1 font-medium text-green-700">
-        <CircleCheck size={14} aria-hidden="true" />
-        Subido
-      </span>
-    )
-  }
-  return (
-    <span className="inline-flex items-center gap-1 font-medium text-red-700">
-      <CircleAlert size={14} aria-hidden="true" />
-      Error
-    </span>
   )
 }

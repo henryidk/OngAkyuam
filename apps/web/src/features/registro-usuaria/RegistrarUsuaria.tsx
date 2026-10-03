@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useWatch } from 'react-hook-form'
 import { useLocation } from 'react-router-dom'
@@ -15,13 +16,12 @@ import {
   crearCasoParaUsuaria,
   crearExpedienteConUsuaria,
   obtenerUsuaria,
-  subirDocumentoCaso,
 } from '../trabajo-social/api/trabajoSocial.api'
 import ConfirmacionRegistro from './components/ConfirmacionRegistro'
 import FranjaRegistro from './components/FranjaRegistro'
 import IndicadorPasos from './components/IndicadorPasos'
 import IndicadorPasosVertical from './components/IndicadorPasosVertical'
-import { useDocumentosStaging, type DocumentoEnSubida } from './hooks/useDocumentosStaging'
+import { useDocumentosStaging } from './hooks/useDocumentosStaging'
 import { usePosiblesDuplicadas } from './hooks/usePosiblesDuplicadas'
 import { useRegistroUsuariaForm, valoresIniciales } from './hooks/useRegistroUsuariaForm'
 import PasoDatosUsuaria from './steps/PasoDatosUsuaria'
@@ -95,7 +95,8 @@ function WizardRegistro({
   const [guardando, setGuardando] = useState(false)
   const [errorGuardado, setErrorGuardado] = useState<string | null>(null)
   const [conflictoDpi, setConflictoDpi] = useState(false)
-  const [documentosEnSubida, setDocumentosEnSubida] = useState<DocumentoEnSubida[]>([])
+  const [documentoNoDisponible, setDocumentoNoDisponible] = useState(false)
+  const [documentosAdjuntados, setDocumentosAdjuntados] = useState<TipoDocumentoTrabajoSocial[]>([])
 
   const [usuaria, setUsuaria] = useState<UsuariaExpedienteHub | null>(null)
   const [cargandoUsuaria, setCargandoUsuaria] = useState(usuariaExistente)
@@ -147,64 +148,36 @@ function WizardRegistro({
   }
 
   async function onSubmit(datos: RegistroUsuariaNuevaFormValues) {
+    // El botón ya se deshabilita mientras suben; esto cubre un Enter en el formulario.
+    if (documentosStaging.haySubidasEnCurso) return
     setGuardando(true)
     setErrorGuardado(null)
     setConflictoDpi(false)
+    setDocumentoNoDisponible(false)
+    const documentosPendientesIds = documentosStaging.idsParaRegistrar(datos.datosCaso.tipoRegistro)
     try {
       const creado =
         usuariaExistente && usuariaId
-          ? await crearCasoParaUsuaria(usuariaId, datos.datosCaso)
-          : await crearExpedienteConUsuaria(datos)
+          ? await crearCasoParaUsuaria(usuariaId, { ...datos.datosCaso, documentosPendientesIds })
+          : await crearExpedienteConUsuaria({ ...datos, documentosPendientesIds })
+      documentosStaging.marcarAdjuntados(documentosPendientesIds)
+      setDocumentosAdjuntados(
+        documentosStaging.documentos
+          .filter((documento) => documento.estado === 'subido' && documentosPendientesIds.includes(documento.pendienteId))
+          .map((documento) => documento.tipo),
+      )
       setCantidadHijos(datos.datosCaso.ninos.length)
       setExpedienteCreado(creado)
-      subirDocumentosPreparados(creado.id)
     } catch (err) {
       setErrorGuardado(extraerMensajeError(err))
-      if (axios.isAxiosError(err) && err.response?.status === 409) {
-        setConflictoDpi(true)
+      if (axios.isAxiosError(err)) {
+        // 409 solo lo devuelve el DPI duplicado; los documentos usan 422/400 a propósito.
+        setConflictoDpi(err.response?.status === 409)
+        setDocumentoNoDisponible(err.response?.status === 422 || err.response?.status === 400)
       }
     } finally {
       setGuardando(false)
     }
-  }
-
-  function subirUno(expedienteId: string, documento: DocumentoEnSubida) {
-    subirDocumentoCaso(expedienteId, documento.tipo, documento.archivo)
-      .then(() => actualizarEstadoDocumento(documento.tipo, 'ok'))
-      .catch((err) => actualizarEstadoDocumento(documento.tipo, 'error', extraerMensajeError(err)))
-  }
-
-  function subirDocumentosPreparados(expedienteId: string) {
-    const enSubida: DocumentoEnSubida[] = documentosStaging.documentos
-      .filter((documento) => !documento.error)
-      .map((documento) => ({ ...documento, estado: 'subiendo' }))
-    setDocumentosEnSubida(enSubida)
-    for (const documento of enSubida) {
-      subirUno(expedienteId, documento)
-    }
-  }
-
-  function actualizarEstadoDocumento(
-    tipo: TipoDocumentoTrabajoSocial,
-    estado: 'ok' | 'error',
-    mensajeError?: string,
-  ) {
-    setDocumentosEnSubida((actual) =>
-      actual.map((documento) =>
-        documento.tipo === tipo ? { ...documento, estado, mensajeError } : documento,
-      ),
-    )
-  }
-
-  function reintentarDocumento(tipo: TipoDocumentoTrabajoSocial) {
-    if (!expedienteCreado) return
-    const documento = documentosEnSubida.find((d) => d.tipo === tipo)
-    if (!documento) return
-
-    setDocumentosEnSubida((actual) =>
-      actual.map((d) => (d.tipo === tipo ? { ...d, estado: 'subiendo', mensajeError: undefined } : d)),
-    )
-    subirUno(expedienteCreado.id, documento)
   }
 
   if (expedienteCreado) {
@@ -213,8 +186,7 @@ function WizardRegistro({
         expediente={expedienteCreado}
         usuariaExistente={usuariaExistente}
         cantidadHijos={cantidadHijos}
-        documentosEnSubida={documentosEnSubida}
-        onReintentarDocumento={reintentarDocumento}
+        documentosAdjuntados={documentosAdjuntados}
         onNuevoRegistro={onRegistrarOtraUsuaria}
       />
     )
@@ -281,7 +253,22 @@ function WizardRegistro({
                     Revisar el DPI
                   </button>
                 )}
+                {documentoNoDisponible && (
+                  <button type="button" onClick={() => irAPaso('documentos')} className="mt-1 font-medium underline">
+                    Ir a Documentos
+                  </button>
+                )}
               </div>
+            )}
+
+            {paso.id === 'revision' && documentosStaging.haySubidasEnCurso && (
+              <p
+                role="status"
+                className="flex items-center gap-2 rounded border border-brand-100 bg-brand-50 px-3 py-2 text-sm text-brand-800"
+              >
+                <Loader2 size={14} className="shrink-0 animate-spin" aria-hidden="true" />
+                Terminando de subir los documentos… podrás registrar en cuanto acaben.
+              </p>
             )}
 
             {paso.id === 'usuaria' && (
@@ -307,6 +294,7 @@ function WizardRegistro({
                 onEditar={irAPaso}
                 usuariaExistente={usuariaExistente}
                 documentos={documentosStaging.documentos}
+                tipoRegistro={tipoRegistro}
               />
             )}
           </div>
@@ -323,7 +311,13 @@ function WizardRegistro({
             </Button>
 
             {esUltimoPaso ? (
-              <Button type="submit" tamano="md" cargando={guardando}>
+              <Button
+                type="submit"
+                tamano="md"
+                cargando={guardando}
+                disabled={documentosStaging.haySubidasEnCurso}
+                title={documentosStaging.haySubidasEnCurso ? 'Espera a que terminen de subir los documentos' : undefined}
+              >
                 {usuariaExistente ? 'Registrar caso' : 'Registrar usuaria'}
               </Button>
             ) : (

@@ -13,11 +13,11 @@ import {
 } from '@nestjs/common';
 import {
   buscarUsuariaQuerySchema,
+  crearCasoSchema,
   editarIdentidadUsuariaSchema,
   listarUsuariasQuerySchema,
-  nuevoCasoSchema,
   type BuscarUsuariaQuery,
-  type DatosCaso,
+  type CrearCasoInput,
   type EditarIdentidadUsuariaInput,
   type ListarUsuariasQuery,
 } from '@akyuam/shared';
@@ -79,13 +79,13 @@ export class UsuariasController {
   @HttpCode(HttpStatus.CREATED)
   async crearCaso(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(nuevoCasoSchema))
-    datosCaso: DatosCaso,
+    @Body(new ZodValidationPipe(crearCasoSchema))
+    datos: CrearCasoInput,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.expedientesService.crearCasoParaUsuariaExistente(
       id,
-      datosCaso,
+      datos,
       contexto,
     );
   }
