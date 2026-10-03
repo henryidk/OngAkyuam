@@ -51,6 +51,12 @@ services:
       CHOKIDAR_USEPOLLING: "true"
     ports:
       - "127.0.0.1:${API_PORT}:${API_PORT}"
+    # Sin esto, el contenedor se queda con los DNS de la red donde arrancó: al cambiar de
+    # Wi-Fi deja de resolver nombres (getaddrinfo EAI_AGAIN) y falla la subida a R2.
+    # Dos proveedores distintos por si uno no responde. Mismo criterio que Proyecto Tunsa.
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     volumes:
       - .:/repo
       - api_dev_node_modules:/repo/node_modules

@@ -4,9 +4,7 @@ import {
   ConflictException,
   Inject,
   Injectable,
-  Logger,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Rol } from '@prisma/client';
 import {
@@ -103,13 +101,8 @@ export function construirFilasDocumentos(
   });
 }
 
-const MENSAJE_ALMACENAMIENTO_NO_DISPONIBLE =
-  'No se pudo guardar el archivo en el almacenamiento. Inténtalo de nuevo en unos minutos.';
-
 @Injectable()
 export class DocumentosService {
-  private readonly logger = new Logger(DocumentosService.name);
-
   constructor(
     @Inject(DOCUMENTOS_REPOSITORY)
     private readonly documentosRepository: IDocumentosRepository,
@@ -346,22 +339,12 @@ export class DocumentosService {
     registrar: (archivo: ArchivoDocumento) => Promise<DocumentoCreado>,
   ): Promise<DocumentoCreado> {
     const claveR2 = `expedientes/${expedienteId}/${randomUUID()}`;
-    try {
-      await this.objectStorage.subirObjeto(
-        claveR2,
-        archivo.buffer,
-        archivo.mimetype,
-      );
-    } catch (error) {
-      // R2 inalcanzable (red, DNS, credenciales): es un 503 reintentable, no un fallo del
-      // sistema. Solo se registra el mensaje técnico, nunca el nombre del archivo.
-      this.logger.error(
-        `No se pudo subir el objeto a R2: ${error instanceof Error ? error.message : 'error desconocido'}`,
-      );
-      throw new ServiceUnavailableException(
-        MENSAJE_ALMACENAMIENTO_NO_DISPONIBLE,
-      );
-    }
+    // Si R2 no responde, el almacenamiento ya lanza un 503 (ver R2StorageService).
+    await this.objectStorage.subirObjeto(
+      claveR2,
+      archivo.buffer,
+      archivo.mimetype,
+    );
 
     try {
       return await registrar({
