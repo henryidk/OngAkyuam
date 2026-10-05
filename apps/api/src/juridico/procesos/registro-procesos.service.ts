@@ -116,7 +116,6 @@ export class RegistroProcesosService {
       tipo: proceso.tipo,
       abogadaId: vacioANulo(proceso.abogadaId),
       procuradoraId: vacioANulo(proceso.procuradoraId),
-      contraparte: vacioANulo(proceso.contraparte),
       fechaInicio: proceso.fechaInicio,
       procesoOrigenId: proceso.procesoOrigenId,
     }));

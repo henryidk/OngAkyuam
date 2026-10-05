@@ -45,8 +45,16 @@ export class ProcesosService {
   ) {}
 
   // Listado y resumen no reciben ids: el filtro de acceso va dentro de la propia consulta.
-  listar(query: ListarProcesosQuery): Promise<ProcesosPaginados> {
-    return this.procesosRepository.listar(query);
+  listar(
+    query: ListarProcesosQuery,
+    usuarioId: string,
+  ): Promise<ProcesosPaginados> {
+    return this.procesosRepository.listar({
+      q: query.q,
+      asignadosAUsuarioId: query.mios ? usuarioId : undefined,
+      page: query.page,
+      pageSize: query.pageSize,
+    });
   }
 
   resumen(): Promise<ResumenProcesos> {

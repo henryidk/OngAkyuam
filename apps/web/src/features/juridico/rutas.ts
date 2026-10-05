@@ -1,5 +1,3 @@
-import type { FiltroEstadoProceso, FormaFinalizacionProceso } from '@akyuam/shared'
-
 /**
  * Constructor único de las URLs del módulo (mismo criterio que `RUTAS_PSICOLOGIA`): ningún
  * componente arma un path de jurídico con un template string suelto.
@@ -14,12 +12,6 @@ function conQuery(base: string, params: Record<string, string | undefined>) {
   return cadena ? `${base}?${cadena}` : base
 }
 
-interface FiltrosLista {
-  estado?: FiltroEstadoProceso
-  forma?: FormaFinalizacionProceso
-  requiereAtencion?: boolean
-}
-
 interface OpcionesRegistro {
   expedienteId: string
   /** Presente cuando se entra desde "Atender caso" de una referencia de la bandeja. */
@@ -29,8 +21,8 @@ interface OpcionesRegistro {
 export const RUTAS_JURIDICO = {
   /** El Área de atención (bandeja de referencias) es la pantalla de entrada del módulo. */
   bandeja: () => '/juridico',
-  procesos: ({ estado, forma, requiereAtencion }: FiltrosLista = {}) =>
-    conQuery('/juridico/procesos', { estado, forma, requiereAtencion: requiereAtencion ? 'true' : undefined }),
+  /** Solo procesos en trámite; `mios` deja los asignados a la cuenta actual (abogada o procuradora). */
+  procesos: ({ mios }: { mios?: boolean } = {}) => conQuery('/juridico/procesos', { mios: mios ? 'true' : undefined }),
   registrar: ({ expedienteId, referidoId }: OpcionesRegistro) =>
     conQuery('/juridico/procesos/registrar', { expediente: expedienteId, referido: referidoId }),
   proceso: (procesoId: string) => `/juridico/procesos/${procesoId}`,

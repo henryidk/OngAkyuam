@@ -5,7 +5,6 @@ export interface FilaRegistro {
   tipo: TipoProcesoJuridico
   abogadaId: string
   procuradoraId: string
-  contraparte: string
   fechaInicio: string
   /** "" = sin proceso de origen. */
   procesoOrigenId: string
@@ -27,7 +26,7 @@ export type AccionRegistro =
   | { type: 'IR_A_PASO'; paso: 1 | 2 }
 
 function filaNueva(tipo: TipoProcesoJuridico, hoy: string): FilaRegistro {
-  return { tipo, abogadaId: '', procuradoraId: '', contraparte: '', fechaInicio: hoy, procesoOrigenId: '' }
+  return { tipo, abogadaId: '', procuradoraId: '', fechaInicio: hoy, procesoOrigenId: '' }
 }
 
 /** Los procesos que sugirió Trabajo Social llegan ya marcados: la abogada solo confirma o quita. */
@@ -53,7 +52,7 @@ export function registroReducer(estado: EstadoRegistro, accion: AccionRegistro):
     case 'COPIAR_PRIMERO_A_TODOS': {
       const primera = estado.filas[0]
       if (!primera) return estado
-      // Solo la asignación de personal: contraparte, fecha y origen son propios de cada proceso.
+      // Solo la asignación de personal: fecha y origen son propios de cada proceso.
       return {
         ...estado,
         filas: estado.filas.map((fila) => ({
@@ -74,7 +73,6 @@ export function aProcesosDeLote(filas: FilaRegistro[]): ProcesoEnLoteInput[] {
     tipo: fila.tipo,
     abogadaId: fila.abogadaId,
     procuradoraId: fila.procuradoraId,
-    contraparte: fila.contraparte.trim(),
     fechaInicio: fila.fechaInicio,
     procesoOrigenId: fila.procesoOrigenId || null,
   }))

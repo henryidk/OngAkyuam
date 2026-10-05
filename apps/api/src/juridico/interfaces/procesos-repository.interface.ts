@@ -1,7 +1,5 @@
 import type {
   FaseProcesoJuridico,
-  FiltroEstadoProceso,
-  FormaFinalizacionProceso,
   ProcesoDetalle,
   ProcesoResumen,
   ProcesosPaginados,
@@ -36,10 +34,9 @@ export interface AccesoProceso {
 }
 
 export interface ListarProcesosParams {
-  estado?: FiltroEstadoProceso;
-  forma?: FormaFinalizacionProceso;
-  requiereAtencion?: boolean;
   q?: string;
+  /** Si viene, solo los procesos donde la ficha de personal de esa cuenta está asignada. */
+  asignadosAUsuarioId?: string;
   page: number;
   pageSize: number;
 }

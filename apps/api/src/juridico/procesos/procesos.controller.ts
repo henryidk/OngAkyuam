@@ -21,7 +21,9 @@ import {
   type EditarDatosProcesoInput,
   type ListarProcesosQuery,
 } from '@akyuam/shared';
+import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
+import type { AuthenticatedUser } from '../../auth/interfaces/jwt-payload.interface';
 import { RolesGuard } from '../../auth/guards/roles.guard';
 import { ContextoAuditoria } from '../../common/decorators/contexto-auditoria.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -43,8 +45,9 @@ export class ProcesosController {
   listar(
     @Query(new ZodValidationPipe(listarProcesosQuerySchema))
     query: ListarProcesosQuery,
+    @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    return this.procesosService.listar(query);
+    return this.procesosService.listar(query, usuario.id);
   }
 
   // Antes que `procesos/:procesoId`: si no, "resumen" se leería como un id.

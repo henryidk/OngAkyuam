@@ -1,5 +1,4 @@
 import {
-  CONTRAPARTE_MAX,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
   TIPOS_PROCESO_VINCULO_RECOMENDADO,
   hoyGT,
@@ -92,7 +91,7 @@ export default function PasoAsignacion({
               </button>
             </div>
 
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <SelectPersonal
                 etiqueta="Abogada"
                 valor={fila.abogadaId}
@@ -106,17 +105,6 @@ export default function PasoAsignacion({
                 onChange={(valor) => onAsignar(fila.tipo, 'procuradoraId', valor)}
               />
               <label className={CLASE_ETIQUETA}>
-                <span>Contraparte (opcional)</span>
-                <input
-                  type="text"
-                  value={fila.contraparte}
-                  maxLength={CONTRAPARTE_MAX}
-                  onChange={(evento) => onAsignar(fila.tipo, 'contraparte', evento.target.value)}
-                  placeholder="Nombre del demandado o la otra parte"
-                  className={CLASE_CAMPO}
-                />
-              </label>
-              <label className={CLASE_ETIQUETA}>
                 <span>Fecha de inicio</span>
                 <input
                   type="date"
@@ -127,7 +115,7 @@ export default function PasoAsignacion({
                 />
               </label>
               {(recomendado || procesosVinculables.length > 0) && (
-                <label className={`${CLASE_ETIQUETA} sm:col-span-2`}>
+                <label className={`${CLASE_ETIQUETA} sm:col-span-3`}>
                   <span>Proceso de origen (opcional)</span>
                   <select
                     value={fila.procesoOrigenId}

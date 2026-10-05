@@ -52,43 +52,15 @@ const ACCESO_SQL = Prisma.sql`EXISTS (
 const EN_TRAMITE_SQL = Prisma.sql`(p.fase <> 'FINALIZADO' AND p.situacion = 'ACTIVO')`;
 
 function condicionesListado(params: ListarProcesosParams): Prisma.Sql {
-  const condiciones: Prisma.Sql[] = [ACCESO_SQL];
+  // La lista de trabajo solo muestra procesos en trámite.
+  const condiciones: Prisma.Sql[] = [ACCESO_SQL, EN_TRAMITE_SQL];
 
-  switch (params.estado) {
-    case 'INICIADOS':
-      condiciones.push(
-        Prisma.sql`(p.fase <> 'FINALIZADO' AND p.situacion <> 'ABANDONADO')`,
-      );
-      break;
-    case 'EN_TRAMITE':
-      condiciones.push(EN_TRAMITE_SQL);
-      break;
-    case 'SUSPENDIDO':
-      condiciones.push(
-        Prisma.sql`(p.fase <> 'FINALIZADO' AND p.situacion = 'SUSPENDIDO')`,
-      );
-      break;
-    case 'ABANDONADO':
-      condiciones.push(
-        Prisma.sql`(p.fase <> 'FINALIZADO' AND p.situacion = 'ABANDONADO')`,
-      );
-      break;
-    case 'FINALIZADO':
-      condiciones.push(Prisma.sql`p.fase = 'FINALIZADO'`);
-      break;
-    default:
-      break;
-  }
-
-  if (params.forma) {
-    condiciones.push(
-      Prisma.sql`p."formaFinalizacion" = ${params.forma}::"FormaFinalizacionProceso"`,
-    );
-  }
-  if (params.requiereAtencion) {
-    condiciones.push(
-      Prisma.sql`(${EN_TRAMITE_SQL} AND p."ultimaActuacionEn" < ${limiteInactividad()})`,
-    );
+  if (params.asignadosAUsuarioId) {
+    condiciones.push(Prisma.sql`EXISTS (
+      SELECT 1 FROM "Personal" pe
+      WHERE pe."usuarioId" = ${params.asignadosAUsuarioId}
+        AND pe.id IN (p."abogadaId", p."procuradoraId")
+    )`);
   }
   if (params.q) {
     const patron = `%${escaparLike(params.q)}%`;

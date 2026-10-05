@@ -31,7 +31,7 @@ export default function JuridicoLayout() {
   const contexto = useMemo<ContextoJuridico>(() => ({ resumen, recargarResumen }), [resumen, recargarResumen])
   const contadores = resumen && {
     [RUTAS_JURIDICO.bandeja()]: resumen.referenciasPendientes,
-    [RUTAS_JURIDICO.procesos()]: resumen.enTramite + resumen.suspendidos,
+    [RUTAS_JURIDICO.procesos()]: resumen.enTramite,
   }
 
   return <SidebarLayout items={ITEMS_NAV} subtitulo="Jurídica" contadores={contadores ?? undefined} outletContext={contexto} />

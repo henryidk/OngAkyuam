@@ -53,7 +53,7 @@ export const procesoEnLoteSchema = z.object({
   tipo: tipoProcesoJuridicoSchema,
   abogadaId: idPersonalOpcionalSchema,
   procuradoraId: idPersonalOpcionalSchema,
-  contraparte: z.string().trim().max(CONTRAPARTE_MAX).default(''),
+  // Sin contraparte: al registrar no se pide; se completa después en "Datos del proceso".
   fechaInicio: fechaCalendarioSchema,
   procesoOrigenId: z.uuid().nullable().default(null),
 })
@@ -174,19 +174,18 @@ export type UrlDocumentoProcesoQuery = z.infer<typeof urlDocumentoProcesoQuerySc
 
 // ---- Listado ----
 
-/** `INICIADOS` agrupa "en trámite" y "suspendido": lo que la tarjeta resumen cuenta como iniciado. */
-export const FILTROS_ESTADO_PROCESO = ['INICIADOS', ...ESTADOS_VISIBLES_PROCESO] as const
-export const filtroEstadoProcesoSchema = z.enum(FILTROS_ESTADO_PROCESO)
-export type FiltroEstadoProceso = z.infer<typeof filtroEstadoProcesoSchema>
-
 export const BUSQUEDA_MAX = 80
+/** La lista de Procesos busca desde 3 caracteres, igual que la de Usuarias. */
+export const LARGO_MINIMO_BUSQUEDA_PROCESOS = 3
 
-/** Query de `GET /juridico/procesos`. Los mismos nombres viajan en la URL de la pantalla. */
+/**
+ * Query de `GET /juridico/procesos`: la lista de trabajo, siempre solo procesos en trámite.
+ * Los suspendidos, finalizados y abandonados se consultan en la ficha de cada usuaria.
+ */
 export const listarProcesosQuerySchema = z.object({
-  estado: filtroEstadoProcesoSchema.optional(),
-  forma: formaFinalizacionProcesoSchema.optional(),
-  requiereAtencion: booleanoQuerySchema.optional(),
   q: z.string().trim().max(BUSQUEDA_MAX).optional(),
+  /** Solo los procesos donde la cuenta actual es la abogada o la procuradora asignada. */
+  mios: booleanoQuerySchema.optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(PROCESOS_PAGE_SIZE_MAXIMO).default(20),
 })

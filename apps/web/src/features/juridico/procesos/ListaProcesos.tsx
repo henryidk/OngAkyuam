@@ -1,225 +1,172 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Scale, Search } from 'lucide-react'
-import {
-  BUSQUEDA_MAX,
-  ETIQUETAS_FORMA_FINALIZACION,
-  listarProcesosQuerySchema,
-  type ListarProcesosQuery,
-  type ResumenProcesos,
-} from '@akyuam/shared'
+import { Search } from 'lucide-react'
+import { BUSQUEDA_MAX, LARGO_MINIMO_BUSQUEDA_PROCESOS } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import Button from '../../../components/ui/Button'
-import EmptyState from '../../../components/ui/EmptyState'
+import Switch from '../../../components/ui/Switch'
 import { listarProcesos } from '../api/juridico.api'
-import { CLASE_CAMPO } from '../compartido/campos'
-import { useContextoJuridico } from '../compartido/contexto'
-import { ErrorVista, Esqueleto } from '../compartido/EstadosVista'
+import { ErrorVista } from '../compartido/EstadosVista'
 import { useRecurso } from '../compartido/useRecurso'
 import FilaProceso from './FilaProceso'
-import TarjetasResumen from './TarjetasResumen'
 
 const ESPERA_BUSQUEDA_MS = 350
+const COLUMNAS = ['No. interno', 'Usuaria', 'Tipo de proceso', 'Avance', 'Seguimiento']
 
-type FiltrosUrl = Pick<ListarProcesosQuery, 'estado' | 'forma' | 'requiereAtencion'>
-
-interface Filtro {
-  etiqueta: string
-  filtros: FiltrosUrl
-  contar: (resumen: ResumenProcesos) => number
+function FilasEsqueleto() {
+  return (
+    <>
+      {Array.from({ length: 5 }, (_, indice) => (
+        <tr key={indice} className="border-t border-gray-100">
+          {COLUMNAS.map((columna) => (
+            <td key={columna} className="px-4 py-3">
+              <div className="h-4 animate-pulse rounded bg-gray-100" />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  )
 }
 
-const FILTROS: Filtro[] = [
-  { etiqueta: 'Todos', filtros: {}, contar: (resumen) => resumen.total },
-  { etiqueta: 'En trámite', filtros: { estado: 'EN_TRAMITE' }, contar: (resumen) => resumen.enTramite },
-  { etiqueta: 'Suspendidos', filtros: { estado: 'SUSPENDIDO' }, contar: (resumen) => resumen.suspendidos },
-  { etiqueta: 'Finalizados', filtros: { estado: 'FINALIZADO' }, contar: (resumen) => resumen.finalizados },
-  { etiqueta: 'Abandonados', filtros: { estado: 'ABANDONADO' }, contar: (resumen) => resumen.abandonados },
-  {
-    etiqueta: 'Requieren atención',
-    filtros: { requiereAtencion: true },
-    contar: (resumen) => resumen.requierenAtencion,
-  },
-]
-
-function mismoFiltro(query: ListarProcesosQuery, filtros: FiltrosUrl) {
-  return query.estado === filtros.estado && !!query.requiereAtencion === !!filtros.requiereAtencion
-}
-
-/** Lee los filtros de la URL; un valor inválido (enlace viejo o editado a mano) se ignora. */
-function leerQuery(searchParams: URLSearchParams): ListarProcesosQuery {
-  const crudo = Object.fromEntries(searchParams)
-  const validado = listarProcesosQuerySchema.safeParse(crudo)
-  return validado.success ? validado.data : listarProcesosQuerySchema.parse({})
-}
-
+/**
+ * Lista de trabajo: solo procesos en trámite. "Solo asignados a mí" y la página viven en la URL;
+ * el término buscado no, para que el nombre de una usuaria no quede en el historial del navegador.
+ */
 export default function ListaProcesos() {
   useTituloPagina({ titulo: 'Procesos' })
-  const { resumen } = useContextoJuridico()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const query = leerQuery(searchParams)
-  const { estado, forma, requiereAtencion, q, page, pageSize } = query
+  const [params, setParams] = useSearchParams()
+  const mios = params.get('mios') === 'true'
+  const pagina = Math.max(1, Number(params.get('page')) || 1)
+
+  const [texto, setTexto] = useState('')
+  const [busqueda, setBusqueda] = useState('')
+
+  const siguienteBusqueda = texto.trim().length >= LARGO_MINIMO_BUSQUEDA_PROCESOS ? texto.trim() : ''
+  useEffect(() => {
+    if (siguienteBusqueda === busqueda) return
+    const temporizador = setTimeout(() => {
+      setBusqueda(siguienteBusqueda)
+      // Una búsqueda nueva siempre empieza en la primera página.
+      setParams(
+        (actual) => {
+          const siguiente = new URLSearchParams(actual)
+          siguiente.delete('page')
+          return siguiente
+        },
+        { replace: true },
+      )
+    }, ESPERA_BUSQUEDA_MS)
+    return () => clearTimeout(temporizador)
+  }, [siguienteBusqueda, busqueda, setParams])
 
   const cargar = useCallback(
-    () => listarProcesos({ estado, forma, requiereAtencion, q: q || undefined, page, pageSize }),
-    [estado, forma, requiereAtencion, q, page, pageSize],
+    () => listarProcesos({ q: busqueda || undefined, mios: mios || undefined, page: pagina }),
+    [busqueda, mios, pagina],
   )
-  const { datos, error, recargar } = useRecurso(cargar)
+  const { datos, error, cargando, recargar } = useRecurso(cargar)
 
-  /** Cambiar un filtro siempre vuelve a la primera página. */
-  const actualizarUrl = useCallback(
-    (cambios: Record<string, string | undefined>) => {
-      setSearchParams((actuales) => {
-        const siguiente = new URLSearchParams(actuales)
-        siguiente.delete('page')
-        for (const [clave, valor] of Object.entries(cambios)) {
-          if (valor) siguiente.set(clave, valor)
-          else siguiente.delete(clave)
+  function actualizarParams(cambios: { mios?: boolean; page?: number }) {
+    setParams(
+      (actual) => {
+        const siguiente = new URLSearchParams(actual)
+        if (cambios.mios !== undefined) {
+          if (cambios.mios) siguiente.set('mios', 'true')
+          else siguiente.delete('mios')
+          siguiente.delete('page')
+        }
+        if (cambios.page !== undefined) {
+          if (cambios.page > 1) siguiente.set('page', String(cambios.page))
+          else siguiente.delete('page')
         }
         return siguiente
-      })
-    },
-    [setSearchParams],
-  )
-
-  // El texto se escribe en local y pasa a la URL tras una pausa: no se pide en cada tecla.
-  const [busqueda, setBusqueda] = useState(q ?? '')
-  useEffect(() => {
-    const texto = busqueda.trim()
-    if (texto === (q ?? '')) return
-    const espera = setTimeout(() => actualizarUrl({ q: texto || undefined }), ESPERA_BUSQUEDA_MS)
-    return () => clearTimeout(espera)
-  }, [busqueda, q, actualizarUrl])
-
-  function aplicarFiltro(filtros: FiltrosUrl) {
-    actualizarUrl({
-      estado: filtros.estado,
-      forma: undefined,
-      requiereAtencion: filtros.requiereAtencion ? 'true' : undefined,
-    })
-  }
-
-  function irAPagina(nueva: number) {
-    setSearchParams((actuales) => {
-      const siguiente = new URLSearchParams(actuales)
-      if (nueva > 1) siguiente.set('page', String(nueva))
-      else siguiente.delete('page')
-      return siguiente
-    })
+      },
+      { replace: true },
+    )
   }
 
   const totalPaginas = datos ? Math.max(1, Math.ceil(datos.total / datos.pageSize)) : 1
+  const textoCorto = texto.trim().length > 0 && texto.trim().length < LARGO_MINIMO_BUSQUEDA_PROCESOS
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <p className="max-w-xl text-sm text-gray-600">
-          Todos los procesos jurídicos. Una usuaria puede tener varios; cada uno tiene su propio avance, bitácora y
-          documentos.
-        </p>
-        <label className="relative block w-full sm:w-80">
-          <span className="sr-only">Buscar procesos</span>
-          <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+    <div className="mx-auto max-w-6xl space-y-4">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <label className="relative block w-full sm:w-[360px]">
+          <span className="sr-only">Buscar por usuaria, No. interno o No. judicial</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="search"
-            value={busqueda}
+            value={texto}
             maxLength={BUSQUEDA_MAX}
-            onChange={(evento) => setBusqueda(evento.target.value)}
+            onChange={(evento) => setTexto(evento.target.value)}
             placeholder="Buscar por usuaria, No. interno o No. judicial"
-            className={`${CLASE_CAMPO} pl-9`}
+            autoComplete="off"
+            className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </label>
-      </div>
-
-      {resumen && <TarjetasResumen resumen={resumen} />}
-
-      {forma && (
-        <div className="flex items-center gap-3 rounded-lg bg-brand-50 px-4 py-2 text-sm text-gray-700">
-          <span>
-            Mostrando: <strong>Finalizados por {ETIQUETAS_FORMA_FINALIZACION[forma]}</strong>
-          </span>
-          <button
-            type="button"
-            onClick={() => actualizarUrl({ forma: undefined })}
-            className="font-medium text-brand-700 hover:underline"
-          >
-            Quitar filtro
-          </button>
+        <p className="min-w-[240px] flex-1 text-[13px] text-gray-500">
+          Procesos en curso. Los finalizados, suspendidos y abandonados se consultan en el expediente de cada usuaria.
+        </p>
+        <div className="flex items-center gap-2 text-[13px] text-gray-700">
+          <Switch encendido={mios} onChange={(valor) => actualizarParams({ mios: valor })} ariaLabel="Solo asignados a mí" />
+          <span aria-hidden="true">Solo asignados a mí</span>
         </div>
+      </div>
+      {textoCorto && (
+        <p className="text-xs text-gray-500">Escribe al menos {LARGO_MINIMO_BUSQUEDA_PROCESOS} caracteres.</p>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {FILTROS.map((filtro) => {
-          const activo = mismoFiltro(query, filtro.filtros)
-          return (
-            <button
-              key={filtro.etiqueta}
-              type="button"
-              aria-pressed={activo}
-              onClick={() => aplicarFiltro(filtro.filtros)}
-              className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium ${
-                activo
-                  ? 'border-brand-600 bg-brand-600 text-white'
-                  : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-              }`}
-            >
-              {filtro.etiqueta}
-              {resumen && (
-                <span className={`text-xs tabular-nums ${activo ? 'text-brand-100' : 'text-gray-500'}`}>
-                  {filtro.contar(resumen)}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {error ? (
+      {error && !datos ? (
         <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="los procesos" onReintentar={() => void recargar()} />
-      ) : !datos ? (
-        <Esqueleto filas={5} />
-      ) : datos.items.length === 0 ? (
-        <EmptyState
-          Icono={Scale}
-          titulo="Ningún proceso coincide con el filtro"
-          descripcion="Pruebe con otro estado o quite el texto de búsqueda. Los procesos nuevos se registran desde el Área de atención o desde el expediente de la usuaria."
-        />
       ) : (
-        <>
-          <div className="overflow-x-auto rounded-xl border border-gray-200 bg-white">
-            <table className="w-full min-w-[820px] text-left">
-              <thead>
-                <tr className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                  <th scope="col" className="px-4 py-3">No. interno</th>
-                  <th scope="col" className="px-4 py-3">Usuaria</th>
-                  <th scope="col" className="px-4 py-3">Tipo de proceso</th>
-                  <th scope="col" className="px-4 py-3">Avance</th>
-                  <th scope="col" className="px-4 py-3">Estado</th>
-                  <th scope="col" className="px-4 py-3">Seguimiento</th>
+        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left">
+              <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
+                <tr>
+                  {COLUMNAS.map((columna) => (
+                    <th key={columna} scope="col" className="whitespace-nowrap px-4 py-2.5 font-medium">
+                      {columna}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-              <tbody>
-                {datos.items.map((proceso) => (
+              <tbody className={cargando && datos ? 'opacity-60' : undefined}>
+                {!datos && <FilasEsqueleto />}
+                {datos?.items.map((proceso) => (
                   <FilaProceso key={proceso.id} proceso={proceso} />
                 ))}
               </tbody>
             </table>
           </div>
-
-          <div className="flex items-center justify-between text-sm text-gray-600">
+          {datos && datos.items.length === 0 && (
+            <p className="px-4 py-6 text-center text-sm text-gray-500">
+              {busqueda ? 'Ningún proceso en curso coincide con la búsqueda.' : 'No hay procesos en curso.'}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3.5 text-[13px] text-gray-500">
             <span className="tabular-nums">
-              {datos.total} {datos.total === 1 ? 'proceso' : 'procesos'} · página {datos.page} de {totalPaginas}
+              {datos ? `${datos.total} ${datos.total === 1 ? 'proceso' : 'procesos'} en curso` : ' '}
+              {datos && totalPaginas > 1 && ` · página ${datos.page} de ${totalPaginas}`}
             </span>
-            <div className="flex gap-2">
-              <Button variante="secondary" disabled={datos.page <= 1} onClick={() => irAPagina(datos.page - 1)}>
-                Anterior
-              </Button>
-              <Button variante="secondary" disabled={datos.page >= totalPaginas} onClick={() => irAPagina(datos.page + 1)}>
-                Siguiente
-              </Button>
-            </div>
+            {datos && totalPaginas > 1 ? (
+              <div className="flex gap-2">
+                <Button variante="secondary" disabled={datos.page <= 1} onClick={() => actualizarParams({ page: datos.page - 1 })}>
+                  Anterior
+                </Button>
+                <Button
+                  variante="secondary"
+                  disabled={datos.page >= totalPaginas}
+                  onClick={() => actualizarParams({ page: datos.page + 1 })}
+                >
+                  Siguiente
+                </Button>
+              </div>
+            ) : (
+              <span>Los procesos nuevos se registran desde la ficha de la usuaria.</span>
+            )}
           </div>
-        </>
+        </section>
       )}
     </div>
   )

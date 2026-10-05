@@ -50,7 +50,6 @@ function lote(
         tipo: 'MEDIDAS_SEGURIDAD',
         abogadaId: '',
         procuradoraId: '',
-        contraparte: '',
         fechaInicio: '2026-01-10',
         procesoOrigenId: null,
       },

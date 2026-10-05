@@ -13,7 +13,6 @@ export interface ProcesoNuevo {
   tipo: TipoProcesoJuridico;
   abogadaId: string | null;
   procuradoraId: string | null;
-  contraparte: string | null;
   fechaInicio: string;
   procesoOrigenId: string | null;
 }

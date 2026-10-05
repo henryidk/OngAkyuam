@@ -144,7 +144,6 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
             fase: 'EN_PROCESO',
             abogadaId: proceso.abogadaId,
             procuradoraId: proceso.procuradoraId,
-            contraparte: proceso.contraparte,
             fechaInicio: new Date(proceso.fechaInicio),
             procesoOrigenId: proceso.procesoOrigenId,
             referidoId: params.referidoId,
