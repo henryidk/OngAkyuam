@@ -43,8 +43,7 @@ function formatearTamanio(bytes: number): string {
 
 /**
  * Contenido puro del detalle de un expediente visto desde un área — sin `useParams`, para
- * poder reusarse tanto en la página completa (`DetalleExpedienteArea`) como dentro del
- * drawer de jurídico (`DrawerDetalleExpediente`), ver planjuridico.md punto 11.
+ * poder reusarse desde cualquier página que ya conozca el id del expediente.
  */
 export default function ContenidoDetalleExpediente({ expedienteId }: ContenidoDetalleExpedienteProps) {
   const [expediente, setExpediente] = useState<ExpedienteDetalleAreaDto | null>(null)

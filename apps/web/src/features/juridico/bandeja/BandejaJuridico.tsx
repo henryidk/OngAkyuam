@@ -1,16 +1,14 @@
 import { useCallback, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { Inbox } from 'lucide-react'
 import { bandejaJuridicoQuerySchema, type ReferenciaBandejaDto, type VistaBandejaJuridico } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import EmptyState from '../../../components/ui/EmptyState'
 import { useToast } from '../../../components/ui/Toast'
-import DrawerDetalleExpediente from '../../area-atencion/DrawerDetalleExpediente'
 import { listarBandeja } from '../api/juridico.api'
 import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista, Esqueleto } from '../compartido/EstadosVista'
 import { useRecurso } from '../compartido/useRecurso'
-import { RUTAS_JURIDICO } from '../rutas'
 import ModalDevolver from './ModalDevolver'
 import TarjetaReferencia from './TarjetaReferencia'
 
@@ -26,8 +24,20 @@ const TEXTO_VACIO: Record<VistaBandejaJuridico, { titulo: string; descripcion: s
   },
   devueltas: {
     titulo: 'No hay referencias devueltas',
-    descripcion: 'Aquí quedan las referencias que se devolvieron a Trabajo Social con su observación.',
+    descripcion: 'Aquí quedan las referencias devueltas a Trabajo Social con su motivo.',
   },
+}
+
+function tituloVista(vista: VistaBandejaJuridico, total: number | null): string {
+  if (total === null) return vista === 'pendientes' ? 'Referencias pendientes' : 'Referencias devueltas'
+  if (vista === 'devueltas') return total === 1 ? '1 referencia devuelta' : `${total} referencias devueltas`
+  if (total === 0) return 'Todo al día'
+  return total === 1 ? '1 referencia espera atención' : `${total} referencias esperan atención`
+}
+
+const DESCRIPCION_VISTA: Record<VistaBandejaJuridico, string> = {
+  pendientes: 'Al atender un caso, los procesos que abras quedan En proceso automáticamente.',
+  devueltas: 'Referencias que Jurídico devolvió a Trabajo Social, con su motivo.',
 }
 
 /** Área de atención: solo recibe y distribuye. El registro de procesos se hace en el asistente. */
@@ -45,7 +55,6 @@ export default function BandejaJuridico() {
   const { datos: referencias, error, recargar } = useRecurso(cargar)
 
   const [aDevolver, setADevolver] = useState<ReferenciaBandejaDto | null>(null)
-  const [expedienteAbiertoId, setExpedienteAbiertoId] = useState<string | null>(null)
 
   function alDevolver() {
     setADevolver(null)
@@ -55,16 +64,12 @@ export default function BandejaJuridico() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="mx-auto max-w-[920px] space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
-        <p className="max-w-xl text-sm text-gray-600">
-          Usuarias referidas por Trabajo Social. Aquí solo se revisa y distribuye cada referencia. El registro y la
-          gestión de procesos se hacen en{' '}
-          <Link to={RUTAS_JURIDICO.procesos()} className="font-medium text-brand-700 hover:underline">
-            Procesos
-          </Link>
-          .
-        </p>
+        <div className="max-w-xl">
+          <h2 className="text-[22px] font-semibold text-gray-900">{tituloVista(vista, referencias?.length ?? null)}</h2>
+          <p className="mt-1 text-sm text-gray-600">{DESCRIPCION_VISTA[vista]}</p>
+        </div>
         <div className="flex rounded-lg border border-gray-200 bg-white p-1">
           {VISTAS.map((opcion) => {
             const activa = opcion.vista === vista
@@ -98,7 +103,6 @@ export default function BandejaJuridico() {
             <TarjetaReferencia
               key={referencia.referidoId}
               referencia={referencia}
-              onVerDatos={() => setExpedienteAbiertoId(referencia.expedienteId)}
               onDevolver={() => setADevolver(referencia)}
             />
           ))}
@@ -106,7 +110,6 @@ export default function BandejaJuridico() {
       )}
 
       {aDevolver && <ModalDevolver referencia={aDevolver} onCerrar={() => setADevolver(null)} onDevuelta={alDevolver} />}
-      <DrawerDetalleExpediente expedienteId={expedienteAbiertoId} onCerrar={() => setExpedienteAbiertoId(null)} />
     </div>
   )
 }

@@ -12,7 +12,7 @@ export interface DevolverReferenciaParams {
 }
 
 export interface IReferenciasRepository {
-  /** Pendientes: urgentes primero y luego las más antiguas. Devueltas: las más recientes. */
+  /** Pendientes: las más antiguas primero. Devueltas: las más recientes primero. */
   listar(vista: VistaBandejaJuridico): Promise<ReferenciaBandejaDto[]>;
   /** La referencia a Jurídico del expediente, solo si sigue pendiente. */
   buscarPendientePorExpediente(

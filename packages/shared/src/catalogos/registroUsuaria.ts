@@ -165,3 +165,12 @@ export const ETIQUETAS_CAMPO_IDENTIDAD_USUARIA = {
 } as const
 
 export type CampoIdentidadUsuaria = keyof typeof ETIQUETAS_CAMPO_IDENTIDAD_USUARIA
+
+/** Nombre legible del municipio: el del catálogo o, fuera de Alta Verapaz, el escrito a mano. */
+export function nombreMunicipio(
+  municipio: string | null,
+  municipioOtro: string | null,
+): string | null {
+  if (!municipio) return municipioOtro
+  return ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[municipio as (typeof MUNICIPIOS_ALTA_VERAPAZ)[number]] ?? municipio
+}

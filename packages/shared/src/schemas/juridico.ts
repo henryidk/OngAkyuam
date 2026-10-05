@@ -341,6 +341,14 @@ export interface ReferenciaBandejaDto {
   procesosSugeridos: TipoProcesoJuridico[]
   devueltoEn: string | null
   motivoDevolucion: string | null
+  /** Años cumplidos, en hora de Guatemala. */
+  edad: number
+  /** Nombre del municipio (o el escrito a mano si es de fuera de Alta Verapaz). */
+  municipio: string | null
+  /** Ya tiene procesos en Jurídico, de cualquier estado: la usuaria regresa. */
+  atendidaAntes: boolean
+  /** Procesos sin finalizar ni abandonar: marcan los sugeridos que ya están activos. */
+  activosPorTipo: ProcesoActivoPorTipo[]
 }
 
 export interface ProcesoActivoPorTipo {

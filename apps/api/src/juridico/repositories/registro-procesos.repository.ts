@@ -10,6 +10,7 @@ import type {
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   EXPEDIENTE_REFERIDO_A_JURIDICO,
+  PROCESO_ACTIVO,
   REFERENCIA_PENDIENTE,
 } from '../compartido/acceso-juridico';
 import { codigoProceso } from '../dominio/codigo-proceso';
@@ -43,8 +44,7 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
     const procesos = await this.prisma.procesoJuridico.findMany({
       where: {
         expediente: { usuariaId, ...EXPEDIENTE_REFERIDO_A_JURIDICO },
-        fase: { not: 'FINALIZADO' },
-        situacion: { not: 'ABANDONADO' },
+        ...PROCESO_ACTIVO,
         ...(tipos ? { tipo: { in: tipos } } : {}),
       },
       select: {

@@ -1,11 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import type {
-  ReferenciaBandejaDto,
-  VistaBandejaJuridico,
+import {
+  edadEnAniosGT,
+  fechaColumnaISO,
+  nombreMunicipio,
+  type ProcesoActivoPorTipo,
+  type ReferenciaBandejaDto,
+  type VistaBandejaJuridico,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { REFERENCIA_PENDIENTE } from '../compartido/acceso-juridico';
+import {
+  esProcesoActivo,
+  PROCESO_CON_ACCESO,
+  REFERENCIA_PENDIENTE,
+} from '../compartido/acceso-juridico';
+import { codigoProceso } from '../dominio/codigo-proceso';
 import type {
   DevolverReferenciaParams,
   IReferenciasRepository,
@@ -18,7 +27,15 @@ const INCLUDE_REFERENCIA = {
     select: {
       numero: true,
       usuaria: {
-        select: { id: true, nombres: true, apellidos: true, dpi: true },
+        select: {
+          id: true,
+          nombres: true,
+          apellidos: true,
+          dpi: true,
+          fechaNacimiento: true,
+          municipio: true,
+          municipioOtro: true,
+        },
       },
     },
   },
@@ -28,8 +45,20 @@ type ReferenciaConDatos = Prisma.ReferidoAreaGetPayload<{
   include: typeof INCLUDE_REFERENCIA;
 }>;
 
+/** Lo que Jurídico ya trabajó con cada usuaria: marca si regresa y qué sugeridos ya están activos. */
+interface HistorialUsuaria {
+  atendidaAntes: boolean;
+  activosPorTipo: ProcesoActivoPorTipo[];
+}
+
+const SIN_HISTORIAL: HistorialUsuaria = {
+  atendidaAntes: false,
+  activosPorTipo: [],
+};
+
 function mapearReferencia(
   referencia: ReferenciaConDatos,
+  historial: HistorialUsuaria,
 ): ReferenciaBandejaDto {
   const { usuaria } = referencia.expediente;
   return {
@@ -47,6 +76,9 @@ function mapearReferencia(
     procesosSugeridos: referencia.procesosSugeridos,
     devueltoEn: referencia.devueltoEn?.toISOString() ?? null,
     motivoDevolucion: referencia.motivoDevolucion,
+    edad: edadEnAniosGT(fechaColumnaISO(usuaria.fechaNacimiento)),
+    municipio: nombreMunicipio(usuaria.municipio, usuaria.municipioOtro),
+    ...historial,
   };
 }
 
@@ -70,7 +102,7 @@ export class ReferenciasRepository implements IReferenciasRepository {
       ...consulta,
       include: INCLUDE_REFERENCIA,
     });
-    return referencias.map(mapearReferencia);
+    return this.conHistorial(referencias);
   }
 
   async buscarPendientePorExpediente(
@@ -80,7 +112,63 @@ export class ReferenciasRepository implements IReferenciasRepository {
       where: { ...REFERENCIA_PENDIENTE, expedienteId },
       include: INCLUDE_REFERENCIA,
     });
-    return referencia ? mapearReferencia(referencia) : null;
+    if (!referencia) {
+      return null;
+    }
+    const [dto] = await this.conHistorial([referencia]);
+    return dto;
+  }
+
+  /** Una sola consulta de procesos para todas las usuarias listadas (sin N+1). */
+  private async conHistorial(
+    referencias: ReferenciaConDatos[],
+  ): Promise<ReferenciaBandejaDto[]> {
+    if (referencias.length === 0) {
+      return [];
+    }
+    const usuariaIds = [
+      ...new Set(referencias.map((r) => r.expediente.usuaria.id)),
+    ];
+    const procesos = await this.prisma.procesoJuridico.findMany({
+      where: {
+        ...PROCESO_CON_ACCESO,
+        expediente: {
+          ...PROCESO_CON_ACCESO.expediente,
+          usuariaId: { in: usuariaIds },
+        },
+      },
+      select: {
+        tipo: true,
+        consecutivo: true,
+        fase: true,
+        situacion: true,
+        expediente: { select: { numero: true, usuariaId: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const porUsuaria = new Map<string, HistorialUsuaria>();
+    for (const proceso of procesos) {
+      const { usuariaId } = proceso.expediente;
+      const historial = porUsuaria.get(usuariaId) ?? {
+        atendidaAntes: true,
+        activosPorTipo: [],
+      };
+      if (esProcesoActivo(proceso)) {
+        historial.activosPorTipo.push({
+          tipo: proceso.tipo,
+          codigo: codigoProceso(proceso.consecutivo, proceso.expediente.numero),
+        });
+      }
+      porUsuaria.set(usuariaId, historial);
+    }
+
+    return referencias.map((referencia) =>
+      mapearReferencia(
+        referencia,
+        porUsuaria.get(referencia.expediente.usuaria.id) ?? SIN_HISTORIAL,
+      ),
+    );
   }
 
   async devolver(

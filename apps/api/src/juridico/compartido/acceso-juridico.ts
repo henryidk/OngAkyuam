@@ -1,4 +1,8 @@
-import type { Prisma } from '@prisma/client';
+import type {
+  FaseProcesoJuridico,
+  Prisma,
+  SituacionProcesoJuridico,
+} from '@prisma/client';
 
 /**
  * La regla de acceso de todo el módulo, en un solo lugar: Jurídico solo toca expedientes que
@@ -12,6 +16,20 @@ export const EXPEDIENTE_REFERIDO_A_JURIDICO = {
 export const PROCESO_CON_ACCESO = {
   expediente: EXPEDIENTE_REFERIDO_A_JURIDICO,
 } satisfies Prisma.ProcesoJuridicoWhereInput;
+
+/** Proceso que sigue vivo (en trámite o suspendido): cuenta como duplicado al registrar. */
+export const PROCESO_ACTIVO = {
+  fase: { not: 'FINALIZADO' },
+  situacion: { not: 'ABANDONADO' },
+} satisfies Prisma.ProcesoJuridicoWhereInput;
+
+/** La misma regla que `PROCESO_ACTIVO`, para procesos ya leídos. */
+export function esProcesoActivo(proceso: {
+  fase: FaseProcesoJuridico;
+  situacion: SituacionProcesoJuridico;
+}): boolean {
+  return proceso.fase !== 'FINALIZADO' && proceso.situacion !== 'ABANDONADO';
+}
 
 /** Referencia que Jurídico todavía no atendió ni devolvió. */
 export const REFERENCIA_PENDIENTE = {
