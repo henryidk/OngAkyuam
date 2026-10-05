@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Param,
   ParseUUIDPipe,
   Post,
@@ -17,13 +18,13 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { ContextoAuditoria as IContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { BitacoraService } from './bitacora.service';
 
-@Controller('juridico/procesos/:procesoId/bitacora')
+@Controller('juridico/procesos/:procesoId')
 @UseGuards(RolesGuard)
 @Roles('JURIDICO')
 export class BitacoraController {
   constructor(private readonly bitacoraService: BitacoraService) {}
 
-  @Post()
+  @Post('bitacora')
   registrarActuacion(
     @Param('procesoId', ParseUUIDPipe) procesoId: string,
     @Body(new ZodValidationPipe(registrarActuacionSchema))
@@ -31,5 +32,10 @@ export class BitacoraController {
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.bitacoraService.registrarActuacion(procesoId, datos, contexto);
+  }
+
+  @Get('tipos-actuacion')
+  sugerirTipos(@Param('procesoId', ParseUUIDPipe) procesoId: string) {
+    return this.bitacoraService.sugerirTipos(procesoId);
   }
 }

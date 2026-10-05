@@ -91,6 +91,11 @@ export function registrarActuacion(procesoId: string, datos: RegistrarActuacionI
   return api.post<EntradaBitacoraDto>(`/juridico/procesos/${procesoId}/bitacora`, datos).then((res) => res.data)
 }
 
+/** Tipos de actuación ya escritos: primero los de este proceso, luego los más usados en su tipo. */
+export function obtenerTiposActuacion(procesoId: string) {
+  return api.get<string[]>(`/juridico/procesos/${procesoId}/tipos-actuacion`).then((res) => res.data)
+}
+
 // ---- Área de atención ----
 
 export function listarBandeja(vista: BandejaJuridicoQuery['vista']) {

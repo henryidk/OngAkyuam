@@ -15,7 +15,7 @@ export default function PanelCierre({ acciones, onFinalizar, onSuspender, onAban
     {
       accion: 'FINALIZAR' as const,
       titulo: 'Finalizar proceso',
-      detalle: 'Por convenio, sentencia, desistimiento u otra forma',
+      detalle: 'Convenio, sentencia, desistimiento u otra forma',
       alElegir: onFinalizar,
     },
     {
@@ -35,7 +35,7 @@ export default function PanelCierre({ acciones, onFinalizar, onSuspender, onAban
   if (opciones.length === 0) return null
 
   return (
-    <section className="rounded-xl border border-gray-200 bg-white p-4">
+    <section className="rounded-xl border border-gray-200 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,.04)]">
       <h3 className="text-sm font-semibold text-gray-900">Cerrar o pausar</h3>
       <div className="mt-3 space-y-2">
         {opciones.map((opcion) => (

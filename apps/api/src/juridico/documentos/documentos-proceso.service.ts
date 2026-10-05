@@ -10,6 +10,7 @@ import {
 import {
   mimeTypePermitido,
   normalizarNombreCarpeta,
+  TIPO_ENTRADA_SISTEMA,
   type CarpetaDto,
   type DocumentoProcesoDto,
   type UrlDocumentoProcesoQuery,
@@ -324,7 +325,8 @@ export class DocumentosProcesoService {
   ): Promise<string> {
     const entrada = await this.bitacoraRepository.registrar({
       procesoId,
-      tipo: 'SISTEMA',
+      tipo: TIPO_ENTRADA_SISTEMA,
+      esSistema: true,
       contenido: textoTanda(1),
       registradoPorId: usuarioId,
     });

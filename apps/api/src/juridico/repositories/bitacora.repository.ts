@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
-import type { EntradaBitacoraDto } from '@akyuam/shared';
+import { Prisma } from '@prisma/client';
+import type { EntradaBitacoraDto, TipoProcesoJuridico } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   IBitacoraRepository,
@@ -22,6 +22,7 @@ function mapearEntrada(entrada: EntradaConAutor): EntradaBitacoraDto {
   return {
     id: entrada.id,
     tipo: entrada.tipo,
+    esSistema: entrada.esSistema,
     contenido: entrada.contenido,
     registradoPor: entrada.registradoPor.nombreCompleto,
     createdAt: entrada.createdAt.toISOString(),
@@ -38,6 +39,7 @@ export class BitacoraRepository implements IBitacoraRepository {
         data: {
           procesoId: params.procesoId,
           tipo: params.tipo,
+          esSistema: params.esSistema,
           contenido: params.contenido,
           registradoPorId: params.registradoPorId,
         },
@@ -59,7 +61,7 @@ export class BitacoraRepository implements IBitacoraRepository {
     contenido: string,
   ): Promise<void> {
     await this.prisma.notaAvanceProceso.updateMany({
-      where: { id: entradaId, tipo: 'SISTEMA' },
+      where: { id: entradaId, esSistema: true },
       data: { contenido },
     });
   }
@@ -72,5 +74,38 @@ export class BitacoraRepository implements IBitacoraRepository {
       take: MAXIMO_ENTRADAS,
     });
     return entradas.map(mapearEntrada);
+  }
+
+  // Se agrupa por la forma en minúsculas para que "Escrito" y "escrito" cuenten como uno; se
+  // devuelve la escritura más reciente.
+  async tiposUsadosEnProceso(
+    procesoId: string,
+    limite: number,
+  ): Promise<string[]> {
+    const filas = await this.prisma.$queryRaw<{ tipo: string }[]>(Prisma.sql`
+      SELECT (array_agg(n.tipo ORDER BY n."createdAt" DESC))[1] AS tipo
+      FROM "NotaAvanceProceso" n
+      WHERE n."procesoId" = ${procesoId} AND NOT n."esSistema"
+      GROUP BY lower(n.tipo)
+      ORDER BY max(n."createdAt") DESC
+      LIMIT ${limite}
+    `);
+    return filas.map((fila) => fila.tipo);
+  }
+
+  async tiposMasUsadosPorTipoProceso(
+    tipoProceso: TipoProcesoJuridico,
+    limite: number,
+  ): Promise<string[]> {
+    const filas = await this.prisma.$queryRaw<{ tipo: string }[]>(Prisma.sql`
+      SELECT (array_agg(n.tipo ORDER BY n."createdAt" DESC))[1] AS tipo
+      FROM "NotaAvanceProceso" n
+      JOIN "ProcesoJuridico" p ON p.id = n."procesoId"
+      WHERE p.tipo::text = ${tipoProceso} AND NOT n."esSistema"
+      GROUP BY lower(n.tipo)
+      ORDER BY count(*) DESC, max(n."createdAt") DESC
+      LIMIT ${limite}
+    `);
+    return filas.map((fila) => fila.tipo);
   }
 }

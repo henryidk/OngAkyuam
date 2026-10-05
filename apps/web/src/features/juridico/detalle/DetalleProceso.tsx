@@ -25,16 +25,16 @@ import { RUTAS_JURIDICO } from '../rutas'
 import type { ContextoDetalle, PropsModalProceso } from './contextoDetalle'
 import ModalAbandono from './ModalAbandono'
 import ModalActuacion from './ModalActuacion'
-import ModalEditarDatos from './ModalEditarDatos'
 import ModalFinalizar from './ModalFinalizar'
 import ModalSuspender from './ModalSuspender'
 import PanelCierre from './PanelCierre'
 import PanelDatos from './PanelDatos'
 import { useEnvio } from './useEnvio'
 
-type ModalAbierto = 'actuacion' | 'finalizar' | 'suspender' | 'abandono' | 'editar' | 'reactivar'
+type ModalAbierto = 'actuacion' | 'finalizar' | 'suspender' | 'abandono' | 'reactivar'
 
-const CLASE_BANNER = 'rounded-xl border px-5 py-4 text-sm'
+const CLASE_BANNER = 'rounded-xl border px-5 py-3.5 text-sm'
+const CLASE_TARJETA = 'rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]'
 
 function Banners({ proceso }: { proceso: ProcesoDetalle }) {
   const { abandonoVigente: abandono, suspensionVigente: suspension } = proceso
@@ -143,55 +143,69 @@ export default function DetalleProceso() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-4 rounded-xl border border-gray-200 bg-white p-5">
-        <div className="min-w-0 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-sm font-medium text-gray-700">{proceso.codigo}</span>
-            <EtiquetaEstado estado={proceso.estadoVisible} />
-            <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600">
-              {ETIQUETAS_CATEGORIA_PROCESO[CATEGORIA_POR_TIPO_PROCESO[proceso.tipo]]}
-            </span>
+      <header className={`${CLASE_TARJETA} px-6 pt-5`}>
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="min-w-[260px] flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-mono text-sm font-medium text-gray-700">{proceso.codigo}</span>
+              <EtiquetaEstado estado={proceso.estadoVisible} />
+              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-600">
+                {ETIQUETAS_CATEGORIA_PROCESO[CATEGORIA_POR_TIPO_PROCESO[proceso.tipo]]}
+              </span>
+            </div>
+            <h2 className="text-[22px] font-semibold tracking-tight text-pretty text-gray-900">
+              {ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.tipo]}
+            </h2>
+            <p className="text-sm text-gray-600">
+              <Link to={RUTAS_JURIDICO.usuaria(proceso.usuaria.id)} className="font-medium text-brand-700 hover:underline">
+                {proceso.usuaria.nombreCompleto}
+              </Link>{' '}
+              · Expediente {proceso.expedienteNumero}
+              {proceso.contraparte && <> · contra {proceso.contraparte}</>}
+            </p>
           </div>
-          <h2 className="text-xl font-semibold text-gray-900">{ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.tipo]}</h2>
-          <p className="text-sm text-gray-600">
-            <Link to={RUTAS_JURIDICO.usuaria(proceso.usuaria.id)} className="font-medium text-brand-700 hover:underline">
-              {proceso.usuaria.nombreCompleto}
-            </Link>
-            {proceso.contraparte && <> · contra {proceso.contraparte}</>}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variante="secondary" tamano="md" onClick={abrirActuacion}>
-            Registrar actuación
-          </Button>
-          {acciones.includes('REACTIVAR') && (
-            <Button tamano="md" onClick={() => setModal('reactivar')}>
-              Reactivar proceso
+          <div className="flex flex-wrap gap-2">
+            <Button variante="secondary" tamano="md" onClick={abrirActuacion}>
+              Registrar actuación
             </Button>
-          )}
+            {acciones.includes('REACTIVAR') && (
+              <Button tamano="md" onClick={() => setModal('reactivar')}>
+                Reactivar proceso
+              </Button>
+            )}
+          </div>
         </div>
+        <div className="mt-5">
+          <BarraAvance fase={proceso.fase} estado={proceso.estadoVisible} />
+        </div>
+        <Tabs
+          className="mt-4"
+          items={[
+            { to: RUTAS_JURIDICO.proceso(proceso.id), etiqueta: `Bitácora (${proceso.bitacora.length})`, fin: true },
+            {
+              to: RUTAS_JURIDICO.documentosProceso(proceso.id),
+              etiqueta: `Documentos (${proceso.carpetas.reduce((total, carpeta) => total + carpeta.documentos.length, 0)})`,
+            },
+          ]}
+        />
       </header>
 
       <Banners proceso={proceso} />
-      <BarraAvance fase={proceso.fase} estado={proceso.estadoVisible} />
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
-          <Tabs
-            className="border-b border-gray-200"
-            items={[
-              { to: RUTAS_JURIDICO.proceso(proceso.id), etiqueta: `Bitácora (${proceso.bitacora.length})`, fin: true },
-              {
-                to: RUTAS_JURIDICO.documentosProceso(proceso.id),
-                etiqueta: `Documentos (${proceso.carpetas.reduce((total, carpeta) => total + carpeta.documentos.length, 0)})`,
-              },
-            ]}
-          />
           <Outlet context={contexto} />
         </div>
 
         <aside className="space-y-4">
-          <PanelDatos proceso={proceso} onEditar={() => setModal('editar')} />
+          <PanelDatos
+            proceso={proceso}
+            onGuardado={(mensaje) => {
+              mostrar(mensaje)
+              refrescar()
+            }}
+            onConflicto={refrescar}
+          />
           <PanelCierre
             acciones={acciones}
             onFinalizar={() => setModal('finalizar')}
@@ -199,16 +213,20 @@ export default function DetalleProceso() {
             onAbandonar={() => setModal('abandono')}
           />
           {otros.length > 0 && (
-            <section className="rounded-xl border border-gray-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-gray-900">Otros procesos de la usuaria</h3>
-              <ul className="mt-3 space-y-2.5">
+            <section className={`${CLASE_TARJETA} p-4`}>
+              <h3 className="mb-2.5 text-sm font-semibold text-gray-900">Otros procesos de la usuaria</h3>
+              <ul>
                 {otros.map((otro) => (
-                  <li key={otro.id}>
-                    <Link to={RUTAS_JURIDICO.proceso(otro.id)} className="block hover:underline">
-                      <span className="font-mono text-xs text-gray-600">{otro.codigo}</span>{' '}
-                      <span className="text-sm text-gray-900">{ETIQUETAS_TIPO_PROCESO_JURIDICO[otro.tipo]}</span>
+                  <li key={otro.id} className="py-1.5">
+                    <Link to={RUTAS_JURIDICO.proceso(otro.id)} className="group block">
+                      <span className="font-mono text-xs text-gray-500">{otro.codigo}</span>
+                      <span className="block text-[13px] text-gray-900 group-hover:underline">
+                        {ETIQUETAS_TIPO_PROCESO_JURIDICO[otro.tipo]}
+                      </span>
                     </Link>
-                    <EtiquetaEstado estado={otro.estadoVisible} />
+                    <div className="mt-1">
+                      <EtiquetaEstado estado={otro.estadoVisible} />
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -221,7 +239,6 @@ export default function DetalleProceso() {
       {modal === 'finalizar' && <ModalFinalizar {...propsModal} />}
       {modal === 'suspender' && <ModalSuspender {...propsModal} />}
       {modal === 'abandono' && <ModalAbandono {...propsModal} />}
-      {modal === 'editar' && <ModalEditarDatos {...propsModal} />}
       {modal === 'reactivar' && <ModalReactivar {...propsModal} />}
     </div>
   )

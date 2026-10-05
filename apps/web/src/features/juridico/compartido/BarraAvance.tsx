@@ -35,18 +35,18 @@ export function BarraAvanceCompacta({ fase, estado }: BarraAvanceProps) {
   )
 }
 
-/** Los tres pasos del proceso, numerados, para el encabezado del detalle. */
+/** Los tres pasos del proceso, numerados, dentro de la tarjeta de encabezado del detalle. */
 export default function BarraAvance({ fase, estado }: BarraAvanceProps) {
   const actual = FASES_PROCESO_JURIDICO.indexOf(fase)
   return (
-    <ol className="flex items-start rounded-xl border border-gray-200 bg-white px-5 py-4">
+    <ol className="flex max-w-[620px] items-start">
       {FASES_PROCESO_JURIDICO.map((paso, indice) => {
         const alcanzado = indice <= actual
         return (
           <li key={paso} className="flex flex-1 flex-col gap-1.5" aria-current={indice === actual ? 'step' : undefined}>
             <div className="flex items-center">
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
                   alcanzado ? `${CLASES_BARRA[estado]} text-white` : 'bg-gray-100 text-gray-500'
                 }`}
               >

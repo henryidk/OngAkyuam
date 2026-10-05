@@ -242,7 +242,8 @@ describe('DocumentosProcesoService', () => {
       expect(bitacora.registrar).toHaveBeenCalledTimes(2);
       expect(bitacora.registrar).toHaveBeenCalledWith(
         expect.objectContaining({
-          tipo: 'SISTEMA',
+          tipo: 'Sistema',
+          esSistema: true,
           contenido: 'Se subió 1 documento',
         }),
       );

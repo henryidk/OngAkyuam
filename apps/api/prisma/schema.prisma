@@ -409,17 +409,6 @@ enum MotivoAbandonoProceso {
   OTRO
 }
 
-enum TipoEntradaBitacora {
-  SEGUIMIENTO
-  ESCRITO
-  NOTIFICACION
-  RESOLUCION
-  AUDIENCIA
-  DILIGENCIA
-  CONTACTO_USUARIA
-  SISTEMA // generada por el backend: creación, cambios de estado, subida de documentos
-}
-
 // Un proceso judicial que jurídico lleva para una usuaria dentro de un expediente que le fue
 // referido. Una usuaria puede tener varios procesos, incluso del mismo tipo repetido en el
 // tiempo (ej. fijación y luego modificación de la misma pensión alimenticia).
@@ -515,7 +504,10 @@ model NotaAvanceProceso {
   procesoId       String
   proceso         ProcesoJuridico     @relation(fields: [procesoId], references: [id], onDelete: Cascade)
   contenido       String
-  tipo            TipoEntradaBitacora @default(SEGUIMIENTO)
+  // Texto libre: cada proceso tiene actuaciones distintas ("Memorial de evacuación", …).
+  tipo            String              @db.VarChar(60)
+  // Solo el backend crea entradas de sistema (creación, cambios de estado, subida de documentos).
+  esSistema       Boolean             @default(false)
   registradoPorId String
   registradoPor   Usuario             @relation(fields: [registradoPorId], references: [id])
   createdAt       DateTime            @default(now()) @db.Timestamptz(3)

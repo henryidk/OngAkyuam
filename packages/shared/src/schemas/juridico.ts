@@ -4,12 +4,12 @@ import {
   ESTADOS_VISIBLES_PROCESO,
   FASES_PROCESO_JURIDICO,
   FORMAS_FINALIZACION_PROCESO,
+  LARGO_MAXIMO_TIPO_ACTUACION,
   MAX_PROCESOS_POR_LOTE,
   MOTIVOS_ABANDONO_PROCESO,
+  normalizarTipoActuacion,
   PROCESOS_PAGE_SIZE_MAXIMO,
   SITUACIONES_PROCESO_JURIDICO,
-  TIPOS_ACTUACION_BITACORA,
-  TIPOS_ENTRADA_BITACORA,
   TIPOS_PERSONAL_JURIDICO,
   TIPOS_PROCESO_JURIDICO,
 } from '../catalogos/juridico.js'
@@ -35,8 +35,6 @@ export const situacionProcesoJuridicoSchema = z.enum(SITUACIONES_PROCESO_JURIDIC
 export const estadoVisibleProcesoSchema = z.enum(ESTADOS_VISIBLES_PROCESO)
 export const formaFinalizacionProcesoSchema = z.enum(FORMAS_FINALIZACION_PROCESO)
 export const motivoAbandonoProcesoSchema = z.enum(MOTIVOS_ABANDONO_PROCESO)
-export const tipoEntradaBitacoraSchema = z.enum(TIPOS_ENTRADA_BITACORA)
-export const tipoActuacionBitacoraSchema = z.enum(TIPOS_ACTUACION_BITACORA)
 
 export type TipoProcesoJuridico = z.infer<typeof tipoProcesoJuridicoSchema>
 export type TipoPersonalJuridico = z.infer<typeof tipoPersonalJuridicoSchema>
@@ -45,8 +43,6 @@ export type SituacionProcesoJuridico = z.infer<typeof situacionProcesoJuridicoSc
 export type EstadoVisibleProceso = z.infer<typeof estadoVisibleProcesoSchema>
 export type FormaFinalizacionProceso = z.infer<typeof formaFinalizacionProcesoSchema>
 export type MotivoAbandonoProceso = z.infer<typeof motivoAbandonoProcesoSchema>
-export type TipoEntradaBitacora = z.infer<typeof tipoEntradaBitacoraSchema>
-export type TipoActuacionBitacora = z.infer<typeof tipoActuacionBitacoraSchema>
 export type AccionProceso = (typeof ACCIONES_PROCESO)[number]
 
 // ---- Registro en lote (asistente de 2 pasos) ----
@@ -137,10 +133,21 @@ export type RegistrarAbandonoInput = z.infer<typeof registrarAbandonoSchema>
 
 export const CONTENIDO_BITACORA_MAX = 4000
 
-/** `POST /juridico/procesos/:id/bitacora`. `SISTEMA` no es elegible: solo lo escribe el backend. */
+/**
+ * `POST /juridico/procesos/:id/bitacora`. El tipo es texto libre; aunque alguien escriba "Sistema",
+ * la entrada se guarda como actuación normal: solo el backend crea entradas de sistema.
+ */
 export const registrarActuacionSchema = z.object({
-  tipo: tipoActuacionBitacoraSchema,
-  contenido: z.string().trim().min(1, 'Requerido').max(CONTENIDO_BITACORA_MAX),
+  tipo: z
+    .string()
+    .transform(normalizarTipoActuacion)
+    .pipe(
+      z
+        .string()
+        .min(1, 'Escriba el tipo de actuación')
+        .max(LARGO_MAXIMO_TIPO_ACTUACION, `Máximo ${LARGO_MAXIMO_TIPO_ACTUACION} caracteres`),
+    ),
+  contenido: z.string().trim().min(1, 'Describa la actuación').max(CONTENIDO_BITACORA_MAX),
 })
 export type RegistrarActuacionInput = z.infer<typeof registrarActuacionSchema>
 
@@ -275,7 +282,9 @@ export interface SuspensionDto {
 
 export interface EntradaBitacoraDto {
   id: string
-  tipo: TipoEntradaBitacora
+  /** Texto libre tal como se escribió (o `TIPO_ENTRADA_SISTEMA` en los eventos del sistema). */
+  tipo: string
+  esSistema: boolean
   contenido: string
   registradoPor: string
   createdAt: string

@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { ETIQUETAS_FORMA_FINALIZACION } from '@akyuam/shared';
+import {
+  ETIQUETAS_FORMA_FINALIZACION,
+  TIPO_ENTRADA_SISTEMA,
+} from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   AbandonarParams,
@@ -103,7 +106,8 @@ export class TransicionesRepository implements ITransicionesRepository {
         await tx.notaAvanceProceso.create({
           data: {
             procesoId: params.procesoId,
-            tipo: 'SISTEMA',
+            tipo: TIPO_ENTRADA_SISTEMA,
+            esSistema: true,
             contenido: textoBitacora,
             registradoPorId: params.usuarioId,
           },

@@ -16,7 +16,6 @@ import {
   type FaseProcesoJuridico,
   type FormaFinalizacionProceso,
   type SituacionProcesoJuridico,
-  type TipoEntradaBitacora,
   type GrupoEtnico,
   type MunicipioAltaVerapaz,
   type Rol,
@@ -180,7 +179,7 @@ interface ProcesoSeed {
     forma: FormaFinalizacionProceso;
     detalle?: string;
   };
-  bitacora: { tipo: TipoEntradaBitacora; contenido: string; en: string }[];
+  bitacora: { tipo: string; contenido: string; en: string }[];
 }
 
 interface UsuariaConHistorialSeed {
@@ -222,12 +221,12 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
         contraparte: 'Contraparte Ficticia Uno',
         bitacora: [
           {
-            tipo: 'ESCRITO',
+            tipo: 'Escrito',
             contenido: 'Dato ficticio: se presentó la demanda.',
             en: '2026-08-12T15:00:00Z',
           },
           {
-            tipo: 'AUDIENCIA',
+            tipo: 'Audiencia',
             contenido: 'Dato ficticio: audiencia de conciliación sin acuerdo.',
             en: '2026-09-24T16:00:00Z',
           },
@@ -266,7 +265,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
         cierre: { fecha: '2026-05-15', forma: 'SENTENCIA' },
         bitacora: [
           {
-            tipo: 'RESOLUCION',
+            tipo: 'Resolución',
             contenido: 'Dato ficticio: sentencia que fija la pensión.',
             en: '2026-05-15T16:00:00Z',
           },
@@ -285,7 +284,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
         vinculadoCon: 0,
         bitacora: [
           {
-            tipo: 'ESCRITO',
+            tipo: 'Escrito',
             contenido: 'Dato ficticio: solicitud de ejecución presentada.',
             en: '2026-06-18T16:00:00Z',
           },
@@ -319,7 +318,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
         contraparte: 'Contraparte Ficticia Tres',
         bitacora: [
           {
-            tipo: 'NOTIFICACION',
+            tipo: 'Notificación',
             contenido: 'Dato ficticio: no se logró notificar a la contraparte.',
             en: '2026-08-20T16:00:00Z',
           },
@@ -334,7 +333,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
         cierre: { fecha: '2026-07-02', forma: 'CONVENIO' },
         bitacora: [
           {
-            tipo: 'DILIGENCIA',
+            tipo: 'Diligencia',
             contenido: 'Dato ficticio: entrega de bienes según convenio.',
             en: '2026-07-02T16:00:00Z',
           },
@@ -361,7 +360,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
         ultimaActuacion: '2026-08-05T16:00:00Z',
         bitacora: [
           {
-            tipo: 'CONTACTO_USUARIA',
+            tipo: 'Contacto con usuaria',
             contenido: 'Dato ficticio: no contestó las llamadas.',
             en: '2026-07-20T16:00:00Z',
           },
@@ -488,7 +487,8 @@ async function crearConHistorial(
       const entradas: Prisma.NotaAvanceProcesoCreateManyInput[] = [
         {
           procesoId: creado.id,
-          tipo: 'SISTEMA',
+          tipo: 'Sistema',
+          esSistema: true,
           contenido: 'Proceso iniciado desde referencia de Trabajo Social',
           registradoPorId: ctx.juridicoId,
           createdAt: registradoEn,
@@ -505,7 +505,8 @@ async function crearConHistorial(
       if (proceso.cierre) {
         entradas.push({
           procesoId: creado.id,
-          tipo: 'SISTEMA',
+          tipo: 'Sistema',
+          esSistema: true,
           contenido: 'Proceso finalizado',
           registradoPorId: ctx.juridicoId,
           createdAt: ultima,
@@ -522,7 +523,8 @@ async function crearConHistorial(
         });
         entradas.push({
           procesoId: creado.id,
-          tipo: 'SISTEMA',
+          tipo: 'Sistema',
+          esSistema: true,
           contenido: 'Proceso suspendido',
           registradoPorId: ctx.juridicoId,
           createdAt: ultima,
@@ -544,7 +546,8 @@ async function crearConHistorial(
         });
         entradas.push({
           procesoId: creado.id,
-          tipo: 'SISTEMA',
+          tipo: 'Sistema',
+          esSistema: true,
           contenido: 'Abandono registrado',
           registradoPorId: ctx.juridicoId,
           createdAt: ultima,

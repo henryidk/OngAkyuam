@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type {
-  ProcesoActivoPorTipo,
-  ProcesoCreadoDto,
-  ProcesoVinculadoDto,
-  TipoProcesoJuridico,
+import {
+  TIPO_ENTRADA_SISTEMA,
+  type ProcesoActivoPorTipo,
+  type ProcesoCreadoDto,
+  type ProcesoVinculadoDto,
+  type TipoProcesoJuridico,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -158,7 +159,8 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
           data: nuevos.flatMap((proceso) => [
             {
               procesoId: proceso.id,
-              tipo: 'SISTEMA' as const,
+              tipo: TIPO_ENTRADA_SISTEMA,
+              esSistema: true,
               contenido: params.referidoId
                 ? 'Proceso iniciado desde referencia de Trabajo Social'
                 : 'Proceso creado',
@@ -167,7 +169,8 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
             },
             {
               procesoId: proceso.id,
-              tipo: 'SISTEMA' as const,
+              tipo: TIPO_ENTRADA_SISTEMA,
+              esSistema: true,
               contenido: 'Marcado como En proceso al tomar el caso',
               registradoPorId: params.creadoPorId,
               createdAt: enProcesoEn,

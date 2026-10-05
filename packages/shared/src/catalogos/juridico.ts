@@ -113,38 +113,15 @@ export const ETIQUETAS_MOTIVO_ABANDONO: Record<(typeof MOTIVOS_ABANDONO_PROCESO)
   OTRO: 'Otro motivo',
 }
 
-/** `SISTEMA` la genera solo el backend (creación, cambios de estado, subida de documentos). */
-export const TIPOS_ENTRADA_BITACORA = [
-  'SEGUIMIENTO',
-  'ESCRITO',
-  'NOTIFICACION',
-  'RESOLUCION',
-  'AUDIENCIA',
-  'DILIGENCIA',
-  'CONTACTO_USUARIA',
-  'SISTEMA',
-] as const
+/** El tipo de una actuación es texto libre: cada proceso tiene actuaciones distintas. */
+export const LARGO_MAXIMO_TIPO_ACTUACION = 60
+/** Tipo con el que el backend anota sus propios eventos (siempre con `esSistema`). */
+export const TIPO_ENTRADA_SISTEMA = 'Sistema'
+export const MAX_SUGERENCIAS_TIPO_ACTUACION = 10
 
-/** Los tipos que el personal puede elegir al registrar una actuación. */
-export const TIPOS_ACTUACION_BITACORA = [
-  'SEGUIMIENTO',
-  'ESCRITO',
-  'NOTIFICACION',
-  'RESOLUCION',
-  'AUDIENCIA',
-  'DILIGENCIA',
-  'CONTACTO_USUARIA',
-] as const satisfies readonly (typeof TIPOS_ENTRADA_BITACORA)[number][]
-
-export const ETIQUETAS_TIPO_ENTRADA_BITACORA: Record<(typeof TIPOS_ENTRADA_BITACORA)[number], string> = {
-  SEGUIMIENTO: 'Seguimiento',
-  ESCRITO: 'Escrito',
-  NOTIFICACION: 'Notificación',
-  RESOLUCION: 'Resolución',
-  AUDIENCIA: 'Audiencia',
-  DILIGENCIA: 'Diligencia',
-  CONTACTO_USUARIA: 'Contacto con usuaria',
-  SISTEMA: 'Sistema',
+/** Quita espacios a los lados y colapsa los del medio: "  Memorial   de evacuación " → "Memorial de evacuación". */
+export function normalizarTipoActuacion(tipo: string): string {
+  return tipo.trim().replace(/\s+/g, ' ')
 }
 
 export const ACCIONES_PROCESO = ['FINALIZAR', 'SUSPENDER', 'ABANDONAR', 'REACTIVAR'] as const

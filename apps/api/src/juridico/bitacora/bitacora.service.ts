@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type {
-  EntradaBitacoraDto,
-  RegistrarActuacionInput,
+import {
+  MAX_SUGERENCIAS_TIPO_ACTUACION,
+  type EntradaBitacoraDto,
+  type RegistrarActuacionInput,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
@@ -9,6 +10,7 @@ import { AccesoJuridicoService } from '../compartido/acceso-juridico.service';
 import { eventoAuditoria } from '../compartido/auditoria';
 import { BITACORA_REPOSITORY } from '../interfaces/bitacora-repository.interface';
 import type { IBitacoraRepository } from '../interfaces/bitacora-repository.interface';
+import { combinarSugerencias } from './sugerencias-tipo-actuacion';
 
 @Injectable()
 export class BitacoraService {
@@ -29,6 +31,8 @@ export class BitacoraService {
     const entrada = await this.bitacoraRepository.registrar({
       procesoId,
       tipo: datos.tipo,
+      // Lo que escribe la operadora nunca es una entrada de sistema, aunque el tipo diga "Sistema".
+      esSistema: false,
       contenido: datos.contenido,
       registradoPorId: contexto.usuarioId,
     });
@@ -43,5 +47,21 @@ export class BitacoraService {
     );
 
     return entrada;
+  }
+
+  /** Sugerencias para el campo Tipo: primero lo usado en este proceso, luego lo usual en su tipo. */
+  async sugerirTipos(procesoId: string): Promise<string[]> {
+    const acceso = await this.acceso.exigirProceso(procesoId);
+    const [delProceso, delTipoDeProceso] = await Promise.all([
+      this.bitacoraRepository.tiposUsadosEnProceso(
+        procesoId,
+        MAX_SUGERENCIAS_TIPO_ACTUACION,
+      ),
+      this.bitacoraRepository.tiposMasUsadosPorTipoProceso(
+        acceso.tipo,
+        MAX_SUGERENCIAS_TIPO_ACTUACION,
+      ),
+    ]);
+    return combinarSugerencias(delProceso, delTipoDeProceso);
   }
 }
