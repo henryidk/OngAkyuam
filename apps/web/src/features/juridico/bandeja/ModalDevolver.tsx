@@ -6,7 +6,8 @@ import { devolverReferencia } from '../api/juridico.api'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../compartido/campos'
 
 interface ModalDevolverProps {
-  referencia: ReferenciaBandejaDto
+  /** Solo hace falta el id: sirve tanto desde la bandeja como desde la ficha de la usuaria. */
+  referencia: Pick<ReferenciaBandejaDto, 'referidoId'>
   onCerrar: () => void
   onDevuelta: () => void
 }

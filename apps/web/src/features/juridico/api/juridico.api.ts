@@ -6,9 +6,12 @@ import type {
   DocumentoProcesoDto,
   EditarDatosProcesoInput,
   EntradaBitacoraDto,
+  ExpedienteDetalleArea,
+  FichaUsuariaJuridicoDto,
   FinalizarProcesoInput,
-  HistorialUsuariaDto,
   ListarProcesosQuery,
+  ListarUsuariasJuridicoQuery,
+  ListaUsuariasJuridico,
   PersonalDto,
   ProcesoDetalle,
   ProcesosCreadosLote,
@@ -20,7 +23,6 @@ import type {
   ResumenProcesos,
   SuspenderProcesoInput,
   UrlDocumentoProcesoQuery,
-  UsuariaJuridicoResumen,
 } from '@akyuam/shared'
 import { api } from '../../../lib/api'
 
@@ -99,14 +101,29 @@ export function devolverReferencia(referidoId: string, datos: DevolverReferencia
   return api.post<void>(`/juridico/bandeja/${referidoId}/devolucion`, datos).then(() => undefined)
 }
 
-// ---- Expedientes ----
+// ---- Usuarias ----
 
-export function buscarUsuarias(q: string) {
-  return api.get<UsuariaJuridicoResumen[]>('/juridico/usuarias', { params: { q } }).then((res) => res.data)
+export function listarUsuarias(query: Partial<ListarUsuariasJuridicoQuery>) {
+  return api.get<ListaUsuariasJuridico>('/juridico/usuarias', { params: query }).then((res) => res.data)
 }
 
-export function obtenerHistorialUsuaria(usuariaId: string) {
-  return api.get<HistorialUsuariaDto>(`/juridico/usuarias/${usuariaId}`).then((res) => res.data)
+export function obtenerFichaUsuaria(usuariaId: string) {
+  return api.get<FichaUsuariaJuridicoDto>(`/juridico/usuarias/${usuariaId}`).then((res) => res.data)
+}
+
+/** Datos y documentos de Trabajo Social, con la misma política de acceso que las demás áreas. */
+export function obtenerExpedienteTs(expedienteId: string) {
+  return api.get<ExpedienteDetalleArea>(`/areas/expedientes/${expedienteId}`).then((res) => res.data)
+}
+
+export function obtenerUrlDocumentoTs(
+  expedienteId: string,
+  documentoId: string,
+  modo: UrlDocumentoProcesoQuery['modo'],
+) {
+  return api
+    .get<{ url: string }>(`/areas/expedientes/${expedienteId}/documentos/${documentoId}/url`, { params: { modo } })
+    .then((res) => res.data.url)
 }
 
 // ---- Carpetas y documentos ----

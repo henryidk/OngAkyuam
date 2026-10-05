@@ -1,10 +1,15 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
-import { AREAS_ATENCION } from '@akyuam/shared';
+import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import {
+  AREAS_ATENCION,
+  urlDocumentoProcesoQuerySchema,
+  type UrlDocumentoProcesoQuery,
+} from '@akyuam/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
 import { ContextoAuditoria } from '../common/decorators/contexto-auditoria.decorator';
+import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import type { ContextoAuditoria as IContextoAuditoria } from '../common/types/contexto-auditoria';
 import { AreasService } from './areas.service';
 
@@ -34,6 +39,8 @@ export class AreasController {
   obtenerUrlDescarga(
     @Param('id') id: string,
     @Param('documentoId') documentoId: string,
+    @Query(new ZodValidationPipe(urlDocumentoProcesoQuerySchema))
+    query: UrlDocumentoProcesoQuery,
     @CurrentUser() usuario: AuthenticatedUser,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
@@ -42,6 +49,7 @@ export class AreasController {
       documentoId,
       usuario,
       contexto,
+      query.modo,
     );
   }
 }

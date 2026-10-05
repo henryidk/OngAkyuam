@@ -267,7 +267,7 @@ export default function RegistrarProcesos() {
     titulo: 'Registrar procesos',
     migas: contexto
       ? [
-          { etiqueta: 'Expedientes', ruta: RUTAS_JURIDICO.expedientes() },
+          { etiqueta: 'Usuarias', ruta: RUTAS_JURIDICO.usuarias() },
           { etiqueta: contexto.usuaria.nombreCompleto, ruta: RUTAS_JURIDICO.usuaria(contexto.usuaria.id) },
         ]
       : [{ etiqueta: 'Área de atención', ruta: RUTAS_JURIDICO.bandeja() }],

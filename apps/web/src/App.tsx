@@ -11,8 +11,13 @@ import RegistrarProcesosJuridico, { RedirigirARegistro } from './features/juridi
 import DetalleProcesoJuridico from './features/juridico/detalle/DetalleProceso'
 import PestanaBitacoraJuridico from './features/juridico/detalle/PestanaBitacora'
 import PestanaDocumentosJuridico from './features/juridico/documentos/PestanaDocumentos'
-import BuscarUsuariasJuridico from './features/juridico/expedientes/BuscarUsuarias'
-import HistorialUsuariaJuridico from './features/juridico/expedientes/HistorialUsuaria'
+import ListaUsuariasJuridico from './features/juridico/usuarias/ListaUsuarias'
+import FichaUsuariaJuridico from './features/juridico/usuarias/FichaUsuaria'
+import PestanaResumenJuridico from './features/juridico/usuarias/PestanaResumen'
+import PestanaProcesosUsuariaJuridico from './features/juridico/usuarias/PestanaProcesos'
+import PestanaDatosCasoJuridico from './features/juridico/usuarias/PestanaDatosCaso'
+import PestanaDocumentosTsJuridico from './features/juridico/usuarias/PestanaDocumentosTs'
+import PestanaReferenciasJuridico from './features/juridico/usuarias/PestanaReferencias'
 import Login from './pages/Login'
 import Medica from './pages/Medica'
 import MedicaExpediente from './pages/MedicaExpediente'
@@ -109,8 +114,16 @@ function App() {
               <Route index element={<PestanaBitacoraJuridico />} />
               <Route path="documentos" element={<PestanaDocumentosJuridico />} />
             </Route>
-            <Route path="expedientes" element={<BuscarUsuariasJuridico />} />
-            <Route path="usuarias/:usuariaId" element={<HistorialUsuariaJuridico />} />
+            {/* La antigua búsqueda de Expedientes ahora es la lista de Usuarias. */}
+            <Route path="expedientes" element={<Navigate to="/juridico/usuarias" replace />} />
+            <Route path="usuarias" element={<ListaUsuariasJuridico />} />
+            <Route path="usuarias/:usuariaId" element={<FichaUsuariaJuridico />}>
+              <Route index element={<PestanaResumenJuridico />} />
+              <Route path="procesos" element={<PestanaProcesosUsuariaJuridico />} />
+              <Route path="datos" element={<PestanaDatosCasoJuridico />} />
+              <Route path="documentos" element={<PestanaDocumentosTsJuridico />} />
+              <Route path="referencias" element={<PestanaReferenciasJuridico />} />
+            </Route>
             {/* Ruta vieja del espacio de trabajo por expediente. */}
             <Route path=":id/casos" element={<RedirigirARegistro />} />
           </Route>

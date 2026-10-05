@@ -19,12 +19,15 @@ import type { MunicipioAltaVerapaz } from '@prisma/client';
 import { AREA_NOTIFIER } from '../../areas/interfaces/area-notifier.interface';
 import type { IAreaNotifier } from '../../areas/interfaces/area-notifier.interface';
 import { AuditService } from '../../auth/services/audit.service';
+import {
+  interpretarBusqueda,
+  type BusquedaListaUsuarias,
+} from '../../common/busqueda-usuarias';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { EstadoTsService } from '../estado/estado-ts.service';
 import { DpiUsuariaDuplicadoError } from '../interfaces/expedientes-repository.interface';
 import { USUARIAS_REPOSITORY } from './interfaces/usuarias-repository.interface';
 import type {
-  BusquedaListaUsuarias,
   CasoHubRow,
   DatosIdentidadUsuariaParams,
   IUsuariasRepository,
@@ -33,37 +36,7 @@ import type {
 
 const LONGITUD_MINIMA_BUSQUEDA_NOMBRE = 3;
 const LIMITE_RESULTADOS_BUSQUEDA = 20;
-const PATRON_NUMERO_EXPEDIENTE = /^(\d{1,4})-(\d{4})$/;
-const PATRON_DPI = /^\d{13}$/;
 const MENSAJE_DPI_DUPLICADO = 'El DPI ya está registrado para otra usuaria';
-
-/**
- * Qué quiso buscar quien escribió `q` en la lista: número de expediente (acepta "5-2026" por
- * "05-2026"), DPI exacto o nombre (trigram, mínimo 3 letras).
- */
-function interpretarBusqueda(
-  termino: string | undefined,
-): BusquedaListaUsuarias | undefined {
-  if (!termino) {
-    return undefined;
-  }
-  const numero = PATRON_NUMERO_EXPEDIENTE.exec(termino);
-  if (numero) {
-    return {
-      tipo: 'numeroExpediente',
-      valor: `${numero[1].padStart(2, '0')}-${numero[2]}`,
-    };
-  }
-  if (PATRON_DPI.test(termino)) {
-    return { tipo: 'dpi', valor: termino };
-  }
-  if (termino.length < LONGITUD_MINIMA_BUSQUEDA_NOMBRE) {
-    throw new BadRequestException(
-      `Escribe al menos ${LONGITUD_MINIMA_BUSQUEDA_NOMBRE} letras, un DPI o un número de expediente`,
-    );
-  }
-  return { tipo: 'nombre', valor: termino };
-}
 
 function vacioANulo(valor: string): string | null {
   return valor === '' ? null : valor;

@@ -60,6 +60,7 @@ export interface DocumentoVisibleArea {
   id: string
   tipo: TipoDocumento
   nombreArchivo: string
+  mimeType: string
   tamanioBytes: number
   createdAt: string
 }

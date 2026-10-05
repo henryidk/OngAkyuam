@@ -1,8 +1,10 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
-import type {
-  AreaAtencion,
-  ExpedienteDetalleArea,
-  ExpedienteResumenArea,
+import {
+  mimeTypePermitido,
+  type AreaAtencion,
+  type ExpedienteDetalleArea,
+  type ExpedienteResumenArea,
+  type UrlDocumentoProcesoQuery,
 } from '@akyuam/shared';
 import { AuditService } from '../auth/services/audit.service';
 import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface';
@@ -70,6 +72,7 @@ export class AreasService {
     documentoId: string,
     usuario: AuthenticatedUser,
     contexto: ContextoAuditoria,
+    modo: UrlDocumentoProcesoQuery['modo'] = 'descarga',
   ): Promise<{ url: string }> {
     const documento = await this.areasRepository.buscarDocumentoDeReferido(
       documentoId,
@@ -82,16 +85,24 @@ export class AreasService {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_DOCUMENTO);
     }
 
-    const url = await this.objectStorage.generarUrlDescarga(
-      documento.claveR2,
-      documento.nombreArchivo,
-    );
+    // La vista dentro de la app solo existe para tipos que el navegador muestra sin ejecutar
+    // nada; cualquier otro se entrega siempre como descarga.
+    const comoVista = modo === 'vista' && mimeTypePermitido(documento.mimeType);
+    const url = comoVista
+      ? await this.objectStorage.generarUrlVistaPrevia(
+          documento.claveR2,
+          documento.mimeType,
+        )
+      : await this.objectStorage.generarUrlDescarga(
+          documento.claveR2,
+          documento.nombreArchivo,
+        );
 
     // Leer un archivo sensible se audita igual que subirlo (ver planjuridico.md, punto 12).
     await this.auditService.registrar({
       usuarioId: contexto.usuarioId,
       username: contexto.username,
-      accion: 'DOCUMENTO_DESCARGADO',
+      accion: comoVista ? 'DOCUMENTO_VISUALIZADO' : 'DOCUMENTO_DESCARGADO',
       entidad: 'Documento',
       entidadId: documentoId,
       ipAddress: contexto.ipAddress,
@@ -124,6 +135,7 @@ function aplicarPolitica(
         id: documento.id,
         tipo: documento.tipo,
         nombreArchivo: documento.nombreArchivo,
+        mimeType: documento.mimeType,
         tamanioBytes: documento.tamanioBytes,
         createdAt: documento.createdAt,
       })),

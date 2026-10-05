@@ -98,6 +98,7 @@ export class AreasRepository implements IAreasRepository {
         id: documento.id,
         tipo: documento.tipo,
         nombreArchivo: documento.nombreArchivo,
+        mimeType: documento.mimeType,
         tamanioBytes: documento.tamanioBytes,
         createdAt: documento.createdAt.toISOString(),
         areasVisibles: documento.visibilidadAreas.map(
@@ -122,6 +123,7 @@ export class AreasRepository implements IAreasRepository {
       select: {
         claveR2: true,
         nombreArchivo: true,
+        mimeType: true,
         tipo: true,
         ...SELECT_AREAS_VISIBLES,
       },
@@ -132,6 +134,7 @@ export class AreasRepository implements IAreasRepository {
     return {
       claveR2: documento.claveR2,
       nombreArchivo: documento.nombreArchivo,
+      mimeType: documento.mimeType,
       tipo: documento.tipo,
       areasVisibles: documento.visibilidadAreas.map(
         (visibilidad) => visibilidad.area,

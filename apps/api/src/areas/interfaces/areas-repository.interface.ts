@@ -32,6 +32,7 @@ export interface ExpedienteReferidoArea extends Omit<
 export interface DocumentoParaDescargaArea extends DocumentoConVisibilidad {
   claveR2: string;
   nombreArchivo: string;
+  mimeType: string;
 }
 
 export interface IAreasRepository {

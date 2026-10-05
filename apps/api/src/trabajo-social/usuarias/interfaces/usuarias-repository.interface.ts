@@ -7,6 +7,7 @@ import type {
   UsuariaExpedienteHub,
   UsuariaResumenBusqueda,
 } from '@akyuam/shared';
+import type { BusquedaListaUsuarias } from '../../../common/busqueda-usuarias';
 
 export const USUARIAS_REPOSITORY = Symbol('USUARIAS_REPOSITORY');
 
@@ -23,12 +24,6 @@ export interface DatosIdentidadUsuariaParams {
   municipioOtro: string | null;
   ubicacionGeografica: string | null;
 }
-
-/** Criterio de búsqueda de la lista, ya interpretado por el service a partir de `q`. */
-export type BusquedaListaUsuarias =
-  | { tipo: 'numeroExpediente'; valor: string }
-  | { tipo: 'dpi'; valor: string }
-  | { tipo: 'nombre'; valor: string };
 
 export interface ListarUsuariasParams {
   filtro?: FiltroListaUsuarias;

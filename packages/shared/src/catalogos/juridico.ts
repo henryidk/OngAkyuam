@@ -154,7 +154,7 @@ export const DIAS_ALERTA_INACTIVIDAD = 60
 export const MAX_PROCESOS_POR_LOTE = 15
 export const CONCURRENCIA_SUBIDA = 2
 export const PROCESOS_PAGE_SIZE_MAXIMO = 50
-export const MAX_RESULTADOS_BUSQUEDA_USUARIAS = 20
+export const USUARIAS_JURIDICO_POR_PAGINA = 20
 
 /** Agrupación del paso 1 del asistente "Registrar procesos". */
 export const CATEGORIAS_PROCESO_JURIDICO = [

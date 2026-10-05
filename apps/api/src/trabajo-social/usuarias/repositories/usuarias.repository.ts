@@ -9,11 +9,11 @@ import type {
   UsuariaResumenBusqueda,
 } from '@akyuam/shared';
 import { fechaColumnaISO } from '@akyuam/shared';
+import { condicionBusqueda } from '../../../common/busqueda-usuarias';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DpiUsuariaDuplicadoError } from '../../interfaces/expedientes-repository.interface';
 import { ConsultaListaTs } from '../../estado/consulta-lista-ts';
 import type {
-  BusquedaListaUsuarias,
   DatosIdentidadUsuariaParams,
   IUsuariasRepository,
   ListarUsuariasParams,
@@ -64,25 +64,6 @@ function condicionFiltro(filtro: FiltroListaUsuarias | undefined): Prisma.Sql {
     return Prisma.sql`"enAlbergue"`;
   }
   return Prisma.sql`estado = ${filtro}`;
-}
-
-function condicionBusqueda(
-  busqueda: BusquedaListaUsuarias | undefined,
-): Prisma.Sql {
-  if (!busqueda) {
-    return Prisma.sql`TRUE`;
-  }
-  switch (busqueda.tipo) {
-    // Cualquier caso de la usuaria, no solo el activo: quien busca por número puede traer el
-    // de un caso anterior en la mano.
-    case 'numeroExpediente':
-      return Prisma.sql`EXISTS (SELECT 1 FROM "Expediente" x WHERE x."usuariaId" = u.id AND x.numero = ${busqueda.valor})`;
-    case 'dpi':
-      return Prisma.sql`u.dpi = ${busqueda.valor}`;
-    // Mismo operador e índice trigram que `buscarPorNombre`.
-    case 'nombre':
-      return Prisma.sql`${busqueda.valor} <% (u.nombres || ' ' || u.apellidos)`;
-  }
 }
 
 function mapearResumen(usuaria: UsuariaResumenRow): UsuariaResumenBusqueda {

@@ -1,9 +1,12 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
-import type {
-  HistorialUsuariaDto,
-  UsuariaJuridicoResumen,
+import {
+  USUARIAS_JURIDICO_POR_PAGINA,
+  type FichaUsuariaJuridicoDto,
+  type ListarUsuariasJuridicoQuery,
+  type ListaUsuariasJuridico,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
+import { interpretarBusqueda } from '../../common/busqueda-usuarias';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { eventoAuditoria } from '../compartido/auditoria';
 import { MENSAJE_SIN_ACCESO_USUARIA } from '../compartido/mensajes';
@@ -23,29 +26,41 @@ export class HistorialUsuariaService {
     private readonly auditService: AuditService,
   ) {}
 
-  async buscar(
-    texto: string,
+  async listar(
+    query: ListarUsuariasJuridicoQuery,
     contexto: ContextoAuditoria,
-  ): Promise<UsuariaJuridicoResumen[]> {
-    const resultados = await this.usuariasRepository.buscar(texto);
+  ): Promise<ListaUsuariasJuridico> {
+    const busqueda = interpretarBusqueda(query.q);
+    const lista = await this.usuariasRepository.listar({
+      filtro: query.filtro,
+      busqueda,
+      pagina: query.pagina,
+      porPagina: USUARIAS_JURIDICO_POR_PAGINA,
+    });
 
-    // Queda constancia de que se buscó, nunca de qué se buscó: el texto es un nombre o un DPI.
+    // Queda constancia de que se listó y con qué filtro, nunca de qué se buscó: el texto es un
+    // nombre o un DPI.
     await this.auditService.registrar({
       usuarioId: contexto.usuarioId,
       username: contexto.username,
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      accion: 'USUARIAS_JURIDICO_BUSCADAS',
-      detalles: { resultados: resultados.length },
+      accion: 'USUARIAS_JURIDICO_LISTADAS',
+      detalles: {
+        filtro: query.filtro ?? null,
+        conBusqueda: busqueda !== undefined,
+        pagina: query.pagina,
+        resultados: lista.filas.length,
+      },
     });
 
-    return resultados;
+    return lista;
   }
 
   async obtener(
     usuariaId: string,
     contexto: ContextoAuditoria,
-  ): Promise<HistorialUsuariaDto> {
+  ): Promise<FichaUsuariaJuridicoDto> {
     const ficha = await this.usuariasRepository.obtenerFicha(usuariaId);
     if (!ficha) {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_USUARIA);
@@ -61,11 +76,6 @@ export class HistorialUsuariaService {
       }),
     );
 
-    return {
-      usuaria: ficha.usuaria,
-      contadores: contarProcesos(procesos),
-      procesos,
-      referencias: ficha.referencias,
-    };
+    return { ...ficha, contadores: contarProcesos(procesos), procesos };
   }
 }

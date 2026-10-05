@@ -13,6 +13,8 @@ import {
   TIPOS_PERSONAL_JURIDICO,
   TIPOS_PROCESO_JURIDICO,
 } from '../catalogos/juridico.js'
+import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
+import type { TipoRegistro } from './registroUsuaria.js'
 import { booleanoQuerySchema } from './query.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
@@ -199,14 +201,26 @@ export const devolverReferenciaSchema = z.object({
 })
 export type DevolverReferenciaInput = z.infer<typeof devolverReferenciaSchema>
 
-// ---- Expedientes (búsqueda por usuaria) ----
+// ---- Usuarias (lista y ficha) ----
 
-export const BUSQUEDA_USUARIAS_MIN = 2
+export const FILTROS_USUARIAS_JURIDICO = ['REFERENCIA_NUEVA', 'CON_ACTIVOS', 'SIN_ACTIVOS'] as const
+export type FiltroUsuariasJuridico = (typeof FILTROS_USUARIAS_JURIDICO)[number]
 
-export const buscarUsuariasJuridicoQuerySchema = z.object({
-  q: z.string().trim().min(BUSQUEDA_USUARIAS_MIN, 'Escriba al menos 2 caracteres').max(BUSQUEDA_MAX),
+export const ETIQUETAS_FILTRO_USUARIAS_JURIDICO: Record<FiltroUsuariasJuridico, string> = {
+  REFERENCIA_NUEVA: 'Referencia nueva',
+  CON_ACTIVOS: 'Con procesos activos',
+  SIN_ACTIVOS: 'Sin procesos activos',
+}
+
+/** Igual que la lista de Trabajo Social: un nombre necesita 3 letras; DPI y expediente van completos. */
+export const LARGO_MINIMO_BUSQUEDA_USUARIAS = 3
+
+export const listarUsuariasJuridicoQuerySchema = z.object({
+  filtro: z.enum(FILTROS_USUARIAS_JURIDICO).optional(),
+  q: z.string().trim().max(BUSQUEDA_MAX).optional(),
+  pagina: z.coerce.number().int().min(1).default(1),
 })
-export type BuscarUsuariasJuridicoQuery = z.infer<typeof buscarUsuariasJuridicoQuerySchema>
+export type ListarUsuariasJuridicoQuery = z.infer<typeof listarUsuariasJuridicoQuerySchema>
 
 // ---- DTOs de respuesta (mismo criterio que ExpedienteResumenArea/ExpedienteDetalleArea:
 // una sola forma consumida tanto por el backend al construir la respuesta como por el
@@ -386,17 +400,40 @@ export interface ErrorDuplicadosLote {
   detalle: { duplicados: ProcesoActivoPorTipo[] }
 }
 
-export interface ContadoresUsuariaJuridico {
-  activos: number
-  finalizados: number
-  abandonados: number
+/**
+ * Columna "Procesos" de la lista de Usuarias: `EN_PROCESO` si tiene alguno en trámite o
+ * suspendido, `FINALIZADO` si todos están cerrados (finalizados o abandonados), `null` sin procesos.
+ */
+export type EstadoProcesosUsuaria = 'EN_PROCESO' | 'FINALIZADO'
+
+/** Fila de `GET /juridico/usuarias`: la usuaria y su expediente más reciente referido a Jurídico. */
+export interface FilaUsuariaJuridico {
+  usuariaId: string
+  nombreCompleto: string
+  dpi: string | null
+  edad: number
+  expedienteNumero: string
+  estadoProcesos: EstadoProcesosUsuaria | null
+  /** Abogadas de los procesos activos, sin repetir. */
+  abogadas: string[]
+  referenciaPendiente: boolean
+  ultimaActividadEn: string
 }
 
-/** Fila de `GET /juridico/usuarias?q=`. */
-export interface UsuariaJuridicoResumen extends UsuariaReferidaDto {
-  telefono: string | null
-  contadores: ContadoresUsuariaJuridico
-  referenciaPendiente: boolean
+/** `GET /juridico/usuarias` — página de filas + contador de cada chip (con la búsqueda aplicada). */
+export interface ListaUsuariasJuridico {
+  filas: FilaUsuariaJuridico[]
+  pagina: number
+  porPagina: number
+  /** Total del filtro activo, para la paginación. */
+  total: number
+  contadores: { TODAS: number } & Record<FiltroUsuariasJuridico, number>
+}
+
+/** "En proceso" = en trámite o suspendidos; "Cerrados" = finalizados o abandonados. */
+export interface ContadoresUsuariaJuridico {
+  enProceso: number
+  cerrados: number
 }
 
 export const ESTADOS_REFERENCIA_JURIDICO = ['PENDIENTE', 'ATENDIDA', 'DEVUELTA'] as const
@@ -407,15 +444,27 @@ export interface ReferenciaHistorialDto {
   expedienteId: string
   expedienteNumero: string
   referidoEn: string
+  referidoPor: string
   motivo: string | null
   procesosSugeridos: TipoProcesoJuridico[]
   estado: EstadoReferenciaJuridico
+  motivoDevolucion: string | null
 }
 
-/** `GET /juridico/usuarias/:id` — ficha con todo el historial de la usuaria en Jurídico. */
-export interface HistorialUsuariaDto {
-  usuaria: UsuariaReferidaDto & { telefono: string | null }
+/** `GET /juridico/usuarias/:id` — encabezado de la ficha y todo lo que Jurídico lleva de la usuaria. */
+export interface FichaUsuariaJuridicoDto {
+  usuaria: UsuariaReferidaDto & {
+    edad: number
+    grupoEtnico: (typeof GRUPOS_ETNICOS)[number]
+    municipio: string | null
+  }
+  /**
+   * El expediente más reciente referido a Jurídico: de él salen los datos y documentos de
+   * Trabajo Social y en él se abre un proceso nuevo cuando no hay referencia pendiente.
+   */
+  expediente: { id: string; numero: string; tipoRegistro: TipoRegistro; enAlbergue: boolean }
   contadores: ContadoresUsuariaJuridico
   procesos: ProcesoResumen[]
+  /** Más reciente primero. */
   referencias: ReferenciaHistorialDto[]
 }

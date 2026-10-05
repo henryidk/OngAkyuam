@@ -1,21 +1,20 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
-  MAX_RESULTADOS_BUSQUEDA_USUARIAS,
+  edadEnAniosGT,
+  fechaColumnaISO,
+  nombreMunicipio,
   type EstadoReferenciaJuridico,
-  type UsuariaJuridicoResumen,
+  type FiltroUsuariasJuridico,
+  type ListaUsuariasJuridico,
 } from '@akyuam/shared';
+import { condicionBusqueda } from '../../common/busqueda-usuarias';
 import { PrismaService } from '../../prisma/prisma.service';
-import {
-  EXPEDIENTE_REFERIDO_A_JURIDICO,
-  REFERENCIA_PENDIENTE,
-} from '../compartido/acceso-juridico';
-import { escaparLike } from '../compartido/sql';
-import { contarProcesos } from '../dominio/contadores-usuaria';
-import type { EstadoProceso } from '../dominio/maquina-estado-proceso';
+import { EXPEDIENTE_REFERIDO_A_JURIDICO } from '../compartido/acceso-juridico';
 import type {
   FichaUsuariaJuridico,
   IUsuariasJuridicoRepository,
+  ListarUsuariasJuridicoParams,
 } from '../interfaces/usuarias-repository.interface';
 import { nombreCompleto } from './mapeo-proceso';
 
@@ -28,91 +27,146 @@ function estadoReferencia(referencia: {
   return 'PENDIENTE';
 }
 
+type FilaListaRow = {
+  usuariaId: string;
+  nombres: string;
+  apellidos: string;
+  dpi: string | null;
+  fechaNacimiento: Date;
+  expedienteNumero: string;
+  activos: number;
+  total: number;
+  abogadas: string[];
+  referenciaPendiente: boolean;
+  ultimaActividadEn: Date;
+};
+
+type ContadoresRow = { TODAS: number } & Record<FiltroUsuariasJuridico, number>;
+
+/**
+ * Una fila por usuaria con algún expediente referido a JURIDICO. Los procesos y referencias se
+ * agregan por usuaria (no por expediente): un caso nuevo no esconde lo que ya se lleva del anterior.
+ */
+function cteLista(busqueda: ListarUsuariasJuridicoParams['busqueda']) {
+  return Prisma.sql`
+    WITH lista AS (
+      SELECT
+        u.id AS "usuariaId",
+        u.nombres,
+        u.apellidos,
+        u.dpi,
+        u."fechaNacimiento",
+        ex.numero AS "expedienteNumero",
+        p.activos,
+        p.total,
+        p.abogadas,
+        r.pendiente AS "referenciaPendiente",
+        GREATEST(r.ultima, p.ultima) AS "ultimaActividadEn"
+      FROM "Usuaria" u
+      -- El expediente más reciente referido a Jurídico; sin ninguno, la usuaria no aparece.
+      JOIN LATERAL (
+        SELECT e.numero
+        FROM "Expediente" e
+        JOIN "ReferidoArea" ra ON ra."expedienteId" = e.id AND ra.area = 'JURIDICO'
+        WHERE e."usuariaId" = u.id
+        ORDER BY e.fecha DESC, e."createdAt" DESC
+        LIMIT 1
+      ) ex ON TRUE
+      CROSS JOIN LATERAL (
+        SELECT
+          max(ra."createdAt") AS ultima,
+          coalesce(bool_or(ra."atendidoEn" IS NULL AND ra."devueltoEn" IS NULL), FALSE) AS pendiente
+        FROM "ReferidoArea" ra
+        JOIN "Expediente" e ON e.id = ra."expedienteId"
+        WHERE e."usuariaId" = u.id AND ra.area = 'JURIDICO'
+      ) r
+      CROSS JOIN LATERAL (
+        SELECT
+          count(*) FILTER (WHERE pj.fase <> 'FINALIZADO' AND pj.situacion <> 'ABANDONADO')::int AS activos,
+          count(*)::int AS total,
+          coalesce(
+            array_agg(DISTINCT pe.nombre ORDER BY pe.nombre)
+              FILTER (WHERE pj.fase <> 'FINALIZADO' AND pj.situacion <> 'ABANDONADO' AND pe.nombre IS NOT NULL),
+            '{}'
+          ) AS abogadas,
+          max(pj."ultimaActuacionEn") AS ultima
+        FROM "ProcesoJuridico" pj
+        JOIN "Expediente" e ON e.id = pj."expedienteId"
+        LEFT JOIN "Personal" pe ON pe.id = pj."abogadaId"
+        WHERE e."usuariaId" = u.id
+          AND EXISTS (
+            SELECT 1 FROM "ReferidoArea" ra
+            WHERE ra."expedienteId" = e.id AND ra.area = 'JURIDICO'
+          )
+      ) p
+      WHERE ${condicionBusqueda(busqueda)}
+    )
+  `;
+}
+
+function condicionFiltro(filtro: FiltroUsuariasJuridico | undefined) {
+  switch (filtro) {
+    case undefined:
+      return Prisma.sql`TRUE`;
+    case 'REFERENCIA_NUEVA':
+      return Prisma.sql`"referenciaPendiente"`;
+    case 'CON_ACTIVOS':
+      return Prisma.sql`activos > 0`;
+    case 'SIN_ACTIVOS':
+      return Prisma.sql`NOT "referenciaPendiente" AND activos = 0`;
+  }
+}
+
 @Injectable()
 export class UsuariasJuridicoRepository implements IUsuariasJuridicoRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async buscar(texto: string): Promise<UsuariaJuridicoResumen[]> {
-    const patron = `%${escaparLike(texto)}%`;
-    // El DPI se compara sin espacios en ambos lados: "1234 56789 0101" = "1234567890101".
-    const patronDpi = `%${escaparLike(texto.replace(/\s/g, ''))}%`;
-
-    const filas = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
-      SELECT u.id
-      FROM "Usuaria" u
-      WHERE EXISTS (
-          SELECT 1 FROM "Expediente" e
-          JOIN "ReferidoArea" r ON r."expedienteId" = e.id AND r.area = 'JURIDICO'
-          WHERE e."usuariaId" = u.id
-        )
-        AND (
-          (u.nombres || ' ' || u.apellidos) ILIKE ${patron}
-          OR regexp_replace(coalesce(u.dpi, ''), '\\s', '', 'g') ILIKE ${patronDpi}
-        )
-      ORDER BY u.apellidos, u.nombres, u.id
-      LIMIT ${MAX_RESULTADOS_BUSQUEDA_USUARIAS}
-    `);
-    const ids = filas.map((fila) => fila.id);
-    if (ids.length === 0) {
-      return [];
-    }
-
-    const delasUsuarias = {
-      usuariaId: { in: ids },
-      ...EXPEDIENTE_REFERIDO_A_JURIDICO,
-    } satisfies Prisma.ExpedienteWhereInput;
-
-    const [usuarias, procesos, pendientes] = await Promise.all([
-      this.prisma.usuaria.findMany({
-        where: { id: { in: ids } },
-        select: {
-          id: true,
-          nombres: true,
-          apellidos: true,
-          dpi: true,
-          telefono: true,
-        },
-      }),
-      this.prisma.procesoJuridico.findMany({
-        where: { expediente: delasUsuarias },
-        select: {
-          fase: true,
-          situacion: true,
-          expediente: { select: { usuariaId: true } },
-        },
-      }),
-      this.prisma.referidoArea.findMany({
-        where: { ...REFERENCIA_PENDIENTE, expediente: delasUsuarias },
-        select: { expediente: { select: { usuariaId: true } } },
-      }),
+  async listar(
+    params: ListarUsuariasJuridicoParams,
+  ): Promise<ListaUsuariasJuridico> {
+    const base = cteLista(params.busqueda);
+    const filtro = condicionFiltro(params.filtro);
+    const [filas, [contadores]] = await Promise.all([
+      this.prisma.$queryRaw<FilaListaRow[]>(Prisma.sql`
+        ${base}
+        SELECT * FROM lista
+        WHERE ${filtro}
+        ORDER BY "ultimaActividadEn" DESC, "usuariaId"
+        LIMIT ${params.porPagina} OFFSET ${(params.pagina - 1) * params.porPagina}
+      `),
+      this.prisma.$queryRaw<ContadoresRow[]>(Prisma.sql`
+        ${base}
+        SELECT
+          count(*)::int AS "TODAS",
+          count(*) FILTER (WHERE "referenciaPendiente")::int AS "REFERENCIA_NUEVA",
+          count(*) FILTER (WHERE activos > 0)::int AS "CON_ACTIVOS",
+          count(*) FILTER (WHERE NOT "referenciaPendiente" AND activos = 0)::int AS "SIN_ACTIVOS"
+        FROM lista
+      `),
     ]);
 
-    const procesosPorUsuaria = new Map<string, EstadoProceso[]>();
-    for (const proceso of procesos) {
-      const lista = procesosPorUsuaria.get(proceso.expediente.usuariaId) ?? [];
-      lista.push({ fase: proceso.fase, situacion: proceso.situacion });
-      procesosPorUsuaria.set(proceso.expediente.usuariaId, lista);
-    }
-    const conPendiente = new Set(
-      pendientes.map((referencia) => referencia.expediente.usuariaId),
-    );
-    const porId = new Map(usuarias.map((usuaria) => [usuaria.id, usuaria]));
-
-    // Se respeta el orden que ya calculó la base.
-    return ids.flatMap((id) => {
-      const usuaria = porId.get(id);
-      if (!usuaria) return [];
-      return [
-        {
-          id: usuaria.id,
-          nombreCompleto: nombreCompleto(usuaria),
-          dpi: usuaria.dpi,
-          telefono: usuaria.telefono,
-          contadores: contarProcesos(procesosPorUsuaria.get(id) ?? []),
-          referenciaPendiente: conPendiente.has(id),
-        },
-      ];
-    });
+    return {
+      filas: filas.map((fila) => ({
+        usuariaId: fila.usuariaId,
+        nombreCompleto: nombreCompleto(fila),
+        dpi: fila.dpi,
+        edad: edadEnAniosGT(fechaColumnaISO(fila.fechaNacimiento)),
+        expedienteNumero: fila.expedienteNumero,
+        estadoProcesos:
+          fila.activos > 0
+            ? 'EN_PROCESO'
+            : fila.total > 0
+              ? 'FINALIZADO'
+              : null,
+        abogadas: fila.abogadas,
+        referenciaPendiente: fila.referenciaPendiente,
+        ultimaActividadEn: fila.ultimaActividadEn.toISOString(),
+      })),
+      pagina: params.pagina,
+      porPagina: params.porPagina,
+      total: params.filtro ? contadores[params.filtro] : contadores.TODAS,
+      contadores,
+    };
   }
 
   async obtenerFicha(usuariaId: string): Promise<FichaUsuariaJuridico | null> {
@@ -126,10 +180,25 @@ export class UsuariasJuridicoRepository implements IUsuariasJuridicoRepository {
         nombres: true,
         apellidos: true,
         dpi: true,
-        telefono: true,
+        fechaNacimiento: true,
+        grupoEtnico: true,
+        municipio: true,
+        municipioOtro: true,
+        expedientes: {
+          where: EXPEDIENTE_REFERIDO_A_JURIDICO,
+          select: {
+            id: true,
+            numero: true,
+            tipoRegistro: true,
+            fechaEgresoAlbergue: true,
+          },
+          orderBy: [{ fecha: 'desc' }, { createdAt: 'desc' }],
+          take: 1,
+        },
       },
     });
-    if (!usuaria) {
+    const expediente = usuaria?.expedientes[0];
+    if (!usuaria || !expediente) {
       return null;
     }
 
@@ -143,6 +212,8 @@ export class UsuariasJuridicoRepository implements IUsuariasJuridicoRepository {
         procesosSugeridos: true,
         atendidoEn: true,
         devueltoEn: true,
+        motivoDevolucion: true,
+        otorgadoPor: { select: { nombreCompleto: true } },
         expediente: { select: { numero: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -153,16 +224,28 @@ export class UsuariasJuridicoRepository implements IUsuariasJuridicoRepository {
         id: usuaria.id,
         nombreCompleto: nombreCompleto(usuaria),
         dpi: usuaria.dpi,
-        telefono: usuaria.telefono,
+        edad: edadEnAniosGT(fechaColumnaISO(usuaria.fechaNacimiento)),
+        grupoEtnico: usuaria.grupoEtnico,
+        municipio: nombreMunicipio(usuaria.municipio, usuaria.municipioOtro),
+      },
+      expediente: {
+        id: expediente.id,
+        numero: expediente.numero,
+        tipoRegistro: expediente.tipoRegistro,
+        enAlbergue:
+          expediente.tipoRegistro === 'INTERNA' &&
+          expediente.fechaEgresoAlbergue === null,
       },
       referencias: referencias.map((referencia) => ({
         referidoId: referencia.id,
         expedienteId: referencia.expedienteId,
         expedienteNumero: referencia.expediente.numero,
         referidoEn: referencia.createdAt.toISOString(),
+        referidoPor: referencia.otorgadoPor.nombreCompleto,
         motivo: referencia.motivo,
         procesosSugeridos: referencia.procesosSugeridos,
         estado: estadoReferencia(referencia),
+        motivoDevolucion: referencia.motivoDevolucion,
       })),
     };
   }

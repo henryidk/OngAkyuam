@@ -43,7 +43,9 @@ describe('AreasService', () => {
       generarUrlDescarga: jest
         .fn()
         .mockResolvedValue('https://r2.example/firmada'),
-      generarUrlVistaPrevia: jest.fn(),
+      generarUrlVistaPrevia: jest
+        .fn()
+        .mockResolvedValue('https://r2.example/vista'),
     };
     auditService = {
       registrar: jest.fn(),
@@ -140,6 +142,7 @@ describe('AreasService', () => {
       areasRepository.buscarDocumentoDeReferido.mockResolvedValue({
         claveR2: 'expedientes/expediente-1/clave-real',
         nombreArchivo: 'entrevista.pdf',
+        mimeType: 'application/pdf',
         tipo: 'ENTREVISTA_USUARIA',
         areasVisibles: [],
       });
@@ -160,6 +163,7 @@ describe('AreasService', () => {
       areasRepository.buscarDocumentoDeReferido.mockResolvedValue({
         claveR2: 'expedientes/expediente-1/clave-real',
         nombreArchivo: 'entrevista.pdf',
+        mimeType: 'application/pdf',
         tipo: 'ENTREVISTA_USUARIA',
         areasVisibles: [],
       });
@@ -184,6 +188,70 @@ describe('AreasService', () => {
           detalles: { expedienteId: 'expediente-1', area: 'JURIDICO' },
         }),
       );
+    });
+
+    it('modo vista: URL para mostrar dentro de la app y se audita como visualización', async () => {
+      areasRepository.buscarDocumentoDeReferido.mockResolvedValue({
+        claveR2: 'expedientes/expediente-1/clave-real',
+        nombreArchivo: 'entrevista.pdf',
+        mimeType: 'application/pdf',
+        tipo: 'ENTREVISTA_USUARIA',
+        areasVisibles: [],
+      });
+
+      const resultado = await service.obtenerUrlDescarga(
+        'expediente-1',
+        'documento-1',
+        usuario,
+        contexto,
+        'vista',
+      );
+
+      expect(resultado.url).toBe('https://r2.example/vista');
+      expect(objectStorage.generarUrlVistaPrevia).toHaveBeenCalledWith(
+        'expedientes/expediente-1/clave-real',
+        'application/pdf',
+      );
+      expect(objectStorage.generarUrlDescarga).not.toHaveBeenCalled();
+      expect(auditService.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({ accion: 'DOCUMENTO_VISUALIZADO' }),
+      );
+    });
+
+    it('modo vista con un tipo que el navegador no muestra seguro: se entrega como descarga', async () => {
+      areasRepository.buscarDocumentoDeReferido.mockResolvedValue({
+        claveR2: 'expedientes/expediente-1/clave-real',
+        nombreArchivo: 'pagina.html',
+        mimeType: 'text/html',
+        tipo: 'ENTREVISTA_USUARIA',
+        areasVisibles: [],
+      });
+
+      await service.obtenerUrlDescarga(
+        'expediente-1',
+        'documento-1',
+        usuario,
+        contexto,
+        'vista',
+      );
+
+      expect(objectStorage.generarUrlVistaPrevia).not.toHaveBeenCalled();
+      expect(objectStorage.generarUrlDescarga).toHaveBeenCalled();
+    });
+
+    it('modo vista no salta la política: sin acceso, 403 sin generar URL', async () => {
+      areasRepository.buscarDocumentoDeReferido.mockResolvedValue(null);
+
+      await expect(
+        service.obtenerUrlDescarga(
+          'expediente-1',
+          'documento-1',
+          usuario,
+          contexto,
+          'vista',
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(objectStorage.generarUrlVistaPrevia).not.toHaveBeenCalled();
     });
   });
 });
@@ -223,6 +291,7 @@ function expedienteReferido(
         id: 'doc-privado',
         tipo: 'ENTREVISTA_USUARIA',
         nombreArchivo: 'entrevista.pdf',
+        mimeType: 'application/pdf',
         tamanioBytes: 10,
         createdAt: '2026-01-15T00:00:00.000Z',
         areasVisibles: [],
@@ -231,6 +300,7 @@ function expedienteReferido(
         id: 'doc-psicologia',
         tipo: 'ACCIONES_REALIZADAS',
         nombreArchivo: 'acciones.pdf',
+        mimeType: 'application/pdf',
         tamanioBytes: 10,
         createdAt: '2026-01-15T00:00:00.000Z',
         areasVisibles: ['PSICOLOGIA'],
