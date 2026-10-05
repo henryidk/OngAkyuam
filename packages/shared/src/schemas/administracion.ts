@@ -24,6 +24,11 @@ export const crearUsuarioSchema = z
     ...camposBaseUsuario,
     rol: rolConLoginSchema,
     puesto: z.string().optional(),
+    /**
+     * Solo para áreas con catálogo de personal (hoy, Jurídico): ficha existente que se
+     * enlaza a la cuenta nueva. Si no viene, se crea una ficha nueva con el nombre y puesto.
+     */
+    personalId: z.uuid().optional(),
   })
   .superRefine((datos, ctx) => {
     if (datos.rol === 'ADMINISTRACION') {
@@ -62,6 +67,12 @@ export type CrearUsuarioInput = z.infer<typeof crearUsuarioSchema>
 export const editarUsuarioSchema = z.object(camposBaseUsuario)
 export type EditarUsuarioInput = z.infer<typeof editarUsuarioSchema>
 
+/** Enlaza la cuenta con una ficha de personal; `null` la deja sin ficha. */
+export const vincularFichaPersonalSchema = z.object({
+  personalId: z.uuid().nullable(),
+})
+export type VincularFichaPersonalInput = z.infer<typeof vincularFichaPersonalSchema>
+
 export const listarUsuariosQuerySchema = z.object({
   rol: rolConLoginSchema.optional(),
 })
@@ -78,6 +89,8 @@ export interface UsuarioAdminDto {
   isActive: boolean
   mustChangePassword: boolean
   createdAt: Date
+  /** Ficha de personal enlazada (solo áreas con catálogo de personal, hoy Jurídico). */
+  personalId: string | null
 }
 
 export interface CrearUsuarioResultado {

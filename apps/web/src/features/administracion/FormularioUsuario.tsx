@@ -19,6 +19,7 @@ import TextoInput from '../../components/form/TextoInput'
 import Button from '../../components/ui/Button'
 import { api } from '../../lib/api'
 import { extraerMensajeError } from '../../lib/errors'
+import { useFichasPersonalLibres, usaFichaPersonal } from './useFichasPersonalLibres'
 
 interface FormularioUsuarioProps {
   /** Presente al editar; ausente al crear. */
@@ -75,10 +76,13 @@ function FormularioCrear({
       username: '',
       rol: undefined,
       puesto: undefined,
+      personalId: undefined,
     },
   })
 
   const rolSeleccionado = watch('rol')
+  const puestoSeleccionado = watch('puesto')
+  const fichas = useFichasPersonalLibres(rolSeleccionado, puestoSeleccionado)
 
   async function onSubmit(datos: CrearUsuarioInput) {
     setErrorEnvio(null)
@@ -132,6 +136,16 @@ function FormularioCrear({
           error={errors.puesto?.message}
         />
       )}
+      {usaFichaPersonal(rolSeleccionado) && puestoSeleccionado && (
+        <SelectInput
+          label="Ficha de personal"
+          registro={register('personalId', { setValueAs: (valor) => valor || undefined })}
+          opciones={fichas.opciones}
+          placeholder="Crear una ficha nueva"
+          error={errors.personalId?.message ?? fichas.error ?? undefined}
+          ayuda="Elige una ficha si esta persona ya tenía procesos asignados."
+        />
+      )}
 
       {errorEnvio && <p className="text-sm text-red-600">{errorEnvio}</p>}
 
@@ -157,6 +171,9 @@ function FormularioEditar({
   onCancelar: () => void
 }) {
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
+  const [personalId, setPersonalId] = useState(usuario.personalId ?? '')
+  const conFicha = usaFichaPersonal(usuario.rol)
+  const fichas = useFichasPersonalLibres(usuario.rol, usuario.puesto, usuario.id)
   const {
     register,
     handleSubmit,
@@ -174,10 +191,16 @@ function FormularioEditar({
   async function onSubmit(datos: EditarUsuarioInput) {
     setErrorEnvio(null)
     try {
-      const { data } = await api.patch<UsuarioAdminDto>(
+      let { data } = await api.patch<UsuarioAdminDto>(
         `/administracion/usuarios/${usuario.id}`,
         datos,
       )
+      if (conFicha && personalId !== (usuario.personalId ?? '')) {
+        ;({ data } = await api.patch<UsuarioAdminDto>(
+          `/administracion/usuarios/${usuario.id}/ficha-personal`,
+          { personalId: personalId || null },
+        ))
+      }
       onEditado(data)
     } catch (err) {
       setErrorEnvio(extraerMensajeError(err))
@@ -223,6 +246,30 @@ function FormularioEditar({
         registro={register('username')}
         error={errors.username?.message}
       />
+      {conFicha && (
+        <div>
+          <label htmlFor="personalId" className="block text-sm font-medium text-gray-700">
+            Ficha de personal
+          </label>
+          <select
+            id="personalId"
+            value={personalId}
+            onChange={(event) => setPersonalId(event.target.value)}
+            className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          >
+            <option value="">Sin ficha</option>
+            {fichas.opciones.map((opcion) => (
+              <option key={opcion.value} value={opcion.value}>
+                {opcion.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-gray-500">
+            {fichas.error ??
+              'Con la ficha enlazada, esta persona ve sus procesos en "Mis procesos".'}
+          </p>
+        </div>
+      )}
 
       {errorEnvio && <p className="text-sm text-red-600">{errorEnvio}</p>}
 

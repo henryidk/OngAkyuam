@@ -37,4 +37,6 @@ export interface PersonalDto {
   tipo: string
   nombre: string
   activo: boolean
+  /** Cuenta con la que esta persona inicia sesión; `null` si la ficha no está enlazada. */
+  usuarioId: string | null
 }

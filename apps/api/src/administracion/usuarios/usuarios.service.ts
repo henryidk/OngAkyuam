@@ -7,12 +7,14 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import {
+  CATALOGOS_TIPO_PERSONAL,
   PUESTOS_POR_AREA,
   type CrearUsuarioInput,
   type CrearUsuarioResultado,
   type EditarUsuarioInput,
   type ListarUsuariosQuery,
   type UsuarioAdminDto,
+  type VincularFichaPersonalInput,
 } from '@akyuam/shared';
 import {
   AUDIT_ACTIONS,
@@ -24,7 +26,10 @@ import { UserCacheService } from '../../auth/services/user-cache.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { PrismaService } from '../../prisma/prisma.service';
 import { USUARIOS_REPOSITORY } from './interfaces/usuarios-repository.interface';
-import type { IUsuariosRepository } from './interfaces/usuarios-repository.interface';
+import type {
+  CrearUsuarioParams,
+  IUsuariosRepository,
+} from './interfaces/usuarios-repository.interface';
 import { generarPasswordSegura } from './utils/generar-password-segura';
 
 @Injectable()
@@ -47,6 +52,7 @@ export class UsuariosService {
   ): Promise<CrearUsuarioResultado> {
     this.validarPuesto(datos.rol, datos.puesto);
     await this.validarUnicidad(datos.username, datos.dpi);
+    const fichaPersonal = await this.resolverFichaAlCrear(datos);
 
     const passwordTemporal = generarPasswordSegura();
     const passwordHash = await bcrypt.hash(passwordTemporal, BCRYPT_ROUNDS);
@@ -59,6 +65,7 @@ export class UsuariosService {
       rol: datos.rol,
       puesto: datos.puesto,
       passwordHash,
+      fichaPersonal,
     });
 
     // Nunca la contraseña temporal en `detalles` — solo viaja en la respuesta HTTP.
@@ -205,6 +212,89 @@ export class UsuariosService {
     return usuario;
   }
 
+  async vincularFichaPersonal(
+    id: string,
+    datos: VincularFichaPersonalInput,
+    contexto: ContextoAuditoria,
+  ): Promise<UsuarioAdminDto> {
+    const usuario = await this.usuariosRepository.buscarPorId(id);
+    if (!usuario) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    if (!usaFichaPersonal(usuario.rol)) {
+      throw new BadRequestException('Esta área no tiene fichas de personal');
+    }
+    if (datos.personalId) {
+      await this.validarFichaLibre(datos.personalId, usuario, id);
+    }
+
+    const actualizado = await this.usuariosRepository.vincularFichaPersonal(
+      id,
+      datos.personalId,
+    );
+
+    await this.auditService.registrar({
+      usuarioId: contexto.usuarioId,
+      username: contexto.username,
+      accion: AUDIT_ACTIONS.USER_PERSONAL_LINKED,
+      entidad: 'Usuario',
+      entidadId: id,
+      ipAddress: contexto.ipAddress,
+      userAgent: contexto.userAgent,
+      detalles: {
+        personalAnteriorId: usuario.personalId,
+        personalId: datos.personalId,
+      },
+    });
+
+    return actualizado;
+  }
+
+  /**
+   * Las áreas con catálogo de personal (hoy, Jurídico) necesitan una ficha por cuenta para
+   * saber qué procesos son de quién. Si Administración no elige una existente, se crea.
+   */
+  private async resolverFichaAlCrear(
+    datos: CrearUsuarioInput,
+  ): Promise<CrearUsuarioParams['fichaPersonal']> {
+    if (!usaFichaPersonal(datos.rol)) {
+      if (datos.personalId) {
+        throw new BadRequestException('Esta área no tiene fichas de personal');
+      }
+      return null;
+    }
+    if (!datos.personalId) {
+      return { modo: 'nueva' };
+    }
+    await this.validarFichaLibre(datos.personalId, datos);
+    return { modo: 'existente', id: datos.personalId };
+  }
+
+  /** La ficha debe ser del área y del puesto de la cuenta, y no estar enlazada a otra. */
+  private async validarFichaLibre(
+    personalId: string,
+    cuenta: { rol: CrearUsuarioInput['rol']; puesto?: string | null },
+    usuarioId?: string,
+  ): Promise<void> {
+    const ficha = await this.usuariosRepository.buscarFichaPersonal(personalId);
+    if (!ficha || ficha.area !== cuenta.rol) {
+      throw new BadRequestException(
+        'Ficha de personal no válida para esta área',
+      );
+    }
+    // Las cuentas viejas pueden no tener puesto: ahí basta con que la ficha sea del área.
+    if (cuenta.puesto && ficha.tipo !== cuenta.puesto) {
+      throw new BadRequestException(
+        'La ficha de personal es de otro puesto que la cuenta',
+      );
+    }
+    if (ficha.usuarioId && ficha.usuarioId !== usuarioId) {
+      throw new ConflictException(
+        'Esa ficha de personal ya está enlazada a otra cuenta',
+      );
+    }
+  }
+
   // Defensa en profundidad detrás de `crearUsuarioSchema.superRefine` (Zod) — si el
   // controller cambiara de validador algún día, esta regla de negocio no depende de eso.
   private validarPuesto(rol: CrearUsuarioInput['rol'], puesto?: string): void {
@@ -244,4 +334,8 @@ export class UsuariosService {
       data: { revoked: true, revokedAt: new Date() },
     });
   }
+}
+
+function usaFichaPersonal(rol: CrearUsuarioInput['rol']): boolean {
+  return rol in CATALOGOS_TIPO_PERSONAL;
 }

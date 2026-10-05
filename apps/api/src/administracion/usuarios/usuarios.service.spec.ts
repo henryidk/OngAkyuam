@@ -56,6 +56,7 @@ describe('UsuariosService', () => {
       isActive: true,
       mustChangePassword: false,
       createdAt: new Date('2026-01-01'),
+      personalId: null,
       ...overrides,
     };
   }
@@ -70,6 +71,8 @@ describe('UsuariosService', () => {
       setActive: jest.fn(),
       existeUsername: jest.fn().mockResolvedValue(false),
       existeDpi: jest.fn().mockResolvedValue(false),
+      buscarFichaPersonal: jest.fn(),
+      vincularFichaPersonal: jest.fn(),
     };
     auditService = {
       registrar: jest.fn(),
@@ -270,6 +273,139 @@ describe('UsuariosService', () => {
         dpi: '9876543210123',
         username: 'jperez2',
       });
+    });
+  });
+
+  describe('ficha de personal', () => {
+    const FICHA_ID = '11111111-1111-4111-8111-111111111111';
+    const nuevaCuenta = (parcial = {}) => ({
+      nombreCompleto: 'X',
+      telefono: '12345678',
+      dpi: '1234567890123',
+      username: 'nueva',
+      rol: 'JURIDICO' as const,
+      puesto: 'ABOGADA',
+      ...parcial,
+    });
+    const ficha = (parcial = {}) => ({
+      id: FICHA_ID,
+      area: 'JURIDICO' as const,
+      tipo: 'ABOGADA',
+      usuarioId: null,
+      ...parcial,
+    });
+
+    beforeEach(() => {
+      usuariosRepository.crear.mockResolvedValue(usuarioDto());
+    });
+
+    it('una cuenta de Jurídico sin ficha elegida crea su ficha nueva', async () => {
+      await service.crear(nuevaCuenta(), contexto);
+
+      expect(usuariosRepository.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ fichaPersonal: { modo: 'nueva' } }),
+      );
+    });
+
+    it('una cuenta de un área sin catálogo de personal no lleva ficha', async () => {
+      await service.crear(
+        nuevaCuenta({ rol: 'PSICOLOGIA', puesto: 'PSICOLOGA' }),
+        contexto,
+      );
+
+      expect(usuariosRepository.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ fichaPersonal: null }),
+      );
+    });
+
+    it('enlaza la ficha existente elegida si está libre y coincide el puesto', async () => {
+      usuariosRepository.buscarFichaPersonal.mockResolvedValue(ficha());
+
+      await service.crear(nuevaCuenta({ personalId: FICHA_ID }), contexto);
+
+      expect(usuariosRepository.crear).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fichaPersonal: { modo: 'existente', id: FICHA_ID },
+        }),
+      );
+    });
+
+    it.each([
+      ['no existe', null, BadRequestException],
+      ['es de otra área', ficha({ area: 'PSICOLOGIA' }), BadRequestException],
+      [
+        'es de otro puesto',
+        ficha({ tipo: 'PROCURADORA' }),
+        BadRequestException,
+      ],
+      ['ya es de otra cuenta', ficha({ usuarioId: 'otra' }), ConflictException],
+    ])('no crea la cuenta si la ficha %s', async (_caso, encontrada, error) => {
+      usuariosRepository.buscarFichaPersonal.mockResolvedValue(encontrada);
+
+      await expect(
+        service.crear(nuevaCuenta({ personalId: FICHA_ID }), contexto),
+      ).rejects.toBeInstanceOf(error);
+      expect(usuariosRepository.crear).not.toHaveBeenCalled();
+    });
+
+    it('vincula una cuenta vieja sin puesto a una ficha libre de su área y lo audita con ids', async () => {
+      usuariosRepository.buscarPorId.mockResolvedValue(
+        usuarioDto({ puesto: null }),
+      );
+      usuariosRepository.buscarFichaPersonal.mockResolvedValue(
+        ficha({ tipo: 'PROCURADORA' }),
+      );
+      usuariosRepository.vincularFichaPersonal.mockResolvedValue(
+        usuarioDto({ personalId: FICHA_ID }),
+      );
+
+      await service.vincularFichaPersonal(
+        'u-1',
+        { personalId: FICHA_ID },
+        contexto,
+      );
+
+      expect(usuariosRepository.vincularFichaPersonal).toHaveBeenCalledWith(
+        'u-1',
+        FICHA_ID,
+      );
+      expect(auditService.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'USER_PERSONAL_LINKED',
+          detalles: { personalAnteriorId: null, personalId: FICHA_ID },
+        }),
+      );
+    });
+
+    it('volver a enviar la ficha que ya tiene la cuenta no es un conflicto', async () => {
+      usuariosRepository.buscarPorId.mockResolvedValue(
+        usuarioDto({ personalId: FICHA_ID }),
+      );
+      usuariosRepository.buscarFichaPersonal.mockResolvedValue(
+        ficha({ usuarioId: 'u-1' }),
+      );
+      usuariosRepository.vincularFichaPersonal.mockResolvedValue(
+        usuarioDto({ personalId: FICHA_ID }),
+      );
+
+      await expect(
+        service.vincularFichaPersonal(
+          'u-1',
+          { personalId: FICHA_ID },
+          contexto,
+        ),
+      ).resolves.toBeDefined();
+    });
+
+    it('no vincula una cuenta de un área sin fichas de personal', async () => {
+      usuariosRepository.buscarPorId.mockResolvedValue(
+        usuarioDto({ rol: 'TRABAJO_SOCIAL', puesto: 'TRABAJADORA_SOCIAL' }),
+      );
+
+      await expect(
+        service.vincularFichaPersonal('u-1', { personalId: null }, contexto),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(usuariosRepository.vincularFichaPersonal).not.toHaveBeenCalled();
     });
   });
 });

@@ -54,6 +54,7 @@ model Usuario {
   cambiosEstadoAtencionRegistrados   CambioEstadoAtencion[]     @relation("CambioEstadoAtencionRegistradoPor")
   citasPsicologicasAtendidas         CitaPsicologica[]          @relation("CitaPsicologicaAtendidaPor")
   documentosPendientesSubidos        DocumentoPendiente[]
+  fichaPersonal                      Personal?
 }
 
 model RefreshToken {
@@ -345,9 +346,14 @@ model Personal {
   tipo      String
   nombre    String
   activo    Boolean  @default(true)
+  // Cuenta con la que esta persona inicia sesión: permite "Mis procesos" y "Solo asignados
+  // a mí". Opcional porque hay fichas creadas antes de este vínculo; Administración las
+  // enlaza a mano. Una cuenta tiene como máximo una ficha.
+  usuarioId String?  @unique
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
+  usuario                 Usuario?          @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
   procesosComoAbogada     ProcesoJuridico[] @relation("AbogadaDeProceso")
   procesosComoProcuradora ProcesoJuridico[] @relation("ProcuradoraDeProceso")
 

@@ -13,9 +13,11 @@ import {
   crearUsuarioSchema,
   editarUsuarioSchema,
   listarUsuariosQuerySchema,
+  vincularFichaPersonalSchema,
   type CrearUsuarioInput,
   type EditarUsuarioInput,
   type ListarUsuariosQuery,
+  type VincularFichaPersonalInput,
 } from '@akyuam/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -56,6 +58,16 @@ export class UsuariosController {
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.usuariosService.editar(id, datos, contexto);
+  }
+
+  @Patch(':id/ficha-personal')
+  vincularFichaPersonal(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(vincularFichaPersonalSchema))
+    datos: VincularFichaPersonalInput,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.usuariosService.vincularFichaPersonal(id, datos, contexto);
   }
 
   @Patch(':id/resetear-password')

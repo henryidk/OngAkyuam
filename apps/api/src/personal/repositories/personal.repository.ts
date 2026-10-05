@@ -21,6 +21,7 @@ function mapear(personal: Personal): PersonalDto {
     tipo: personal.tipo,
     nombre: personal.nombre,
     activo: personal.activo,
+    usuarioId: personal.usuarioId,
   };
 }
 
