@@ -1,4 +1,5 @@
 import type {
+  InicioJuridicoDto,
   BandejaJuridicoQuery,
   CarpetaDto,
   CrearProcesosEnLoteInput,
@@ -27,6 +28,12 @@ import type {
 import { api } from '../../../lib/api'
 
 /** Cliente tipado del módulo jurídico — la única capa que conoce axios y las URLs del backend. */
+
+// ---- Inicio ----
+
+export function obtenerInicio() {
+  return api.get<InicioJuridicoDto>('/juridico/inicio').then((res) => res.data)
+}
 
 // ---- Procesos ----
 

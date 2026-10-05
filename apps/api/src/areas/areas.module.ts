@@ -7,6 +7,7 @@ import { AreasService } from './areas.service';
 import { AreasGateway } from './gateways/areas.gateway';
 import { AREA_NOTIFIER } from './interfaces/area-notifier.interface';
 import { AREAS_REPOSITORY } from './interfaces/areas-repository.interface';
+import { NOVEDADES_AREA_NOTIFIER } from './interfaces/novedades-area-notifier.interface';
 import { TRABAJO_SOCIAL_NOTIFIER } from './interfaces/trabajo-social-notifier.interface';
 import { PoliticasAcceso } from './politicas/politicas-acceso';
 import { AreasRepository } from './repositories/areas.repository';
@@ -20,8 +21,14 @@ import { AreasRepository } from './repositories/areas.repository';
     AreasGateway,
     { provide: AREA_NOTIFIER, useExisting: AreasGateway },
     { provide: TRABAJO_SOCIAL_NOTIFIER, useExisting: AreasGateway },
+    { provide: NOVEDADES_AREA_NOTIFIER, useExisting: AreasGateway },
     PoliticasAcceso,
   ],
-  exports: [AREA_NOTIFIER, TRABAJO_SOCIAL_NOTIFIER, PoliticasAcceso],
+  exports: [
+    AREA_NOTIFIER,
+    NOVEDADES_AREA_NOTIFIER,
+    TRABAJO_SOCIAL_NOTIFIER,
+    PoliticasAcceso,
+  ],
 })
 export class AreasModule {}

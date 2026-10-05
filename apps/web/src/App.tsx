@@ -6,6 +6,7 @@ import Usuarios from './pages/admin/Usuarios'
 import AreaLayout from './pages/area-atencion/AreaLayout'
 import JuridicoLayout from './pages/juridico/JuridicoLayout'
 import BandejaJuridico from './features/juridico/bandeja/BandejaJuridico'
+import InicioJuridico from './features/juridico/inicio/InicioJuridico'
 import ListaProcesosJuridico from './features/juridico/procesos/ListaProcesos'
 import RegistrarProcesosJuridico, { RedirigirARegistro } from './features/juridico/registro/RegistrarProcesos'
 import DetalleProcesoJuridico from './features/juridico/detalle/DetalleProceso'
@@ -106,7 +107,8 @@ function App() {
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['JURIDICO']} />}>
           <Route path="/juridico" element={<JuridicoLayout />}>
-            <Route index element={<BandejaJuridico />} />
+            <Route index element={<InicioJuridico />} />
+            <Route path="atencion" element={<BandejaJuridico />} />
             <Route path="procesos" element={<ListaProcesosJuridico />} />
             {/* Antes que "procesos/:procesoId": "registrar" no es un id. */}
             <Route path="procesos/registrar" element={<RegistrarProcesosJuridico />} />

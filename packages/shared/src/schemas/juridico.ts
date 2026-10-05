@@ -14,6 +14,7 @@ import {
   TIPOS_PROCESO_JURIDICO,
 } from '../catalogos/juridico.js'
 import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
+import type { TipoDocumento } from './documentos.js'
 import type { TipoRegistro } from './registroUsuaria.js'
 import { booleanoQuerySchema } from './query.js'
 
@@ -475,4 +476,57 @@ export interface FichaUsuariaJuridicoDto {
   procesos: ProcesoResumen[]
   /** Más reciente primero. */
   referencias: ReferenciaHistorialDto[]
+}
+
+// ---- Inicio ----
+
+/** Filas visibles de las colas del Inicio; el contador de cada una muestra el total real. */
+export const FILAS_COLA_INICIO = 5
+export const FILAS_MIS_PROCESOS_INICIO = 3
+export const NOVEDADES_TS_INICIO = 6
+
+export interface ColaInicio<TFila> {
+  items: TFila[]
+  total: number
+}
+
+/** Lo mínimo de una referencia pendiente para la cola del Inicio (sin motivo ni datos de contacto). */
+export interface ReferenciaInicioDto {
+  referidoId: string
+  expedienteId: string
+  expedienteNumero: string
+  usuaria: UsuariaJuridicoRef
+  referidoEn: string
+  procesosSugeridos: TipoProcesoJuridico[]
+}
+
+/**
+ * Lista blanca de cambios de Trabajo Social que Jurídico ve como novedad. Nunca valores: de un
+ * cambio de datos solo viajan los nombres de los campos.
+ */
+export type NovedadTsDto = {
+  id: string
+  createdAt: string
+  usuaria: UsuariaJuridicoRef
+  expedienteNumero: string
+} & (
+  | { tipo: 'REFERENCIA' }
+  | { tipo: 'DATOS'; campos: string[] }
+  | { tipo: 'DOCUMENTO'; documento: { tipo: TipoDocumento; version: number } }
+)
+
+/** `GET /juridico/inicio` */
+export interface InicioJuridicoDto {
+  /** Año en curso en Guatemala: el resumen cuenta los procesos iniciados en él. */
+  anio: number
+  resumenAnio: { total: number; enTramite: number; finalizados: number }
+  /** Las más antiguas primero. */
+  referenciasNuevas: ColaInicio<ReferenciaInicioDto>
+  /** En trámite y sin actuación en `DIAS_ALERTA_INACTIVIDAD` días o más; la más olvidada primero. */
+  requierenAtencion: ColaInicio<ProcesoResumen>
+  /** En trámite como abogada o procuradora. `null`: la cuenta no está vinculada a una ficha de personal. */
+  misProcesos: ColaInicio<ProcesoResumen> | null
+  /** Procesos sin finalizar con la actuación más reciente primero. */
+  actividadReciente: ProcesoResumen[]
+  novedadesTs: NovedadTsDto[]
 }

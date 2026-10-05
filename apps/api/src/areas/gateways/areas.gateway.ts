@@ -10,6 +10,7 @@ import type { Server, Socket } from 'socket.io';
 import { ACCESS_TOKEN_TTL_MS } from '../../auth/constants/auth.constants';
 import { SocketAuthService } from '../../auth/services/socket-auth.service';
 import type { IAreaNotifier } from '../interfaces/area-notifier.interface';
+import type { INovedadesAreaNotifier } from '../interfaces/novedades-area-notifier.interface';
 import type { ITrabajoSocialNotifier } from '../interfaces/trabajo-social-notifier.interface';
 
 const SALA_TRABAJO_SOCIAL = 'trabajo-social';
@@ -25,7 +26,11 @@ function salaDeArea(area: Rol): string {
   cors: { origin: process.env.FRONTEND_URL, credentials: true },
 })
 export class AreasGateway
-  implements OnGatewayConnection, IAreaNotifier, ITrabajoSocialNotifier
+  implements
+    OnGatewayConnection,
+    IAreaNotifier,
+    INovedadesAreaNotifier,
+    ITrabajoSocialNotifier
 {
   private readonly logger = new Logger(AreasGateway.name);
 
@@ -66,6 +71,11 @@ export class AreasGateway
     this.server
       .to(salaDeArea(area))
       .emit('usuaria:actualizada', { expedienteId });
+  }
+
+  notificarNovedades(area: Rol): void {
+    // Sin datos, como la bandeja de TS: el Inicio del área vuelve a pedirse por HTTP.
+    this.server.to(salaDeArea(area)).emit('novedades:cambio');
   }
 
   notificarCambioBandeja(): void {

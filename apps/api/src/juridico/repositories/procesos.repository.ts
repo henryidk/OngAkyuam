@@ -15,7 +15,12 @@ import {
   EXPEDIENTE_REFERIDO_A_JURIDICO,
   PROCESO_CON_ACCESO,
 } from '../compartido/acceso-juridico';
-import { escaparLike } from '../compartido/sql';
+import {
+  EN_TRAMITE_SQL,
+  PROCESO_CON_ACCESO_SQL,
+  asignadoASql,
+  escaparLike,
+} from '../compartido/sql';
 import { codigoProceso } from '../dominio/codigo-proceso';
 import { limiteInactividad } from '../dominio/estado-visible';
 import type {
@@ -27,7 +32,11 @@ import type {
   ProcesoDetalleBase,
   ResultadoActualizarDatos,
 } from '../interfaces/procesos-repository.interface';
-import { INCLUDE_RESUMEN, mapearResumen } from './mapeo-proceso';
+import {
+  INCLUDE_RESUMEN,
+  cargarResumenes,
+  mapearResumen,
+} from './mapeo-proceso';
 
 /** Tipos de proceso cuya etiqueta en español contiene el texto buscado. */
 function tiposQueCoinciden(texto: string): TipoProcesoJuridico[] {
@@ -44,23 +53,12 @@ function tiposQueCoinciden(texto: string): TipoProcesoJuridico[] {
     .map(([tipo]) => tipo);
 }
 
-const ACCESO_SQL = Prisma.sql`EXISTS (
-  SELECT 1 FROM "ReferidoArea" r
-  WHERE r."expedienteId" = p."expedienteId" AND r.area = 'JURIDICO'
-)`;
-
-const EN_TRAMITE_SQL = Prisma.sql`(p.fase <> 'FINALIZADO' AND p.situacion = 'ACTIVO')`;
-
 function condicionesListado(params: ListarProcesosParams): Prisma.Sql {
   // La lista de trabajo solo muestra procesos en trámite.
-  const condiciones: Prisma.Sql[] = [ACCESO_SQL, EN_TRAMITE_SQL];
+  const condiciones: Prisma.Sql[] = [PROCESO_CON_ACCESO_SQL, EN_TRAMITE_SQL];
 
   if (params.asignadosAUsuarioId) {
-    condiciones.push(Prisma.sql`EXISTS (
-      SELECT 1 FROM "Personal" pe
-      WHERE pe."usuarioId" = ${params.asignadosAUsuarioId}
-        AND pe.id IN (p."abogadaId", p."procuradoraId")
-    )`);
+    condiciones.push(asignadoASql(params.asignadosAUsuarioId));
   }
   if (params.q) {
     const patron = `%${escaparLike(params.q)}%`;
@@ -176,19 +174,11 @@ export class ProcesosRepository implements IProcesosRepository {
       ),
     ]);
 
-    const ids = filas.map((fila) => fila.id);
-    const procesos = await this.prisma.procesoJuridico.findMany({
-      where: { id: { in: ids } },
-      include: INCLUDE_RESUMEN,
-    });
-    const porId = new Map(procesos.map((proceso) => [proceso.id, proceso]));
-    const ahora = new Date();
-
     return {
-      items: ids.flatMap((id) => {
-        const proceso = porId.get(id);
-        return proceso ? [mapearResumen(proceso, ahora)] : [];
-      }),
+      items: await cargarResumenes(
+        this.prisma,
+        filas.map((fila) => fila.id),
+      ),
       page: params.page,
       pageSize: params.pageSize,
       total: Number(conteo[0]?.total ?? 0),
@@ -218,7 +208,7 @@ export class ProcesosRepository implements IProcesosRepository {
         count(*) FILTER (WHERE p."formaFinalizacion" = 'DESISTIMIENTO') AS desistimiento,
         count(*) FILTER (WHERE p."formaFinalizacion" = 'OTROS') AS otros
       FROM "ProcesoJuridico" p
-      WHERE ${ACCESO_SQL}
+      WHERE ${PROCESO_CON_ACCESO_SQL}
     `);
 
     const porForma: Record<FormaFinalizacionProceso, bigint> = {

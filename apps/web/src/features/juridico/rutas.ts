@@ -19,8 +19,10 @@ interface OpcionesRegistro {
 }
 
 export const RUTAS_JURIDICO = {
-  /** El Área de atención (bandeja de referencias) es la pantalla de entrada del módulo. */
-  bandeja: () => '/juridico',
+  /** Pantalla de entrada del módulo: las tres colas de trabajo y las novedades de TS. */
+  inicio: () => '/juridico',
+  /** Área de atención: la bandeja de referencias de Trabajo Social. */
+  bandeja: () => '/juridico/atencion',
   /** Solo procesos en trámite; `mios` deja los asignados a la cuenta actual (abogada o procuradora). */
   procesos: ({ mios }: { mios?: boolean } = {}) => conQuery('/juridico/procesos', { mios: mios ? 'true' : undefined }),
   registrar: ({ expedienteId, referidoId }: OpcionesRegistro) =>

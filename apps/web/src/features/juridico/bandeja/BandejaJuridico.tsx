@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Inbox } from 'lucide-react'
 import { bandejaJuridicoQuerySchema, type ReferenciaBandejaDto, type VistaBandejaJuridico } from '@akyuam/shared'
@@ -44,7 +44,7 @@ const DESCRIPCION_VISTA: Record<VistaBandejaJuridico, string> = {
 export default function BandejaJuridico() {
   useTituloPagina({ titulo: 'Área de atención' })
   const { mostrar } = useToast()
-  const { resumen, recargarResumen } = useContextoJuridico()
+  const { resumen, recargarResumen, versionNovedades } = useContextoJuridico()
   const [searchParams, setSearchParams] = useSearchParams()
   // La vista vive en la URL: se puede enlazar y el botón Atrás funciona.
   const { vista } = bandejaJuridicoQuerySchema.catch({ vista: 'pendientes' }).parse({
@@ -53,6 +53,15 @@ export default function BandejaJuridico() {
 
   const cargar = useCallback(() => listarBandeja(vista), [vista])
   const { datos: referencias, error, recargar } = useRecurso(cargar)
+
+  // Trabajo Social refirió algo nuevo mientras la bandeja está abierta: se vuelve a pedir sin
+  // desmontar lo que ya se ve. La primera versión es la de la carga inicial.
+  const versionVista = useRef(versionNovedades)
+  useEffect(() => {
+    if (versionVista.current === versionNovedades) return
+    versionVista.current = versionNovedades
+    void recargar()
+  }, [versionNovedades, recargar])
 
   const [aDevolver, setADevolver] = useState<ReferenciaBandejaDto | null>(null)
 

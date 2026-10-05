@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AreasModule } from '../areas/areas.module';
 import { AuthModule } from '../auth/auth.module';
 import { PersonalModule } from '../personal/personal.module';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -15,11 +16,15 @@ import { DocumentosProcesoController } from './documentos/documentos-proceso.con
 import { DocumentosProcesoService } from './documentos/documentos-proceso.service';
 import { HistorialUsuariaController } from './historial/historial-usuaria.controller';
 import { HistorialUsuariaService } from './historial/historial-usuaria.service';
+import { AvisosJuridicoListener } from './inicio/avisos-juridico.listener';
+import { InicioJuridicoController } from './inicio/inicio-juridico.controller';
+import { InicioJuridicoService } from './inicio/inicio-juridico.service';
 import { BITACORA_REPOSITORY } from './interfaces/bitacora-repository.interface';
 import {
   CARPETAS_REPOSITORY,
   DOCUMENTOS_PROCESO_REPOSITORY,
 } from './interfaces/documentos-proceso-repository.interface';
+import { INICIO_REPOSITORY } from './interfaces/inicio-repository.interface';
 import { PROCESOS_REPOSITORY } from './interfaces/procesos-repository.interface';
 import { REFERENCIAS_REPOSITORY } from './interfaces/referencias-repository.interface';
 import { REGISTRO_PROCESOS_REPOSITORY } from './interfaces/registro-procesos-repository.interface';
@@ -31,6 +36,7 @@ import { RegistroProcesosService } from './procesos/registro-procesos.service';
 import { BitacoraRepository } from './repositories/bitacora.repository';
 import { CarpetasRepository } from './repositories/carpetas.repository';
 import { DocumentosProcesoRepository } from './repositories/documentos-proceso.repository';
+import { InicioRepository } from './repositories/inicio.repository';
 import { ProcesosRepository } from './repositories/procesos.repository';
 import { ReferenciasRepository } from './repositories/referencias.repository';
 import { RegistroProcesosRepository } from './repositories/registro-procesos.repository';
@@ -43,6 +49,7 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
   imports: [
     PrismaModule,
     AuthModule,
+    AreasModule,
     StorageModule,
     PersonalModule,
     // Solo aplica donde un endpoint usa `LimitePorUsuarioGuard`; el tope de cada uno va en
@@ -50,6 +57,7 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
   ],
   controllers: [
+    InicioJuridicoController,
     BandejaJuridicoController,
     ProcesosController,
     TransicionesController,
@@ -68,6 +76,9 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     BitacoraService,
     DocumentosProcesoService,
     HistorialUsuariaService,
+    InicioJuridicoService,
+    AvisosJuridicoListener,
+    { provide: INICIO_REPOSITORY, useClass: InicioRepository },
     { provide: PROCESOS_REPOSITORY, useClass: ProcesosRepository },
     {
       provide: REGISTRO_PROCESOS_REPOSITORY,
