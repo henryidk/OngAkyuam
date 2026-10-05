@@ -311,7 +311,6 @@ describe('UsuariasService', () => {
               referidos: [
                 {
                   area: 'JURIDICO',
-                  prioridad: 'NORMAL',
                   profesional: null,
                   createdAt: referidoEn,
                 },
@@ -326,7 +325,6 @@ describe('UsuariasService', () => {
         estado: 'ACTIVA' as const,
         detalle: 'Sin procesos abiertos todavía',
         profesional: null,
-        prioridad: 'NORMAL' as const,
         referidoEn: referidoEn.toISOString(),
       };
       estadoTsService.resolverCaso
@@ -338,7 +336,6 @@ describe('UsuariasService', () => {
       expect(estadoTsService.resolverCaso).toHaveBeenCalledWith([
         {
           area: 'JURIDICO',
-          prioridad: 'NORMAL',
           profesional: null,
           createdAt: referidoEn,
           expedienteId: 'e-2',

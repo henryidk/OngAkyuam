@@ -13,9 +13,9 @@ import { listarDocumentosCaso, referirCaso } from '../api/trabajoSocial.api'
 const DOCUMENTOS_VISIBLES_POR_DEFECTO: TipoDocumentoTrabajoSocial[] = ['ACCIONES_REALIZADAS']
 
 /**
- * Estado del modal Referir. Trabajo Social no elige quién atiende ni la prioridad: cada área
- * lo decide desde su panel (Jurídico asigna por proceso, Psicología toma el caso desde
- * "Referencias sin tomar"). La prioridad queda en NORMAL por defecto del schema.
+ * Estado del modal Referir. Trabajo Social no elige quién atiende: cada área lo decide desde
+ * su panel (Jurídico asigna por proceso, Psicología toma el caso desde "Referencias sin
+ * tomar").
  */
 export function useReferir(
   expedienteId: string,

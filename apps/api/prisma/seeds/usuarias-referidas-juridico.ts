@@ -19,7 +19,6 @@ import {
   type TipoEntradaBitacora,
   type GrupoEtnico,
   type MunicipioAltaVerapaz,
-  type PrioridadReferido,
   type Rol,
   type TipologiaDelito,
   type TipoProcesoJuridico,
@@ -37,7 +36,6 @@ interface UsuariaReferidaSeed {
   municipio: MunicipioAltaVerapaz;
   fechaCaso: string;
   tipologia: TipologiaDelito[];
-  prioridad: PrioridadReferido;
   motivo: string;
   procesosSugeridos: TipoProcesoJuridico[];
   tambienPsicologia?: boolean;
@@ -53,7 +51,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     municipio: 'COBAN',
     fechaCaso: '2026-09-22',
     tipologia: ['FISICA', 'PSICOLOGICA'],
-    prioridad: 'URGENTE',
     motivo: 'Dato ficticio: solicita medidas de seguridad.',
     procesosSugeridos: ['MEDIDAS_SEGURIDAD'],
     tambienPsicologia: true,
@@ -67,7 +64,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     municipio: 'TACTIC',
     fechaCaso: '2026-09-23',
     tipologia: ['ECONOMICA_PATRIMONIAL'],
-    prioridad: 'NORMAL',
     motivo: 'Dato ficticio: pensión alimenticia para dos hijos.',
     procesosSugeridos: ['FIJACION_PENSION_ALIMENTICIA', 'GUARDA_CUSTODIA'],
   },
@@ -80,7 +76,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     municipio: 'SAN_CRISTOBAL_VERAPAZ',
     fechaCaso: '2026-09-24',
     tipologia: ['PSICOLOGICA'],
-    prioridad: 'NORMAL',
     motivo: 'Dato ficticio: consulta sobre divorcio.',
     procesosSugeridos: ['DIVORCIO_MUTUO_ACUERDO'],
   },
@@ -93,7 +88,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     municipio: 'COBAN',
     fechaCaso: '2026-09-25',
     tipologia: ['FISICA', 'ECONOMICA_PATRIMONIAL'],
-    prioridad: 'URGENTE',
     motivo: 'Dato ficticio: medidas de seguridad y menaje de casa.',
     procesosSugeridos: ['MEDIDAS_SEGURIDAD', 'MENAJE_CASA'],
   },
@@ -106,7 +100,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     municipio: 'SANTA_CRUZ_VERAPAZ',
     fechaCaso: '2026-09-26',
     tipologia: ['PSICOLOGICA'],
-    prioridad: 'NORMAL',
     motivo: 'Dato ficticio: reconocimiento de paternidad.',
     procesosSugeridos: ['PATERNIDAD_FILIACION'],
   },
@@ -120,7 +113,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     municipio: 'TAMAHU',
     fechaCaso: '2026-09-29',
     tipologia: ['ECONOMICA_PATRIMONIAL'],
-    prioridad: 'NORMAL',
     motivo: 'Dato ficticio: orientación legal general.',
     procesosSugeridos: [],
   },
@@ -161,7 +153,6 @@ async function crear(
             area,
             otorgadoPorId: trabajoSocialId,
             motivo: datos.motivo,
-            prioridad: datos.prioridad,
             procesosSugeridos:
               area === 'JURIDICO' ? datos.procesosSugeridos : [],
           })),
@@ -244,7 +235,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
       },
       {
         tipo: 'GUARDA_CUSTODIA',
-        fase: 'INICIADO',
+        fase: 'EN_PROCESO',
         situacion: 'ACTIVO',
         fechaInicio: '2026-09-20',
         ultimaActuacion: '2026-09-20T15:00:00Z',
@@ -364,7 +355,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
     procesos: [
       {
         tipo: 'MEDIDAS_SEGURIDAD',
-        fase: 'INICIADO',
+        fase: 'EN_PROCESO',
         situacion: 'ABANDONADO',
         fechaInicio: '2026-04-15',
         ultimaActuacion: '2026-08-05T16:00:00Z',

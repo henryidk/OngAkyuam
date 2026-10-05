@@ -215,7 +215,6 @@ export class UsuariasRepository implements IUsuariasRepository {
               orderBy: { createdAt: 'asc' },
               select: {
                 area: true,
-                prioridad: true,
                 createdAt: true,
                 profesionalAsignado: { select: { nombreCompleto: true } },
               },
@@ -255,7 +254,6 @@ export class UsuariasRepository implements IUsuariasRepository {
           // en la práctica) — el tipo de Prisma es el enum `Rol` completo, se acota aquí al
           // subconjunto que expone la API de trabajo social.
           area: referido.area as AreaAtencion,
-          prioridad: referido.prioridad,
           profesional: referido.profesionalAsignado?.nombreCompleto ?? null,
           createdAt: referido.createdAt,
         })),

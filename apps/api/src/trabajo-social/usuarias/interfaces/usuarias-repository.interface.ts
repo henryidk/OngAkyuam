@@ -3,7 +3,6 @@ import type {
   AreaAtencion,
   FiltroListaUsuarias,
   ListaUsuariasTs,
-  PrioridadReferido,
   TipoRegistro,
   UsuariaExpedienteHub,
   UsuariaResumenBusqueda,
@@ -40,7 +39,6 @@ export interface ListarUsuariasParams {
 
 export interface ReferidoCasoRow {
   area: AreaAtencion;
-  prioridad: PrioridadReferido;
   profesional: string | null;
   createdAt: Date;
 }

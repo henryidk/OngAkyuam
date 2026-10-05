@@ -13,9 +13,11 @@ export interface EstadoProceso {
  * Qué se le puede hacer a un proceso según sus dos ejes (fase = cuánto avanzó, situación = si
  * se está trabajando). Es la única copia de estas reglas: el frontend recibe
  * `accionesDisponibles` ya calculado y nunca las reimplementa. Sin Nest ni Prisma a propósito.
+ *
+ * No hay acción para pasar a En proceso: el proceso nace así al tomar el caso, y `INICIADO`
+ * solo queda en procesos viejos (reactivarlos los lleva a En proceso).
  */
 const REGLAS: Record<AccionProceso, (estado: EstadoProceso) => boolean> = {
-  AVANZAR: (e) => e.fase === 'INICIADO' && e.situacion === 'ACTIVO',
   FINALIZAR: (e) => e.fase !== 'FINALIZADO' && e.situacion === 'ACTIVO',
   SUSPENDER: (e) => e.fase !== 'FINALIZADO' && e.situacion === 'ACTIVO',
   ABANDONAR: (e) => e.fase !== 'FINALIZADO' && e.situacion !== 'ABANDONADO',

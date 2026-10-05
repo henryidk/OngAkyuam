@@ -6,7 +6,7 @@ import { tipoDocumentoTrabajoSocialSchema } from './documentos.js'
 import { booleanoQuerySchema } from './query.js'
 import { hoyGT } from '../timezone.js'
 import type { TipoDocumento, TipoDocumentoTrabajoSocial } from './documentos.js'
-import { ESTADOS_AREA, ESTADOS_TS, FILTROS_LISTA_USUARIAS, PRIORIDADES_REFERIDO } from '../catalogos/trabajoSocial.js'
+import { ESTADOS_AREA, ESTADOS_TS, FILTROS_LISTA_USUARIAS } from '../catalogos/trabajoSocial.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -20,9 +20,6 @@ export type EstadoArea = z.infer<typeof estadoAreaSchema>
 export const filtroListaUsuariasSchema = z.enum(FILTROS_LISTA_USUARIAS)
 export type FiltroListaUsuarias = z.infer<typeof filtroListaUsuariasSchema>
 
-export const prioridadReferidoSchema = z.enum(PRIORIDADES_REFERIDO)
-export type PrioridadReferido = z.infer<typeof prioridadReferidoSchema>
-
 /** `POST /trabajo-social/expedientes/:id/referidos` — abre el modal "Referir a un área". */
 export const MOTIVO_REFERIDO_MAX = 1000
 
@@ -31,8 +28,6 @@ export const referirSchema = z.object({
   // Opcional en el contrato: sin profesional, el referido queda en la cola del área (flujo de
   // reclamación de Psicología intacto). El modal de Trabajo Social ya no lo envía.
   profesionalAsignadoId: z.uuid().optional(),
-  // El modal tampoco la envía: cada área decide la urgencia desde su panel.
-  prioridad: prioridadReferidoSchema.default('NORMAL'),
   motivo: z.string().trim().max(MOTIVO_REFERIDO_MAX),
   visibilidad: z.object({
     datosCaso: z.boolean(),
@@ -126,7 +121,6 @@ export interface EstadoAreaCaso {
   /** Próxima acción o situación del área, ya en lenguaje natural (p. ej. "Próxima cita 02/10/2026 09:00"). */
   detalle: string
   profesional: string | null
-  prioridad: PrioridadReferido
   referidoEn: string
 }
 
@@ -292,7 +286,6 @@ export interface CompartidoArea {
 export interface ReferidoCreado {
   id: string
   area: AreaAtencion
-  prioridad: PrioridadReferido
   profesionalAsignadoId: string | null
   createdAt: string
 }

@@ -14,7 +14,7 @@ describe('plantillas de eventos', () => {
     ).toEqual({
       area: null,
       destacado: true,
-      texto: 'Refirió el caso al área psicológica (urgente)',
+      texto: 'Refirió el caso al área psicológica',
     });
     expect(
       describirEvento('DOCUMENTO_VERSION_SUBIDA', {

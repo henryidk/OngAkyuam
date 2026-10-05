@@ -20,12 +20,6 @@ type Tx = Prisma.TransactionClient;
 export class TransicionesRepository implements ITransicionesRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  avanzar(params: TransicionBase): Promise<boolean> {
-    return this.transicionar(params, 'Proceso marcado como En proceso', (tx) =>
-      this.actualizarProceso(tx, params, { fase: 'EN_PROCESO' }),
-    );
-  }
-
   finalizar(params: FinalizarParams): Promise<boolean> {
     return this.transicionar(
       params,
@@ -82,7 +76,10 @@ export class TransicionesRepository implements ITransicionesRepository {
 
   reactivar(params: ReactivarParams): Promise<boolean> {
     return this.transicionar(params, 'Proceso reactivado', async (tx) => {
-      await this.actualizarProceso(tx, params, { situacion: 'ACTIVO' });
+      await this.actualizarProceso(tx, params, {
+        situacion: 'ACTIVO',
+        ...(params.faseActual === 'INICIADO' && { fase: 'EN_PROCESO' }),
+      });
       // Las filas se cierran, no se borran: quedan como historial del proceso.
       if (params.situacionActual === 'SUSPENDIDO') {
         await this.cerrarSuspensionVigente(tx, params.procesoId);

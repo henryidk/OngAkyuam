@@ -73,8 +73,8 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
   EXPEDIENTE_REFERIDO: {
     area: null,
     destacado: true,
-    texto: (detalles) =>
-      `Refirió el caso al ${nombreArea(detalles)}${detalles?.prioridad === 'URGENTE' ? ' (urgente)' : ''}`,
+    // Los registros viejos pueden traer `detalles.prioridad`: se ignora a propósito.
+    texto: (detalles) => `Refirió el caso al ${nombreArea(detalles)}`,
   },
   EGRESO_ALBERGUE_REGISTRADO: {
     area: null,

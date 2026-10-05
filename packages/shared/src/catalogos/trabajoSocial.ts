@@ -54,10 +54,3 @@ export const TONO_BADGE_ESTADO_AREA: Record<(typeof ESTADOS_AREA)[number], 'succ
   ACTIVA: 'success',
   CERRADA: 'neutral',
 }
-
-export const PRIORIDADES_REFERIDO = ['NORMAL', 'URGENTE'] as const
-
-export const ETIQUETAS_PRIORIDAD_REFERIDO: Record<(typeof PRIORIDADES_REFERIDO)[number], string> = {
-  NORMAL: 'Normal',
-  URGENTE: 'Urgente · atender hoy',
-}

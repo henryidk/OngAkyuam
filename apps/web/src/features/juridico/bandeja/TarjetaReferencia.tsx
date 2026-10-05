@@ -30,7 +30,6 @@ export default function TarjetaReferencia({ referencia, onVerDatos, onDevolver }
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-[15px] font-semibold text-gray-900">{usuaria.nombreCompleto}</h2>
-            {referencia.prioridad === 'URGENTE' && <Badge tono="danger">Urgente</Badge>}
           </div>
           <p className="text-xs text-gray-500 tabular-nums">
             {usuaria.dpi ? `DPI ${usuaria.dpi}` : 'Sin DPI registrado'} · Expediente {referencia.expedienteNumero}

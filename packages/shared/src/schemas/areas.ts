@@ -1,6 +1,5 @@
 import type { Nino, TipoRegistro } from './registroUsuaria.js'
 import type { TipoDocumento } from './documentos.js'
-import type { PrioridadReferido } from './trabajoSocial.js'
 
 /**
  * Forma de un expediente tal como lo ve un área de atención (jurídica/médica/psicológica)
@@ -13,8 +12,6 @@ export interface ExpedienteResumenArea {
   municipio: string | null
   tipoRegistro: TipoRegistro
   usuariaNombreCompleto: string
-  /** Solo en el aviso por socket de un referido nuevo: `URGENTE` se destaca en la bandeja. */
-  prioridad?: PrioridadReferido
 }
 
 /** Detalle completo — ver GET /areas/expedientes/:id. */

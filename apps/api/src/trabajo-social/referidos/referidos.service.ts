@@ -80,7 +80,6 @@ export class ReferidosService {
       referido = await this.referidosRepository.crear({
         expedienteId,
         area: datos.area,
-        prioridad: datos.prioridad,
         motivo: datos.motivo || null,
         profesionalAsignadoId,
         puedeVerDatosCaso: restringible ? datos.visibilidad.datosCaso : true,
@@ -105,7 +104,7 @@ export class ReferidosService {
       entidadId: expedienteId,
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      detalles: { area: datos.area, prioridad: datos.prioridad },
+      detalles: { area: datos.area },
     });
 
     this.areaNotifier.notificarReferido(datos.area, {
@@ -115,13 +114,11 @@ export class ReferidosService {
       municipio: expediente.municipio,
       tipoRegistro: expediente.tipoRegistro,
       usuariaNombreCompleto: expediente.usuariaNombreCompleto,
-      prioridad: datos.prioridad,
     });
 
     return {
       id: referido.id,
       area: datos.area,
-      prioridad: referido.prioridad,
       profesionalAsignadoId: referido.profesionalAsignadoId,
       createdAt: referido.createdAt.toISOString(),
     };

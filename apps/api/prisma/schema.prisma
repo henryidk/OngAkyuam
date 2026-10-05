@@ -194,20 +194,19 @@ model Expediente {
 // PSICOLOGIA, MEDICA — validado en capa de aplicación) sobre un expediente puntual.
 // Ver CLAUDE.md: "Cada área solo ve lo que trabajo social le autoriza explícitamente".
 model ReferidoArea {
-  id                    String            @id @default(uuid())
+  id                    String     @id @default(uuid())
   expedienteId          String
-  expediente            Expediente        @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  expediente            Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   area                  Rol
   otorgadoPorId         String
-  otorgadoPor           Usuario           @relation("ReferidoOtorgadoPor", fields: [otorgadoPorId], references: [id])
-  createdAt             DateTime          @default(now()) @db.Timestamptz(3)
-  motivo                String?           @db.Text
-  prioridad             PrioridadReferido @default(NORMAL)
+  otorgadoPor           Usuario    @relation("ReferidoOtorgadoPor", fields: [otorgadoPorId], references: [id])
+  createdAt             DateTime   @default(now()) @db.Timestamptz(3)
+  motivo                String?    @db.Text
   // Usuario del área (psicóloga, doctora); null = queda en la cola del área.
   profesionalAsignadoId String?
-  profesionalAsignado   Usuario?          @relation("ReferidoProfesionalAsignado", fields: [profesionalAsignadoId], references: [id])
+  profesionalAsignado   Usuario?   @relation("ReferidoProfesionalAsignado", fields: [profesionalAsignadoId], references: [id])
   // Agresor, tipología y observaciones. Jurídico los ve siempre (ver PoliticaJuridico).
-  puedeVerDatosCaso     Boolean           @default(true)
+  puedeVerDatosCaso     Boolean    @default(true)
 
   // Solo Jurídico. Una referencia está pendiente mientras no se atienda ni se devuelva; se
   // atiende al registrar el primer lote de procesos desde ella.
@@ -221,11 +220,6 @@ model ReferidoArea {
 
   @@unique([expedienteId, area])
   @@index([area])
-}
-
-enum PrioridadReferido {
-  NORMAL
-  URGENTE
 }
 
 model Agresor {
@@ -378,7 +372,8 @@ enum TipoProcesoJuridico {
   INSCRIPCION_RENAP
 }
 
-// Avance del proceso: solo camina hacia adelante.
+// Avance del proceso: solo camina hacia adelante. Los procesos nacen EN_PROCESO; INICIADO se
+// conserva como primer paso del indicador de avance y para el historial.
 enum FaseProcesoJuridico {
   INICIADO
   EN_PROCESO
@@ -429,7 +424,7 @@ model ProcesoJuridico {
   tipo                TipoProcesoJuridico
   // El código visible "J{consecutivo}-{numero de expediente}" se deriva, no se guarda.
   consecutivo         Int
-  fase                FaseProcesoJuridico       @default(INICIADO)
+  fase                FaseProcesoJuridico       @default(EN_PROCESO)
   situacion           SituacionProcesoJuridico  @default(ACTIVO)
   formaFinalizacion   FormaFinalizacionProceso?
   detalleFinalizacion String?                   @db.VarChar(300)

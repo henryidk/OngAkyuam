@@ -41,7 +41,6 @@ function mapearReferencia(
       nombreCompleto: nombreCompleto(usuaria),
       dpi: usuaria.dpi,
     },
-    prioridad: referencia.prioridad,
     motivo: referencia.motivo,
     referidoEn: referencia.createdAt.toISOString(),
     referidoPor: referencia.otorgadoPor.nombreCompleto,
@@ -60,8 +59,8 @@ export class ReferenciasRepository implements IReferenciasRepository {
       vista === 'pendientes'
         ? {
             where: REFERENCIA_PENDIENTE,
-            // El enum se ordena por posición de declaración: NORMAL, URGENTE.
-            orderBy: [{ prioridad: 'desc' }, { createdAt: 'asc' }],
+            // Las más antiguas primero: nadie espera más que quien llegó antes.
+            orderBy: { createdAt: 'asc' },
           }
         : {
             where: { area: 'JURIDICO', devueltoEn: { not: null } },

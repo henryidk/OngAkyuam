@@ -33,17 +33,6 @@ import { TransicionesProcesoService } from './transiciones-proceso.service';
 export class TransicionesController {
   constructor(private readonly transiciones: TransicionesProcesoService) {}
 
-  @Post('avance')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  avanzar(
-    @Param('procesoId', ParseUUIDPipe) procesoId: string,
-    @Body(new ZodValidationPipe(transicionSimpleSchema))
-    datos: TransicionSimpleInput,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
-  ) {
-    return this.transiciones.avanzar(procesoId, datos, contexto);
-  }
-
   @Post('finalizacion')
   @HttpCode(HttpStatus.NO_CONTENT)
   finalizar(

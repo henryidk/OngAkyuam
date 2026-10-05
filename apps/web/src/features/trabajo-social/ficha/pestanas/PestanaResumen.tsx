@@ -102,7 +102,6 @@ function FilaAreaReferida({ estado }: { estado: EstadoAreaCaso }) {
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-gray-900">{ETIQUETAS_AREA_ATENCION[estado.area]}</p>
           <Badge tono={TONO_BADGE_ESTADO_AREA[estado.estado]}>{ETIQUETAS_ESTADO_AREA[estado.estado]}</Badge>
-          {estado.prioridad === 'URGENTE' && <Badge tono="danger">Urgente</Badge>}
         </div>
         <p className="mt-0.5 text-[13px] text-gray-600">
           {estado.detalle}

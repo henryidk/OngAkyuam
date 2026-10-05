@@ -70,8 +70,8 @@ function ControlVisibilidad({
 }
 
 /**
- * Modal ancho de §12.7: elegir área, motivo y qué podrá ver el área. Quién atiende y la
- * prioridad no se deciden aquí: cada área las define desde su panel.
+ * Modal ancho de §12.7: elegir área, motivo y qué podrá ver el área. Quién atiende no se
+ * decide aquí: cada área lo define desde su panel.
  */
 export default function ModalReferir({
   expedienteId,

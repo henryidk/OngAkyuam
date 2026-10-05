@@ -31,7 +31,6 @@ import type {
 } from '../interfaces/transiciones-repository.interface';
 
 const ACCION_AUDITORIA: Record<AccionProceso, string> = {
-  AVANZAR: 'PROCESO_JURIDICO_AVANZADO',
   FINALIZAR: 'PROCESO_JURIDICO_FINALIZADO',
   SUSPENDER: 'PROCESO_JURIDICO_SUSPENDIDO',
   ABANDONAR: 'PROCESO_JURIDICO_ABANDONADO',
@@ -57,20 +56,6 @@ export class TransicionesProcesoService {
     private readonly acceso: AccesoJuridicoService,
     private readonly auditService: AuditService,
   ) {}
-
-  avanzar(
-    procesoId: string,
-    datos: TransicionSimpleInput,
-    contexto: ContextoAuditoria,
-  ): Promise<void> {
-    return this.ejecutar({
-      procesoId,
-      accion: 'AVANZAR',
-      version: datos.version,
-      contexto,
-      escribir: (base) => this.transicionesRepository.avanzar(base),
-    });
-  }
 
   finalizar(
     procesoId: string,
@@ -183,6 +168,7 @@ export class TransicionesProcesoService {
         this.transicionesRepository.reactivar({
           ...base,
           situacionActual: proceso.situacion,
+          faseActual: proceso.fase,
         }),
     });
   }

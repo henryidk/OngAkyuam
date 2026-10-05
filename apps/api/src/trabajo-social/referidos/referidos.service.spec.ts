@@ -43,7 +43,6 @@ function expediente(
 function datos(parcial: Partial<ReferirInput> = {}): ReferirInput {
   return {
     area: 'PSICOLOGIA',
-    prioridad: 'NORMAL',
     motivo: '',
     visibilidad: { datosCaso: false, documentos: ['ACCIONES_REALIZADAS'] },
     ...parcial,
@@ -65,7 +64,6 @@ describe('ReferidosService', () => {
         Promise.resolve({
           id: 'referido-1',
           area: params.area,
-          prioridad: params.prioridad,
           profesionalAsignadoId: params.profesionalAsignadoId,
           createdAt: new Date('2026-01-15T12:00:00Z'),
         }),
@@ -165,22 +163,22 @@ describe('ReferidosService', () => {
     );
   });
 
-  it('audita sin el motivo y notifica al área con la prioridad', async () => {
+  it('audita sin el motivo y notifica al área', async () => {
     await service.referir(
       EXPEDIENTE_ID,
-      datos({ area: 'MEDICA', prioridad: 'URGENTE', motivo: 'Texto libre' }),
+      datos({ area: 'MEDICA', motivo: 'Texto libre' }),
       contexto,
     );
     expect(auditService.registrar).toHaveBeenCalledWith(
       expect.objectContaining({
         accion: 'EXPEDIENTE_REFERIDO',
         entidadId: EXPEDIENTE_ID,
-        detalles: { area: 'MEDICA', prioridad: 'URGENTE' },
+        detalles: { area: 'MEDICA' },
       }),
     );
     expect(notifier.notificarReferido).toHaveBeenCalledWith(
       'MEDICA',
-      expect.objectContaining({ id: EXPEDIENTE_ID, prioridad: 'URGENTE' }),
+      expect.objectContaining({ id: EXPEDIENTE_ID }),
     );
   });
 });

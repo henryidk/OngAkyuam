@@ -36,7 +36,7 @@ describe('EstadoTsService', () => {
     expect(repositorio.atencionPsicologica).not.toHaveBeenCalled();
   });
 
-  it('combina el estado de cada área referida y conserva prioridad y fecha del referido', async () => {
+  it('combina el estado de cada área referida y conserva la fecha del referido', async () => {
     repositorio.procesosJuridicos.mockResolvedValue([
       { fase: 'FINALIZADO', situacion: 'ACTIVO' },
     ]);
@@ -50,14 +50,12 @@ describe('EstadoTsService', () => {
       {
         expedienteId: 'e-1',
         area: 'JURIDICO',
-        prioridad: 'NORMAL',
         profesional: null,
         createdAt: referidoEn,
       },
       {
         expedienteId: 'e-1',
         area: 'PSICOLOGIA',
-        prioridad: 'URGENTE',
         profesional: null,
         createdAt: referidoEn,
       },
@@ -85,14 +83,12 @@ describe('EstadoTsService', () => {
       {
         expedienteId: 'e-1',
         area: 'JURIDICO',
-        prioridad: 'NORMAL',
         profesional: null,
         createdAt: referidoEn,
       },
       {
         expedienteId: 'e-1',
         area: 'MEDICA',
-        prioridad: 'NORMAL',
         profesional: null,
         createdAt: referidoEn,
       },

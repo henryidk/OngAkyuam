@@ -5,7 +5,6 @@ import type {
   EstadoAreaCaso,
   EstadoCasoTs,
   EstadoTs,
-  PrioridadReferido,
 } from '@akyuam/shared';
 import { ResolveresEstadoArea } from './resolveres-estado-area';
 
@@ -13,7 +12,6 @@ import { ResolveresEstadoArea } from './resolveres-estado-area';
 export interface ReferidoDeCaso {
   expedienteId: string;
   area: AreaAtencion;
-  prioridad: PrioridadReferido;
   profesional: string | null;
   createdAt: Date;
 }
@@ -60,7 +58,6 @@ export class EstadoTsService {
       estado: resultado.estado,
       detalle: resultado.detalle,
       profesional: resultado.profesional,
-      prioridad: referido.prioridad,
       referidoEn: referido.createdAt.toISOString(),
     };
   }

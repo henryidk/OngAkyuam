@@ -139,6 +139,8 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
             expedienteId: params.expedienteId,
             consecutivo: proceso.consecutivo,
             tipo: proceso.tipo,
+            // Tomar el caso ya es empezar a trabajarlo: no hay un paso manual a En proceso.
+            fase: 'EN_PROCESO',
             abogadaId: proceso.abogadaId,
             procuradoraId: proceso.procuradoraId,
             contraparte: proceso.contraparte,
@@ -149,15 +151,28 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
           })),
         });
 
+        // Dos eventos con un milisegundo de diferencia para que la bitácora los muestre en orden.
+        const creadoEn = new Date();
+        const enProcesoEn = new Date(creadoEn.getTime() + 1);
         await tx.notaAvanceProceso.createMany({
-          data: nuevos.map((proceso) => ({
-            procesoId: proceso.id,
-            tipo: 'SISTEMA' as const,
-            contenido: params.referidoId
-              ? 'Proceso iniciado desde referencia de Trabajo Social'
-              : 'Proceso registrado desde el expediente',
-            registradoPorId: params.creadoPorId,
-          })),
+          data: nuevos.flatMap((proceso) => [
+            {
+              procesoId: proceso.id,
+              tipo: 'SISTEMA' as const,
+              contenido: params.referidoId
+                ? 'Proceso iniciado desde referencia de Trabajo Social'
+                : 'Proceso creado',
+              registradoPorId: params.creadoPorId,
+              createdAt: creadoEn,
+            },
+            {
+              procesoId: proceso.id,
+              tipo: 'SISTEMA' as const,
+              contenido: 'Marcado como En proceso al tomar el caso',
+              registradoPorId: params.creadoPorId,
+              createdAt: enProcesoEn,
+            },
+          ]),
         });
 
         return nuevos.map((proceso) => ({

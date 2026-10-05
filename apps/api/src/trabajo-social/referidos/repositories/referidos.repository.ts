@@ -66,7 +66,6 @@ export class ReferidosRepository implements IReferidosRepository {
           data: {
             expedienteId: params.expedienteId,
             area: params.area,
-            prioridad: params.prioridad,
             motivo: params.motivo,
             profesionalAsignadoId: params.profesionalAsignadoId,
             puedeVerDatosCaso: params.puedeVerDatosCaso,
@@ -107,7 +106,6 @@ export class ReferidosRepository implements IReferidosRepository {
         return {
           id: referido.id,
           area: referido.area,
-          prioridad: referido.prioridad,
           profesionalAsignadoId: referido.profesionalAsignadoId,
           createdAt: referido.createdAt,
         };

@@ -1,9 +1,4 @@
-import type {
-  PrioridadReferido,
-  Rol,
-  TipoDocumento,
-  TipoRegistro,
-} from '@prisma/client';
+import type { Rol, TipoDocumento, TipoRegistro } from '@prisma/client';
 import type { ProfesionalArea } from '@akyuam/shared';
 
 export const REFERIDOS_REPOSITORY = Symbol('REFERIDOS_REPOSITORY');
@@ -28,7 +23,6 @@ export interface ExpedienteParaReferir {
 export interface CrearReferidoParams {
   expedienteId: string;
   area: Rol;
-  prioridad: PrioridadReferido;
   motivo: string | null;
   profesionalAsignadoId: string | null;
   puedeVerDatosCaso: boolean;
@@ -42,7 +36,6 @@ export interface CrearReferidoParams {
 export interface ReferidoRegistrado {
   id: string;
   area: Rol;
-  prioridad: PrioridadReferido;
   profesionalAsignadoId: string | null;
   createdAt: Date;
 }

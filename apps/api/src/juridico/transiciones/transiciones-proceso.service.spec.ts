@@ -34,7 +34,6 @@ describe('TransicionesProcesoService', () => {
   beforeEach(() => {
     procesosRepository = crearProcesosRepository();
     transiciones = {
-      avanzar: jest.fn().mockResolvedValue(true),
       finalizar: jest.fn().mockResolvedValue(true),
       suspender: jest.fn().mockResolvedValue(true),
       abandonar: jest.fn().mockResolvedValue(true),
@@ -72,27 +71,30 @@ describe('TransicionesProcesoService', () => {
     ...parcial,
   });
 
+  const suspension = (version = VERSION) => ({ motivo: 'Motivo', version });
+
   it('403 uniforme si el proceso no existe o no es de Jurídico, sin escribir', async () => {
     procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
 
     await expect(
-      service.avanzar(PROCESO_ID, { version: VERSION }, contexto),
+      service.suspender(PROCESO_ID, suspension(), contexto),
     ).rejects.toThrow(new ForbiddenException(MENSAJE_SIN_ACCESO_PROCESO));
-    expect(transiciones.avanzar).not.toHaveBeenCalled();
+    expect(transiciones.suspender).not.toHaveBeenCalled();
     expect(auditService.registrar).not.toHaveBeenCalled();
   });
 
-  it('avanza un proceso iniciado y audita solo con ids', async () => {
-    await service.avanzar(PROCESO_ID, { version: VERSION }, contexto);
+  it('suspende un proceso en trámite y audita solo con ids', async () => {
+    await service.suspender(PROCESO_ID, suspension(), contexto);
 
-    expect(transiciones.avanzar).toHaveBeenCalledWith({
+    expect(transiciones.suspender).toHaveBeenCalledWith({
       procesoId: PROCESO_ID,
       version: VERSION,
       usuarioId: contexto.usuarioId,
+      motivo: 'Motivo',
     });
     expect(auditService.registrar).toHaveBeenCalledWith(
       expect.objectContaining({
-        accion: 'PROCESO_JURIDICO_AVANZADO',
+        accion: 'PROCESO_JURIDICO_SUSPENDIDO',
         entidad: 'ProcesoJuridico',
         entidadId: PROCESO_ID,
         detalles: { expedienteId: EXPEDIENTE_ID },
@@ -102,23 +104,21 @@ describe('TransicionesProcesoService', () => {
 
   it('409 si la versión enviada ya no es la actual', async () => {
     await expect(
-      service.avanzar(PROCESO_ID, { version: VERSION - 1 }, contexto),
+      service.suspender(PROCESO_ID, suspension(VERSION - 1), contexto),
     ).rejects.toThrow(new ConflictException(MENSAJE_CONFLICTO_VERSION));
-    expect(transiciones.avanzar).not.toHaveBeenCalled();
+    expect(transiciones.suspender).not.toHaveBeenCalled();
   });
 
   it('409 si otra persona cambió el proceso entre la lectura y la escritura', async () => {
-    transiciones.avanzar.mockResolvedValue(false);
+    transiciones.suspender.mockResolvedValue(false);
 
     await expect(
-      service.avanzar(PROCESO_ID, { version: VERSION }, contexto),
+      service.suspender(PROCESO_ID, suspension(), contexto),
     ).rejects.toThrow(new ConflictException(MENSAJE_CONFLICTO_VERSION));
     expect(auditService.registrar).not.toHaveBeenCalled();
   });
 
   it.each([
-    ['avanzar un proceso ya en trámite', { fase: 'EN_TRAMITE' }, 'avanzar'],
-    ['avanzar un proceso suspendido', { situacion: 'SUSPENDIDO' }, 'avanzar'],
     [
       'finalizar un proceso suspendido',
       { situacion: 'SUSPENDIDO' },
@@ -135,15 +135,8 @@ describe('TransicionesProcesoService', () => {
   ] as const)('409 al %s', async (_nombre, estado, accion) => {
     conProceso(estado);
     const llamadas = {
-      avanzar: () =>
-        service.avanzar(PROCESO_ID, { version: VERSION }, contexto),
       finalizar: () => service.finalizar(PROCESO_ID, finalizacion(), contexto),
-      suspender: () =>
-        service.suspender(
-          PROCESO_ID,
-          { motivo: 'Motivo', version: VERSION },
-          contexto,
-        ),
+      suspender: () => service.suspender(PROCESO_ID, suspension(), contexto),
       abandonar: () => service.abandonar(PROCESO_ID, abandono(), contexto),
       reactivar: () =>
         service.reactivar(PROCESO_ID, { version: VERSION }, contexto),
@@ -241,7 +234,20 @@ describe('TransicionesProcesoService', () => {
     await service.reactivar(PROCESO_ID, { version: VERSION }, contexto);
 
     expect(transiciones.reactivar).toHaveBeenCalledWith(
-      expect.objectContaining({ situacionActual: 'ABANDONADO' }),
+      expect.objectContaining({
+        situacionActual: 'ABANDONADO',
+        faseActual: 'EN_PROCESO',
+      }),
+    );
+  });
+
+  it('un proceso viejo abandonado en INICIADO se puede reactivar (vuelve como En proceso)', async () => {
+    conProceso({ fase: 'INICIADO', situacion: 'ABANDONADO' });
+
+    await service.reactivar(PROCESO_ID, { version: VERSION }, contexto);
+
+    expect(transiciones.reactivar).toHaveBeenCalledWith(
+      expect.objectContaining({ faseActual: 'INICIADO' }),
     );
   });
 });

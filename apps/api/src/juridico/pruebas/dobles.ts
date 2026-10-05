@@ -43,7 +43,7 @@ export function procesoConAcceso(
     expedienteId: EXPEDIENTE_ID,
     usuariaId: USUARIA_ID,
     tipo: 'MEDIDAS_SEGURIDAD',
-    fase: 'INICIADO',
+    fase: 'EN_PROCESO',
     situacion: 'ACTIVO',
     version: 3,
     fechaInicio: '2026-01-10',

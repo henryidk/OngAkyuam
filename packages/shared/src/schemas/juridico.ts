@@ -14,7 +14,6 @@ import {
   TIPOS_PROCESO_JURIDICO,
 } from '../catalogos/juridico.js'
 import { booleanoQuerySchema } from './query.js'
-import type { PrioridadReferido } from './trabajoSocial.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -336,7 +335,6 @@ export interface ReferenciaBandejaDto {
   expedienteId: string
   expedienteNumero: string
   usuaria: UsuariaReferidaDto
-  prioridad: PrioridadReferido
   motivo: string | null
   referidoEn: string
   referidoPor: string
@@ -401,7 +399,6 @@ export interface ReferenciaHistorialDto {
   expedienteId: string
   expedienteNumero: string
   referidoEn: string
-  prioridad: PrioridadReferido
   motivo: string | null
   procesosSugeridos: TipoProcesoJuridico[]
   estado: EstadoReferenciaJuridico

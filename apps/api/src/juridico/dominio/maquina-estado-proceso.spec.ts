@@ -12,7 +12,7 @@ import {
 
 /** Tabla de verdad completa: cada combinación fase × situación con sus acciones permitidas. */
 const ESPERADO: Record<string, AccionProceso[]> = {
-  'INICIADO/ACTIVO': ['AVANZAR', 'FINALIZAR', 'SUSPENDER', 'ABANDONAR'],
+  'INICIADO/ACTIVO': ['FINALIZAR', 'SUSPENDER', 'ABANDONAR'],
   'INICIADO/SUSPENDIDO': ['ABANDONAR', 'REACTIVAR'],
   'INICIADO/ABANDONADO': ['REACTIVAR'],
   'EN_PROCESO/ACTIVO': ['FINALIZAR', 'SUSPENDER', 'ABANDONAR'],

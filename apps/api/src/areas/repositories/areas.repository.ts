@@ -19,10 +19,7 @@ export class AreasRepository implements IAreasRepository {
   async listarPorArea(area: Rol): Promise<ExpedienteResumenArea[]> {
     const expedientes = await this.prisma.expediente.findMany({
       where: { referidos: { some: { area } } },
-      include: {
-        usuaria: true,
-        referidos: { where: { area }, select: { prioridad: true } },
-      },
+      include: { usuaria: true },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -33,7 +30,6 @@ export class AreasRepository implements IAreasRepository {
       municipio: expediente.usuaria.municipio,
       tipoRegistro: expediente.tipoRegistro,
       usuariaNombreCompleto: `${expediente.usuaria.nombres} ${expediente.usuaria.apellidos}`,
-      prioridad: expediente.referidos[0]?.prioridad,
     }));
   }
 

@@ -1,4 +1,5 @@
 import type {
+  FaseProcesoJuridico,
   FormaFinalizacionProceso,
   MotivoAbandonoProceso,
   SituacionProcesoJuridico,
@@ -37,6 +38,8 @@ export interface AbandonarParams extends TransicionBase {
 
 export interface ReactivarParams extends TransicionBase {
   situacionActual: SituacionProcesoJuridico;
+  /** Un proceso viejo que quedó en `INICIADO` vuelve como En proceso: ya no hay cómo avanzarlo. */
+  faseActual: FaseProcesoJuridico;
 }
 
 /**
@@ -45,7 +48,6 @@ export interface ReactivarParams extends TransicionBase {
  * Las reglas de qué transición es válida NO viven aquí: las decide la máquina de estados.
  */
 export interface ITransicionesRepository {
-  avanzar(params: TransicionBase): Promise<boolean>;
   finalizar(params: FinalizarParams): Promise<boolean>;
   suspender(params: SuspenderParams): Promise<boolean>;
   abandonar(params: AbandonarParams): Promise<boolean>;

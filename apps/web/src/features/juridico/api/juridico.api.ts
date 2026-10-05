@@ -67,10 +67,6 @@ function transicion(procesoId: string, accion: string, datos: unknown) {
   return api.post<void>(`/juridico/procesos/${procesoId}/${accion}`, datos).then(() => undefined)
 }
 
-export function avanzarProceso(procesoId: string, version: number) {
-  return transicion(procesoId, 'avance', { version })
-}
-
 export function finalizarProceso(procesoId: string, datos: FinalizarProcesoInput) {
   return transicion(procesoId, 'finalizacion', datos)
 }

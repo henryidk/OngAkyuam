@@ -147,7 +147,7 @@ export const ETIQUETAS_TIPO_ENTRADA_BITACORA: Record<(typeof TIPOS_ENTRADA_BITAC
   SISTEMA: 'Sistema',
 }
 
-export const ACCIONES_PROCESO = ['AVANZAR', 'FINALIZAR', 'SUSPENDER', 'ABANDONAR', 'REACTIVAR'] as const
+export const ACCIONES_PROCESO = ['FINALIZAR', 'SUSPENDER', 'ABANDONAR', 'REACTIVAR'] as const
 
 /** Días sin actuación a partir de los cuales un proceso activo "requiere atención". */
 export const DIAS_ALERTA_INACTIVIDAD = 60

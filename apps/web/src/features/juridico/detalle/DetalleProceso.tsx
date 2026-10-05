@@ -3,11 +3,9 @@ import { Link, Outlet, useParams } from 'react-router-dom'
 import {
   CATEGORIA_POR_TIPO_PROCESO,
   ETIQUETAS_CATEGORIA_PROCESO,
-  ETIQUETAS_FASE,
   ETIQUETAS_FORMA_FINALIZACION,
   ETIQUETAS_MOTIVO_ABANDONO,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
-  FASES_PROCESO_JURIDICO,
   formatFechaGT,
   type ProcesoDetalle,
 } from '@akyuam/shared'
@@ -16,7 +14,7 @@ import Button from '../../../components/ui/Button'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import Tabs from '../../../components/ui/Tabs'
 import { useToast } from '../../../components/ui/Toast'
-import { avanzarProceso, obtenerProceso, reactivarProceso } from '../api/juridico.api'
+import { obtenerProceso, reactivarProceso } from '../api/juridico.api'
 import BarraAvance from '../compartido/BarraAvance'
 import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista, Esqueleto } from '../compartido/EstadosVista'
@@ -34,7 +32,7 @@ import PanelCierre from './PanelCierre'
 import PanelDatos from './PanelDatos'
 import { useEnvio } from './useEnvio'
 
-type ModalAbierto = 'actuacion' | 'finalizar' | 'suspender' | 'abandono' | 'editar' | 'avanzar' | 'reactivar'
+type ModalAbierto = 'actuacion' | 'finalizar' | 'suspender' | 'abandono' | 'editar' | 'reactivar'
 
 const CLASE_BANNER = 'rounded-xl border px-5 py-4 text-sm'
 
@@ -74,33 +72,21 @@ function Banners({ proceso }: { proceso: ProcesoDetalle }) {
   )
 }
 
-/** Avance y reactivación no piden datos: una confirmación corta basta. */
-function ModalTransicion({
-  proceso,
-  accion,
-  onCerrar,
-  onHecho,
-  onConflicto,
-}: PropsModalProceso & { accion: 'avanzar' | 'reactivar' }) {
+/** Reactivar no pide datos: una confirmación corta basta. */
+function ModalReactivar({ proceso, onCerrar, onHecho, onConflicto }: PropsModalProceso) {
   const { enviando, error, enviar } = useEnvio(onConflicto)
-  const siguienteFase = FASES_PROCESO_JURIDICO[FASES_PROCESO_JURIDICO.indexOf(proceso.fase) + 1]
-  const avanzar = accion === 'avanzar'
   return (
     <ConfirmModal
       abierto
-      titulo={avanzar ? `Marcar como ${ETIQUETAS_FASE[siguienteFase]}` : 'Reactivar proceso'}
-      descripcion={
-        avanzar
-          ? 'El avance queda registrado en la bitácora y no se puede deshacer.'
-          : 'El proceso vuelve a estar en trámite, en la fase en que se quedó.'
-      }
-      confirmarLabel={avanzar ? 'Marcar' : 'Reactivar'}
+      titulo="Reactivar proceso"
+      descripcion="El proceso vuelve a estar en trámite."
+      confirmarLabel="Reactivar"
       cargando={enviando}
       error={error}
       onConfirmar={() =>
         void enviar(
-          () => (avanzar ? avanzarProceso(proceso.id, proceso.version) : reactivarProceso(proceso.id, proceso.version)),
-          () => onHecho(avanzar ? 'Avance registrado' : 'Proceso reactivado'),
+          () => reactivarProceso(proceso.id, proceso.version),
+          () => onHecho('Proceso reactivado'),
         )
       }
       onCancelar={onCerrar}
@@ -143,7 +129,6 @@ export default function DetalleProceso() {
   if (!proceso || !contexto) return <Esqueleto />
 
   const acciones = proceso.accionesDisponibles
-  const siguienteFase = FASES_PROCESO_JURIDICO[FASES_PROCESO_JURIDICO.indexOf(proceso.fase) + 1]
   const otros = proceso.otrosProcesosUsuaria
   const propsModal: PropsModalProceso = {
     proceso,
@@ -179,11 +164,6 @@ export default function DetalleProceso() {
           <Button variante="secondary" tamano="md" onClick={abrirActuacion}>
             Registrar actuación
           </Button>
-          {acciones.includes('AVANZAR') && siguienteFase && (
-            <Button tamano="md" onClick={() => setModal('avanzar')}>
-              Marcar como {ETIQUETAS_FASE[siguienteFase]}
-            </Button>
-          )}
           {acciones.includes('REACTIVAR') && (
             <Button tamano="md" onClick={() => setModal('reactivar')}>
               Reactivar proceso
@@ -242,7 +222,7 @@ export default function DetalleProceso() {
       {modal === 'suspender' && <ModalSuspender {...propsModal} />}
       {modal === 'abandono' && <ModalAbandono {...propsModal} />}
       {modal === 'editar' && <ModalEditarDatos {...propsModal} />}
-      {(modal === 'avanzar' || modal === 'reactivar') && <ModalTransicion {...propsModal} accion={modal} />}
+      {modal === 'reactivar' && <ModalReactivar {...propsModal} />}
     </div>
   )
 }
