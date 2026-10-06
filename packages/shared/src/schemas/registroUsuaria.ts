@@ -13,6 +13,11 @@ import {
   TIPOLOGIAS_DELITO,
   TIPOS_REGISTRO,
 } from '../catalogos/registroUsuaria.js'
+import {
+  municipioDelCatalogo,
+  municipiosDeDepartamento,
+  normalizarEspacios,
+} from '../catalogos/municipiosGuatemala.js'
 
 /** Departamentos distintos de Alta Verapaz, para cuando la usuaria viene de fuera de la región atendida. */
 export const DEPARTAMENTOS_FUERA_ALTA_VERAPAZ = DEPARTAMENTOS_GUATEMALA.filter(
@@ -82,16 +87,45 @@ export const identidadUsuariaSchema = z
       edadEnAniosGT(datos.fechaNacimiento) < MAYORIA_DE_EDAD,
     { message: 'El DPI es obligatorio para mayores de edad', path: ['dpi'] },
   )
-  .refine(
-    (datos) =>
-      datos.fueraDeAltaVerapaz
-        ? datos.departamentoOtro !== '' && datos.municipioOtro !== ''
-        : (MUNICIPIOS_ALTA_VERAPAZ as readonly string[]).includes(datos.municipio),
-    {
-      message: 'Selecciona un municipio de Alta Verapaz, o indica el departamento y municipio de origen',
-      path: ['municipio'],
-    },
-  )
+  .superRefine((datos, ctx) => {
+    if (!datos.fueraDeAltaVerapaz) {
+      if (!(MUNICIPIOS_ALTA_VERAPAZ as readonly string[]).includes(datos.municipio)) {
+        ctx.addIssue({ code: 'custom', message: 'Selecciona un municipio', path: ['municipio'] })
+      }
+      return
+    }
+    const error = errorUbicacionFuera(datos.departamentoOtro, datos.municipioOtro)
+    if (error) ctx.addIssue({ code: 'custom', ...error })
+  })
+
+/**
+ * Fuera de Alta Verapaz el departamento debe ser uno del catálogo y el municipio, uno de la lista
+ * de ese departamento o un nombre escrito a mano ("Otro") que no esté en ella. Si lo escrito a mano
+ * coincide con uno de la lista (aunque cambien tildes o mayúsculas), se pide elegirlo de la lista:
+ * así el mismo municipio nunca queda guardado con dos escrituras distintas en los reportes.
+ */
+function errorUbicacionFuera(
+  departamento: string,
+  municipio: string,
+): { message: string; path: [string] } | null {
+  if (municipiosDeDepartamento(departamento).length === 0) {
+    return { message: 'Selecciona el departamento', path: ['departamentoOtro'] }
+  }
+  if (municipio.trim() === '') {
+    return { message: 'Selecciona el municipio, o elige "Otro" y escríbelo', path: ['municipioOtro'] }
+  }
+  if (municipio !== normalizarEspacios(municipio)) {
+    return { message: 'Quita los espacios de más al inicio, al final o entre palabras', path: ['municipioOtro'] }
+  }
+  const delCatalogo = municipioDelCatalogo(departamento, municipio)
+  if (delCatalogo !== null && delCatalogo !== municipio) {
+    return {
+      message: `${delCatalogo} ya está en la lista de ${departamento}: elígelo ahí en lugar de escribirlo.`,
+      path: ['municipioOtro'],
+    }
+  }
+  return null
+}
 
 /** Editar identidad reusa exactamente el mismo shape — mismo contrato para crear y para el PATCH. */
 export const editarIdentidadUsuariaSchema = identidadUsuariaSchema

@@ -8,6 +8,7 @@ import {
   ETIQUETAS_TIPO_DOCUMENTO,
   ETIQUETAS_TIPOLOGIA_DELITO,
   formatFechaGT,
+  municipiosDeDepartamento,
   tipoDocumentoAplicaARegistro,
   type RegistroUsuariaNuevaFormValues,
   type TipoRegistro,
@@ -96,7 +97,14 @@ export default function PasoRevision({ form, onEditar, usuariaExistente, documen
           {datos.datosUsuaria.fueraDeAltaVerapaz ? (
             <>
               <Fila etiqueta="Departamento de origen" valor={datos.datosUsuaria.departamentoOtro} />
-              <Fila etiqueta="Municipio de origen" valor={datos.datosUsuaria.municipioOtro} />
+              <Fila
+                etiqueta="Municipio de origen"
+                valor={
+                  municipiosDeDepartamento(datos.datosUsuaria.departamentoOtro).includes(datos.datosUsuaria.municipioOtro)
+                    ? datos.datosUsuaria.municipioOtro
+                    : `${datos.datosUsuaria.municipioOtro} (escrito a mano)`
+                }
+              />
             </>
           ) : (
             <Fila

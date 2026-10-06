@@ -253,18 +253,20 @@ describe('PestanaDatos', () => {
     expect(screen.getByRole('heading', { name: 'Editando datos de la usuaria' })).toBeInTheDocument()
   })
 
-  it('elegir otro departamento cambia el municipio a texto libre', async () => {
+  it('elegir otro departamento muestra sus municipios y "Otro" para escribirlo a mano', async () => {
     const user = montar()
     await user.click(screen.getByRole('button', { name: 'Editar' }))
 
     await user.selectOptions(screen.getByLabelText('Departamento'), 'Izabal')
 
     const municipio = screen.getByLabelText('Municipio')
-    expect(municipio).toHaveAttribute('placeholder', 'Escribe el municipio')
-    await waitFor(() => expect(municipio).toHaveAccessibleDescription('Escribe el municipio'))
+    expect(within(municipio).getByRole('option', { name: 'Livingston' })).toBeInTheDocument()
+    expect(municipio).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeDisabled()
 
-    await user.type(municipio, 'Municipio de prueba')
+    await user.selectOptions(municipio, 'Otro (no está en la lista)')
+    await user.type(screen.getByLabelText('Nombre del municipio'), 'Municipio de prueba')
     await waitFor(() => expect(screen.getByText('2 cambios sin guardar')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Guardar cambios' })).toBeEnabled()
   })
 })

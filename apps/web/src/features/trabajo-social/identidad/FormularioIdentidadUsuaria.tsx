@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import { useWatch } from 'react-hook-form'
+import { Controller, useWatch } from 'react-hook-form'
 import {
   DEPARTAMENTOS_FUERA_ALTA_VERAPAZ,
   edadEnAniosGT,
@@ -11,6 +11,7 @@ import {
   MUNICIPIOS_ALTA_VERAPAZ,
 } from '@akyuam/shared'
 import Campo, { claseBordeCampo } from '../../../components/form/Campo'
+import CampoMunicipioFuera from '../../../components/form/CampoMunicipioFuera'
 import SelectInput from '../../../components/form/SelectInput'
 import TextoInput from '../../../components/form/TextoInput'
 import { rangoEdadCorto } from '../usuarias/filaUsuaria'
@@ -62,6 +63,7 @@ export default function FormularioIdentidadUsuaria({
     control,
     setValue,
     trigger,
+    clearErrors,
     formState: { errors },
   } = form
   const modificado = (campo: (typeof camposModificados)[number]) => camposModificados.includes(campo)
@@ -77,18 +79,15 @@ export default function FormularioIdentidadUsuaria({
   const avisaDpiNuevo = modificado('dpi') && !errorDpi
 
   const edad = FECHA_ISO_REGEX.test(fechaNacimiento) ? edadEnAniosGT(fechaNacimiento) : null
-  const errorMunicipio = errors.municipio
-    ? fueraDeAltaVerapaz
-      ? 'Escribe el municipio'
-      : 'Selecciona un municipio'
-    : undefined
 
   function onDepartamentoCambia(evento: ChangeEvent<HTMLSelectElement>) {
     const cambios = mapearDepartamento(evento.target.value)
     for (const [campo, valor] of Object.entries(cambios)) {
       setValue(campo as keyof typeof cambios, valor, { shouldDirty: true })
     }
-    void trigger()
+    // El municipio quedó vacío a propósito: no se marca en rojo antes de que lo elijan.
+    clearErrors(['municipio', 'municipioOtro'])
+    void trigger('departamentoOtro')
   }
 
   return (
@@ -154,12 +153,17 @@ export default function FormularioIdentidadUsuaria({
         error={errors.telefono?.message}
         modificado={modificado('telefono')}
       />
-      <Campo label="Departamento" htmlFor={ID_DEPARTAMENTO} modificado={modificado('departamento')}>
+      <Campo
+        label="Departamento"
+        htmlFor={ID_DEPARTAMENTO}
+        error={errors.departamentoOtro?.message}
+        modificado={modificado('departamento')}
+      >
         <select
           id={ID_DEPARTAMENTO}
           value={fueraDeAltaVerapaz ? departamentoOtro : DEPARTAMENTO_ALTA_VERAPAZ}
           onChange={onDepartamentoCambia}
-          className={`mt-1 w-full rounded border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 ${claseBordeCampo({ modificado: modificado('departamento') })}`}
+          className={`mt-1 w-full rounded border bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500 ${claseBordeCampo({ error: errors.departamentoOtro?.message, modificado: modificado('departamento') })}`}
         >
           {fueraDeAltaVerapaz && departamentoOtro === '' && <option value="">Selecciona un departamento</option>}
           {DEPARTAMENTOS.map((departamento) => (
@@ -170,12 +174,21 @@ export default function FormularioIdentidadUsuaria({
         </select>
       </Campo>
       {fueraDeAltaVerapaz ? (
-        <TextoInput
-          label="Municipio"
-          placeholder="Escribe el municipio"
-          registro={register('municipioOtro', { deps: ['municipio'] })}
-          error={errorMunicipio}
-          modificado={modificado('municipio')}
+        <Controller
+          control={control}
+          name="municipioOtro"
+          render={({ field, fieldState }) => (
+            <CampoMunicipioFuera
+              key={departamentoOtro}
+              departamento={departamentoOtro}
+              valor={field.value}
+              onCambiar={field.onChange}
+              onBlur={field.onBlur}
+              campoRef={field.ref}
+              error={fieldState.error?.message}
+              modificado={modificado('municipio')}
+            />
+          )}
         />
       ) : (
         <SelectInput
@@ -183,7 +196,7 @@ export default function FormularioIdentidadUsuaria({
           placeholder="Selecciona un municipio"
           opciones={opcionesMunicipio}
           registro={register('municipio')}
-          error={errorMunicipio}
+          error={errors.municipio?.message}
           modificado={modificado('municipio')}
         />
       )}

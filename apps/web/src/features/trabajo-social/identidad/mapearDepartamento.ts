@@ -16,7 +16,8 @@ export function mapearDepartamento(departamento: string): Partial<CamposUbicacio
   if (departamento === DEPARTAMENTO_ALTA_VERAPAZ) {
     return { fueraDeAltaVerapaz: false, departamentoOtro: '', municipioOtro: '' }
   }
-  return { fueraDeAltaVerapaz: true, departamentoOtro: departamento, municipio: '' }
+  // El municipio elegido antes era de otro departamento: también deja de aplicar.
+  return { fueraDeAltaVerapaz: true, departamentoOtro: departamento, municipio: '', municipioOtro: '' }
 }
 
 /** Valores del formulario a partir de la usuaria guardada: `null` se edita como texto vacío. */

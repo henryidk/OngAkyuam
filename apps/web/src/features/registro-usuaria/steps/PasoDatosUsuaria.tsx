@@ -1,4 +1,4 @@
-import { useWatch, type UseFormReturn } from 'react-hook-form'
+import { Controller, useWatch, type UseFormReturn } from 'react-hook-form'
 import {
   calcularRangoEdad,
   edadEnAniosGT,
@@ -9,6 +9,7 @@ import {
   type RegistroUsuariaNuevaFormValues,
   type UsuariaResumenBusqueda,
 } from '@akyuam/shared'
+import CampoMunicipioFuera from '../../../components/form/CampoMunicipioFuera'
 import GrupoEtnicoSegmentado from '../../../components/form/GrupoEtnicoSegmentado'
 import SelectInput from '../../../components/form/SelectInput'
 import TextoInput from '../../../components/form/TextoInput'
@@ -39,10 +40,13 @@ export default function PasoDatosUsuaria({ form, posiblesDuplicadas, onRegistrar
   const {
     register,
     control,
+    setValue,
+    clearErrors,
     formState: { errors },
   } = form
   const fechaNacimiento = useWatch({ control, name: 'datosUsuaria.fechaNacimiento' })
   const fueraDeAltaVerapaz = useWatch({ control, name: 'datosUsuaria.fueraDeAltaVerapaz' })
+  const departamentoOtro = useWatch({ control, name: 'datosUsuaria.departamentoOtro' })
   const dpi = useWatch({ control, name: 'datosUsuaria.dpi' })
   const edad = FECHA_ISO_REGEX.test(fechaNacimiento ?? '') ? edadEnAniosGT(fechaNacimiento) : null
   const rangoEdad = edad !== null && edad >= 0 ? calcularRangoEdad(edad) : null
@@ -127,13 +131,30 @@ export default function PasoDatosUsuaria({ form, posiblesDuplicadas, onRegistrar
             label="Departamento de origen"
             placeholder="Selecciona un departamento"
             opciones={opcionesDepartamentoOtro}
-            registro={register('datosUsuaria.departamentoOtro')}
+            registro={register('datosUsuaria.departamentoOtro', {
+              // El municipio elegido era de otro departamento: deja de aplicar.
+              onChange: () => {
+                setValue('datosUsuaria.municipioOtro', '')
+                clearErrors('datosUsuaria.municipioOtro')
+              },
+            })}
             error={errors.datosUsuaria?.departamentoOtro?.message}
           />
-          <TextoInput
-            label="Municipio de origen"
-            registro={register('datosUsuaria.municipioOtro')}
-            error={errors.datosUsuaria?.municipioOtro?.message}
+          <Controller
+            control={control}
+            name="datosUsuaria.municipioOtro"
+            render={({ field, fieldState }) => (
+              <CampoMunicipioFuera
+                key={departamentoOtro}
+                label="Municipio de origen"
+                departamento={departamentoOtro}
+                valor={field.value}
+                onCambiar={field.onChange}
+                onBlur={field.onBlur}
+                campoRef={field.ref}
+                error={fieldState.error?.message}
+              />
+            )}
           />
         </div>
       ) : (

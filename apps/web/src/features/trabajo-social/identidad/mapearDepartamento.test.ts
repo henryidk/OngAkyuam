@@ -10,11 +10,12 @@ describe('mapearDepartamento', () => {
     })
   })
 
-  it('otro departamento: es de fuera, guarda el departamento y limpia el municipio de Alta Verapaz', () => {
+  it('otro departamento: es de fuera, guarda el departamento y limpia cualquier municipio anterior', () => {
     expect(mapearDepartamento('Izabal')).toEqual({
       fueraDeAltaVerapaz: true,
       departamentoOtro: 'Izabal',
       municipio: '',
+      municipioOtro: '',
     })
   })
 })
