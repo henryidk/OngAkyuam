@@ -25,7 +25,7 @@ import { RUTAS_JURIDICO } from '../rutas'
 import PasoAsignacion from './PasoAsignacion'
 import PasoSeleccion from './PasoSeleccion'
 import ResumenLateral from './ResumenLateral'
-import { aProcesosDeLote, estadoInicial, registroReducer } from './registroReducer'
+import { aProcesosDeLote, ESTADO_INICIAL, registroReducer } from './registroReducer'
 
 const PASOS = ['Seleccionar procesos', 'Asignar y confirmar'] as const
 
@@ -45,7 +45,7 @@ function Asistente({ contexto, abogadas, procuradoras }: AsistenteProps) {
   const navigate = useNavigate()
   const { mostrar } = useToast()
   const { recargarResumen } = useContextoJuridico()
-  const [estado, dispatch] = useReducer(registroReducer, null, () => estadoInicial(contexto.sugeridos, hoyGT()))
+  const [estado, dispatch] = useReducer(registroReducer, ESTADO_INICIAL)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [duplicados, setDuplicados] = useState<ProcesoActivoPorTipo[] | null>(null)
@@ -160,7 +160,6 @@ function Asistente({ contexto, abogadas, procuradoras }: AsistenteProps) {
           {estado.paso === 1 ? (
             <PasoSeleccion
               seleccionados={seleccionados}
-              sugeridos={contexto.sugeridos}
               activosPorTipo={contexto.activosPorTipo}
               onAlternar={(tipo) => dispatch({ type: 'TOGGLE_TIPO', tipo, hoy: hoyGT() })}
             />

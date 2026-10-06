@@ -29,7 +29,6 @@ function referenciaInicio(
       nombreCompleto: referencia.usuaria.nombreCompleto,
     },
     referidoEn: referencia.referidoEn,
-    procesosSugeridos: referencia.procesosSugeridos,
   };
 }
 

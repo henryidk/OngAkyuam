@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ETIQUETAS_TIPO_PROCESO_JURIDICO, type ReferenciaBandejaDto, type TipoProcesoJuridico } from '@akyuam/shared'
+import type { ReferenciaBandejaDto } from '@akyuam/shared'
 import { fechaDeInstante, iniciales } from '../compartido/formato'
 import { RUTAS_JURIDICO } from '../rutas'
 
@@ -13,7 +13,6 @@ const CLASE_ENLACE_BOTON = 'inline-flex items-center rounded-md px-3.5 py-2 text
 export default function TarjetaReferencia({ referencia, onDevolver }: TarjetaReferenciaProps) {
   const { usuaria } = referencia
   const devuelta = referencia.devueltoEn !== null
-  const activoDe = (tipo: TipoProcesoJuridico) => referencia.activosPorTipo.find((activo) => activo.tipo === tipo)
 
   const detalle = [
     `Expediente ${referencia.expedienteNumero}`,
@@ -49,26 +48,6 @@ export default function TarjetaReferencia({ referencia, onDevolver }: TarjetaRef
         </div>
 
         <p className="mt-3 text-sm text-gray-800">{referencia.motivo || 'Sin motivo registrado.'}</p>
-
-        {referencia.procesosSugeridos.length > 0 && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5">
-            <span className="text-xs text-gray-500">Sugerido:</span>
-            {referencia.procesosSugeridos.map((tipo) => {
-              const activo = devuelta ? undefined : activoDe(tipo)
-              const tono = devuelta
-                ? 'bg-gray-100 text-gray-600'
-                : activo
-                  ? 'bg-amber-50 text-amber-800'
-                  : 'bg-brand-100 text-brand-700'
-              return (
-                <span key={tipo} className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${tono}`}>
-                  {ETIQUETAS_TIPO_PROCESO_JURIDICO[tipo]}
-                  {activo && ` · ya activo (${activo.codigo})`}
-                </span>
-              )
-            })}
-          </div>
-        )}
 
         {devuelta && (
           <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5">

@@ -110,21 +110,6 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
     destacado: true,
     texto: textoDatosActualizados,
   },
-  PROCESO_JURIDICO_CREADO: {
-    area: 'JURIDICO',
-    destacado: true,
-    texto: (detalles) => {
-      const tipo = etiqueta(ETIQUETAS_TIPO_PROCESO_JURIDICO, detalles?.tipo);
-      return tipo
-        ? `Jurídico abrió un proceso (${tipo})`
-        : 'Jurídico abrió un proceso';
-    },
-  },
-  PROCESO_JURIDICO_CERRADO: {
-    area: 'JURIDICO',
-    destacado: true,
-    texto: () => 'Jurídico cerró un proceso',
-  },
   PROCESOS_JURIDICOS_CREADOS_LOTE: {
     area: 'JURIDICO',
     destacado: true,

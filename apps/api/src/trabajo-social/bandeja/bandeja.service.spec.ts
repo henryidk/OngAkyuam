@@ -31,8 +31,8 @@ describe('BandejaService', () => {
   function novedad(overrides: Partial<NovedadRow> = {}): NovedadRow {
     return {
       id: 'a-1',
-      accion: 'PROCESO_JURIDICO_CREADO',
-      detalles: { expedienteId: 'e-1', tipo: 'JUICIO_EJECUTIVO' },
+      accion: 'PROCESOS_JURIDICOS_CREADOS_LOTE',
+      detalles: { expedienteId: 'e-1', tipos: ['JUICIO_EJECUTIVO'] },
       createdAt: new Date('2026-09-01T15:00:00.000Z'),
       expedienteId: 'e-1',
       usuariaId: 'u-1',

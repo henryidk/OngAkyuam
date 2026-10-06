@@ -11,7 +11,6 @@ import {
 
 interface PasoSeleccionProps {
   seleccionados: TipoProcesoJuridico[]
-  sugeridos: TipoProcesoJuridico[]
   activosPorTipo: ProcesoActivoPorTipo[]
   onAlternar: (tipo: TipoProcesoJuridico) => void
 }
@@ -19,7 +18,7 @@ interface PasoSeleccionProps {
 const CLASE_AVISO = 'rounded-full px-2 py-0.5 text-[11px] font-medium'
 
 /** Paso 1: solo elegir. Sin campos de texto, para que marcar varios procesos sea rápido. */
-export default function PasoSeleccion({ seleccionados, sugeridos, activosPorTipo, onAlternar }: PasoSeleccionProps) {
+export default function PasoSeleccion({ seleccionados, activosPorTipo, onAlternar }: PasoSeleccionProps) {
   const enElLimite = seleccionados.length >= MAX_PROCESOS_POR_LOTE
 
   return (
@@ -59,9 +58,6 @@ export default function PasoSeleccion({ seleccionados, sugeridos, activosPorTipo
                         {ETIQUETAS_TIPO_PROCESO_JURIDICO[tipo]}
                       </span>
                       <span className="mt-1 flex flex-wrap gap-1.5 empty:hidden">
-                        {sugeridos.includes(tipo) && (
-                          <span className={`${CLASE_AVISO} bg-brand-100 text-brand-700`}>Sugerido por TS</span>
-                        )}
                         {activo && (
                           <span className={`${CLASE_AVISO} bg-amber-100 text-[#8a5a14]`}>
                             Ya tiene uno activo · {activo.codigo}

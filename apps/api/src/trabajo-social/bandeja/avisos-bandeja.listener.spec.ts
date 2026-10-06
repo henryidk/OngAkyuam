@@ -21,7 +21,7 @@ describe('AvisosBandejaListener', () => {
   });
 
   it('avisa cuando se audita un evento visible', () => {
-    oyente({ accion: 'PROCESO_JURIDICO_CREADO' });
+    oyente({ accion: 'PROCESOS_JURIDICOS_CREADOS_LOTE' });
     expect(notifier.notificarCambioBandeja).toHaveBeenCalledTimes(1);
   });
 

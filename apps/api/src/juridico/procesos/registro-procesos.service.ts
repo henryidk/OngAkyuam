@@ -84,7 +84,6 @@ export class RegistroProcesosService {
       expediente: { id: expediente.id, numero: expediente.numero },
       usuaria: { id, nombreCompleto, dpi },
       referencia,
-      sugeridos: referencia?.procesosSugeridos ?? [],
       activosPorTipo,
       procesosVinculables,
       historial,

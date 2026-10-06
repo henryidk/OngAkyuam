@@ -339,7 +339,6 @@ export interface ProcesosPaginados {
 /** `GET /juridico/procesos/resumen` — tarjetas de la lista e insignias de la barra lateral. */
 export interface ResumenProcesos {
   referenciasPendientes: number
-  procesosSugeridos: number
   total: number
   enTramite: number
   suspendidos: number
@@ -362,7 +361,6 @@ export interface ReferenciaBandejaDto {
   motivo: string | null
   referidoEn: string
   referidoPor: string
-  procesosSugeridos: TipoProcesoJuridico[]
   devueltoEn: string | null
   motivoDevolucion: string | null
   /** Años cumplidos, en hora de Guatemala. */
@@ -371,8 +369,6 @@ export interface ReferenciaBandejaDto {
   municipio: string | null
   /** Ya tiene procesos en Jurídico, de cualquier estado: la usuaria regresa. */
   atendidaAntes: boolean
-  /** Procesos sin finalizar ni abandonar: marcan los sugeridos que ya están activos. */
-  activosPorTipo: ProcesoActivoPorTipo[]
 }
 
 export interface ProcesoActivoPorTipo {
@@ -386,7 +382,6 @@ export interface RegistroContextoDto {
   usuaria: UsuariaReferidaDto
   /** La referencia de Trabajo Social si sigue pendiente; `null` si ya se atendió o se devolvió. */
   referencia: ReferenciaBandejaDto | null
-  sugeridos: TipoProcesoJuridico[]
   /** Procesos sin finalizar de la usuaria: alimentan el aviso "Ya tiene uno activo". */
   activosPorTipo: ProcesoActivoPorTipo[]
   procesosVinculables: ProcesoVinculadoDto[]
@@ -456,7 +451,6 @@ export interface ReferenciaHistorialDto {
   referidoEn: string
   referidoPor: string
   motivo: string | null
-  procesosSugeridos: TipoProcesoJuridico[]
   estado: EstadoReferenciaJuridico
   motivoDevolucion: string | null
 }
@@ -498,7 +492,6 @@ export interface ReferenciaInicioDto {
   expedienteNumero: string
   usuaria: UsuariaJuridicoRef
   referidoEn: string
-  procesosSugeridos: TipoProcesoJuridico[]
 }
 
 /**

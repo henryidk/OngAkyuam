@@ -143,26 +143,22 @@ function Colas({ inicio }: { inicio: InicioJuridicoDto }) {
         }
       >
         {referenciasNuevas.items.length === 0 && <Vacio>No hay referencias nuevas.</Vacio>}
-        {referenciasNuevas.items.map((referencia) => {
-          const sugeridos = referencia.procesosSugeridos.map((tipo) => ETIQUETAS_TIPO_PROCESO_JURIDICO[tipo]).join(', ')
-          return (
-            <div key={referencia.referidoId} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
-              <Link to={RUTAS_JURIDICO.bandeja()} className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium text-gray-800 hover:underline">{referencia.usuaria.nombreCompleto}</p>
-                <p className="mt-0.5 text-xs text-gray-500">
-                  Exp. {referencia.expedienteNumero} · {fechaDeInstante(referencia.referidoEn)}
-                  {sugeridos && ` · sugerido: ${sugeridos}`}
-                </p>
-              </Link>
-              <Link
-                to={RUTAS_JURIDICO.registrar({ expedienteId: referencia.expedienteId, referidoId: referencia.referidoId })}
-                className="rounded-md border border-[#c7a8e5] bg-white px-2.5 py-1.5 text-xs font-medium text-[#5b3985] hover:bg-[#f7f3fc]"
-              >
-                Atender
-              </Link>
-            </div>
-          )
-        })}
+        {referenciasNuevas.items.map((referencia) => (
+          <div key={referencia.referidoId} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
+            <Link to={RUTAS_JURIDICO.bandeja()} className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium text-gray-800 hover:underline">{referencia.usuaria.nombreCompleto}</p>
+              <p className="mt-0.5 text-xs text-gray-500">
+                Exp. {referencia.expedienteNumero} · {fechaDeInstante(referencia.referidoEn)}
+              </p>
+            </Link>
+            <Link
+              to={RUTAS_JURIDICO.registrar({ expedienteId: referencia.expedienteId, referidoId: referencia.referidoId })}
+              className="rounded-md border border-[#c7a8e5] bg-white px-2.5 py-1.5 text-xs font-medium text-[#5b3985] hover:bg-[#f7f3fc]"
+            >
+              Atender
+            </Link>
+          </div>
+        ))}
       </Cola>
 
       <Cola

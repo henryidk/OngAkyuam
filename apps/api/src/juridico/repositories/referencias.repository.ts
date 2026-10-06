@@ -4,17 +4,14 @@ import {
   edadEnAniosGT,
   fechaColumnaISO,
   nombreMunicipio,
-  type ProcesoActivoPorTipo,
   type ReferenciaBandejaDto,
   type VistaBandejaJuridico,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
-  esProcesoActivo,
   PROCESO_CON_ACCESO,
   REFERENCIA_PENDIENTE,
 } from '../compartido/acceso-juridico';
-import { codigoProceso } from '../dominio/codigo-proceso';
 import type {
   DevolverReferenciaParams,
   IReferenciasRepository,
@@ -45,20 +42,9 @@ type ReferenciaConDatos = Prisma.ReferidoAreaGetPayload<{
   include: typeof INCLUDE_REFERENCIA;
 }>;
 
-/** Lo que Jurídico ya trabajó con cada usuaria: marca si regresa y qué sugeridos ya están activos. */
-interface HistorialUsuaria {
-  atendidaAntes: boolean;
-  activosPorTipo: ProcesoActivoPorTipo[];
-}
-
-const SIN_HISTORIAL: HistorialUsuaria = {
-  atendidaAntes: false,
-  activosPorTipo: [],
-};
-
 function mapearReferencia(
   referencia: ReferenciaConDatos,
-  historial: HistorialUsuaria,
+  atendidaAntes: boolean,
 ): ReferenciaBandejaDto {
   const { usuaria } = referencia.expediente;
   return {
@@ -73,12 +59,11 @@ function mapearReferencia(
     motivo: referencia.motivo,
     referidoEn: referencia.createdAt.toISOString(),
     referidoPor: referencia.otorgadoPor.nombreCompleto,
-    procesosSugeridos: referencia.procesosSugeridos,
     devueltoEn: referencia.devueltoEn?.toISOString() ?? null,
     motivoDevolucion: referencia.motivoDevolucion,
     edad: edadEnAniosGT(fechaColumnaISO(usuaria.fechaNacimiento)),
     municipio: nombreMunicipio(usuaria.municipio, usuaria.municipioOtro),
-    ...historial,
+    atendidaAntes,
   };
 }
 
@@ -119,7 +104,7 @@ export class ReferenciasRepository implements IReferenciasRepository {
     return dto;
   }
 
-  /** Una sola consulta de procesos para todas las usuarias listadas (sin N+1). */
+  /** Una sola consulta para saber cuáles de las usuarias listadas ya tienen procesos (sin N+1). */
   private async conHistorial(
     referencias: ReferenciaConDatos[],
   ): Promise<ReferenciaBandejaDto[]> {
@@ -137,36 +122,16 @@ export class ReferenciasRepository implements IReferenciasRepository {
           usuariaId: { in: usuariaIds },
         },
       },
-      select: {
-        tipo: true,
-        consecutivo: true,
-        fase: true,
-        situacion: true,
-        expediente: { select: { numero: true, usuariaId: true } },
-      },
-      orderBy: { createdAt: 'asc' },
+      select: { expediente: { select: { usuariaId: true } } },
     });
 
-    const porUsuaria = new Map<string, HistorialUsuaria>();
-    for (const proceso of procesos) {
-      const { usuariaId } = proceso.expediente;
-      const historial = porUsuaria.get(usuariaId) ?? {
-        atendidaAntes: true,
-        activosPorTipo: [],
-      };
-      if (esProcesoActivo(proceso)) {
-        historial.activosPorTipo.push({
-          tipo: proceso.tipo,
-          codigo: codigoProceso(proceso.consecutivo, proceso.expediente.numero),
-        });
-      }
-      porUsuaria.set(usuariaId, historial);
-    }
-
+    const conProcesos = new Set(
+      procesos.map((proceso) => proceso.expediente.usuariaId),
+    );
     return referencias.map((referencia) =>
       mapearReferencia(
         referencia,
-        porUsuaria.get(referencia.expediente.usuaria.id) ?? SIN_HISTORIAL,
+        conProcesos.has(referencia.expediente.usuaria.id),
       ),
     );
   }

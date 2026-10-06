@@ -76,14 +76,16 @@ describe('CompartidoService', () => {
     const [juridico] = await service.obtener('exp-1', contexto);
 
     expect(juridico.lineas).toHaveLength(2);
-    expect(juridico.lineas[0]).toContain('Iniciado');
+    expect(juridico.lineas[0]).toContain('En trámite');
+    expect(juridico.lineas[1]).toContain('Finalizado');
     expect(juridico.lineas[0]).toContain('Abogada: Abogada Ficticia');
     expect(juridico.lineas[0]).toContain('Procuradora: Procuradora Ficticia');
     expect(juridico.lineas[1]).not.toContain('Abogada');
   });
 
   it.each([
-    ['EN_PROCESO', 'ACTIVO', 'En proceso'],
+    ['INICIADO', 'ACTIVO', 'En trámite'],
+    ['EN_PROCESO', 'ACTIVO', 'En trámite'],
     ['EN_PROCESO', 'SUSPENDIDO', 'Suspendido'],
     ['INICIADO', 'ABANDONADO', 'Abandonado'],
     // Un proceso finalizado se anuncia como tal aunque su situación haya quedado en otra cosa.

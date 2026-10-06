@@ -24,7 +24,6 @@ function referencia(indice: number): ReferenciaBandejaDto {
     motivo: 'Motivo de prueba',
     referidoEn: '2026-10-01T15:00:00.000Z',
     referidoPor: 'Trabajadora social',
-    procesosSugeridos: ['PENSION_ALIMENTICIA'],
     devueltoEn: null,
     motivoDevolucion: null,
     edad: 30,
@@ -93,7 +92,6 @@ describe('InicioJuridicoService', () => {
         expedienteNumero: '01-2026',
         usuaria: { id: USUARIA_ID, nombreCompleto: 'Usuaria de prueba' },
         referidoEn: '2026-10-01T15:00:00.000Z',
-        procesosSugeridos: ['PENSION_ALIMENTICIA'],
       },
     ]);
   });

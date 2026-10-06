@@ -36,7 +36,6 @@ interface UsuariaReferidaSeed {
   fechaCaso: string;
   tipologia: TipologiaDelito[];
   motivo: string;
-  procesosSugeridos: TipoProcesoJuridico[];
   tambienPsicologia?: boolean;
 }
 
@@ -51,7 +50,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     fechaCaso: '2026-09-22',
     tipologia: ['FISICA', 'PSICOLOGICA'],
     motivo: 'Dato ficticio: solicita medidas de seguridad.',
-    procesosSugeridos: ['MEDIDAS_SEGURIDAD'],
     tambienPsicologia: true,
   },
   {
@@ -64,7 +62,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     fechaCaso: '2026-09-23',
     tipologia: ['ECONOMICA_PATRIMONIAL'],
     motivo: 'Dato ficticio: pensión alimenticia para dos hijos.',
-    procesosSugeridos: ['FIJACION_PENSION_ALIMENTICIA', 'GUARDA_CUSTODIA'],
   },
   {
     nombres: 'Rosa Amelia',
@@ -76,7 +73,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     fechaCaso: '2026-09-24',
     tipologia: ['PSICOLOGICA'],
     motivo: 'Dato ficticio: consulta sobre divorcio.',
-    procesosSugeridos: ['DIVORCIO_MUTUO_ACUERDO'],
   },
   {
     nombres: 'Carmen Julia',
@@ -88,7 +84,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     fechaCaso: '2026-09-25',
     tipologia: ['FISICA', 'ECONOMICA_PATRIMONIAL'],
     motivo: 'Dato ficticio: medidas de seguridad y menaje de casa.',
-    procesosSugeridos: ['MEDIDAS_SEGURIDAD', 'MENAJE_CASA'],
   },
   {
     nombres: 'Sandra Paola',
@@ -100,10 +95,8 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     fechaCaso: '2026-09-26',
     tipologia: ['PSICOLOGICA'],
     motivo: 'Dato ficticio: reconocimiento de paternidad.',
-    procesosSugeridos: ['PATERNIDAD_FILIACION'],
   },
   {
-    // Sin procesos sugeridos: Jurídico decide qué abrir.
     nombres: 'Gloria Isabel',
     apellidos: 'Ficticia Coc',
     dpi: '0000000101601',
@@ -113,7 +106,6 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     fechaCaso: '2026-09-29',
     tipologia: ['ECONOMICA_PATRIMONIAL'],
     motivo: 'Dato ficticio: orientación legal general.',
-    procesosSugeridos: [],
   },
 ];
 
@@ -152,8 +144,6 @@ async function crear(
             area,
             otorgadoPorId: trabajoSocialId,
             motivo: datos.motivo,
-            procesosSugeridos:
-              area === 'JURIDICO' ? datos.procesosSugeridos : [],
           })),
         },
       },
@@ -447,7 +437,6 @@ async function crearConHistorial(
         area: 'JURIDICO',
         otorgadoPorId: ctx.trabajoSocialId,
         motivo: 'Dato ficticio: referida para atención legal.',
-        procesosSugeridos: [datos.procesos[0].tipo],
         createdAt: new Date(`${datos.fechaCaso}T15:00:00Z`),
         atendidoEn: new Date(`${datos.procesos[0].fechaInicio}T15:00:00Z`),
       },
@@ -570,7 +559,6 @@ async function crearConHistorial(
               area: 'JURIDICO',
               otorgadoPorId: ctx.trabajoSocialId,
               motivo: datos.regreso.motivo,
-              procesosSugeridos: ['MODIFICACION_PENSION_ALIMENTICIA'],
             },
           },
         },

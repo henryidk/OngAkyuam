@@ -29,10 +29,8 @@ function filaNueva(tipo: TipoProcesoJuridico, hoy: string): FilaRegistro {
   return { tipo, abogadaId: '', procuradoraId: '', fechaInicio: hoy, procesoOrigenId: '' }
 }
 
-/** Los procesos que sugirió Trabajo Social llegan ya marcados: la abogada solo confirma o quita. */
-export function estadoInicial(sugeridos: TipoProcesoJuridico[], hoy: string): EstadoRegistro {
-  return { paso: 1, filas: sugeridos.map((tipo) => filaNueva(tipo, hoy)) }
-}
+/** El asistente arranca sin nada marcado: qué procesos abrir lo decide Jurídico, no Trabajo Social. */
+export const ESTADO_INICIAL: EstadoRegistro = { paso: 1, filas: [] }
 
 export function registroReducer(estado: EstadoRegistro, accion: AccionRegistro): EstadoRegistro {
   switch (accion.type) {

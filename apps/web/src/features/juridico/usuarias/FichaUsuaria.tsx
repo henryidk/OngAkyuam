@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, Outlet, useParams } from 'react-router-dom'
 import {
   ETIQUETAS_GRUPO_ETNICO,
-  ETIQUETAS_TIPO_PROCESO_JURIDICO,
   ETIQUETAS_TIPO_REGISTRO,
   type ExpedienteDetalleArea,
   type FichaUsuariaJuridicoDto,
@@ -160,8 +159,6 @@ export default function FichaUsuaria() {
             <p className="text-sm text-gray-700">{pendiente.motivo || 'Sin motivo registrado.'}</p>
             <p className="text-xs text-gray-500">
               Referida por {pendiente.referidoPor}
-              {pendiente.procesosSugeridos.length > 0 &&
-                ` · Sugerido: ${pendiente.procesosSugeridos.map((tipo) => ETIQUETAS_TIPO_PROCESO_JURIDICO[tipo]).join(', ')}`}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

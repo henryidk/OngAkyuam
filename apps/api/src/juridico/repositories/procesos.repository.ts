@@ -80,7 +80,6 @@ function condicionesListado(params: ListarProcesosParams): Prisma.Sql {
 
 interface FilaResumen {
   referenciasPendientes: bigint;
-  procesosSugeridos: bigint;
   total: bigint;
   enTramite: bigint;
   suspendidos: bigint;
@@ -192,9 +191,6 @@ export class ProcesosRepository implements IProcesosRepository {
         (SELECT count(*) FROM "ReferidoArea" r
           WHERE r.area = 'JURIDICO' AND r."atendidoEn" IS NULL AND r."devueltoEn" IS NULL
         ) AS "referenciasPendientes",
-        (SELECT coalesce(sum(cardinality(r."procesosSugeridos")), 0) FROM "ReferidoArea" r
-          WHERE r.area = 'JURIDICO' AND r."atendidoEn" IS NULL AND r."devueltoEn" IS NULL
-        ) AS "procesosSugeridos",
         count(*) AS total,
         count(*) FILTER (WHERE ${EN_TRAMITE_SQL}) AS "enTramite",
         count(*) FILTER (WHERE p.fase <> 'FINALIZADO' AND p.situacion = 'SUSPENDIDO') AS suspendidos,
@@ -220,7 +216,6 @@ export class ProcesosRepository implements IProcesosRepository {
 
     return {
       referenciasPendientes: Number(fila.referenciasPendientes),
-      procesosSugeridos: Number(fila.procesosSugeridos),
       total: Number(fila.total),
       enTramite: Number(fila.enTramite),
       suspendidos: Number(fila.suspendidos),

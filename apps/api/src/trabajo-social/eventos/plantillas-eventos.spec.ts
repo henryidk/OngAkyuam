@@ -25,9 +25,9 @@ describe('plantillas de eventos', () => {
   });
 
   it('no inventa texto con detalles inesperados', () => {
-    expect(describirEvento('PROCESO_JURIDICO_CREADO', null)?.texto).toBe(
-      'Jurídico abrió un proceso',
-    );
+    expect(
+      describirEvento('PROCESOS_JURIDICOS_CREADOS_LOTE', null)?.texto,
+    ).toBe('Jurídico registró procesos');
     expect(
       describirEvento('DOCUMENTO_SUBIDO', { tipo: 'NO_EXISTE' })?.texto,
     ).toBe('Subió un documento');
@@ -47,7 +47,7 @@ describe('plantillas de eventos', () => {
   });
 
   it('las novedades son solo acciones de un área', () => {
-    expect(ACCIONES_NOVEDAD_AREA).toContain('PROCESO_JURIDICO_CREADO');
+    expect(ACCIONES_NOVEDAD_AREA).toContain('PROCESOS_JURIDICOS_CREADOS_LOTE');
     expect(ACCIONES_NOVEDAD_AREA).toContain('ATENCION_PSICOLOGICA_TOMADA');
     expect(ACCIONES_NOVEDAD_AREA).not.toContain('EXPEDIENTE_REFERIDO');
     expect(ACCIONES_NOVEDAD_AREA).not.toContain('USUARIA_ACTUALIZADA');

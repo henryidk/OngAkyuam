@@ -1,4 +1,4 @@
-import { ETIQUETAS_TIPO_PROCESO_JURIDICO, type EstadoReferenciaJuridico } from '@akyuam/shared'
+import type { EstadoReferenciaJuridico } from '@akyuam/shared'
 import { fechaDeInstante } from '../compartido/formato'
 import { useContextoFicha } from './contextoFicha'
 
@@ -27,10 +27,6 @@ export default function PestanaReferencias() {
                 <p className="text-sm text-gray-800">{referencia.motivo || 'Sin motivo registrado.'}</p>
                 <p className="text-xs text-gray-500">
                   Expediente {referencia.expedienteNumero} · por {referencia.referidoPor}
-                  {referencia.procesosSugeridos.length > 0 &&
-                    ` · Sugerido: ${referencia.procesosSugeridos
-                      .map((tipo) => ETIQUETAS_TIPO_PROCESO_JURIDICO[tipo])
-                      .join(', ')}`}
                 </p>
                 {referencia.estado === 'DEVUELTA' && referencia.motivoDevolucion && (
                   <p className="text-xs text-gray-600">
