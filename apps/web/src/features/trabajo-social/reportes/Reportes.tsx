@@ -7,9 +7,10 @@ import {
   reportePoblacionQuerySchema,
   type ReportePoblacionQuery,
 } from '@akyuam/shared'
+import DesgloseBarras, { DesgloseEsqueleto } from '../../../components/reportes/DesgloseBarras'
 import EmptyState from '../../../components/ui/EmptyState'
+import { guardarArchivo } from '../../../lib/archivos'
 import { descargarReportePoblacion } from '../api/trabajoSocial.api'
-import DesgloseBarras, { DesgloseEsqueleto } from './DesgloseBarras'
 import FiltrosReporte from './FiltrosReporte'
 import TablaVistaPrevia from './TablaVistaPrevia'
 import { useReportePoblacion } from './useReportePoblacion'
@@ -27,18 +28,6 @@ function filtrosIniciales(): ReportePoblacionQuery {
 
 function plural(cantidad: number, singular: string, varios: string) {
   return `${cantidad} ${cantidad === 1 ? singular : varios}`
-}
-
-/** Guarda el archivo que ya está en memoria; el enlace temporal se libera enseguida. */
-function guardarArchivo(contenido: Blob, nombre: string) {
-  const url = URL.createObjectURL(contenido)
-  const enlace = document.createElement('a')
-  enlace.href = url
-  enlace.download = nombre
-  document.body.appendChild(enlace)
-  enlace.click()
-  enlace.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 0)
 }
 
 /** Reportes de Trabajo Social (plan §12.9): población beneficiada con vista previa y Excel. */

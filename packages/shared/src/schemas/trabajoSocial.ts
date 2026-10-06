@@ -3,7 +3,7 @@ import { AREAS_ATENCION, TIPOS_REGISTRO } from '../catalogos/registroUsuaria.js'
 import { areaAtencionSchema } from './registroUsuaria.js'
 import type { AreaAtencion, TipoRegistro } from './registroUsuaria.js'
 import { tipoDocumentoTrabajoSocialSchema } from './documentos.js'
-import { booleanoQuerySchema } from './query.js'
+import { booleanoQuerySchema, fechaReporteSchema } from './query.js'
 import { hoyGT } from '../timezone.js'
 import type { TipoDocumento, TipoDocumentoTrabajoSocial } from './documentos.js'
 import { ESTADOS_AREA, ESTADOS_TS, FILTROS_LISTA_USUARIAS } from '../catalogos/trabajoSocial.js'
@@ -134,18 +134,6 @@ export interface EstadoCasoTs {
 export const filtroTipoRegistroReporteSchema = z.enum(['TODOS', ...TIPOS_REGISTRO])
 export type FiltroTipoRegistroReporte = z.infer<typeof filtroTipoRegistroReporteSchema>
 
-/**
- * El regex solo mira la forma: "2026-02-31" pasaría y Postgres fallaría al convertirla a `date`.
- * Aquí se comprueba que el día exista; `Date.UTC` se usa solo para ese cálculo (desborda al
- * mes siguiente si el día no existe), nunca para guardar ni mostrar la fecha.
- */
-function esFechaCalendarioReal(iso: string): boolean {
-  const [anio, mes, dia] = iso.split('-').map(Number)
-  const fecha = new Date(Date.UTC(anio, mes - 1, dia))
-  return fecha.getUTCFullYear() === anio && fecha.getUTCMonth() === mes - 1 && fecha.getUTCDate() === dia
-}
-
-const fechaReporteSchema = fechaCalendarioSchema.refine(esFechaCalendarioReal, 'Fecha inválida')
 
 /** `GET /trabajo-social/reportes/poblacion-beneficiada` (vista previa y agregados) y su `.xlsx`. */
 export const reportePoblacionQuerySchema = z

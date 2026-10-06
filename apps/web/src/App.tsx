@@ -19,6 +19,7 @@ import PestanaProcesosUsuariaJuridico from './features/juridico/usuarias/Pestana
 import PestanaDatosCasoJuridico from './features/juridico/usuarias/PestanaDatosCaso'
 import PestanaDocumentosTsJuridico from './features/juridico/usuarias/PestanaDocumentosTs'
 import PestanaReferenciasJuridico from './features/juridico/usuarias/PestanaReferencias'
+import ReportesJuridico from './features/juridico/reportes/ReportesJuridico'
 import Login from './pages/Login'
 import Medica from './pages/Medica'
 import MedicaExpediente from './pages/MedicaExpediente'
@@ -126,6 +127,7 @@ function App() {
               <Route path="documentos" element={<PestanaDocumentosTsJuridico />} />
               <Route path="referencias" element={<PestanaReferenciasJuridico />} />
             </Route>
+            <Route path="reportes" element={<ReportesJuridico />} />
             {/* Ruta vieja del espacio de trabajo por expediente. */}
             <Route path=":id/casos" element={<RedirigirARegistro />} />
           </Route>

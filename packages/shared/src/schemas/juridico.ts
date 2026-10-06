@@ -16,7 +16,8 @@ import {
 import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
 import type { TipoDocumento } from './documentos.js'
 import type { TipoRegistro } from './registroUsuaria.js'
-import { booleanoQuerySchema } from './query.js'
+import { booleanoQuerySchema, fechaReporteSchema } from './query.js'
+import type { ConteoReporte } from './trabajoSocial.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -529,4 +530,59 @@ export interface InicioJuridicoDto {
   /** Procesos sin finalizar con la actuación más reciente primero. */
   actividadReciente: ProcesoResumen[]
   novedadesTs: NovedadTsDto[]
+}
+
+// ---- Reportes ----
+
+export const FILTROS_ESTADO_REPORTE_JURIDICO = ['TODOS', ...ESTADOS_VISIBLES_PROCESO] as const
+export type FiltroEstadoReporteJuridico = (typeof FILTROS_ESTADO_REPORTE_JURIDICO)[number]
+
+/** `GET /juridico/reportes/procesos` (vista previa y agregados) y su `.xlsx`. */
+export const reporteProcesosJuridicoQuerySchema = z
+  .object({
+    /** Se compara contra la fecha de inicio del proceso, inclusive. */
+    desde: fechaReporteSchema,
+    hasta: fechaReporteSchema,
+    estado: z.enum(FILTROS_ESTADO_REPORTE_JURIDICO).default('TODOS'),
+    /** Sin valor = todas las abogadas, incluidos los procesos sin abogada asignada. */
+    abogadaId: z.uuid().optional(),
+  })
+  // "YYYY-MM-DD" se ordena igual como texto que como fecha.
+  .refine((query) => query.desde <= query.hasta, {
+    message: 'La fecha "Desde" no puede ser posterior a "Hasta"',
+    path: ['hasta'],
+  })
+export type ReporteProcesosJuridicoQuery = z.infer<typeof reporteProcesosJuridicoQuerySchema>
+
+/** Una fila del reporte = un proceso. Los datos demográficos son los de la usuaria. */
+export interface FilaReporteJuridico {
+  /** Correlativo del reporte, no se guarda en la base. */
+  numero: number
+  /** "J2-05-2026". */
+  codigo: string
+  numeroJudicial: string | null
+  fechaInicio: string
+  usuaria: string
+  /** Años cumplidos a la fecha de inicio del proceso. */
+  edad: number
+  rangoEdad: string
+  grupoEtnico: string
+  municipio: string
+  tipo: TipoProcesoJuridico
+  abogada: string | null
+  estado: EstadoVisibleProceso
+  formaFinalizacion: FormaFinalizacionProceso | null
+  fechaCierre: string | null
+}
+
+/** `GET /juridico/reportes/procesos`: totales, desgloses y las primeras filas. */
+export interface ReporteProcesosJuridico {
+  totales: { procesos: number; usuarias: number }
+  desgloses: {
+    estado: ConteoReporte[]
+    /** Solo procesos finalizados. */
+    formaFinalizacion: ConteoReporte[]
+    categoria: ConteoReporte[]
+  }
+  vistaPrevia: FilaReporteJuridico[]
 }

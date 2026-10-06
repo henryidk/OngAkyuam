@@ -1,4 +1,6 @@
 import type {
+  ReporteProcesosJuridico,
+  ReporteProcesosJuridicoQuery,
   InicioJuridicoDto,
   BandejaJuridicoQuery,
   CarpetaDto,
@@ -191,4 +193,20 @@ export function obtenerUrlDocumento(procesoId: string, documentoId: string, modo
 
 export function listarPersonalJuridico() {
   return api.get<PersonalDto[]>('/personal', { params: { area: 'JURIDICO' } }).then((res) => res.data)
+}
+
+// ---- Reportes ----
+
+const RUTA_REPORTE_PROCESOS = '/juridico/reportes/procesos'
+
+/** Totales, desgloses y las primeras filas del reporte de procesos. */
+export function obtenerReporteProcesos(query: ReporteProcesosJuridicoQuery) {
+  return api.get<ReporteProcesosJuridico>(RUTA_REPORTE_PROCESOS, { params: query }).then((res) => res.data)
+}
+
+/** El Excel completo, como `Blob` en memoria: nunca se guarda una copia en el servidor. */
+export function descargarReporteProcesos(query: ReporteProcesosJuridicoQuery) {
+  return api
+    .get<Blob>(`${RUTA_REPORTE_PROCESOS}.xlsx`, { params: query, responseType: 'blob' })
+    .then((res) => res.data)
 }

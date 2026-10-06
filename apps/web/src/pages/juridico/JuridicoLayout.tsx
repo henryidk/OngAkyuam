@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Home, Inbox, Scale, Users } from 'lucide-react'
+import { BarChart3, Home, Inbox, Scale, Users } from 'lucide-react'
 import type { ResumenProcesos } from '@akyuam/shared'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { obtenerResumen } from '../../features/juridico/api/juridico.api'
@@ -14,6 +14,7 @@ const ITEMS_NAV: ItemNav[] = [
   { ruta: RUTAS_JURIDICO.bandeja(), etiqueta: 'Área de atención', fin: false, Icono: Inbox },
   { ruta: RUTAS_JURIDICO.procesos(), etiqueta: 'Procesos', fin: false, Icono: Scale },
   { ruta: RUTAS_JURIDICO.usuarias(), etiqueta: 'Usuarias', fin: false, Icono: Users },
+  { ruta: RUTAS_JURIDICO.reportes(), etiqueta: 'Reportes', fin: false, Icono: BarChart3 },
 ]
 
 export default function JuridicoLayout() {

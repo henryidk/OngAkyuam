@@ -22,3 +22,11 @@ export function asignadoASql(usuarioId: string): Prisma.Sql {
       AND pe.id IN (p."abogadaId", p."procuradoraId")
   )`;
 }
+
+/** El estado que ve el personal, igual que `estadoVisible()`: finalizado gana sobre la situación. */
+export const ESTADO_VISIBLE_SQL = Prisma.sql`(CASE
+  WHEN p.fase = 'FINALIZADO' THEN 'FINALIZADO'
+  WHEN p.situacion = 'SUSPENDIDO' THEN 'SUSPENDIDO'
+  WHEN p.situacion = 'ABANDONADO' THEN 'ABANDONADO'
+  ELSE 'EN_TRAMITE'
+END)`;

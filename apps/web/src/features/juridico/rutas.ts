@@ -29,6 +29,7 @@ export const RUTAS_JURIDICO = {
     conQuery('/juridico/procesos/registrar', { expediente: expedienteId, referido: referidoId }),
   proceso: (procesoId: string) => `/juridico/procesos/${procesoId}`,
   documentosProceso: (procesoId: string) => `/juridico/procesos/${procesoId}/documentos`,
+  reportes: () => '/juridico/reportes',
   usuarias: () => '/juridico/usuarias',
   /** Pestaña Resumen de la ficha; las demás cuelgan de la misma ruta. */
   usuaria: (usuariaId: string) => `/juridico/usuarias/${usuariaId}`,

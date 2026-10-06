@@ -25,3 +25,11 @@ export const CLASES_BARRA: Record<EstadoVisibleProceso, string> = {
   ABANDONADO: 'bg-[#8a5a14]',
   SUSPENDIDO: 'bg-[#4a5360]',
 }
+
+/** Relleno de las barras del reporte por forma de finalización. */
+export const CLASES_BARRA_FORMA: Record<FormaFinalizacionProceso, string> = {
+  CONVENIO: 'bg-[#1f4f8a]',
+  SENTENCIA: 'bg-[#2f6b3f]',
+  DESISTIMIENTO: 'bg-[#8a3a2c]',
+  OTROS: 'bg-[#4a5360]',
+}
