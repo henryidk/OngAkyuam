@@ -211,12 +211,11 @@ model ReferidoArea {
 
   // Solo Jurídico. Una referencia está pendiente mientras no se atienda ni se devuelva; se
   // atiende al registrar el primer lote de procesos desde ella.
-  procesosSugeridos TipoProcesoJuridico[] @default([])
-  atendidoEn        DateTime?             @db.Timestamptz(3)
-  devueltoEn        DateTime?             @db.Timestamptz(3)
-  motivoDevolucion  String?               @db.VarChar(500)
+  atendidoEn        DateTime?         @db.Timestamptz(3)
+  devueltoEn        DateTime?         @db.Timestamptz(3)
+  motivoDevolucion  String?           @db.VarChar(500)
   devueltoPorId     String?
-  devueltoPor       Usuario?              @relation("ReferidoDevueltoPor", fields: [devueltoPorId], references: [id])
+  devueltoPor       Usuario?          @relation("ReferidoDevueltoPor", fields: [devueltoPorId], references: [id])
   procesosJuridicos ProcesoJuridico[]
 
   @@unique([expedienteId, area])
@@ -500,17 +499,17 @@ model SuspensionProceso {
 }
 
 model NotaAvanceProceso {
-  id              String              @id @default(uuid())
+  id              String          @id @default(uuid())
   procesoId       String
-  proceso         ProcesoJuridico     @relation(fields: [procesoId], references: [id], onDelete: Cascade)
+  proceso         ProcesoJuridico @relation(fields: [procesoId], references: [id], onDelete: Cascade)
   contenido       String
   // Texto libre: cada proceso tiene actuaciones distintas ("Memorial de evacuación", …).
-  tipo            String              @db.VarChar(60)
+  tipo            String          @db.VarChar(60)
   // Solo el backend crea entradas de sistema (creación, cambios de estado, subida de documentos).
-  esSistema       Boolean             @default(false)
+  esSistema       Boolean         @default(false)
   registradoPorId String
-  registradoPor   Usuario             @relation(fields: [registradoPorId], references: [id])
-  createdAt       DateTime            @default(now()) @db.Timestamptz(3)
+  registradoPor   Usuario         @relation(fields: [registradoPorId], references: [id])
+  createdAt       DateTime        @default(now()) @db.Timestamptz(3)
 
   @@index([procesoId, createdAt])
 }
