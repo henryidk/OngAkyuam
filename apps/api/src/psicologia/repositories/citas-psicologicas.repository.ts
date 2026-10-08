@@ -59,6 +59,11 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
   }
 
   async crear(params: CrearCitaParams): Promise<CitaResumen> {
+    // La primera cita es la que abre el proceso: si aún no tenía fecha de inicio, se fija aquí.
+    await this.prisma.atencionPsicologica.updateMany({
+      where: { id: params.atencionId, fechaInicio: null },
+      data: { fechaInicio: new Date() },
+    });
     const cita = await this.prisma.citaPsicologica.create({
       data: {
         atencionId: params.atencionId,

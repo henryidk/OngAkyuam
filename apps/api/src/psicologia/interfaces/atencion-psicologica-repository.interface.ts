@@ -132,5 +132,6 @@ export interface IAtencionPsicologicaRepository {
    */
   obtenerResumenExpediente(
     expedienteId: string,
+    psicologaId: string,
   ): Promise<ExpedienteResumenPsicologia | null>;
 }

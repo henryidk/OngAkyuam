@@ -23,7 +23,7 @@ describe('CompartidoService', () => {
         .fn()
         .mockResolvedValue(['JURIDICO', 'PSICOLOGIA', 'MEDICA']),
       procesosJuridicos: jest.fn().mockResolvedValue([]),
-      proximaCitaPsicologica: jest.fn().mockResolvedValue(null),
+      procesosPsicologicos: jest.fn().mockResolvedValue([]),
     };
     auditService = {
       registrar: jest.fn(),
@@ -109,41 +109,100 @@ describe('CompartidoService', () => {
     },
   );
 
-  it('Psicología comparte solo la próxima cita', async () => {
-    repositorio.proximaCitaPsicologica.mockResolvedValue(
-      new Date('2026-10-05T16:00:00.000Z'),
-    );
+  const procesoPsicologico = {
+    codigo: 'P1-05-2026',
+    etapa: 'SEGUIMIENTO' as const,
+    fechaInicio: '2026-10-01T15:00:00.000Z',
+    fechaCierre: null,
+    proximaCita: '2026-10-05T16:00:00.000Z',
+    documentos: [
+      {
+        id: 'doc-1',
+        tipo: 'FORMATO_ATENCION_PSICOLOGICA' as const,
+        subidoEn: '2026-10-02T18:00:00.000Z',
+      },
+    ],
+  };
 
+  async function lineasPsicologia(): Promise<string[]> {
     const compartido = await service.obtener('exp-1', contexto);
-    const psicologia = compartido.find(
-      (entrada) => entrada.area === 'PSICOLOGIA',
-    );
+    return compartido[1].lineas;
+  }
 
-    expect(psicologia?.lineas).toHaveLength(1);
-    expect(psicologia?.lineas[0]).toMatch(/^Próxima cita: /);
+  it('Psicología comparte código, etapa, fechas, próxima cita y documentos', async () => {
+    repositorio.procesosPsicologicos.mockResolvedValue([procesoPsicologico]);
+
+    expect(await lineasPsicologia()).toEqual([
+      'P1-05-2026 · En seguimiento · Inicio: 01/10/2026',
+      'Próxima cita: 05/10/2026 10:00',
+      'Documento: Formato general de atención psicológica (02/10/2026)',
+    ]);
   });
 
-  it('Psicología nunca expone contenido clínico: el repositorio solo le entrega una fecha', async () => {
-    // Aunque la fila de la cita trajera campos clínicos, la estrategia solo sabe formatear la
-    // fecha: cualquier otro dato tendría que agregarse al contrato del repositorio primero.
-    const citaConContenidoClinico = Object.assign(
-      new Date('2026-10-05T16:00:00.000Z'),
+  it('Psicología anuncia el cierre y el caso tomado que aún no tiene primera cita', async () => {
+    repositorio.procesosPsicologicos.mockResolvedValue([
       {
-        motivo: 'MOTIVO-CLINICO',
-        observaciones: 'OBSERVACION-CLINICA',
-        acuerdos: 'ACUERDO-CLINICO',
+        ...procesoPsicologico,
+        etapa: 'CIERRE',
+        fechaCierre: '2026-10-20T20:00:00.000Z',
+        proximaCita: null,
+        documentos: [],
       },
-    );
-    repositorio.proximaCitaPsicologica.mockResolvedValue(
-      citaConContenidoClinico,
-    );
+      {
+        codigo: 'P2-05-2026',
+        etapa: 'INICIO',
+        fechaInicio: null,
+        fechaCierre: null,
+        proximaCita: null,
+        documentos: [],
+      },
+    ]);
+
+    expect(await lineasPsicologia()).toEqual([
+      'P1-05-2026 · Cierre · Inicio: 01/10/2026 · Cierre: 20/10/2026',
+      'P2-05-2026 · Inicio · Primera cita por agendar',
+    ]);
+  });
+
+  it('las fechas se muestran en el día de Guatemala, no en el de UTC', async () => {
+    repositorio.procesosPsicologicos.mockResolvedValue([
+      {
+        ...procesoPsicologico,
+        // 02:00 UTC del día 8 = 20:00 del día 7 en Guatemala.
+        fechaInicio: '2026-10-08T02:00:00.000Z',
+        proximaCita: null,
+        documentos: [],
+      },
+    ]);
+
+    expect((await lineasPsicologia())[0]).toContain('Inicio: 07/10/2026');
+  });
+
+  it('Psicología nunca expone contenido clínico aunque el repositorio lo trajera por error', async () => {
+    // La estrategia solo redacta los campos del contrato compartido: notas, motivo de cierre y
+    // nombres de archivo no llegan a la respuesta ni si la fila los incluyera.
+    repositorio.procesosPsicologicos.mockResolvedValue([
+      {
+        ...procesoPsicologico,
+        resumenCierre: 'NOTA-CLINICA',
+        motivoCierreCatalogo: 'DATO-CLINICO',
+        documentos: [
+          {
+            ...procesoPsicologico.documentos[0],
+            nombreArchivo: 'ARCHIVO-CLINICO.pdf',
+          },
+        ],
+        citas: [{ temas: 'TEMA-CLINICO', observaciones: 'NOTA-CLINICA' }],
+      } as never,
+    ]);
 
     const respuesta = JSON.stringify(await service.obtener('exp-1', contexto));
 
     expect(respuesta).not.toContain('CLINIC');
+    expect(respuesta).not.toContain('doc-1');
   });
 
-  it('Psicología sin cita programada no comparte nada', async () => {
+  it('Psicología sin procesos no comparte nada', async () => {
     const compartido = await service.obtener('exp-1', contexto);
 
     expect(compartido[1]).toEqual({
@@ -158,7 +217,7 @@ describe('CompartidoService', () => {
 
     const compartido = await service.obtener('exp-1', contexto);
 
-    expect(repositorio.proximaCitaPsicologica).not.toHaveBeenCalled();
+    expect(repositorio.procesosPsicologicos).not.toHaveBeenCalled();
     expect(compartido[1]).toEqual({
       area: 'PSICOLOGIA',
       referida: false,

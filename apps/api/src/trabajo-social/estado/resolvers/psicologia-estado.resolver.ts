@@ -42,8 +42,15 @@ export class PsicologiaEstadoResolver implements IResolverEstadoArea {
   }
 
   condicionActivaSql(columnaExpedienteId: Prisma.Sql): Prisma.Sql {
-    return Prisma.sql`NOT EXISTS (
-      SELECT 1 FROM "AtencionPsicologica" ap WHERE ap."expedienteId" = ${columnaExpedienteId} AND ap.estado = 'CIERRE'
+    // Activa si aún no tiene procesos (en cola) o si alguno sigue sin cerrar; la base garantiza
+    // que el que no está cerrado es siempre el más reciente.
+    return Prisma.sql`(
+      NOT EXISTS (
+        SELECT 1 FROM "AtencionPsicologica" ap WHERE ap."expedienteId" = ${columnaExpedienteId}
+      )
+      OR EXISTS (
+        SELECT 1 FROM "AtencionPsicologica" ap WHERE ap."expedienteId" = ${columnaExpedienteId} AND ap.estado <> 'CIERRE'
+      )
     )`;
   }
 }

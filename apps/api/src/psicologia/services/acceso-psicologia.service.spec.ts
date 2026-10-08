@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
+import type {
+  IBandejaPsicologiaRepository,
+  ReferenciaPsicologia,
+} from '../interfaces/bandeja-psicologia-repository.interface';
+import type { IProcesosPsicologiaRepository } from '../interfaces/procesos-psicologia-repository.interface';
 import { AccesoPsicologiaService } from './acceso-psicologia.service';
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
@@ -8,6 +13,8 @@ describe('AccesoPsicologiaService', () => {
   let service: AccesoPsicologiaService;
   let atencionRepository: jest.Mocked<IAtencionPsicologicaRepository>;
   let citasRepository: jest.Mocked<ICitasPsicologicasRepository>;
+  let bandejaRepository: jest.Mocked<IBandejaPsicologiaRepository>;
+  let procesosRepository: jest.Mocked<IProcesosPsicologiaRepository>;
 
   beforeEach(() => {
     atencionRepository = {
@@ -28,7 +35,113 @@ describe('AccesoPsicologiaService', () => {
       reprogramar: jest.fn(),
       registrarConsulta: jest.fn(),
     };
-    service = new AccesoPsicologiaService(atencionRepository, citasRepository);
+    bandejaRepository = {
+      listarSinTomar: jest.fn(),
+      listarPorAgendar: jest.fn(),
+      buscarReferencia: jest.fn(),
+    };
+    procesosRepository = {
+      buscarAccesoProceso: jest.fn(),
+      ninoPerteneceAExpediente: jest.fn(),
+      abrir: jest.fn(),
+      cerrar: jest.fn(),
+      actualizarVisibilidad: jest.fn(),
+    };
+    service = new AccesoPsicologiaService(
+      atencionRepository,
+      citasRepository,
+      bandejaRepository,
+      procesosRepository,
+    );
+  });
+
+  describe('exigirAccesoProceso', () => {
+    it.each([['proceso inexistente'], ['proceso de otra psicóloga']])(
+      'rechaza con el mismo 403 cuando: %s',
+      async () => {
+        procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
+
+        await expect(
+          service.exigirAccesoProceso('proc-1', 'psicologa-b'),
+        ).rejects.toEqual(
+          new ForbiddenException('No tiene acceso a este proceso'),
+        );
+      },
+    );
+
+    it('consulta siempre con el id de la psicóloga autenticada', async () => {
+      procesosRepository.buscarAccesoProceso.mockResolvedValue({
+        id: 'proc-1',
+        expedienteId: 'exp-1',
+        expedienteNumero: '05-2026',
+        usuariaId: 'usuaria-1',
+        consecutivo: 1,
+        etapa: 'INICIO',
+        version: 1,
+      });
+
+      await service.exigirAccesoProceso('proc-1', 'psicologa-a');
+
+      expect(procesosRepository.buscarAccesoProceso).toHaveBeenCalledWith(
+        'proc-1',
+        'psicologa-a',
+      );
+    });
+  });
+
+  describe('exigirCasoTomado', () => {
+    const referencia: ReferenciaPsicologia = {
+      referidoId: 'ref-1',
+      expedienteId: 'exp-1',
+      expedienteNumero: '05-2026',
+      usuariaId: 'usuaria-1',
+      situacion: 'MIA',
+      procesoId: 'proc-1',
+    };
+
+    it('rechaza con 403 una referencia que no existe o no es de Psicología', async () => {
+      bandejaRepository.buscarReferencia.mockResolvedValue(null);
+
+      await expect(
+        service.exigirCasoTomado('ref-1', 'psicologa-a'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('rechaza con 403 el caso que tomó otra psicóloga', async () => {
+      bandejaRepository.buscarReferencia.mockResolvedValue({
+        ...referencia,
+        situacion: 'NO_DISPONIBLE',
+        procesoId: null,
+      });
+
+      await expect(
+        service.exigirCasoTomado('ref-1', 'psicologa-b'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('pide tomar el caso primero (409) si nadie lo ha tomado', async () => {
+      bandejaRepository.buscarReferencia.mockResolvedValue({
+        ...referencia,
+        situacion: 'SIN_TOMAR',
+        procesoId: null,
+      });
+
+      await expect(
+        service.exigirCasoTomado('ref-1', 'psicologa-a'),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('devuelve el caso con su proceso cuando es de quien pregunta', async () => {
+      bandejaRepository.buscarReferencia.mockResolvedValue(referencia);
+
+      await expect(
+        service.exigirCasoTomado('ref-1', 'psicologa-a'),
+      ).resolves.toMatchObject({ procesoId: 'proc-1', expedienteId: 'exp-1' });
+      expect(bandejaRepository.buscarReferencia).toHaveBeenCalledWith(
+        'ref-1',
+        'psicologa-a',
+      );
+    });
   });
 
   describe('exigirAccesoExpediente', () => {

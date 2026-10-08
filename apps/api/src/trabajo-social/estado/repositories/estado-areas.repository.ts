@@ -22,8 +22,11 @@ export class EstadoAreasRepository implements IEstadoAreasRepository {
   async atencionPsicologica(
     expedienteId: string,
   ): Promise<AtencionPsicologicaParaEstado | null> {
-    const atencion = await this.prisma.atencionPsicologica.findUnique({
+    // Con varios procesos en el expediente manda el más reciente: si la usuaria regresó y hay
+    // uno abierto, el área vuelve a estar en atención aunque el anterior esté cerrado.
+    const atencion = await this.prisma.atencionPsicologica.findFirst({
       where: { expedienteId },
+      orderBy: { consecutivo: 'desc' },
       select: {
         estado: true,
         psicologaAsignada: { select: { nombreCompleto: true } },

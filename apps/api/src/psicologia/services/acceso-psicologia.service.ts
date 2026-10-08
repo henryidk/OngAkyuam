@@ -1,4 +1,26 @@
-import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
+import {
+  MENSAJE_SIN_ACCESO_CITA,
+  MENSAJE_SIN_ACCESO_EXPEDIENTE,
+  MENSAJE_SIN_ACCESO_PROCESO,
+  MENSAJE_SIN_ACCESO_REFERENCIA,
+  MENSAJE_TOMAR_PRIMERO,
+} from '../compartido/mensajes';
+import { BANDEJA_PSICOLOGIA_REPOSITORY } from '../interfaces/bandeja-psicologia-repository.interface';
+import type {
+  IBandejaPsicologiaRepository,
+  ReferenciaPsicologia,
+} from '../interfaces/bandeja-psicologia-repository.interface';
+import { PROCESOS_PSICOLOGIA_REPOSITORY } from '../interfaces/procesos-psicologia-repository.interface';
+import type {
+  AccesoProcesoPsicologia,
+  IProcesosPsicologiaRepository,
+} from '../interfaces/procesos-psicologia-repository.interface';
 import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicologica-repository.interface';
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
@@ -6,9 +28,6 @@ import type {
   AccesoCitaPsicologica,
   ICitasPsicologicasRepository,
 } from '../interfaces/citas-psicologicas-repository.interface';
-
-const MENSAJE_SIN_ACCESO_EXPEDIENTE = 'No tiene acceso a este expediente';
-const MENSAJE_SIN_ACCESO_CITA = 'No tiene acceso a esta cita';
 
 /**
  * Cadena anti-IDOR del módulo de psicología — existe una sola vez aquí y la comparten todos
@@ -21,7 +40,59 @@ export class AccesoPsicologiaService {
     private readonly atencionRepository: IAtencionPsicologicaRepository,
     @Inject(CITAS_PSICOLOGICAS_REPOSITORY)
     private readonly citasRepository: ICitasPsicologicasRepository,
+    @Inject(BANDEJA_PSICOLOGIA_REPOSITORY)
+    private readonly bandejaRepository: IBandejaPsicologiaRepository,
+    @Inject(PROCESOS_PSICOLOGIA_REPOSITORY)
+    private readonly procesosRepository: IProcesosPsicologiaRepository,
   ) {}
+
+  /** El proceso existe y es de esta psicóloga; si no, el mismo 403 en ambos casos. */
+  async exigirAccesoProceso(
+    procesoId: string,
+    psicologaId: string,
+  ): Promise<AccesoProcesoPsicologia> {
+    const acceso = await this.procesosRepository.buscarAccesoProceso(
+      procesoId,
+      psicologaId,
+    );
+    if (!acceso) {
+      throw new ForbiddenException(MENSAJE_SIN_ACCESO_PROCESO);
+    }
+    return acceso;
+  }
+
+  /**
+   * La referencia existe y es de Psicología. No exige dueña: la bandeja sin tomar la ve toda
+   * el área, así que saber que una referencia existe no revela nada que la cola no muestre ya.
+   */
+  async exigirReferencia(
+    referidoId: string,
+    psicologaId: string,
+  ): Promise<ReferenciaPsicologia> {
+    const referencia = await this.bandejaRepository.buscarReferencia(
+      referidoId,
+      psicologaId,
+    );
+    if (!referencia) {
+      throw new ForbiddenException(MENSAJE_SIN_ACCESO_REFERENCIA);
+    }
+    return referencia;
+  }
+
+  /** La referencia ya es un caso de esta psicóloga con su proceso sin cerrar. */
+  async exigirCasoTomado(
+    referidoId: string,
+    psicologaId: string,
+  ): Promise<ReferenciaPsicologia & { procesoId: string }> {
+    const referencia = await this.exigirReferencia(referidoId, psicologaId);
+    if (referencia.situacion === 'SIN_TOMAR') {
+      throw new ConflictException(MENSAJE_TOMAR_PRIMERO);
+    }
+    if (referencia.situacion !== 'MIA' || referencia.procesoId === null) {
+      throw new ForbiddenException(MENSAJE_SIN_ACCESO_REFERENCIA);
+    }
+    return { ...referencia, procesoId: referencia.procesoId };
+  }
 
   async exigirAccesoExpediente(
     expedienteId: string,

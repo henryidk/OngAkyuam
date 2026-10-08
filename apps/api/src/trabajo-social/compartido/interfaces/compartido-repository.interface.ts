@@ -1,3 +1,4 @@
+import type { ProcesoPsicologiaCompartidoDto } from '@akyuam/shared';
 import type {
   FaseProcesoJuridico,
   SituacionProcesoJuridico,
@@ -23,6 +24,12 @@ export interface ICompartidoRepository {
   /** Áreas a las que se refirió el caso; `null` si el expediente no existe. */
   areasReferidas(expedienteId: string): Promise<Rol[] | null>;
   procesosJuridicos(expedienteId: string): Promise<ProcesoJuridicoCompartido[]>;
-  /** Solo la fecha y hora de la próxima cita programada — nunca contenido clínico. */
-  proximaCitaPsicologica(expedienteId: string): Promise<Date | null>;
+  /**
+   * Procesos psicológicos del expediente que ya tienen psicóloga, del más antiguo al más
+   * reciente: código, etapa, fechas, próxima cita y documentos (tipo y fecha). Nunca notas de
+   * sesión, detalles de las citas ni nombres de archivo.
+   */
+  procesosPsicologicos(
+    expedienteId: string,
+  ): Promise<ProcesoPsicologiaCompartidoDto[]>;
 }

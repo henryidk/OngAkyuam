@@ -169,8 +169,10 @@ export class ProcesoPsicologicoService {
   ): Promise<ExpedienteResumenPsicologia> {
     await this.acceso.exigirAccesoExpediente(expedienteId, psicologaId);
 
-    const resumen =
-      await this.atencionRepository.obtenerResumenExpediente(expedienteId);
+    const resumen = await this.atencionRepository.obtenerResumenExpediente(
+      expedienteId,
+      psicologaId,
+    );
     if (!resumen) {
       throw new NotFoundException('Expediente no encontrado');
     }

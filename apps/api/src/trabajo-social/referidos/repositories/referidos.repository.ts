@@ -96,6 +96,7 @@ export class ReferidosRepository implements IReferidosRepository {
           await tx.atencionPsicologica.create({
             data: {
               expedienteId: params.expedienteId,
+              referidoId: referido.id,
               psicologaAsignadaId: params.profesionalAsignadoId,
               tomadaEn: new Date(),
               actualizadoPorId: params.otorgadoPorId,

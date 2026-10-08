@@ -570,6 +570,36 @@ export interface SesionProcesoDto {
 
 export type SesionesProcesoPaginadas = PaginaConCursor<SesionProcesoDto>
 
+/** Respuesta de `POST /psicologia/bandeja/:referidoId/tomar`: el caso ya es de quien lo tomó. */
+export interface CasoPsicologiaTomadoDto {
+  referidoId: string
+  procesoId: string
+}
+
+/** Respuesta de las dos aperturas de proceso (atender una referencia, abrir desde la ficha). */
+export interface ProcesoPsicologiaAbiertoDto {
+  procesoId: string
+  codigo: string
+  /** La cita de primera atención que se creó junto con el proceso. */
+  citaId: string
+}
+
+/** Respuesta de `POST /psicologia/procesos/:id/cierre`. */
+export interface ProcesoPsicologiaCerradoDto {
+  id: string
+  version: number
+  /** Citas programadas a futuro que se cancelaron con el cierre. */
+  citasCanceladas: number
+}
+
+/** Respuesta de `PATCH /psicologia/procesos/:id/visibilidad`. */
+export interface VisibilidadProcesoPsicologiaDto {
+  id: string
+  version: number
+  visibleJuridico: boolean
+  visibleMedica: boolean
+}
+
 /**
  * Lo único de un proceso psicológico que puede cruzar a otra área. Es un tipo aparte, y no un
  * recorte de `ProcesoPsicologiaDetalle`, para que agregarle un campo clínico al detalle no lo
@@ -578,9 +608,18 @@ export type SesionesProcesoPaginadas = PaginaConCursor<SesionProcesoDto>
 export interface ProcesoPsicologiaCompartidoDto {
   codigo: string
   etapa: EstadoAtencionPsicologica
-  fechaInicio: string
+  /** null = caso tomado al que todavía no se le agenda la primera cita. */
+  fechaInicio: string | null
   fechaCierre: string | null
   proximaCita: string | null
+  /** Documentos subidos al proceso (p. ej. el Formato General de cada sesión): solo tipo y fecha. */
+  documentos: DocumentoProcesoCompartidoDto[]
+}
+
+export interface DocumentoProcesoCompartidoDto {
+  id: string
+  tipo: TipoDocumento
+  subidoEn: string
 }
 
 /** Columna "Proceso" de la lista de Usuarias; null = todavía sin procesos. */

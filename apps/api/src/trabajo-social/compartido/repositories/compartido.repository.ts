@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import type { ProcesoPsicologiaCompartidoDto } from '@akyuam/shared';
 import type { Rol } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { codigoProceso } from '../../../psicologia/dominio/codigo-proceso';
 import type {
   ICompartidoRepository,
   ProcesoJuridicoCompartido,
@@ -43,17 +45,53 @@ export class CompartidoRepository implements ICompartidoRepository {
     }));
   }
 
-  async proximaCitaPsicologica(expedienteId: string): Promise<Date | null> {
-    // `select` solo de la fecha: el contenido clínico de la cita nunca sale de la base de datos.
-    const cita = await this.prisma.citaPsicologica.findFirst({
-      where: {
-        atencion: { expedienteId },
-        estado: 'PROGRAMADA',
-        fechaHora: { gte: new Date() },
+  async procesosPsicologicos(
+    expedienteId: string,
+  ): Promise<ProcesoPsicologiaCompartidoDto[]> {
+    const ahora = new Date();
+    // `select` columna por columna: las notas de sesión, el motivo de cierre y el contenido de
+    // las citas nunca salen de la base de datos por este camino.
+    const procesos = await this.prisma.atencionPsicologica.findMany({
+      where: { expedienteId, psicologaAsignadaId: { not: null } },
+      orderBy: { consecutivo: 'asc' },
+      select: {
+        consecutivo: true,
+        estado: true,
+        fechaInicio: true,
+        fechaCierre: true,
+        expediente: { select: { numero: true } },
+        citas: {
+          select: {
+            estado: true,
+            fechaHora: true,
+            documentos: {
+              select: { id: true, tipo: true, createdAt: true },
+            },
+          },
+          orderBy: { fechaHora: 'asc' },
+        },
       },
-      orderBy: { fechaHora: 'asc' },
-      select: { fechaHora: true },
     });
-    return cita?.fechaHora ?? null;
+
+    return procesos.map((proceso) => {
+      const proxima = proceso.citas.find(
+        (cita) => cita.estado === 'PROGRAMADA' && cita.fechaHora >= ahora,
+      );
+      const documentos = proceso.citas
+        .flatMap((cita) => cita.documentos)
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      return {
+        codigo: codigoProceso(proceso.consecutivo, proceso.expediente.numero),
+        etapa: proceso.estado,
+        fechaInicio: proceso.fechaInicio?.toISOString() ?? null,
+        fechaCierre: proceso.fechaCierre?.toISOString() ?? null,
+        proximaCita: proxima?.fechaHora.toISOString() ?? null,
+        documentos: documentos.map((documento) => ({
+          id: documento.id,
+          tipo: documento.tipo,
+          subidoEn: documento.createdAt.toISOString(),
+        })),
+      };
+    });
   }
 }

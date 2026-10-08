@@ -179,12 +179,12 @@ model Expediente {
   createdAt            DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime          @updatedAt @db.Timestamptz(3)
 
-  agresor             Agresor?
-  ninos               Nino[]
-  referidos           ReferidoArea[]
-  documentos          Documento[]
-  procesosJuridicos   ProcesoJuridico[]
-  atencionPsicologica AtencionPsicologica?
+  agresor                Agresor?
+  ninos                  Nino[]
+  referidos              ReferidoArea[]
+  documentos             Documento[]
+  procesosJuridicos      ProcesoJuridico[]
+  atencionesPsicologicas AtencionPsicologica[]
 
   @@index([usuariaId])
   @@index([fecha])
@@ -576,7 +576,9 @@ enum EstadoAtencionPsicologica {
 // escribir nada de este expediente (403 genérico, sin distinguir el motivo).
 model AtencionPsicologica {
   id                   String                    @id @default(uuid())
-  expedienteId         String                    @unique
+  // Un expediente puede tener varios procesos (la usuaria regresa); la base solo deja uno sin
+  // cerrar a la vez (índice parcial "AtencionPsicologica_activa_uq", fuera del alcance de Prisma).
+  expedienteId         String
   expediente           Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   estado               EstadoAtencionPsicologica @default(INICIO)
   psicologaAsignadaId  String?
@@ -609,6 +611,7 @@ model AtencionPsicologica {
   citas         CitaPsicologica[]
   cambiosEstado CambioEstadoAtencion[]
 
+  @@unique([expedienteId, consecutivo])
   @@index([psicologaAsignadaId])
   @@index([referidoId])
 }

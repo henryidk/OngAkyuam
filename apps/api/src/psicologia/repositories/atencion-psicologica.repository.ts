@@ -21,6 +21,14 @@ import { INCLUDE_CITA, mapearCita } from './citas-psicologicas.mapper';
 /** Un elemento de sobra para saber si hay siguiente página, sin un segundo `count` (§7.5 del plan). */
 const LIMITE_EXTRA_CURSOR = 1;
 
+const RESUMEN_CIERRE_SIN_MOTIVO =
+  'Cerrado antes de registrar el motivo de cierre';
+
+/** Referencia "sin tomar": ninguna psicóloga se ha hecho cargo de un proceso en ese expediente. */
+export const EXPEDIENTE_SIN_TOMAR = {
+  atencionesPsicologicas: { none: { psicologaAsignadaId: { not: null } } },
+} satisfies Prisma.ExpedienteWhereInput;
+
 const INCLUDE_ATENCION = {
   actualizadoPor: { select: { nombreCompleto: true } },
   psicologaAsignada: { select: { nombreCompleto: true } },
@@ -73,7 +81,7 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
       where: {
         id: expedienteId,
         referidos: { some: { area: 'PSICOLOGIA' } },
-        atencionPsicologica: { is: { psicologaAsignadaId: psicologaId } },
+        atencionesPsicologicas: { some: { psicologaAsignadaId: psicologaId } },
       },
       select: { id: true },
     });
@@ -82,11 +90,18 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
   async obtenerOCrear(
     params: ObtenerOCrearAtencionParams,
   ): Promise<AtencionPsicologicaDetalle> {
-    const atencion = await this.prisma.atencionPsicologica.upsert({
-      where: { expedienteId: params.expedienteId },
-      update: {},
-      create: {
+    const existente = await this.prisma.atencionPsicologica.findFirst({
+      where: this.filtroProcesoVigente(params.expedienteId, params.creadaPorId),
+      orderBy: { consecutivo: 'desc' },
+      include: INCLUDE_ATENCION,
+    });
+    if (existente) {
+      return mapearAtencion(existente);
+    }
+    const atencion = await this.prisma.atencionPsicologica.create({
+      data: {
         expedienteId: params.expedienteId,
+        consecutivo: await this.siguienteConsecutivo(params.expedienteId),
         actualizadoPorId: params.creadaPorId,
       },
       include: INCLUDE_ATENCION,
@@ -97,8 +112,12 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
   async actualizarEstado(
     params: ActualizarEstadoAtencionParams,
   ): Promise<AtencionPsicologicaDetalle> {
-    const actual = await this.prisma.atencionPsicologica.findUnique({
-      where: { expedienteId: params.expedienteId },
+    const actual = await this.prisma.atencionPsicologica.findFirst({
+      where: this.filtroProcesoVigente(
+        params.expedienteId,
+        params.actualizadoPorId,
+      ),
+      orderBy: { consecutivo: 'desc' },
       select: { id: true, estado: true, fechaInicio: true },
     });
 
@@ -115,17 +134,34 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
       ...(entraSeguimiento && !actual?.fechaInicio
         ? { fechaInicio: new Date() }
         : {}),
+      // La base exige motivo de catálogo en todo cierre; este camino antiguo solo trae texto
+      // libre, así que se guarda como "Otro" con ese texto de resumen.
       ...(entraCierre
-        ? { fechaCierre: new Date(), motivoCierre: params.motivo }
+        ? {
+            fechaCierre: new Date(),
+            motivoCierre: params.motivo,
+            motivoCierreCatalogo: 'OTRO' as const,
+            resumenCierre: params.motivo ?? RESUMEN_CIERRE_SIN_MOTIVO,
+          }
         : {}),
+      version: { increment: 1 },
     };
 
-    const atencion = await this.prisma.atencionPsicologica.upsert({
-      where: { expedienteId: params.expedienteId },
-      update: datosTransicion,
-      create: { expedienteId: params.expedienteId, ...datosTransicion },
-      include: INCLUDE_ATENCION,
-    });
+    const atencion = actual
+      ? await this.prisma.atencionPsicologica.update({
+          where: { id: actual.id },
+          data: datosTransicion,
+          include: INCLUDE_ATENCION,
+        })
+      : await this.prisma.atencionPsicologica.create({
+          data: {
+            expedienteId: params.expedienteId,
+            consecutivo: await this.siguienteConsecutivo(params.expedienteId),
+            ...datosTransicion,
+            version: 1,
+          },
+          include: INCLUDE_ATENCION,
+        });
 
     await this.prisma.cambioEstadoAtencion.create({
       data: {
@@ -156,66 +192,79 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
   }
 
   async tomarCaso(params: TomarCasoParams): Promise<ResultadoTomarCaso> {
-    const existente = await this.prisma.atencionPsicologica.findUnique({
-      where: { expedienteId: params.expedienteId },
-      select: { id: true, psicologaAsignadaId: true },
+    const referido = await this.prisma.referidoArea.findUnique({
+      where: {
+        expedienteId_area: {
+          expedienteId: params.expedienteId,
+          area: 'PSICOLOGIA',
+        },
+      },
+      select: { id: true },
     });
-
-    if (!existente) {
-      // Todavía no existe la atención: crearla ya con dueña es el reclamo en sí. Si dos
-      // psicólogas compiten por crearla al mismo tiempo, la restricción `@unique` en
-      // `expedienteId` hace que la segunda falle con P2002 — se resuelve reconsultando quién
-      // ganó, nunca asumiendo que "falló" significa "gané yo".
-      try {
-        await this.prisma.atencionPsicologica.create({
-          data: {
-            expedienteId: params.expedienteId,
-            psicologaAsignadaId: params.psicologaId,
-            tomadaEn: new Date(),
-            actualizadoPorId: params.psicologaId,
-          },
-        });
-        return 'TOMADO';
-      } catch (error) {
-        if (
-          error instanceof Prisma.PrismaClientKnownRequestError &&
-          error.code === 'P2002'
-        ) {
-          return 'YA_TOMADO';
-        }
-        throw error;
-      }
-    }
-
-    if (existente.psicologaAsignadaId !== null) {
+    if (!referido) {
       return 'YA_TOMADO';
     }
 
-    // Update condicional: el `WHERE psicologaAsignadaId IS NULL` re-evaluado por Postgres bajo
-    // el lock de fila hace que, si dos requests llegan aquí a la vez, solo uno afecte una fila —
-    // el otro recibe `count: 0` sin haber escrito nada (misma garantía que un `INSERT ...
-    // WHERE NOT EXISTS`, sin necesitar SQL crudo).
-    const resultado = await this.prisma.atencionPsicologica.updateMany({
-      where: { id: existente.id, psicologaAsignadaId: null },
-      data: {
-        psicologaAsignadaId: params.psicologaId,
-        tomadaEn: new Date(),
-        actualizadoPorId: params.psicologaId,
+    const reclamo = {
+      psicologaAsignadaId: params.psicologaId,
+      tomadaEn: new Date(),
+      actualizadoPorId: params.psicologaId,
+      referidoId: referido.id,
+    };
+
+    // Atención sin dueña que quedó de antes del rediseño. Update condicional: el `WHERE
+    // psicologaAsignadaId IS NULL` re-evaluado por Postgres bajo el lock de fila hace que, si
+    // dos requests llegan aquí a la vez, solo uno afecte una fila.
+    const reclamadas = await this.prisma.atencionPsicologica.updateMany({
+      where: {
+        expedienteId: params.expedienteId,
+        psicologaAsignadaId: null,
+        estado: { not: 'CIERRE' },
+      },
+      data: { ...reclamo, version: { increment: 1 } },
+    });
+    if (reclamadas.count === 1) {
+      return 'TOMADO';
+    }
+
+    const yaTomada = await this.prisma.atencionPsicologica.count({
+      where: {
+        expedienteId: params.expedienteId,
+        psicologaAsignadaId: { not: null },
       },
     });
-    return resultado.count === 1 ? 'TOMADO' : 'YA_TOMADO';
+    if (yaTomada > 0) {
+      return 'YA_TOMADO';
+    }
+
+    // Crear la atención ya con dueña es el reclamo en sí. Si dos psicólogas compiten, el índice
+    // único de la base ("un solo proceso sin cerrar por expediente") hace fallar a la segunda
+    // con P2002 — nunca se asume que "falló" significa "gané yo".
+    try {
+      await this.prisma.atencionPsicologica.create({
+        data: {
+          expedienteId: params.expedienteId,
+          consecutivo: await this.siguienteConsecutivo(params.expedienteId),
+          ...reclamo,
+        },
+      });
+      return 'TOMADO';
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return 'YA_TOMADO';
+      }
+      throw error;
+    }
   }
 
   async listarReferenciasSinTomar(): Promise<ReferenciaSinTomar[]> {
     const referidos = await this.prisma.referidoArea.findMany({
       where: {
         area: 'PSICOLOGIA',
-        expediente: {
-          OR: [
-            { atencionPsicologica: null },
-            { atencionPsicologica: { is: { psicologaAsignadaId: null } } },
-          ],
-        },
+        expediente: EXPEDIENTE_SIN_TOMAR,
       },
       select: {
         createdAt: true,
@@ -400,9 +449,10 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
     };
   }
 
-  async obtenerResumenExpediente(expedienteId: string) {
-    const atencion = await this.prisma.atencionPsicologica.findUnique({
-      where: { expedienteId },
+  async obtenerResumenExpediente(expedienteId: string, psicologaId: string) {
+    const atencion = await this.prisma.atencionPsicologica.findFirst({
+      where: this.filtroProcesoVigente(expedienteId, psicologaId),
+      orderBy: { consecutivo: 'desc' },
       include: INCLUDE_ATENCION,
     });
     if (!atencion) return null;
@@ -459,5 +509,25 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
       totalCitas,
       proximaCita,
     };
+  }
+
+  /**
+   * Los endpoints antiguos reciben un expediente y no un proceso: trabajan sobre el proceso más
+   * reciente de esa psicóloga en el expediente. El filtro por dueña es obligatorio — sin él,
+   * quien atendió el P1 podría leer el P2 que lleva otra psicóloga.
+   */
+  private filtroProcesoVigente(
+    expedienteId: string,
+    psicologaId: string,
+  ): Prisma.AtencionPsicologicaWhereInput {
+    return { expedienteId, psicologaAsignadaId: psicologaId };
+  }
+
+  private async siguienteConsecutivo(expedienteId: string): Promise<number> {
+    const { _max } = await this.prisma.atencionPsicologica.aggregate({
+      where: { expedienteId },
+      _max: { consecutivo: true },
+    });
+    return (_max.consecutivo ?? 0) + 1;
   }
 }
