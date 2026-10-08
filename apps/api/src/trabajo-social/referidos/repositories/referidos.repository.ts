@@ -92,18 +92,6 @@ export class ReferidosRepository implements IReferidosRepository {
           });
         }
 
-        if (params.crearAtencionPsicologica && params.profesionalAsignadoId) {
-          await tx.atencionPsicologica.create({
-            data: {
-              expedienteId: params.expedienteId,
-              referidoId: referido.id,
-              psicologaAsignadaId: params.profesionalAsignadoId,
-              tomadaEn: new Date(),
-              actualizadoPorId: params.otorgadoPorId,
-            },
-          });
-        }
-
         return {
           id: referido.id,
           area: referido.area,

@@ -58,7 +58,12 @@ export class ReferidosService {
       throw new ConflictException(MENSAJE_AREA_YA_REFERIDA);
     }
 
-    const profesionalAsignadoId = datos.profesionalAsignadoId ?? null;
+    // Psicología no recibe casos asignados: Trabajo Social refiere al área y cada psicóloga
+    // toma el que va a atender. Una profesional enviada para esa área se ignora.
+    const profesionalAsignadoId =
+      datos.area === 'PSICOLOGIA'
+        ? null
+        : (datos.profesionalAsignadoId ?? null);
     if (
       profesionalAsignadoId &&
       !(await this.referidosRepository.esProfesionalActivoDelArea(
@@ -84,8 +89,6 @@ export class ReferidosService {
         profesionalAsignadoId,
         puedeVerDatosCaso: restringible ? datos.visibilidad.datosCaso : true,
         documentosVisibles: restringible ? datos.visibilidad.documentos : [],
-        crearAtencionPsicologica:
-          datos.area === 'PSICOLOGIA' && profesionalAsignadoId !== null,
         otorgadoPorId: contexto.usuarioId,
       });
     } catch (error) {

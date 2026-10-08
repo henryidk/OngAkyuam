@@ -22,7 +22,6 @@ import {
   MENSAJE_TRASLAPE,
 } from '../compartido/mensajes';
 import { codigoProceso } from '../dominio/codigo-proceso';
-import { motivoFueraDeHorario } from '../dominio/horario-cita';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import {
@@ -82,13 +81,6 @@ export class AperturaProcesoService {
     }
 
     const fechaHora = parseLocalGT(datos.fechaHora);
-    const fueraDeHorario = motivoFueraDeHorario(
-      fechaHora,
-      datos.duracionMinutos,
-    );
-    if (fueraDeHorario) {
-      throw new BadRequestException(fueraDeHorario);
-    }
     if (
       datos.ninoId !== null &&
       !(await this.procesosRepository.ninoPerteneceAExpediente(

@@ -111,44 +111,27 @@ describe('ReferidosService', () => {
     await expect(
       service.referir(
         EXPEDIENTE_ID,
-        datos({ profesionalAsignadoId: PSICOLOGA_ID }),
+        datos({ area: 'MEDICA', profesionalAsignadoId: PSICOLOGA_ID }),
         contexto,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(repositorio.esProfesionalActivoDelArea).toHaveBeenCalledWith(
       PSICOLOGA_ID,
-      'PSICOLOGIA',
+      'MEDICA',
     );
     expect(repositorio.crear).not.toHaveBeenCalled();
   });
 
-  it('Psicología con profesional: crea la atención ya tomada', async () => {
+  it('Psicología nunca nace asignada: se ignora la profesional y el caso queda sin tomar', async () => {
     await service.referir(
       EXPEDIENTE_ID,
       datos({ profesionalAsignadoId: PSICOLOGA_ID }),
       contexto,
     );
-    expect(repositorio.crear).toHaveBeenCalledWith(
-      expect.objectContaining({
-        profesionalAsignadoId: PSICOLOGA_ID,
-        crearAtencionPsicologica: true,
-        puedeVerDatosCaso: false,
-        documentosVisibles: ['ACCIONES_REALIZADAS'],
-        motivo: null,
-        otorgadoPorId: 'ts-1',
-      }),
-    );
-  });
-
-  it('Psicología sin profesional: no crea atención (queda en "Referencias sin tomar")', async () => {
-    await service.referir(EXPEDIENTE_ID, datos(), contexto);
     expect(repositorio.esProfesionalActivoDelArea).not.toHaveBeenCalled();
-    expect(repositorio.crear).toHaveBeenCalledWith(
-      expect.objectContaining({
-        profesionalAsignadoId: null,
-        crearAtencionPsicologica: false,
-      }),
-    );
+    const params = repositorio.crear.mock.calls[0][0];
+    expect(params.profesionalAsignadoId).toBeNull();
+    expect(params).not.toHaveProperty('crearAtencionPsicologica');
   });
 
   it('Jurídico: ignora la visibilidad pedida (acceso completo, no restringible)', async () => {
@@ -158,7 +141,6 @@ describe('ReferidosService', () => {
         area: 'JURIDICO',
         puedeVerDatosCaso: true,
         documentosVisibles: [],
-        crearAtencionPsicologica: false,
       }),
     );
   });

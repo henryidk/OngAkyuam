@@ -28,8 +28,6 @@ export interface CrearReferidoParams {
   puedeVerDatosCaso: boolean;
   /** Tipos cuyos documentos vigentes quedarán visibles para el área. */
   documentosVisibles: TipoDocumento[];
-  /** Psicología con profesional: la atención nace ya tomada por esa psicóloga. */
-  crearAtencionPsicologica: boolean;
   otorgadoPorId: string;
 }
 
