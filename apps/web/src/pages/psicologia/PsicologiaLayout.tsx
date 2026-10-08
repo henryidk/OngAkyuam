@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BarChart3, CalendarDays, FolderSearch, HeartHandshake, Inbox } from 'lucide-react'
+import { BarChart3, CalendarDays, HeartHandshake, Inbox, Users } from 'lucide-react'
 import type { ResumenProcesosPsicologia } from '@akyuam/shared'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { obtenerResumenProcesos } from '../../features/psicologia/api/psicologia.api'
@@ -19,8 +19,15 @@ const ITEMS_NAV: ItemNav[] = [
     Icono: CalendarDays,
   },
   { ruta: RUTAS_PSICOLOGIA.procesos(), etiqueta: 'Procesos', fin: false, Icono: HeartHandshake },
-  { ruta: '/psicologia/expedientes', etiqueta: 'Expedientes', fin: false, Icono: FolderSearch },
-  { ruta: '/psicologia/indicadores', etiqueta: 'Indicadores', fin: false, Icono: BarChart3 },
+  {
+    ruta: RUTAS_PSICOLOGIA.usuarias(),
+    etiqueta: 'Usuarias',
+    fin: false,
+    // La pantalla anterior del expediente sigue viva hasta que se retire: pertenece a este ítem.
+    rutasRelacionadas: ['/psicologia/expedientes'],
+    Icono: Users,
+  },
+  { ruta: '/psicologia/indicadores', etiqueta: 'Reportes', fin: false, Icono: BarChart3 },
 ]
 
 export default function PsicologiaLayout() {

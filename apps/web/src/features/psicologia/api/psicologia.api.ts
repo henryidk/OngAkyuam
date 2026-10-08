@@ -10,13 +10,17 @@ import type {
   CitaProgramadaDto,
   CitaPsicologicaDetalle,
   CitasPaginadas,
+  ExpedienteDetalleArea,
   ExpedienteResumenPsicologia,
   ExpedientesPaginados,
+  FichaUsuariaPsicologiaDto,
   HistorialCitasQuery,
   HuecoLibreDto,
   IndicadoresPsicologia,
   IndicadoresQuery,
+  ListaUsuariasPsicologia,
   ListarProcesosPsicologiaQuery,
+  ListarUsuariasPsicologiaQuery,
   MoverCitaPsicologicaInput,
   ProcesoParaAgendarDto,
   ProcesoPsicologiaAbiertoDto,
@@ -124,6 +128,33 @@ export function actualizarVisibilidadProceso(procesoId: string, datos: Visibilid
 export function obtenerUrlDocumentoCita(citaId: string) {
   return api.get<{ url: string }>(`/psicologia/citas/${citaId}/documento/url`).then((res) => res.data.url)
 }
+
+/** Usuarias referidas a Psicología. `q` es un nombre, un DPI o un número de expediente. */
+export function listarUsuarias(query: Partial<ListarUsuariasPsicologiaQuery>) {
+  return api.get<ListaUsuariasPsicologia>('/psicologia/usuarias', { params: query }).then((res) => res.data)
+}
+
+export function obtenerFichaUsuaria(usuariaId: string) {
+  return api.get<FichaUsuariaPsicologiaDto>(`/psicologia/usuarias/${usuariaId}`).then((res) => res.data)
+}
+
+/**
+ * Abre un proceso nuevo, con su primera cita, para una usuaria que regresa sin referencia nueva.
+ * `claveIdempotencia` evita que un doble envío abra dos procesos.
+ */
+export function abrirProcesoDesdeFicha(usuariaId: string, datos: AgendarCitaPsicologicaInput, claveIdempotencia: string) {
+  return api
+    .post<ProcesoPsicologiaAbiertoDto>(`/psicologia/usuarias/${usuariaId}/procesos`, datos, {
+      headers: { 'Idempotency-Key': claveIdempotencia },
+    })
+    .then((res) => res.data)
+}
+
+/** Datos y documentos de Trabajo Social del expediente: solo lo que TS autorizó a Psicología. */
+export function obtenerExpedienteTs(expedienteId: string) {
+  return api.get<ExpedienteDetalleArea>(`/areas/expedientes/${expedienteId}`).then((res) => res.data)
+}
+
 
 export function obtenerResumenAgenda(query: AgendaResumenQuery) {
   return api.get<AgendaResumenDia[]>('/psicologia/agenda/resumen', { params: query }).then((res) => res.data)

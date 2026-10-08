@@ -183,8 +183,8 @@ export default function DetalleProceso() {
             </h2>
             <p className="text-sm text-gray-600">
               Expediente {proceso.expedienteNumero} · Inicio {fechaDeInstante(proceso.fechaInicio)} · {proceso.psicologa} ·{' '}
-              <Link to={RUTAS_PSICOLOGIA.expediente(proceso.expedienteId)} className="font-medium text-brand-700 hover:underline">
-                Ver expediente de la usuaria →
+              <Link to={RUTAS_PSICOLOGIA.usuaria(proceso.usuariaId)} className="font-medium text-brand-700 hover:underline">
+                Ver ficha de la usuaria →
               </Link>
             </p>
           </div>

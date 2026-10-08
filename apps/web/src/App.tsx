@@ -25,7 +25,6 @@ import Medica from './pages/Medica'
 import MedicaExpediente from './pages/MedicaExpediente'
 import Agenda from './features/psicologia/agenda/Agenda'
 import BandejaPsicologia from './features/psicologia/bandeja/BandejaPsicologia'
-import BuscarExpedientes from './features/psicologia/expedientes/BuscarExpedientes'
 import ExpedienteUsuaria from './features/psicologia/expedientes/ExpedienteUsuaria'
 import PestanaResumen from './features/psicologia/expedientes/PestanaResumen'
 import PestanaHistorialCitas from './features/psicologia/expedientes/PestanaHistorialCitas'
@@ -40,6 +39,13 @@ import ListaProcesosPsicologia from './features/psicologia/procesos/ListaProceso
 import DetalleProcesoPsicologia from './features/psicologia/procesos/DetalleProceso'
 import PestanaSesionesPsicologia from './features/psicologia/procesos/PestanaSesiones'
 import PestanaDocumentosProcesoPsicologia from './features/psicologia/procesos/PestanaDocumentos'
+import ListaUsuariasPsicologia from './features/psicologia/usuarias/ListaUsuarias'
+import FichaUsuariaPsicologia from './features/psicologia/usuarias/FichaUsuaria'
+import PestanaResumenUsuariaPsicologia from './features/psicologia/usuarias/PestanaResumen'
+import PestanaProcesosUsuariaPsicologia from './features/psicologia/usuarias/PestanaProcesos'
+import PestanaDatosCasoPsicologia from './features/psicologia/usuarias/PestanaDatosCaso'
+import PestanaDocumentosTsPsicologia from './features/psicologia/usuarias/PestanaDocumentosTs'
+import PestanaReferenciasPsicologia from './features/psicologia/usuarias/PestanaReferencias'
 import PsicologiaLayout from './pages/psicologia/PsicologiaLayout'
 import { RUTAS_PSICOLOGIA } from './features/psicologia/rutas'
 import TrabajoSocialLayout from './pages/trabajo-social/TrabajoSocialLayout'
@@ -148,7 +154,16 @@ function App() {
               <Route index element={<PestanaSesionesPsicologia />} />
               <Route path="documentos" element={<PestanaDocumentosProcesoPsicologia />} />
             </Route>
-            <Route path="expedientes" element={<BuscarExpedientes />} />
+            <Route path="usuarias" element={<ListaUsuariasPsicologia />} />
+            <Route path="usuarias/:usuariaId" element={<FichaUsuariaPsicologia />}>
+              <Route index element={<PestanaResumenUsuariaPsicologia />} />
+              <Route path="procesos" element={<PestanaProcesosUsuariaPsicologia />} />
+              <Route path="datos" element={<PestanaDatosCasoPsicologia />} />
+              <Route path="documentos" element={<PestanaDocumentosTsPsicologia />} />
+              <Route path="referencias" element={<PestanaReferenciasPsicologia />} />
+            </Route>
+            {/* El buscador de expedientes lo reemplaza la lista de usuarias. */}
+            <Route path="expedientes" element={<Navigate to={RUTAS_PSICOLOGIA.usuarias()} replace />} />
             <Route path="expedientes/:expedienteId" element={<ExpedienteUsuaria />}>
               <Route index element={<PestanaResumen />} />
               <Route path="citas" element={<PestanaHistorialCitas />} />

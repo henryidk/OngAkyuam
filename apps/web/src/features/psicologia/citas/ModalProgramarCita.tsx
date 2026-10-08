@@ -16,13 +16,15 @@ import {
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import { extraerMensajeError } from '../../../lib/errors'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../../juridico/compartido/campos'
-import { atenderReferencia, moverCita, programarCitaEnProceso } from '../api/psicologia.api'
+import { abrirProcesoDesdeFicha, atenderReferencia, moverCita, programarCitaEnProceso } from '../api/psicologia.api'
 import { etiquetaPersona } from '../compartido/personas'
 
 /** Para qué se abre el modal: cada caso guarda contra un endpoint distinto. */
 export type DestinoCita =
   /** Primera cita de un caso tomado: al guardarla se abre el proceso. */
   | { tipo: 'PRIMERA'; caso: CasoPorAgendarDto }
+  /** Usuaria que regresa sin referencia nueva: se abre otro proceso sobre el mismo expediente. */
+  | { tipo: 'NUEVO'; usuariaId: string; usuariaNombreCompleto: string; expedienteNumero: string }
   /** Cita de seguimiento. Sin `procesoId` la psicóloga elige el proceso en el propio modal. */
   | { tipo: 'PROCESO'; procesos: ProcesoParaAgendarDto[]; procesoId: string | null }
   /** Mover una cita programada a otra fecha; la persona atendida no cambia. */
@@ -80,6 +82,9 @@ export default function ModalProgramarCita({
   if (destino.tipo === 'PRIMERA') {
     titulo = 'Agendar primera cita'
     descripcion = `${destino.caso.usuariaNombreCompleto} · Exp. ${destino.caso.expedienteNumero} · referida por Trabajo Social`
+  } else if (destino.tipo === 'NUEVO') {
+    titulo = 'Abrir nuevo proceso'
+    descripcion = `${destino.usuariaNombreCompleto} · Exp. ${destino.expedienteNumero} · agenda su primera cita`
   } else if (destino.tipo === 'MOVER') {
     titulo = 'Reprogramar cita'
     descripcion = `${destino.cita.persona.nombreCompleto} · ${destino.cita.procesoCodigo} · estaba el ${formatInstanteGT(destino.cita.fechaHora)}`
@@ -103,12 +108,16 @@ export default function ModalProgramarCita({
   }
 
   async function enviar(datos: AgendarCitaPsicologicaInput): Promise<string> {
-    if (destino.tipo === 'PRIMERA') {
+    if (destino.tipo === 'PRIMERA' || destino.tipo === 'NUEVO') {
       const firma = JSON.stringify(datos)
       if (idempotencia.current?.firma !== firma) {
         idempotencia.current = { firma, clave: crypto.randomUUID() }
       }
-      const abierto = await atenderReferencia(destino.caso.referidoId, datos, idempotencia.current.clave)
+      const { clave } = idempotencia.current
+      const abierto =
+        destino.tipo === 'PRIMERA'
+          ? await atenderReferencia(destino.caso.referidoId, datos, clave)
+          : await abrirProcesoDesdeFicha(destino.usuariaId, datos, clave)
       return `Proceso ${abierto.codigo} abierto con su primera cita`
     }
     if (destino.tipo === 'MOVER') {
@@ -168,7 +177,7 @@ export default function ModalProgramarCita({
       onConfirmar={() => void guardar()}
       onCancelar={onCerrar}
     >
-      {destino.tipo === 'PRIMERA' && (
+      {(destino.tipo === 'PRIMERA' || destino.tipo === 'NUEVO') && (
         <p className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
           Al guardar se abre el proceso psicológico de la usuaria, en etapa Inicio.
         </p>

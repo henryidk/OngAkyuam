@@ -1,0 +1,28 @@
+import { Link } from 'react-router-dom'
+import type { ProcesoPsicologiaResumen } from '@akyuam/shared'
+import { fechaDeInstante } from '../../../lib/formato'
+import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
+import { RUTAS_PSICOLOGIA } from '../rutas'
+import { textoSesiones, textoSiguiente } from './textoProceso'
+
+/** Un proceso de la usuaria: lleva al detalle del proceso. */
+export default function TarjetaProceso({ proceso }: { proceso: ProcesoPsicologiaResumen }) {
+  return (
+    <Link
+      to={RUTAS_PSICOLOGIA.proceso(proceso.id)}
+      className="flex flex-wrap items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 hover:border-brand-600"
+    >
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-mono text-[13px] font-medium text-gray-700">{proceso.codigo}</span>
+          <EtiquetaEtapa etapa={proceso.etapa} />
+        </div>
+        <p className="text-sm font-semibold text-gray-900">Proceso psicológico</p>
+        <p className="text-xs text-gray-500 tabular-nums">
+          Iniciado {fechaDeInstante(proceso.fechaInicio)} · {textoSesiones(proceso)} · {textoSiguiente(proceso)}
+        </p>
+      </div>
+      <span className="text-sm font-medium text-brand-700">Abrir →</span>
+    </Link>
+  )
+}

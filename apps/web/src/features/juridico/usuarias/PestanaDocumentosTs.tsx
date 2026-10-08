@@ -10,7 +10,8 @@ import { obtenerUrlDocumentoTs } from '../api/juridico.api'
 import { Esqueleto } from '../compartido/EstadosVista'
 import { useContextoFicha } from './contextoFicha'
 
-function DrawerDocumentoTs({
+/** Visor de un documento de Trabajo Social. Lo reutiliza la ficha de Psicología. */
+export function DrawerDocumentoTs({
   expedienteId,
   documento,
   onCerrar,
