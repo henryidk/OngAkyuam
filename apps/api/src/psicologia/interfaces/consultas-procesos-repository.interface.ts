@@ -1,5 +1,6 @@
 import type {
   FiltroProcesosPsicologia,
+  ProcesoColegaPsicologiaResumen,
   ProcesoPsicologiaDetalle,
   ProcesoPsicologiaResumen,
   ResumenProcesosPsicologia,
@@ -35,8 +36,10 @@ export type DetalleProcesoRepo = Omit<
 >;
 
 /**
- * Lecturas de procesos. Todas filtran por la psicóloga dueña en la propia consulta: de un
- * proceso ajeno no sale ni una fila, aunque alguien olvide el guard de acceso.
+ * Lecturas de procesos. Todas filtran en la propia consulta por quién pregunta: de un proceso
+ * que no puede leer no sale ni una fila, aunque alguien olvide el guard de acceso. Las listas
+ * de trabajo son solo de la dueña; el detalle y `listarDeColegas` admiten además el proceso
+ * cerrado de una colega (ver `procesoLegible`).
  */
 export interface IConsultasProcesosRepository {
   listar(
@@ -48,14 +51,22 @@ export interface IConsultasProcesosRepository {
     psicologaId: string,
     ahora: Date,
   ): Promise<ProcesoPsicologiaResumen[]>;
+  /**
+   * Los procesos ya cerrados que otras psicólogas llevaron con una usuaria que esta también
+   * atiende o atendió, el más reciente primero. Vacío si no tiene ningún caso con ella.
+   */
+  listarDeColegas(
+    usuariaId: string,
+    psicologaId: string,
+  ): Promise<ProcesoColegaPsicologiaResumen[]>;
   resumen(psicologaId: string, ahora: Date): Promise<ResumenProcesosPsicologia>;
-  /** `null` tanto si no existe como si es de otra psicóloga. */
+  /** `null` tanto si no existe como si esta psicóloga no puede leerlo. */
   obtenerDetalle(
     procesoId: string,
     psicologaId: string,
     ahora: Date,
   ): Promise<DetalleProcesoRepo | null>;
-  /** Sesiones atendidas e inasistencias, de la más reciente a la más antigua. Se usa tras `exigirAccesoProceso`. */
+  /** Sesiones atendidas e inasistencias, de la más reciente a la más antigua. Se usa tras `exigirLecturaProceso`. */
   listarSesiones(
     params: ListarSesionesParams,
   ): Promise<PaginaConCursorRepo<SesionProcesoDto>>;

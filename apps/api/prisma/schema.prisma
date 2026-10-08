@@ -52,6 +52,8 @@ model Usuario {
   atencionesPsicologicasActualizadas AtencionPsicologica[]      @relation("AtencionPsicologicaActualizadaPor")
   atencionesPsicologicasAsignadas    AtencionPsicologica[]      @relation("AtencionPsicologicaAsignada")
   cambiosEstadoAtencionRegistrados   CambioEstadoAtencion[]     @relation("CambioEstadoAtencionRegistradoPor")
+  reasignacionesPsicologiaCedidas    ReasignacionAtencionPsicologica[] @relation("ReasignacionPsicologiaDe")
+  reasignacionesPsicologiaTomadas    ReasignacionAtencionPsicologica[] @relation("ReasignacionPsicologiaA")
   citasPsicologicasAtendidas         CitaPsicologica[]          @relation("CitaPsicologicaAtendidaPor")
   documentosPendientesSubidos        DocumentoPendiente[]
   fichaPersonal                      Personal?
@@ -608,8 +610,9 @@ model AtencionPsicologica {
   createdAt            DateTime                  @default(now()) @db.Timestamptz(3)
   updatedAt            DateTime                  @updatedAt @db.Timestamptz(3)
 
-  citas         CitaPsicologica[]
-  cambiosEstado CambioEstadoAtencion[]
+  citas          CitaPsicologica[]
+  cambiosEstado  CambioEstadoAtencion[]
+  reasignaciones ReasignacionAtencionPsicologica[]
 
   @@unique([expedienteId, consecutivo])
   @@index([psicologaAsignadaId])
@@ -627,6 +630,22 @@ enum MotivoCierrePsicologia {
 // Historial de hitos del proceso clínico (INICIO → SEGUIMIENTO → CIERRE), separado de
 // `AtencionPsicologica.estado` (que solo guarda el estado actual) para poder reconstruir cuándo
 // y por qué cambió — ver psicologianuevoplan.md §6.1.
+// Cada vez que un proceso abierto cambia de psicóloga (la anterior quedó con la cuenta
+// desactivada y otra lo tomó). Es el historial que se muestra en el detalle del proceso; solo
+// se agregan filas, nunca se editan ni se borran.
+model ReasignacionAtencionPsicologica {
+  id            String              @id @default(uuid())
+  atencionId    String
+  atencion      AtencionPsicologica @relation(fields: [atencionId], references: [id], onDelete: Cascade)
+  dePsicologaId String
+  dePsicologa   Usuario             @relation("ReasignacionPsicologiaDe", fields: [dePsicologaId], references: [id])
+  aPsicologaId  String
+  aPsicologa    Usuario             @relation("ReasignacionPsicologiaA", fields: [aPsicologaId], references: [id])
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+
+  @@index([atencionId])
+}
+
 model CambioEstadoAtencion {
   id              String                     @id @default(uuid())
   atencionId      String

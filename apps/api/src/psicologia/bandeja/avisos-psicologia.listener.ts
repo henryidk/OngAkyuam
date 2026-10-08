@@ -4,12 +4,17 @@ import type { INovedadesAreaNotifier } from '../../areas/interfaces/novedades-ar
 import type { RegistrarAuditoriaParams } from '../../auth/services/audit.service';
 import { AuditService } from '../../auth/services/audit.service';
 
-/** ¿El evento cambia el Área de atención de Psicología? Entra una referencia o alguien toma una. */
+/** ¿El evento cambia el Área de atención de Psicología? Entra una referencia o alguien toma un caso. */
 export function esNovedadParaPsicologia({
   accion,
   detalles,
 }: Pick<RegistrarAuditoriaParams, 'accion' | 'detalles'>): boolean {
-  if (accion === 'CASO_PSICOLOGIA_TOMADO') return true;
+  if (
+    accion === 'CASO_PSICOLOGIA_TOMADO' ||
+    accion === 'PROCESO_PSICOLOGIA_REASIGNADO'
+  ) {
+    return true;
+  }
   if (accion !== 'EXPEDIENTE_REFERIDO') return false;
   return (
     typeof detalles === 'object' &&

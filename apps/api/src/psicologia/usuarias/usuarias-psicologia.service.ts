@@ -69,18 +69,24 @@ export class UsuariasPsicologiaService {
     if (!ficha) {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_USUARIA);
     }
-    const procesos = await this.consultasRepository.listarDeUsuaria(
-      usuariaId,
-      contexto.usuarioId,
-      new Date(),
-    );
+    const [procesos, procesosDeColegas] = await Promise.all([
+      this.consultasRepository.listarDeUsuaria(
+        usuariaId,
+        contexto.usuarioId,
+        new Date(),
+      ),
+      this.consultasRepository.listarDeColegas(usuariaId, contexto.usuarioId),
+    ]);
 
     await this.auditService.registrar(
       eventoAuditoria(contexto, {
         accion: 'FICHA_USUARIA_PSICOLOGIA_CONSULTADA',
         entidad: 'Usuaria',
         entidadId: usuariaId,
-        detalles: { expedienteId: ficha.expediente.id },
+        detalles: {
+          expedienteId: ficha.expediente.id,
+          procesosDeColegas: procesosDeColegas.length,
+        },
       }),
     );
 
@@ -91,6 +97,7 @@ export class UsuariasPsicologiaService {
       ...ficha,
       contadores: { enProceso: procesos.length - cerrados, cerrados },
       procesos,
+      procesosDeColegas,
     };
   }
 }

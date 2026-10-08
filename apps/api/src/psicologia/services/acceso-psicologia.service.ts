@@ -22,6 +22,7 @@ import type {
   AccesoProcesoPsicologia,
   AccesoUsuariaPsicologia,
   IProcesosPsicologiaRepository,
+  LecturaProcesoPsicologia,
 } from '../interfaces/procesos-psicologia-repository.interface';
 import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicologica-repository.interface';
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
@@ -29,6 +30,7 @@ import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-
 import type {
   AccesoCitaPsicologica,
   ICitasPsicologicasRepository,
+  LecturaCitaPsicologica,
 } from '../interfaces/citas-psicologicas-repository.interface';
 
 /**
@@ -61,6 +63,25 @@ export class AccesoPsicologiaService {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_PROCESO);
     }
     return acceso;
+  }
+
+  /**
+   * El proceso se puede LEER: es de esta psicóloga, o es el ya cerrado de una colega con una
+   * usuaria que ella también atiende o atendió. Nunca autoriza una escritura: para eso está
+   * `exigirAccesoProceso`.
+   */
+  async exigirLecturaProceso(
+    procesoId: string,
+    psicologaId: string,
+  ): Promise<LecturaProcesoPsicologia> {
+    const lectura = await this.procesosRepository.buscarLecturaProceso(
+      procesoId,
+      psicologaId,
+    );
+    if (!lectura) {
+      throw new ForbiddenException(MENSAJE_SIN_ACCESO_PROCESO);
+    }
+    return lectura;
   }
 
   /**
@@ -142,6 +163,21 @@ export class AccesoPsicologiaService {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_CITA);
     }
     return acceso;
+  }
+
+  /** Como `exigirLecturaProceso`, para lo que cuelga de una cita (el documento de la sesión). */
+  async exigirLecturaCita(
+    citaId: string,
+    psicologaId: string,
+  ): Promise<LecturaCitaPsicologica> {
+    const lectura = await this.citasRepository.buscarLecturaCita(
+      citaId,
+      psicologaId,
+    );
+    if (!lectura) {
+      throw new ForbiddenException(MENSAJE_SIN_ACCESO_CITA);
+    }
+    return lectura;
   }
 
   /**

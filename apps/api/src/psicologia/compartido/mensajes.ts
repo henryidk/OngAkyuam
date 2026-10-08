@@ -8,6 +8,8 @@ export const MENSAJE_SIN_ACCESO_REFERENCIA =
 export const MENSAJE_SIN_ACCESO_USUARIA = 'No tiene acceso a esta usuaria';
 export const MENSAJE_CASO_YA_TOMADO =
   'Este caso ya fue tomado por otra profesional';
+export const MENSAJE_CASO_NO_REASIGNABLE =
+  'Este caso ya no está disponible: otra profesional lo tomó o volvió con su psicóloga';
 export const MENSAJE_TOMAR_PRIMERO =
   'Tome el caso antes de agendar la primera cita';
 export const MENSAJE_PROCESO_YA_ABIERTO =

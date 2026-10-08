@@ -74,6 +74,20 @@ describe('ProcesosPsicologiaService.actualizarVisibilidad', () => {
     ]);
   });
 
+  it('poder leer el proceso cerrado de una colega no permite modificarlo', async () => {
+    procesosRepository.buscarLecturaProceso.mockResolvedValue({
+      id: PROCESO_ID,
+      expedienteId: EXPEDIENTE_ID,
+      propio: false,
+    });
+    procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
+
+    await expect(
+      service.actualizarVisibilidad(PROCESO_ID, datos, contexto),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(procesosRepository.actualizarVisibilidad).not.toHaveBeenCalled();
+  });
+
   it('rechaza con 403 el proceso de otra psicóloga, sin guardar', async () => {
     procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
 

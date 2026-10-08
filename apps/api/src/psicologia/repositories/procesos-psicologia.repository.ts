@@ -15,6 +15,7 @@ import type {
   ActualizarVisibilidadParams,
   CerrarProcesoParams,
   IProcesosPsicologiaRepository,
+  LecturaProcesoPsicologia,
   ProcesoAbierto,
   ProcesoCerrado,
 } from '../interfaces/procesos-psicologia-repository.interface';
@@ -22,6 +23,7 @@ import {
   EXPEDIENTE_SIN_TOMAR,
   expedienteAccesible,
   expedienteConProcesoDe,
+  procesoLegible,
 } from './acceso-expediente';
 
 const INTENTOS_MAXIMOS = 3;
@@ -68,6 +70,24 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
       consecutivo: proceso.consecutivo,
       etapa: proceso.estado,
       version: proceso.version,
+    };
+  }
+
+  async buscarLecturaProceso(
+    procesoId: string,
+    psicologaId: string,
+  ): Promise<LecturaProcesoPsicologia | null> {
+    const proceso = await this.prisma.atencionPsicologica.findFirst({
+      where: { id: procesoId, ...procesoLegible(psicologaId) },
+      select: { id: true, expedienteId: true, psicologaAsignadaId: true },
+    });
+    if (!proceso) {
+      return null;
+    }
+    return {
+      id: proceso.id,
+      expedienteId: proceso.expedienteId,
+      propio: proceso.psicologaAsignadaId === psicologaId,
     };
   }
 

@@ -2,12 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   nombreMunicipio,
-  type EstadoReferenciaPsicologia,
   type FiltroUsuariasPsicologia,
   type ListaUsuariasPsicologia,
 } from '@akyuam/shared';
 import { condicionBusqueda } from '../../common/busqueda-usuarias';
 import { PrismaService } from '../../prisma/prisma.service';
+import { estadoReferencia } from '../dominio/estado-referencia';
 import type {
   FichaUsuariaRepo,
   IUsuariasPsicologiaRepository,
@@ -194,7 +194,12 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
               numero: true,
               atencionesPsicologicas: {
                 where: { psicologaAsignadaId: { not: null } },
-                select: { referidoId: true, fechaInicio: true, estado: true },
+                select: {
+                  referidoId: true,
+                  fechaInicio: true,
+                  estado: true,
+                  psicologaAsignadaId: true,
+                },
               },
             },
           },
@@ -214,19 +219,11 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
     ]);
 
     const historial = referencias.map((referencia) => {
-      const tomadas = referencia.expediente.atencionesPsicologicas;
-      const porAgendar = tomadas.some(
-        (atencion) =>
-          atencion.referidoId === referencia.id &&
-          atencion.fechaInicio === null &&
-          atencion.estado !== 'CIERRE',
+      const estado = estadoReferencia(
+        referencia.id,
+        referencia.expediente.atencionesPsicologicas,
+        psicologaId,
       );
-      const estado: EstadoReferenciaPsicologia =
-        tomadas.length === 0
-          ? 'SIN_TOMAR'
-          : porAgendar
-            ? 'POR_AGENDAR'
-            : 'ATENDIDA';
       return {
         referidoId: referencia.id,
         expedienteId: referencia.expedienteId,

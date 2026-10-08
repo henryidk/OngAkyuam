@@ -17,6 +17,14 @@ export interface AccesoProcesoPsicologia {
   version: number;
 }
 
+/** Un proceso que la psicóloga puede leer, sea suyo o el cerrado de una colega. */
+export interface LecturaProcesoPsicologia {
+  id: string;
+  expedienteId: string;
+  /** `false` = lo llevó otra psicóloga: se lee, no se toca. */
+  propio: boolean;
+}
+
 export interface AbrirProcesoParams {
   procesoId: string;
   psicologaId: string;
@@ -94,6 +102,15 @@ export interface IProcesosPsicologiaRepository {
     procesoId: string,
     psicologaId: string,
   ): Promise<AccesoProcesoPsicologia | null>;
+  /**
+   * Único punto de verificación "¿esta psicóloga puede leer este proceso?": es suyo, o es el
+   * proceso ya cerrado de una colega con una usuaria que ella también atiende o atendió. `null`
+   * en cualquier otro caso. No sirve para autorizar escrituras.
+   */
+  buscarLecturaProceso(
+    procesoId: string,
+    psicologaId: string,
+  ): Promise<LecturaProcesoPsicologia | null>;
   /**
    * Único punto de verificación "¿esta psicóloga puede ver a esta usuaria?": tiene un expediente
    * referido a Psicología que nadie ha tomado o en el que ella lleva un proceso. `null` tanto

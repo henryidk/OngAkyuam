@@ -65,7 +65,7 @@ const LISTA_VACIA = {
 describe('UsuariasPsicologiaService', () => {
   let usuariasRepository: jest.Mocked<IUsuariasPsicologiaRepository>;
   let consultasRepository: jest.Mocked<
-    Pick<IConsultasProcesosRepository, 'listarDeUsuaria'>
+    Pick<IConsultasProcesosRepository, 'listarDeUsuaria' | 'listarDeColegas'>
   >;
   let auditService: ReturnType<typeof crearAuditService>;
   let service: UsuariasPsicologiaService;
@@ -83,6 +83,7 @@ describe('UsuariasPsicologiaService', () => {
           proceso('CIERRE'),
           proceso('CIERRE'),
         ]),
+      listarDeColegas: jest.fn().mockResolvedValue([]),
     };
     auditService = crearAuditService();
     service = new UsuariasPsicologiaService(
@@ -144,6 +145,7 @@ describe('UsuariasPsicologiaService', () => {
         'psicologa-a',
       );
       expect(consultasRepository.listarDeUsuaria).not.toHaveBeenCalled();
+      expect(consultasRepository.listarDeColegas).not.toHaveBeenCalled();
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
 
@@ -159,6 +161,22 @@ describe('UsuariasPsicologiaService', () => {
       expect(ficha.contadores).toEqual({ enProceso: 1, cerrados: 2 });
     });
 
+    it('añade aparte los procesos cerrados de colegas, sin mezclarlos con los propios ni con sus contadores', async () => {
+      consultasRepository.listarDeColegas.mockResolvedValue([
+        { ...proceso('CIERRE'), psicologa: 'Colega De Prueba' },
+      ]);
+
+      const ficha = await service.obtener(USUARIA_ID, contexto);
+
+      expect(consultasRepository.listarDeColegas).toHaveBeenCalledWith(
+        USUARIA_ID,
+        'psicologa-a',
+      );
+      expect(ficha.procesosDeColegas).toHaveLength(1);
+      expect(ficha.procesos).toHaveLength(3);
+      expect(ficha.contadores).toEqual({ enProceso: 1, cerrados: 2 });
+    });
+
     it('audita la consulta solo con ids', async () => {
       await service.obtener(USUARIA_ID, contexto);
 
@@ -166,7 +184,7 @@ describe('UsuariasPsicologiaService', () => {
         expect.objectContaining({
           accion: 'FICHA_USUARIA_PSICOLOGIA_CONSULTADA',
           entidadId: USUARIA_ID,
-          detalles: { expedienteId: EXPEDIENTE_ID },
+          detalles: { expedienteId: EXPEDIENTE_ID, procesosDeColegas: 0 },
         }),
       ]);
     });

@@ -5,6 +5,7 @@ import {
   type CitaRefDto,
   type FiltroProcesosPsicologia,
   type PersonaAtendidaDto,
+  type ProcesoColegaPsicologiaResumen,
   type ProcesoPsicologiaResumen,
   type ResumenProcesosPsicologia,
   type SesionProcesoDto,
@@ -18,7 +19,12 @@ import type {
   ListarProcesosParams,
   ListarSesionesParams,
 } from '../interfaces/consultas-procesos-repository.interface';
-import { EXPEDIENTE_SIN_TOMAR } from './acceso-expediente';
+import {
+  EXPEDIENTE_SIN_TOMAR,
+  PROCESO_POR_REASIGNAR,
+  procesoCerradoDeColega,
+  procesoLegible,
+} from './acceso-expediente';
 import { casoPorAgendar } from './bandeja-psicologia.repository';
 import { mapearDocumentoCita } from './citas-psicologicas.mapper';
 import { nombreCompleto, personaAtendida, SELECT_PERSONA } from './personas';
@@ -190,6 +196,32 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
     return filas.map((fila) => mapearResumen(fila, proximas));
   }
 
+  async listarDeColegas(
+    usuariaId: string,
+    psicologaId: string,
+  ): Promise<ProcesoColegaPsicologiaResumen[]> {
+    const filas = await this.prisma.atencionPsicologica.findMany({
+      where: {
+        AND: [
+          { expediente: { usuariaId } },
+          procesoCerradoDeColega(psicologaId),
+        ],
+      },
+      select: {
+        ...SELECT_RESUMEN,
+        psicologaAsignada: { select: { nombreCompleto: true } },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+      take: LIMITE_PROCESOS_POR_USUARIA,
+    });
+    // Un proceso cerrado no tiene próxima cita: al cerrarlo se cancelan las que quedaban.
+    const sinProximas = new Map<string, CitaRefDto>();
+    return filas.map((fila) => ({
+      ...mapearResumen(fila, sinProximas),
+      psicologa: fila.psicologaAsignada?.nombreCompleto ?? '',
+    }));
+  }
+
   async resumen(
     psicologaId: string,
     ahora: Date,
@@ -207,6 +239,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
     const [
       porFiltro,
       referenciasSinTomar,
+      casosPorReasignar,
       casosPorAgendar,
       [{ total: citasSinRegistrar }],
     ] = await Promise.all([
@@ -214,6 +247,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       this.prisma.referidoArea.count({
         where: { area: 'PSICOLOGIA', expediente: EXPEDIENTE_SIN_TOMAR },
       }),
+      this.prisma.atencionPsicologica.count({ where: PROCESO_POR_REASIGNAR }),
       this.prisma.atencionPsicologica.count({
         where: casoPorAgendar(psicologaId),
       }),
@@ -235,6 +269,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
     return {
       procesos,
       referenciasSinTomar,
+      casosPorReasignar,
       casosPorAgendar,
       citasSinRegistrar,
     };
@@ -246,9 +281,10 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
     ahora: Date,
   ): Promise<DetalleProcesoRepo | null> {
     const proceso = await this.prisma.atencionPsicologica.findFirst({
-      where: { id: procesoId, psicologaAsignadaId: psicologaId },
+      where: { id: procesoId, ...procesoLegible(psicologaId) },
       select: {
         ...SELECT_RESUMEN,
+        psicologaAsignadaId: true,
         expedienteId: true,
         version: true,
         motivoCierreCatalogo: true,
@@ -257,6 +293,13 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         visibleMedica: true,
         psicologaAsignada: { select: { nombreCompleto: true } },
         referido: { select: { motivo: true } },
+        reasignaciones: {
+          select: {
+            createdAt: true,
+            dePsicologa: { select: { nombreCompleto: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
     if (!proceso) {
@@ -273,6 +316,11 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       expedienteId: proceso.expedienteId,
       version: proceso.version,
       psicologa: proceso.psicologaAsignada?.nombreCompleto ?? '',
+      soloLectura: proceso.psicologaAsignadaId !== psicologaId,
+      psicologasAnteriores: proceso.reasignaciones.map((reasignacion) => ({
+        nombre: reasignacion.dePsicologa.nombreCompleto,
+        hasta: reasignacion.createdAt.toISOString(),
+      })),
       motivoReferencia: proceso.referido?.motivo ?? null,
       motivoCierre: proceso.motivoCierreCatalogo,
       resumenCierre: proceso.resumenCierre,

@@ -4,7 +4,9 @@ import type {
   AgendarCitaPsicologicaInput,
   BuscarExpedientesQuery,
   CasoPorAgendarDto,
+  CasoPorReasignarDto,
   CasoPsicologiaTomadoDto,
+  CasoReasignadoDto,
   CerrarProcesoPsicologiaInput,
   CitaAgendaDto,
   CitaProgramadaDto,
@@ -43,6 +45,15 @@ import { api } from '../../../lib/api'
 
 export function obtenerResumenProcesos() {
   return api.get<ResumenProcesosPsicologia>('/psicologia/procesos/resumen').then((res) => res.data)
+}
+
+/** Área de atención: casos y procesos abiertos cuya psicóloga ya no tiene la cuenta activa. */
+export function listarPorReasignar() {
+  return api.get<CasoPorReasignarDto[]>('/psicologia/bandeja/por-reasignar').then((res) => res.data)
+}
+
+export function tomarCasoPorReasignar(procesoId: string) {
+  return api.post<CasoReasignadoDto>(`/psicologia/bandeja/por-reasignar/${procesoId}/tomar`).then((res) => res.data)
 }
 
 /** Área de atención: referencias de Trabajo Social que ninguna psicóloga ha tomado. */

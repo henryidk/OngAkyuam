@@ -28,6 +28,12 @@ describe('esNovedadParaPsicologia', () => {
     );
   });
 
+  it('avisa cuando una psicóloga retoma un caso por reasignar', () => {
+    expect(
+      esNovedadParaPsicologia({ accion: 'PROCESO_PSICOLOGIA_REASIGNADO' }),
+    ).toBe(true);
+  });
+
   it.each([
     'CITA_PSICOLOGICA_PROGRAMADA',
     'PROCESO_PSICOLOGICO_CONSULTADO',

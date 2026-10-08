@@ -105,4 +105,75 @@ describe('BandejaPsicologiaService', () => {
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
   });
+
+  describe('tomarPorReasignar', () => {
+    const reasignado = {
+      procesoId: PROCESO_ID,
+      expedienteId: EXPEDIENTE_ID,
+      psicologaAnteriorId: 'psicologa-inactiva',
+      referidoIdPorAgendar: null,
+      citasCanceladas: 2,
+    };
+
+    it('la lista es la del área: no depende de quién pregunta', async () => {
+      await service.listarPorReasignar();
+
+      expect(bandejaRepository.listarPorReasignar).toHaveBeenCalledWith();
+    });
+
+    it('pasa el proceso a quien lo toma, nunca a otra persona', async () => {
+      bandejaRepository.reasignar.mockResolvedValue(reasignado);
+
+      await expect(
+        service.tomarPorReasignar(PROCESO_ID, contexto),
+      ).resolves.toEqual({
+        procesoId: PROCESO_ID,
+        referidoIdPorAgendar: null,
+        citasCanceladas: 2,
+      });
+      expect(bandejaRepository.reasignar).toHaveBeenCalledWith({
+        procesoId: PROCESO_ID,
+        psicologaId: 'psicologa-a',
+      });
+    });
+
+    it('devuelve la referencia cuando el caso aún no tenía primera cita', async () => {
+      bandejaRepository.reasignar.mockResolvedValue({
+        ...reasignado,
+        referidoIdPorAgendar: REFERIDO_ID,
+        citasCanceladas: 0,
+      });
+
+      await expect(
+        service.tomarPorReasignar(PROCESO_ID, contexto),
+      ).resolves.toMatchObject({ referidoIdPorAgendar: REFERIDO_ID });
+    });
+
+    it('audita solo ids: quién lo llevaba y cuántas citas se cancelaron', async () => {
+      bandejaRepository.reasignar.mockResolvedValue(reasignado);
+
+      await service.tomarPorReasignar(PROCESO_ID, contexto);
+
+      expect(eventosAuditados(auditService)).toEqual([
+        expect.objectContaining({
+          accion: 'PROCESO_PSICOLOGIA_REASIGNADO',
+          entidadId: PROCESO_ID,
+          detalles: {
+            expedienteId: EXPEDIENTE_ID,
+            psicologaAnteriorId: 'psicologa-inactiva',
+            citasCanceladas: 2,
+          },
+        }),
+      ]);
+    });
+
+    it('responde 409 y no audita si el proceso no está por reasignar o ya lo tomó otra', async () => {
+      bandejaRepository.reasignar.mockResolvedValue(null);
+
+      await expect(
+        service.tomarPorReasignar(PROCESO_ID, contexto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+  });
 });

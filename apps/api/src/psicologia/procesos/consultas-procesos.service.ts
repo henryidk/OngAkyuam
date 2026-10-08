@@ -35,7 +35,11 @@ export function palabrasDeBusqueda(q: string | undefined): string[] {
     .slice(0, PALABRAS_MAXIMAS);
 }
 
-/** Lecturas de "mis procesos": todo lo que sale de aquí es de la psicóloga que consulta. */
+/**
+ * Lecturas de procesos. Las listas y los contadores son solo de la psicóloga que consulta; el
+ * detalle y las sesiones se abren además sobre el proceso ya cerrado de una colega con una
+ * usuaria que ella también atiende, siempre en solo lectura.
+ */
 @Injectable()
 export class ConsultasProcesosService {
   constructor(
@@ -82,23 +86,32 @@ export class ConsultasProcesosService {
         accion: 'PROCESO_PSICOLOGICO_CONSULTADO',
         entidad: 'AtencionPsicologica',
         entidadId: procesoId,
-        detalles: { expedienteId: detalle.expedienteId },
+        detalles: {
+          expedienteId: detalle.expedienteId,
+          deColega: detalle.soloLectura,
+        },
       }),
     );
 
     return {
       ...detalle,
-      accionesDisponibles: accionesDisponibles(detalle.etapa),
+      // Sobre el proceso de una colega no hay nada que hacer: ni siquiera la visibilidad.
+      accionesDisponibles: detalle.soloLectura
+        ? []
+        : accionesDisponibles(detalle.etapa),
     };
   }
 
-  /** Las notas de sesión: solo la psicóloga dueña del proceso, y cada lectura queda auditada. */
+  /**
+   * Las notas de sesión: la dueña del proceso, o quien retoma a la usuaria cuando el proceso de
+   * su colega ya está cerrado. Cada lectura queda auditada, y se anota si fue de una colega.
+   */
   async sesiones(
     procesoId: string,
     query: SesionesProcesoPsicologiaQuery,
     contexto: ContextoAuditoria,
   ): Promise<SesionesProcesoPaginadas> {
-    const proceso = await this.acceso.exigirAccesoProceso(
+    const proceso = await this.acceso.exigirLecturaProceso(
       procesoId,
       contexto.usuarioId,
     );
@@ -116,6 +129,7 @@ export class ConsultasProcesosService {
         entidadId: procesoId,
         detalles: {
           expedienteId: proceso.expedienteId,
+          deColega: !proceso.propio,
           resultados: pagina.items.length,
         },
       }),

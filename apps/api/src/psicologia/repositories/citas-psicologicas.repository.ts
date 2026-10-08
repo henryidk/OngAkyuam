@@ -13,6 +13,7 @@ import type {
   CrearCitaParams,
   DatosCitaOrigen,
   ICitasPsicologicasRepository,
+  LecturaCitaPsicologica,
   ListarAgendaParams,
   ListarCitasEnRangoParams,
   ListarHistorialParams,
@@ -20,6 +21,7 @@ import type {
   ReprogramarCitaParams,
 } from '../interfaces/citas-psicologicas-repository.interface';
 import type { PaginaConCursorRepo } from '../interfaces/atencion-psicologica-repository.interface';
+import { procesoLegible } from './acceso-expediente';
 import { INCLUDE_CITA, mapearCita } from './citas-psicologicas.mapper';
 
 /** Margen amplio de sobra sobre cualquier duración real de consulta, para acotar la ventana de candidatas sin riesgo de descartar un traslape real. */
@@ -55,6 +57,33 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       id: cita.id,
       atencionId: cita.atencionId,
       expedienteId: cita.atencion.expedienteId,
+    };
+  }
+
+  async buscarLecturaCita(
+    citaId: string,
+    psicologaId: string,
+  ): Promise<LecturaCitaPsicologica | null> {
+    const cita = await this.prisma.citaPsicologica.findFirst({
+      where: {
+        id: citaId,
+        atencion: {
+          expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
+          ...procesoLegible(psicologaId),
+        },
+      },
+      select: {
+        id: true,
+        atencionId: true,
+        atencion: { select: { expedienteId: true, psicologaAsignadaId: true } },
+      },
+    });
+    if (!cita) return null;
+    return {
+      id: cita.id,
+      atencionId: cita.atencionId,
+      expedienteId: cita.atencion.expedienteId,
+      propia: cita.atencion.psicologaAsignadaId === psicologaId,
     };
   }
 

@@ -492,6 +492,38 @@ export interface CasoPorAgendarDto {
   personas: PersonaAtendidaDto[]
 }
 
+/**
+ * Fila de `GET /psicologia/bandeja/por-reasignar`: caso o proceso abierto cuya psicóloga ya no
+ * tiene la cuenta activa. Lo ve toda el área para que una lo tome; no lleva texto clínico.
+ */
+export interface CasoPorReasignarDto {
+  procesoId: string
+  expedienteNumero: string
+  usuariaId: string
+  usuariaNombreCompleto: string
+  edad: number
+  municipio: string | null
+  /** "P1-05-2026"; `null` si la psicóloga anterior lo tomó pero nunca le agendó la primera cita. */
+  codigo: string | null
+  etapa: EstadoAtencionPsicologica
+  sesionesAtendidas: number
+  /** Cuándo abrió el proceso; `null` mientras no tenga primera cita. */
+  fechaInicio: string | null
+  /** Nombre de la psicóloga que lo llevaba. */
+  psicologaAnterior: string
+  /** Citas que siguen programadas: se cancelan al tomar el caso, no se heredan. */
+  citasProgramadas: number
+  personas: PersonaAtendidaDto[]
+}
+
+/** Respuesta de `POST /psicologia/bandeja/por-reasignar/:procesoId/tomar`. */
+export interface CasoReasignadoDto {
+  procesoId: string
+  /** Solo viene si el caso aún no tenía primera cita: toca agendarla desde la agenda. */
+  referidoIdPorAgendar: string | null
+  citasCanceladas: number
+}
+
 /** Cita tal como la pinta la agenda del rediseño: sin modalidad, lugar ni texto clínico. */
 export interface CitaAgendaDto {
   id: string
@@ -565,6 +597,8 @@ export type ProcesosPsicologiaPaginados = PaginaConCursor<ProcesoPsicologiaResum
 export interface ResumenProcesosPsicologia {
   procesos: Record<FiltroProcesosPsicologia, number>
   referenciasSinTomar: number
+  /** Casos y procesos abiertos de psicólogas con la cuenta desactivada, que nadie ha retomado. */
+  casosPorReasignar: number
   casosPorAgendar: number
   citasSinRegistrar: number
 }
@@ -572,11 +606,31 @@ export interface ResumenProcesosPsicologia {
 export const ACCIONES_PROCESO_PSICOLOGIA = ['PROGRAMAR_CITA', 'REGISTRAR_SESION', 'CERRAR', 'EDITAR_VISIBILIDAD'] as const
 export type AccionProcesoPsicologia = (typeof ACCIONES_PROCESO_PSICOLOGIA)[number]
 
-/** `GET /psicologia/procesos/:id` — solo para la psicóloga dueña del proceso. */
+/** Proceso ya cerrado que llevó otra psicóloga con una usuaria que quien consulta también atiende. */
+export interface ProcesoColegaPsicologiaResumen extends ProcesoPsicologiaResumen {
+  /** Nombre de la psicóloga que lo llevó. */
+  psicologa: string
+}
+
+/** Quien llevaba un proceso abierto hasta que otra psicóloga lo tomó por reasignación. */
+export interface PsicologaAnteriorDto {
+  nombre: string
+  /** Instante en que la siguiente psicóloga tomó el proceso. */
+  hasta: string
+}
+
+/**
+ * `GET /psicologia/procesos/:id` — para la psicóloga dueña del proceso, o en solo lectura para
+ * quien retoma a la usuaria cuando el proceso de su colega ya está cerrado.
+ */
 export interface ProcesoPsicologiaDetalle extends ProcesoPsicologiaResumen {
   expedienteId: string
   version: number
   psicologa: string
+  /** El proceso lo llevó otra psicóloga: se lee completo, no se modifica nada. */
+  soloLectura: boolean
+  /** Psicólogas que lo llevaron antes de que cambiara de manos, de la más reciente a la más antigua. */
+  psicologasAnteriores: PsicologaAnteriorDto[]
   motivoReferencia: string | null
   motivoCierre: MotivoCierrePsicologia | null
   resumenCierre: string | null
@@ -586,7 +640,10 @@ export interface ProcesoPsicologiaDetalle extends ProcesoPsicologiaResumen {
   accionesDisponibles: AccionProcesoPsicologia[]
 }
 
-/** Fila de `GET /psicologia/procesos/:id/sesiones` — con texto clínico: nunca sale de Psicología ni de su dueña. */
+/**
+ * Fila de `GET /psicologia/procesos/:id/sesiones` — con texto clínico: nunca sale de Psicología.
+ * La lee su dueña y, con el proceso ya cerrado, la colega que retoma a la misma usuaria.
+ */
 export interface SesionProcesoDto {
   citaId: string
   /** Número de sesión dentro del proceso; null en una inasistencia. */
@@ -710,6 +767,8 @@ export interface FichaUsuariaPsicologiaDto {
   contadores: { enProceso: number; cerrados: number }
   /** Solo los míos; de los de otra psicóloga no se devuelve nada. */
   procesos: ProcesoPsicologiaResumen[]
+  /** Procesos ya cerrados que llevaron otras psicólogas; vacío si no tengo ningún caso con la usuaria. */
+  procesosDeColegas: ProcesoColegaPsicologiaResumen[]
   /** Más reciente primero. */
   referencias: ReferenciaHistorialPsicologiaDto[]
   /** Se puede abrir un proceso nuevo: no hay uno activo ni una referencia pendiente. */

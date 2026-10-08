@@ -60,6 +60,7 @@ describe('IndicadoresPsicologiaService', () => {
     };
     citasRepository = {
       buscarAccesoCita: jest.fn(),
+      buscarLecturaCita: jest.fn(),
       crear: jest.fn(),
       actualizar: jest.fn(),
       listarAgenda: jest.fn(),

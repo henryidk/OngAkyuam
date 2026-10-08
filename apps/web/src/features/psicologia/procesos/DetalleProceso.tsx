@@ -221,6 +221,29 @@ export default function DetalleProceso() {
         />
       </header>
 
+      {proceso.soloLectura && (
+        <div className={`${CLASE_BANNER} border-gray-200 bg-gray-50 text-gray-800`}>
+          <p className="font-semibold text-gray-900">Proceso de {proceso.psicologa} · solo lectura</p>
+          <p className="mt-1 text-xs text-gray-600">
+            Lo llevó otra psicóloga y ya está cerrado. Puedes leer sus sesiones, notas y documentos para dar
+            continuidad a la atención; no se puede modificar. Cada consulta queda registrada.
+          </p>
+        </div>
+      )}
+
+      {proceso.psicologasAnteriores.length > 0 && (
+        <div className={`${CLASE_BANNER} border-amber-200 bg-amber-50/60 text-gray-800`}>
+          <p className="font-semibold text-gray-900">Este proceso cambió de psicóloga</p>
+          <ul className="mt-1 space-y-0.5 text-xs text-gray-600">
+            {proceso.psicologasAnteriores.map((anterior) => (
+              <li key={anterior.hasta}>
+                Lo llevó {anterior.nombre} hasta el {fechaDeInstante(anterior.hasta)}.
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {proceso.etapa === 'CIERRE' && <BannerCerrado proceso={proceso} />}
 
       {proxima && (
@@ -275,7 +298,7 @@ export default function DetalleProceso() {
             proceso={proceso}
             inasistencias={todasCargadas ? sesiones.filter((sesion) => sesion.estado === 'NO_ASISTIO').length : null}
           />
-          <PanelVisibilidad proceso={proceso} onCambio={refrescar} />
+          {!proceso.soloLectura && <PanelVisibilidad proceso={proceso} onCambio={refrescar} />}
         </aside>
       </div>
 

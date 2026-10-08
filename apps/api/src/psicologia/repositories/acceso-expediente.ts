@@ -27,6 +27,51 @@ export function expedienteAccesible(
   };
 }
 
+/**
+ * Proceso que llevó otra psicóloga y que esta puede leer: ya está cerrado y ella atiende o
+ * atendió a la misma usuaria (en cualquiera de sus expedientes). Es para que quien retoma a una
+ * usuaria conozca lo que se trabajó antes; uno que sigue abierto solo lo ve su dueña.
+ */
+export function procesoCerradoDeColega(
+  psicologaId: string,
+): Prisma.AtencionPsicologicaWhereInput {
+  return {
+    estado: 'CIERRE',
+    AND: [
+      { psicologaAsignadaId: { not: null } },
+      { psicologaAsignadaId: { not: psicologaId } },
+    ],
+    expediente: {
+      usuaria: { expedientes: { some: expedienteConProcesoDe(psicologaId) } },
+    },
+  };
+}
+
+/**
+ * Qué procesos puede LEER una psicóloga: los suyos y los cerrados de una colega con una usuaria
+ * que también es suya. Solo para lecturas: escribir sigue siendo cosa de la dueña.
+ */
+export function procesoLegible(
+  psicologaId: string,
+): Prisma.AtencionPsicologicaWhereInput {
+  return {
+    OR: [
+      { psicologaAsignadaId: psicologaId },
+      procesoCerradoDeColega(psicologaId),
+    ],
+  };
+}
+
+/**
+ * Caso o proceso que quedó sin quien lo atienda: sigue abierto y la cuenta de su psicóloga está
+ * desactivada. Cualquier psicóloga puede tomarlo. No se guarda en ningún lado: se deduce de la
+ * cuenta, así que si la reactivan, lo que nadie tomó vuelve a ser solo de ella.
+ */
+export const PROCESO_POR_REASIGNAR = {
+  estado: { not: 'CIERRE' },
+  psicologaAsignada: { isActive: false },
+} satisfies Prisma.AtencionPsicologicaWhereInput;
+
 /** `EXPEDIENTE_SIN_TOMAR` sobre una expresión SQL que da el id del expediente. */
 export function sinTomarSql(expedienteId: Prisma.Sql): Prisma.Sql {
   return Prisma.sql`NOT EXISTS (

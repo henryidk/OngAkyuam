@@ -60,10 +60,14 @@ describe('RegistroConsultaService', () => {
     acceso = {
       exigirAccesoExpediente: jest.fn(),
       exigirAccesoCita: jest.fn().mockResolvedValue(accesoCita),
+      exigirLecturaCita: jest
+        .fn()
+        .mockResolvedValue({ ...accesoCita, propia: true }),
       exigirReferidoPsicologia: jest.fn(),
     } as unknown as jest.Mocked<AccesoPsicologiaService>;
     citasRepository = {
       buscarAccesoCita: jest.fn(),
+      buscarLecturaCita: jest.fn(),
       crear: jest.fn(),
       actualizar: jest.fn(),
       listarAgenda: jest.fn(),
@@ -168,6 +172,52 @@ describe('RegistroConsultaService', () => {
       expect(llamada.accion).toBe('REGISTRO_CONSULTA_GUARDADO');
       expect(JSON.stringify(llamada.detalles ?? {})).not.toContain(
         'motivo sensible',
+      );
+    });
+  });
+
+  describe('obtenerUrlDescargaDocumentoCita', () => {
+    const documento = {
+      id: 'doc-1',
+      claveR2: 'clave-de-prueba',
+      nombreArchivo: 'hoja.pdf',
+    };
+
+    it('rechaza con 403 a quien no puede leer la cita, sin firmar ninguna URL', async () => {
+      acceso.exigirLecturaCita.mockRejectedValue(new ForbiddenException());
+
+      await expect(
+        service.obtenerUrlDescargaDocumentoCita('cita-1', contexto),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(acceso.exigirLecturaCita).toHaveBeenCalledWith(
+        'cita-1',
+        'psicologa-a',
+      );
+      expect(
+        documentosRepository.buscarDocumentoParaDescarga,
+      ).not.toHaveBeenCalled();
+      expect(objectStorage.generarUrlDescarga).not.toHaveBeenCalled();
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('entrega el documento del proceso cerrado de una colega y lo deja anotado', async () => {
+      acceso.exigirLecturaCita.mockResolvedValue({
+        ...accesoCita,
+        propia: false,
+      });
+      documentosRepository.buscarDocumentoParaDescarga.mockResolvedValue(
+        documento,
+      );
+      objectStorage.generarUrlDescarga.mockResolvedValue('https://firmada');
+
+      await expect(
+        service.obtenerUrlDescargaDocumentoCita('cita-1', contexto),
+      ).resolves.toEqual({ url: 'https://firmada' });
+      expect(auditService.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'DOCUMENTO_CITA_PSICOLOGICA_DESCARGADO',
+          detalles: { citaId: 'cita-1', deColega: true },
+        }),
       );
     });
   });

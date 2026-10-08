@@ -36,6 +36,21 @@ export class BandejaPsicologiaController {
     return this.bandejaService.listarSinTomar();
   }
 
+  @Get('bandeja/por-reasignar')
+  listarPorReasignar() {
+    return this.bandejaService.listarPorReasignar();
+  }
+
+  @Post('bandeja/por-reasignar/:procesoId/tomar')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  tomarPorReasignar(
+    @Param('procesoId', ParseUUIDPipe) procesoId: string,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.bandejaService.tomarPorReasignar(procesoId, contexto);
+  }
+
   @Get('agenda/por-agendar')
   listarPorAgendar(@CurrentUser() usuario: AuthenticatedUser) {
     return this.bandejaService.listarPorAgendar(usuario.id);

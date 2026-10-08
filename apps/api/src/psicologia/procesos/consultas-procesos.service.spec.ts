@@ -39,6 +39,8 @@ function detalle(
     expedienteId: EXPEDIENTE_ID,
     version: 3,
     psicologa: 'Psicóloga De Prueba',
+    soloLectura: false,
+    psicologasAnteriores: [],
     motivoReferencia: null,
     motivoCierre: null,
     resumenCierre: null,
@@ -52,6 +54,7 @@ function crearConsultasRepository(): jest.Mocked<IConsultasProcesosRepository> {
   return {
     listar: jest.fn().mockResolvedValue({ items: [], siguienteCursor: null }),
     listarDeUsuaria: jest.fn().mockResolvedValue([]),
+    listarDeColegas: jest.fn().mockResolvedValue([]),
     resumen: jest.fn(),
     obtenerDetalle: jest.fn().mockResolvedValue(detalle()),
     listarSesiones: jest
@@ -145,7 +148,24 @@ describe('ConsultasProcesosService', () => {
       expect(resultado.accionesDisponibles).toEqual(['EDITAR_VISIBILIDAD']);
     });
 
-    it('rechaza con 403 el proceso inexistente o de otra psicóloga, sin auditar una lectura', async () => {
+    it('el proceso cerrado de una colega se entrega en solo lectura: sin ninguna acción', async () => {
+      consultasRepository.obtenerDetalle.mockResolvedValue(
+        detalle({ etapa: 'CIERRE', soloLectura: true }),
+      );
+
+      const resultado = await service.obtener(PROCESO_ID, contexto);
+
+      expect(resultado.soloLectura).toBe(true);
+      expect(resultado.accionesDisponibles).toEqual([]);
+      expect(eventosAuditados(auditService)).toEqual([
+        expect.objectContaining({
+          accion: 'PROCESO_PSICOLOGICO_CONSULTADO',
+          detalles: { expedienteId: EXPEDIENTE_ID, deColega: true },
+        }),
+      ]);
+    });
+
+    it('rechaza con 403 el proceso inexistente o que no puede leer, sin auditar una lectura', async () => {
       consultasRepository.obtenerDetalle.mockResolvedValue(null);
 
       await expect(
@@ -161,20 +181,20 @@ describe('ConsultasProcesosService', () => {
         expect.objectContaining({
           accion: 'PROCESO_PSICOLOGICO_CONSULTADO',
           entidadId: PROCESO_ID,
-          detalles: { expedienteId: EXPEDIENTE_ID },
+          detalles: { expedienteId: EXPEDIENTE_ID, deColega: false },
         }),
       ]);
     });
   });
 
   describe('sesiones (notas clínicas)', () => {
-    it('rechaza con 403 a quien no es la dueña, sin leer ni una nota', async () => {
-      procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
+    it('rechaza con 403 a quien no puede leer el proceso, sin leer ni una nota', async () => {
+      procesosRepository.buscarLecturaProceso.mockResolvedValue(null);
 
       await expect(
         service.sesiones(PROCESO_ID, {}, contexto),
       ).rejects.toBeInstanceOf(ForbiddenException);
-      expect(procesosRepository.buscarAccesoProceso).toHaveBeenCalledWith(
+      expect(procesosRepository.buscarLecturaProceso).toHaveBeenCalledWith(
         PROCESO_ID,
         'psicologa-a',
       );
@@ -199,7 +219,35 @@ describe('ConsultasProcesosService', () => {
         expect.objectContaining({
           accion: 'SESIONES_PROCESO_PSICOLOGICO_CONSULTADAS',
           entidadId: PROCESO_ID,
-          detalles: { expedienteId: EXPEDIENTE_ID, resultados: 2 },
+          detalles: {
+            expedienteId: EXPEDIENTE_ID,
+            deColega: false,
+            resultados: 2,
+          },
+        }),
+      ]);
+    });
+
+    it('entrega las notas del proceso cerrado de una colega y lo deja anotado en la auditoría', async () => {
+      procesosRepository.buscarLecturaProceso.mockResolvedValue({
+        id: PROCESO_ID,
+        expedienteId: EXPEDIENTE_ID,
+        propio: false,
+      });
+      // No es la dueña: el acceso de escritura seguiría respondiendo que no.
+      procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
+
+      const pagina = await service.sesiones(PROCESO_ID, {}, contexto);
+
+      expect(pagina.items).toHaveLength(2);
+      expect(eventosAuditados(auditService)).toEqual([
+        expect.objectContaining({
+          accion: 'SESIONES_PROCESO_PSICOLOGICO_CONSULTADAS',
+          detalles: {
+            expedienteId: EXPEDIENTE_ID,
+            deColega: true,
+            resultados: 2,
+          },
         }),
       ]);
     });

@@ -80,6 +80,20 @@ describe('CierreProcesoService', () => {
     expect(JSON.stringify(eventos)).not.toContain('CLINICO');
   });
 
+  it('poder leer el proceso cerrado de una colega no permite modificarlo', async () => {
+    procesosRepository.buscarLecturaProceso.mockResolvedValue({
+      id: PROCESO_ID,
+      expedienteId: EXPEDIENTE_ID,
+      propio: false,
+    });
+    procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
+
+    await expect(
+      service.cerrar(PROCESO_ID, datos, contexto),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(procesosRepository.cerrar).not.toHaveBeenCalled();
+  });
+
   it('rechaza con 403 el proceso de otra psicóloga o inexistente, sin cerrar', async () => {
     procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
 

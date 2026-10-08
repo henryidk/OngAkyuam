@@ -18,6 +18,12 @@ export interface AccesoCitaPsicologica {
   expedienteId: string;
 }
 
+/** Una cita que la psicóloga puede leer: de un proceso suyo o del cerrado de una colega. */
+export interface LecturaCitaPsicologica extends AccesoCitaPsicologica {
+  /** `false` = la cita es de un proceso que llevó otra psicóloga. */
+  propia: boolean;
+}
+
 export interface CrearCitaParams {
   atencionId: string;
   fechaHora: Date;
@@ -129,6 +135,14 @@ export interface ICitasPsicologicasRepository {
     citaId: string,
     psicologaId: string,
   ): Promise<AccesoCitaPsicologica | null>;
+  /**
+   * Como `buscarAccesoCita`, pero también vale la cita de un proceso cerrado de una colega que
+   * esta psicóloga puede leer. Solo para lecturas (descargar el documento de la sesión).
+   */
+  buscarLecturaCita(
+    citaId: string,
+    psicologaId: string,
+  ): Promise<LecturaCitaPsicologica | null>;
   crear(params: CrearCitaParams): Promise<CitaResumen>;
   actualizar(params: ActualizarCitaParams): Promise<CitaResumen>;
   listarAgenda(params: ListarAgendaParams): Promise<AgendaCita[]>;

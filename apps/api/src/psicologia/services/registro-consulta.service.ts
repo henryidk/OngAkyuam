@@ -172,7 +172,11 @@ export class RegistroConsultaService {
     citaId: string,
     contexto: ContextoAuditoria,
   ): Promise<{ url: string }> {
-    await this.acceso.exigirAccesoCita(citaId, contexto.usuarioId);
+    // Leer, no escribir: también vale el documento de un proceso cerrado de una colega.
+    const cita = await this.acceso.exigirLecturaCita(
+      citaId,
+      contexto.usuarioId,
+    );
 
     const documento =
       await this.documentosRepository.buscarDocumentoParaDescarga(citaId);
@@ -194,7 +198,7 @@ export class RegistroConsultaService {
       entidadId: documento.id,
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      detalles: { citaId },
+      detalles: { citaId, deColega: !cita.propia },
     });
 
     return { url };

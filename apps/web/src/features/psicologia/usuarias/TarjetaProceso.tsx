@@ -5,8 +5,14 @@ import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import { textoSesiones, textoSiguiente } from './textoProceso'
 
+interface TarjetaProcesoProps {
+  proceso: ProcesoPsicologiaResumen
+  /** Nombre de la colega que lo llevó; sin él, el proceso es de quien mira. */
+  psicologa?: string
+}
+
 /** Un proceso de la usuaria: lleva al detalle del proceso. */
-export default function TarjetaProceso({ proceso }: { proceso: ProcesoPsicologiaResumen }) {
+export default function TarjetaProceso({ proceso, psicologa }: TarjetaProcesoProps) {
   return (
     <Link
       to={RUTAS_PSICOLOGIA.proceso(proceso.id)}
@@ -17,12 +23,14 @@ export default function TarjetaProceso({ proceso }: { proceso: ProcesoPsicologia
           <span className="font-mono text-[13px] font-medium text-gray-700">{proceso.codigo}</span>
           <EtiquetaEtapa etapa={proceso.etapa} />
         </div>
-        <p className="text-sm font-semibold text-gray-900">Proceso psicológico</p>
+        <p className="text-sm font-semibold text-gray-900">
+          Proceso psicológico{psicologa !== undefined && ` · ${psicologa || 'otra psicóloga'}`}
+        </p>
         <p className="text-xs text-gray-500 tabular-nums">
           Iniciado {fechaDeInstante(proceso.fechaInicio)} · {textoSesiones(proceso)} · {textoSiguiente(proceso)}
         </p>
       </div>
-      <span className="text-sm font-medium text-brand-700">Abrir →</span>
+      <span className="text-sm font-medium text-brand-700">{psicologa === undefined ? 'Abrir →' : 'Leer →'}</span>
     </Link>
   )
 }

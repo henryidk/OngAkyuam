@@ -160,7 +160,7 @@ export default function FichaUsuaria() {
           className="mt-4"
           items={[
             { to: RUTAS_PSICOLOGIA.usuaria(usuaria.id), etiqueta: 'Resumen', fin: true },
-            { to: RUTAS_PSICOLOGIA.usuariaProcesos(usuaria.id), etiqueta: `Procesos (${procesos.length})` },
+            { to: RUTAS_PSICOLOGIA.usuariaProcesos(usuaria.id), etiqueta: `Procesos (${procesos.length + ficha.procesosDeColegas.length})` },
             { to: RUTAS_PSICOLOGIA.usuariaDatos(usuaria.id), etiqueta: 'Datos y caso' },
             { to: RUTAS_PSICOLOGIA.usuariaDocumentos(usuaria.id), etiqueta: 'Documentos de TS' },
             { to: RUTAS_PSICOLOGIA.usuariaReferencias(usuaria.id), etiqueta: `Referencias (${referencias.length})` },

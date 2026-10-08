@@ -109,7 +109,7 @@ export default function AccionesUsuario({
       <ConfirmModal
         abierto={accionAbierta === 'desactivar'}
         titulo="Desactivar usuario"
-        descripcion={`${usuario.nombreCompleto} no podrá volver a iniciar sesión hasta que se reactive la cuenta.`}
+        descripcion={`${usuario.nombreCompleto} no podrá volver a iniciar sesión hasta que se reactive la cuenta. Si es psicóloga, sus casos y procesos abiertos pasarán al Área de atención de Psicología para que otra profesional los tome.`}
         confirmarLabel="Desactivar"
         peligro
         cargando={cargando}

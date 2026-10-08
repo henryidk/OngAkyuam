@@ -49,7 +49,7 @@ export default function PestanaResumen() {
       <section className="rounded-xl border border-gray-200 bg-white">
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
           <h3 className="text-sm font-semibold text-gray-900">Procesos activos</h3>
-          {ficha.procesos.length > 0 && (
+          {ficha.procesos.length + ficha.procesosDeColegas.length > 0 && (
             <Link to={RUTAS_PSICOLOGIA.usuariaProcesos(ficha.usuaria.id)} className="text-xs font-medium text-brand-700 hover:underline">
               Ver historial completo
             </Link>

@@ -4,14 +4,21 @@ import {
   diasDesdeGT,
   nombreMunicipio,
   type CasoPorAgendarDto,
+  type CasoPorReasignarDto,
   type ReferenciaBandejaPsicologiaDto,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { codigoProceso } from '../dominio/codigo-proceso';
 import type {
   IBandejaPsicologiaRepository,
+  ProcesoReasignado,
+  ReasignarProcesoParams,
   ReferenciaPsicologia,
 } from '../interfaces/bandeja-psicologia-repository.interface';
-import { EXPEDIENTE_SIN_TOMAR } from './acceso-expediente';
+import {
+  EXPEDIENTE_SIN_TOMAR,
+  PROCESO_POR_REASIGNAR,
+} from './acceso-expediente';
 import { edad, nombreCompleto, personasDelExpediente } from './personas';
 
 /** Tope de seguridad de las dos colas: son listas de trabajo, no un historial. */
@@ -116,6 +123,111 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
       tomadaEn: (atencion.tomadaEn ?? atencion.createdAt).toISOString(),
       personas: personasDelExpediente(atencion.expediente),
     }));
+  }
+
+  async listarPorReasignar(): Promise<CasoPorReasignarDto[]> {
+    const atenciones = await this.prisma.atencionPsicologica.findMany({
+      where: PROCESO_POR_REASIGNAR,
+      select: {
+        id: true,
+        consecutivo: true,
+        estado: true,
+        fechaInicio: true,
+        psicologaAsignada: { select: { nombreCompleto: true } },
+        expediente: { select: SELECT_EXPEDIENTE_COLA },
+        _count: { select: { citas: { where: { estado: 'ATENDIDA' } } } },
+        citas: { where: { estado: 'PROGRAMADA' }, select: { id: true } },
+      },
+      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+      take: LIMITE_COLA,
+    });
+
+    return atenciones.map((atencion) => {
+      const { expediente } = atencion;
+      return {
+        procesoId: atencion.id,
+        expedienteNumero: expediente.numero,
+        usuariaId: expediente.usuaria.id,
+        usuariaNombreCompleto: nombreCompleto(expediente.usuaria),
+        edad: edad(expediente.usuaria),
+        municipio: nombreMunicipio(
+          expediente.usuaria.municipio,
+          expediente.usuaria.municipioOtro,
+        ),
+        codigo: atencion.fechaInicio
+          ? codigoProceso(atencion.consecutivo, expediente.numero)
+          : null,
+        etapa: atencion.estado,
+        sesionesAtendidas: atencion._count.citas,
+        fechaInicio: atencion.fechaInicio?.toISOString() ?? null,
+        // No-null: el `where` exige una psicóloga asignada (y desactivada).
+        psicologaAnterior: atencion.psicologaAsignada!.nombreCompleto,
+        citasProgramadas: atencion.citas.length,
+        personas: personasDelExpediente(expediente),
+      };
+    });
+  }
+
+  async reasignar(
+    params: ReasignarProcesoParams,
+  ): Promise<ProcesoReasignado | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const anterior = await tx.atencionPsicologica.findFirst({
+        where: { id: params.procesoId, ...PROCESO_POR_REASIGNAR },
+        select: {
+          expedienteId: true,
+          psicologaAsignadaId: true,
+          fechaInicio: true,
+          referidoId: true,
+        },
+      });
+      if (!anterior?.psicologaAsignadaId) {
+        return null;
+      }
+
+      // La dueña anterior va en el WHERE: si dos psicólogas llegan aquí a la vez, Postgres
+      // bloquea la fila, deja pasar a la primera y, al re-evaluar la condición para la segunda,
+      // la dueña ya cambió: no afecta ninguna fila y no se cancela ni registra nada.
+      const tomados = await tx.atencionPsicologica.updateMany({
+        where: {
+          id: params.procesoId,
+          psicologaAsignadaId: anterior.psicologaAsignadaId,
+          ...PROCESO_POR_REASIGNAR,
+        },
+        data: {
+          psicologaAsignadaId: params.psicologaId,
+          tomadaEn: new Date(),
+          actualizadoPorId: params.psicologaId,
+          version: { increment: 1 },
+        },
+      });
+      if (tomados.count === 0) {
+        return null;
+      }
+
+      // Las citas no se heredan: las había acordado la psicóloga anterior. Todas las que sigan
+      // programadas, pasadas o futuras, se cancelan; la nueva dueña agenda las suyas.
+      const canceladas = await tx.citaPsicologica.updateMany({
+        where: { atencionId: params.procesoId, estado: 'PROGRAMADA' },
+        data: { estado: 'CANCELADA' },
+      });
+
+      await tx.reasignacionAtencionPsicologica.create({
+        data: {
+          atencionId: params.procesoId,
+          dePsicologaId: anterior.psicologaAsignadaId,
+          aPsicologaId: params.psicologaId,
+        },
+      });
+
+      return {
+        procesoId: params.procesoId,
+        expedienteId: anterior.expedienteId,
+        psicologaAnteriorId: anterior.psicologaAsignadaId,
+        referidoIdPorAgendar: anterior.fechaInicio ? null : anterior.referidoId,
+        citasCanceladas: canceladas.count,
+      };
+    });
   }
 
   async buscarReferencia(

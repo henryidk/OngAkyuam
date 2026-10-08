@@ -27,6 +27,7 @@ describe('AccesoPsicologiaService', () => {
     };
     citasRepository = {
       buscarAccesoCita: jest.fn(),
+      buscarLecturaCita: jest.fn(),
       crear: jest.fn(),
       actualizar: jest.fn(),
       listarAgenda: jest.fn(),
@@ -42,6 +43,7 @@ describe('AccesoPsicologiaService', () => {
     };
     procesosRepository = {
       buscarAccesoProceso: jest.fn(),
+      buscarLecturaProceso: jest.fn(),
       buscarAccesoUsuaria: jest.fn(),
       ninoPerteneceAExpediente: jest.fn(),
       abrir: jest.fn(),
@@ -88,6 +90,49 @@ describe('AccesoPsicologiaService', () => {
         'proc-1',
         'psicologa-a',
       );
+    });
+  });
+
+  describe('exigirLecturaProceso', () => {
+    it.each([
+      ['proceso inexistente'],
+      ['proceso abierto de otra psicóloga'],
+      ['proceso cerrado de una usuaria con la que no tiene ningún caso'],
+    ])('rechaza con el mismo 403 cuando: %s', async () => {
+      procesosRepository.buscarLecturaProceso.mockResolvedValue(null);
+
+      await expect(
+        service.exigirLecturaProceso('proc-1', 'psicologa-b'),
+      ).rejects.toEqual(
+        new ForbiddenException('No tiene acceso a este proceso'),
+      );
+    });
+
+    it('deja leer el proceso cerrado de una colega y avisa que no es propio', async () => {
+      const lectura = { id: 'proc-1', expedienteId: 'exp-1', propio: false };
+      procesosRepository.buscarLecturaProceso.mockResolvedValue(lectura);
+
+      await expect(
+        service.exigirLecturaProceso('proc-1', 'psicologa-a'),
+      ).resolves.toEqual(lectura);
+      expect(procesosRepository.buscarLecturaProceso).toHaveBeenCalledWith(
+        'proc-1',
+        'psicologa-a',
+      );
+    });
+
+    it('poder leer un proceso ajeno no da el acceso de dueña', async () => {
+      procesosRepository.buscarLecturaProceso.mockResolvedValue({
+        id: 'proc-1',
+        expedienteId: 'exp-1',
+        propio: false,
+      });
+      procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
+
+      await expect(
+        service.exigirAccesoProceso('proc-1', 'psicologa-a'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(procesosRepository.buscarLecturaProceso).not.toHaveBeenCalled();
     });
   });
 
@@ -237,6 +282,38 @@ describe('AccesoPsicologiaService', () => {
         'cita-1',
         'psicologa-a',
       );
+    });
+  });
+
+  describe('exigirLecturaCita', () => {
+    it('rechaza con 403 la cita de un proceso que no puede leer', async () => {
+      citasRepository.buscarLecturaCita.mockResolvedValue(null);
+
+      await expect(
+        service.exigirLecturaCita('cita-1', 'psicologa-b'),
+      ).rejects.toEqual(new ForbiddenException('No tiene acceso a esta cita'));
+    });
+
+    it('deja leer la cita del proceso cerrado de una colega, sin dar acceso de dueña', async () => {
+      const lectura = {
+        id: 'cita-1',
+        atencionId: 'atencion-1',
+        expedienteId: 'exp-1',
+        propia: false,
+      };
+      citasRepository.buscarLecturaCita.mockResolvedValue(lectura);
+      citasRepository.buscarAccesoCita.mockResolvedValue(null);
+
+      await expect(
+        service.exigirLecturaCita('cita-1', 'psicologa-a'),
+      ).resolves.toEqual(lectura);
+      expect(citasRepository.buscarLecturaCita).toHaveBeenCalledWith(
+        'cita-1',
+        'psicologa-a',
+      );
+      await expect(
+        service.exigirAccesoCita('cita-1', 'psicologa-a'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 

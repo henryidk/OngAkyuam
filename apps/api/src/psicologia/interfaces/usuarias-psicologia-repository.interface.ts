@@ -20,7 +20,7 @@ export interface ListarUsuariasPsicologiaParams {
 /** La ficha sin los procesos: esos salen de `IConsultasProcesosRepository`. */
 export type FichaUsuariaRepo = Omit<
   FichaUsuariaPsicologiaDto,
-  'procesos' | 'contadores'
+  'procesos' | 'procesosDeColegas' | 'contadores'
 >;
 
 /**

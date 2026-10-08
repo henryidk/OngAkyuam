@@ -60,6 +60,8 @@ export function crearBandejaRepository(): jest.Mocked<IBandejaPsicologiaReposito
   return {
     listarSinTomar: jest.fn().mockResolvedValue([]),
     listarPorAgendar: jest.fn().mockResolvedValue([]),
+    listarPorReasignar: jest.fn().mockResolvedValue([]),
+    reasignar: jest.fn().mockResolvedValue(null),
     buscarReferencia: jest.fn().mockResolvedValue(referencia()),
   };
 }
@@ -67,6 +69,11 @@ export function crearBandejaRepository(): jest.Mocked<IBandejaPsicologiaReposito
 export function crearProcesosRepository(): jest.Mocked<IProcesosPsicologiaRepository> {
   return {
     buscarAccesoProceso: jest.fn().mockResolvedValue(procesoConAcceso()),
+    buscarLecturaProceso: jest.fn().mockResolvedValue({
+      id: PROCESO_ID,
+      expedienteId: EXPEDIENTE_ID,
+      propio: true,
+    }),
     buscarAccesoUsuaria: jest.fn().mockResolvedValue({
       usuariaId: USUARIA_ID,
       expediente: { id: EXPEDIENTE_ID, numero: '05-2026' },
@@ -89,7 +96,7 @@ export function crearProcesosRepository(): jest.Mocked<IProcesosPsicologiaReposi
 
 type CitasParaAcceso = Pick<
   jest.Mocked<ICitasPsicologicasRepository>,
-  'buscarCitasSolapadas' | 'buscarAccesoCita'
+  'buscarCitasSolapadas' | 'buscarAccesoCita' | 'buscarLecturaCita'
 > &
   ICitasPsicologicasRepository;
 
@@ -100,6 +107,12 @@ export function crearCitasRepository(): CitasParaAcceso {
       id: CITA_ID,
       atencionId: PROCESO_ID,
       expedienteId: EXPEDIENTE_ID,
+    }),
+    buscarLecturaCita: jest.fn().mockResolvedValue({
+      id: CITA_ID,
+      atencionId: PROCESO_ID,
+      expedienteId: EXPEDIENTE_ID,
+      propia: true,
     }),
   } as unknown as CitasParaAcceso;
 }

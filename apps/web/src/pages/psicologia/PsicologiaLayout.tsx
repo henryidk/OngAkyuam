@@ -65,7 +65,7 @@ export default function PsicologiaLayout() {
   // La insignia de la agenda suma lo que pide acción ahí: casos tomados sin primera cita y citas
   // ya pasadas sin registrar.
   const contadores = resumen && {
-    [RUTAS_PSICOLOGIA.atencion()]: resumen.referenciasSinTomar,
+    [RUTAS_PSICOLOGIA.atencion()]: resumen.referenciasSinTomar + resumen.casosPorReasignar,
     [RUTAS_PSICOLOGIA.agenda()]: resumen.casosPorAgendar + resumen.citasSinRegistrar,
     [RUTAS_PSICOLOGIA.procesos()]: resumen.procesos.ACTIVOS,
   }

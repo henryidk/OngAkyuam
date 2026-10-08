@@ -21,6 +21,20 @@ export default function PestanaProcesos() {
       ) : (
         ficha.procesos.map((proceso) => <TarjetaProceso key={proceso.id} proceso={proceso} />)
       )}
+
+      {ficha.procesosDeColegas.length > 0 && (
+        <div className="space-y-3 pt-3">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Procesos anteriores con otra psicóloga</h3>
+            <p className="text-sm text-gray-500">
+              Ya están cerrados. Puedes leerlos completos, con sus notas y documentos, pero no modificarlos.
+            </p>
+          </div>
+          {ficha.procesosDeColegas.map((proceso) => (
+            <TarjetaProceso key={proceso.id} proceso={proceso} psicologa={proceso.psicologa} />
+          ))}
+        </div>
+      )}
     </section>
   )
 }
