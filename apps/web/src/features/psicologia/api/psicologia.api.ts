@@ -11,6 +11,8 @@ import type {
   CitaAgendaDto,
   CitaProgramadaDto,
   CitaPsicologicaDetalle,
+  ConsultaRegistradaDto,
+  DocumentoCitaDto,
   CitasPaginadas,
   ExpedienteDetalleArea,
   ExpedienteResumenPsicologia,
@@ -200,8 +202,17 @@ export function obtenerDetalleCita(citaId: string) {
 }
 
 export function registrarConsulta(citaId: string, datos: RegistroConsultaInput) {
+  return api.put<ConsultaRegistradaDto>(`/psicologia/citas/${citaId}/registro`, datos).then((res) => res.data)
+}
+
+/** Sube el Formato General escaneado de la sesión. `onProgreso` recibe el porcentaje enviado. */
+export function subirDocumentoCita(citaId: string, archivo: File, onProgreso: (porcentaje: number) => void) {
+  const form = new FormData()
+  form.append('archivo', archivo)
   return api
-    .put<CitaPsicologicaDetalle>(`/psicologia/citas/${citaId}/registro`, datos)
+    .post<DocumentoCitaDto>(`/psicologia/citas/${citaId}/documento`, form, {
+      onUploadProgress: (evento) => onProgreso(evento.total ? Math.round((evento.loaded / evento.total) * 100) : 0),
+    })
     .then((res) => res.data)
 }
 

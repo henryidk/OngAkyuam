@@ -32,3 +32,5 @@ export const MENSAJE_RANGO_AGENDA_INVALIDO =
   'El rango de fechas de la agenda no es válido';
 export const MENSAJE_CITA_NO_REPROGRAMABLE =
   'Solo se puede reprogramar una cita que siga programada';
+export const MENSAJE_SESION_NO_REGISTRABLE =
+  'Esta sesión ya no se puede registrar: el proceso se cerró o la cita se movió a otra fecha';

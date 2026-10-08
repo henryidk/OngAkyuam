@@ -140,6 +140,10 @@ export const TIPOS_SIGUIENTE_PASO_SESION = ['PROGRAMAR', 'NINGUNA', 'CERRAR'] as
  * `CERRAR` solo le indica al frontend que abra el diálogo de cierre después de guardar — el
  * backend nunca cierra un proceso de forma implícita.
  */
+/** En qué puede quedar una cita al registrarla. */
+export const RESULTADOS_SESION_PSICOLOGICA = ['ATENDIDA', 'NO_ASISTIO', 'CANCELADA'] as const satisfies readonly EstadoCitaPsicologica[]
+export type ResultadoSesionPsicologica = (typeof RESULTADOS_SESION_PSICOLOGICA)[number]
+
 export const siguientePasoSesionSchema = z.discriminatedUnion('tipo', [
   z.object({
     tipo: z.literal('PROGRAMAR'),
@@ -172,6 +176,12 @@ export const registroConsultaSchema = z
     /** "¿Qué sigue?" — ausente equivale a `NINGUNA` (los formularios anteriores al rediseño no lo envían). */
     siguiente: siguientePasoSesionSchema.optional(),
   })
+  // Un registro terminado dice en qué quedó la cita; "programada" o "reprogramada" no son resultados.
+  .refine(
+    (datos) =>
+      datos.borrador || (RESULTADOS_SESION_PSICOLOGICA as readonly string[]).includes(datos.estado),
+    { message: 'Elija el resultado de la sesión', path: ['estado'] },
+  )
   .refine(
     (datos) =>
       datos.borrador || datos.estado === 'ATENDIDA' || datos.motivoNoAsistencia.trim().length > 0,
@@ -434,6 +444,21 @@ export interface CitaPsicologicaDetalle extends CitaResumen {
   expedienteId: string
   numero: string
   usuariaNombreCompleto: string
+  procesoId: string
+  procesoCodigo: string
+  procesoEtapa: EstadoAtencionPsicologica
+  /** Hijo/a que se atiende en esta cita; null = la usuaria. */
+  ninoNombreCompleto: string | null
+}
+
+/** Respuesta de `PUT /psicologia/citas/:id/registro`. */
+export interface ConsultaRegistradaDto {
+  cita: CitaResumen
+  procesoId: string
+  /** Era la primera sesión atendida: el proceso pasó de Inicio a Seguimiento. */
+  pasoASeguimiento: boolean
+  /** La cita que se programó desde "¿Qué sigue?", si se eligió programar. */
+  proximaCita: CitaProgramadaDto | null
 }
 
 /** `GET /psicologia/indicadores` — siempre "mis" casos del año consultado (§5.5, §7.4 del plan). */

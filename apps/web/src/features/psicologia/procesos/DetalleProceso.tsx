@@ -1,10 +1,11 @@
-import { useCallback, useMemo, useState } from 'react'
-import { Link, Outlet, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import {
   ETIQUETAS_MOTIVO_CIERRE_PSICOLOGIA,
   fechaCalendarioGT,
   formatInstanteGT,
   hoyGT,
+  minutosDelDiaGT,
   type ProcesoPsicologiaDetalle,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
@@ -25,6 +26,7 @@ import ModalProgramarCita, { type DestinoCita } from '../citas/ModalProgramarCit
 import BarraEtapa from '../compartido/BarraEtapa'
 import { useContextoPsicologia } from '../compartido/contexto'
 import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
+import { horaDeMinutos } from '../compartido/horas'
 import { usePaginasCursor } from '../compartido/usePaginasCursor'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import type { ContextoDetalle, PropsModalProceso } from './contextoDetalle'
@@ -40,6 +42,7 @@ const CLASE_BOTON_OSCURO = 'rounded-md px-3.5 py-2 text-sm font-semibold disable
 interface CitaPorGuardar {
   destino: DestinoCita
   fechaInicial: string
+  horaInicial?: string
 }
 
 function BannerCerrado({ proceso }: { proceso: ProcesoPsicologiaDetalle }) {
@@ -67,7 +70,17 @@ export default function DetalleProceso() {
   const cargarSesiones = useCallback((cursor?: string) => listarSesionesProceso(procesoId!, cursor), [procesoId])
   const paginas = usePaginasCursor(procesoId!, cargarSesiones)
 
-  const [cerrando, setCerrando] = useState(false)
+  const navigate = useNavigate()
+  const [busqueda, setBusqueda] = useSearchParams()
+  // Quien eligió "Cerrar proceso" al registrar una sesión llega con el modal ya abierto.
+  const [cerrando, setCerrando] = useState(() => busqueda.get('cerrar') === '1')
+  useEffect(() => {
+    if (!busqueda.has('cerrar')) return
+    // Se quita de la URL para que recargar la página no vuelva a abrir el modal.
+    const sinCerrar = new URLSearchParams(busqueda)
+    sinCerrar.delete('cerrar')
+    setBusqueda(sinCerrar, { replace: true })
+  }, [busqueda, setBusqueda])
   const [cita, setCita] = useState<CitaPorGuardar | null>(null)
   const [preparando, setPreparando] = useState(false)
 
@@ -149,6 +162,20 @@ export default function DetalleProceso() {
     }, 'Este proceso ya no admite citas nuevas.')
   }
 
+  // Una sesión que ocurrió sin cita previa: se anota cuándo fue y se pasa directo a registrarla.
+  function abrirSinCita() {
+    void preparar(async () => {
+      const mio = (await listarProcesosParaAgendar()).find((uno) => uno.procesoId === proceso!.id)
+      return mio
+        ? {
+            destino: { tipo: 'PROCESO', procesos: [mio], procesoId: mio.procesoId, sinCita: true },
+            fechaInicial: hoy,
+            horaInicial: horaDeMinutos(minutosDelDiaGT(new Date())),
+          }
+        : null
+    }, 'Este proceso ya no admite sesiones nuevas.')
+  }
+
   function abrirReprogramar() {
     if (!proxima || !diaProxima) return
     void preparar(async () => {
@@ -192,6 +219,11 @@ export default function DetalleProceso() {
             {puedeProgramar && (
               <Button tamano="md" cargando={preparando} onClick={abrirProgramar}>
                 Programar cita
+              </Button>
+            )}
+            {puedeProgramar && acciones.includes('REGISTRAR_SESION') && (
+              <Button variante="secondary" tamano="md" disabled={preparando} onClick={abrirSinCita}>
+                Registrar sesión sin cita
               </Button>
             )}
             {acciones.includes('CERRAR') && (
@@ -302,13 +334,18 @@ export default function DetalleProceso() {
         </aside>
       </div>
 
-      {cerrando && <ModalCerrar {...propsModal} />}
+      {cerrando && acciones.includes('CERRAR') && <ModalCerrar {...propsModal} />}
       {cita && (
         <ModalProgramarCita
           destino={cita.destino}
           fechaInicial={cita.fechaInicial}
+          horaInicial={cita.horaInicial}
           onCerrar={() => setCita(null)}
-          onGuardada={(_fecha, mensaje) => {
+          onGuardada={(_fecha, mensaje, citaId) => {
+            if (cita.destino.tipo === 'PROCESO' && cita.destino.sinCita) {
+              navigate(RUTAS_PSICOLOGIA.registrarConsulta(citaId))
+              return
+            }
             setCita(null)
             mostrar(mensaje)
             refrescar()

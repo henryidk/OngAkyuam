@@ -27,14 +27,13 @@ import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { eventoAuditoria } from '../compartido/auditoria';
 import {
-  CODIGO_TRASLAPE_CITA,
   MENSAJE_CITA_NO_MARCABLE,
   MENSAJE_CITA_NO_REPROGRAMABLE,
   MENSAJE_PERSONA_AJENA,
   MENSAJE_PROCESO_CERRADO,
   MENSAJE_RANGO_AGENDA_INVALIDO,
-  MENSAJE_TRASLAPE,
 } from '../compartido/mensajes';
+import { avisarTraslape } from '../compartido/traslape';
 import { estaCerrado } from '../dominio/etapa-proceso';
 import { huecosLibres } from '../dominio/huecos-libres';
 import { AGENDA_PSICOLOGIA_REPOSITORY } from '../interfaces/agenda-psicologia-repository.interface';
@@ -241,28 +240,18 @@ export class AgendaPsicologiaService {
     };
   }
 
-  /** El traslape no bloquea: avisa una vez con 409 y la psicóloga puede confirmar. */
-  private async avisarTraslape(
+  private avisarTraslape(
     datos: { duracionMinutos: number; confirmarTraslape: boolean },
     fechaHora: Date,
     psicologaId: string,
     excluirCitaId?: string,
   ): Promise<void> {
-    if (datos.confirmarTraslape) {
-      return;
-    }
-    const solapadas = await this.citasRepository.buscarCitasSolapadas({
+    return avisarTraslape(this.citasRepository, {
       psicologaId,
       fechaHora,
       duracionMinutos: datos.duracionMinutos,
+      confirmarTraslape: datos.confirmarTraslape,
       excluirCitaId,
     });
-    if (solapadas.length > 0) {
-      throw new ConflictException({
-        message: MENSAJE_TRASLAPE,
-        codigo: CODIGO_TRASLAPE_CITA,
-        detalle: { citas: solapadas },
-      });
-    }
   }
 }

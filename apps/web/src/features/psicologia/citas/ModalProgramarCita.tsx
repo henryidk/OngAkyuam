@@ -26,7 +26,13 @@ export type DestinoCita =
   /** Usuaria que regresa sin referencia nueva: se abre otro proceso sobre el mismo expediente. */
   | { tipo: 'NUEVO'; usuariaId: string; usuariaNombreCompleto: string; expedienteNumero: string }
   /** Cita de seguimiento. Sin `procesoId` la psicóloga elige el proceso en el propio modal. */
-  | { tipo: 'PROCESO'; procesos: ProcesoParaAgendarDto[]; procesoId: string | null }
+  | {
+      tipo: 'PROCESO'
+      procesos: ProcesoParaAgendarDto[]
+      procesoId: string | null
+      /** La sesión ya ocurrió sin cita previa: se anota cuándo fue y se pasa a registrarla. */
+      sinCita?: boolean
+    }
   /** Mover una cita programada a otra fecha; la persona atendida no cambia. */
   | { tipo: 'MOVER'; cita: CitaAgendaDto }
 
@@ -37,8 +43,11 @@ interface ModalProgramarCitaProps {
   /** Hora ("HH:mm") ya elegida, p. ej. la de un hueco libre. */
   horaInicial?: string
   onCerrar: () => void
-  /** `fecha` es el día de la cita, para que la agenda salte a él; `mensaje` confirma lo hecho. */
-  onGuardada: (fecha: string, mensaje: string) => void
+  /**
+   * `fecha` es el día de la cita, para que la agenda salte a él; `mensaje` confirma lo hecho;
+   * `citaId` es la cita que quedó programada.
+   */
+  onGuardada: (fecha: string, mensaje: string, citaId: string) => void
 }
 
 function duracionInicial(destino: DestinoCita): number {
@@ -91,6 +100,11 @@ export default function ModalProgramarCita({
   } else if (!eligeProceso && proceso) {
     descripcion = `${proceso.usuariaNombreCompleto} · ${proceso.codigo}`
   }
+  const sinCita = destino.tipo === 'PROCESO' && destino.sinCita === true
+  if (sinCita) {
+    titulo = 'Registrar sesión sin cita'
+    if (proceso) descripcion = `${proceso.usuariaNombreCompleto} · ${proceso.codigo} · indica cuándo fue la sesión`
+  }
 
   // El aviso de traslape era sobre la hora anterior: al tocar un dato deja de valer.
   function alCambiar<T>(asignar: (valor: T) => void) {
@@ -107,7 +121,7 @@ export default function ModalProgramarCita({
     setNinoId(null)
   }
 
-  async function enviar(datos: AgendarCitaPsicologicaInput): Promise<string> {
+  async function enviar(datos: AgendarCitaPsicologicaInput): Promise<{ mensaje: string; citaId: string }> {
     if (destino.tipo === 'PRIMERA' || destino.tipo === 'NUEVO') {
       const firma = JSON.stringify(datos)
       if (idempotencia.current?.firma !== firma) {
@@ -118,15 +132,15 @@ export default function ModalProgramarCita({
         destino.tipo === 'PRIMERA'
           ? await atenderReferencia(destino.caso.referidoId, datos, clave)
           : await abrirProcesoDesdeFicha(destino.usuariaId, datos, clave)
-      return `Proceso ${abierto.codigo} abierto con su primera cita`
+      return { mensaje: `Proceso ${abierto.codigo} abierto con su primera cita`, citaId: abierto.citaId }
     }
     if (destino.tipo === 'MOVER') {
       const { fechaHora, duracionMinutos, confirmarTraslape } = datos
-      await moverCita(destino.cita.id, { fechaHora, duracionMinutos, confirmarTraslape })
-      return 'Cita reprogramada'
+      const movida = await moverCita(destino.cita.id, { fechaHora, duracionMinutos, confirmarTraslape })
+      return { mensaje: 'Cita reprogramada', citaId: movida.id }
     }
-    await programarCitaEnProceso(procesoId, datos)
-    return 'Cita programada'
+    const programada = await programarCitaEnProceso(procesoId, datos)
+    return { mensaje: 'Cita programada', citaId: programada.id }
   }
 
   async function guardar() {
@@ -148,7 +162,8 @@ export default function ModalProgramarCita({
     setError(null)
     setGuardando(true)
     try {
-      onGuardada(fecha, await enviar(validacion.data))
+      const { mensaje, citaId } = await enviar(validacion.data)
+      onGuardada(fecha, mensaje, citaId)
     } catch (err) {
       const cuerpo = axios.isAxiosError(err) ? (err.response?.data as Partial<ConflictoTraslapeCita> | undefined) : undefined
       if (cuerpo?.codigo === CODIGO_TRASLAPE_CITA && cuerpo.detalle) {
@@ -164,6 +179,7 @@ export default function ModalProgramarCita({
   const sinProcesos = eligeProceso && destino.procesos.length === 0
   let confirmarLabel = destino.tipo === 'MOVER' ? 'Reprogramar' : 'Programar cita'
   if (conflicto) confirmarLabel = destino.tipo === 'MOVER' ? 'Reprogramar de todos modos' : 'Programar de todos modos'
+  if (sinCita) confirmarLabel = conflicto ? 'Continuar de todos modos' : 'Continuar al registro'
 
   return (
     <ConfirmModal

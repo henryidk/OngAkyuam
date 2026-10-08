@@ -86,6 +86,7 @@ export interface ReprogramarCitaParams {
 
 export interface RegistrarConsultaParams {
   citaId: string;
+  psicologaId: string;
   /** `undefined` cuando se guarda como borrador — el estado de la cita no cambia (§5.4 del plan). */
   estado: EstadoCitaPsicologica | undefined;
   temas: string | null;
@@ -95,6 +96,15 @@ export interface RegistrarConsultaParams {
   observaciones: string | null;
   motivoNoAsistencia: string | null;
   borrador: boolean;
+  /** "¿Qué sigue?": la próxima cita que nace junto con el registro, para la misma persona. */
+  proximaCita: { fechaHora: Date; duracionMinutos: number } | null;
+}
+
+export interface ConsultaRegistrada {
+  cita: CitaResumen;
+  /** Era la primera sesión atendida: el proceso pasó de Inicio a Seguimiento. */
+  pasoASeguimiento: boolean;
+  proximaCitaId: string | null;
 }
 
 /** Fila mínima para agregados por rango — usada tanto por `/agenda/resumen` (mes) como por indicadores (año); el corte de mes/día en GT se calcula en el servicio, nunca aquí (§7.5 del plan). */
@@ -154,7 +164,15 @@ export interface ICitasPsicologicasRepository {
   obtenerDatosParaReprogramar(citaId: string): Promise<DatosCitaOrigen | null>;
   /** Transaccional: crea la cita nueva y marca la anterior REPROGRAMADA, o nada. */
   reprogramar(params: ReprogramarCitaParams): Promise<CitaResumen>;
-  registrarConsulta(params: RegistrarConsultaParams): Promise<CitaResumen>;
+  /**
+   * Guarda el registro de la sesión y, en la misma transacción, lo que se deriva de él: el paso
+   * a Seguimiento con la primera sesión atendida y la próxima cita. `null` si el proceso ya se
+   * cerró o cambió de dueña, o si la cita fue reprogramada: no se escribió nada. Se usa tras
+   * `exigirAccesoCita`.
+   */
+  registrarConsulta(
+    params: RegistrarConsultaParams,
+  ): Promise<ConsultaRegistrada | null>;
   /**
    * Filas crudas de citas de esta psicóloga dentro de un rango acotado — alimenta tanto
    * `/agenda/resumen` (rango de un mes) como los agregados de `/indicadores` (rango de un

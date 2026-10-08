@@ -41,7 +41,7 @@ import {
   resolverNombreVisible,
   validarArchivo,
   type MotivoArchivoInvalido,
-} from './validador-archivo';
+} from '../../common/archivos/validador-archivo';
 
 const MENSAJES_ARCHIVO: Record<MotivoArchivoInvalido, string> = {
   VACIO: 'El archivo está vacío',

@@ -1,18 +1,24 @@
 import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
 } from '@nestjs/common';
 import {
-  mimeTypePermitido,
+  parseLocalGT,
   type ActualizarCitaInput,
   type CitaResumen,
+  type ConsultaRegistradaDto,
   type DocumentoCitaDto,
   type RegistroConsultaInput,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
+import {
+  validarArchivo,
+  type MotivoArchivoInvalido,
+} from '../../common/archivos/validador-archivo';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { OBJECT_STORAGE } from '../../storage/interfaces/object-storage.interface';
 import type { IObjectStorage } from '../../storage/interfaces/object-storage.interface';
@@ -20,9 +26,16 @@ import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import { DOCUMENTOS_CITA_REPOSITORY } from '../interfaces/documentos-cita-repository.interface';
 import type { IDocumentosCitaRepository } from '../interfaces/documentos-cita-repository.interface';
+import { MENSAJE_SESION_NO_REGISTRABLE } from '../compartido/mensajes';
+import { avisarTraslape } from '../compartido/traslape';
 import { AccesoPsicologiaService } from './acceso-psicologia.service';
 
 const MENSAJE_SIN_ACCESO_DOCUMENTO = 'No tiene acceso a este documento';
+const MENSAJES_ARCHIVO: Record<MotivoArchivoInvalido, string> = {
+  VACIO: 'El archivo está vacío',
+  TIPO_NO_PERMITIDO: 'Tipo de archivo no permitido. Solo PDF o imágenes',
+  CONTENIDO_NO_COINCIDE: 'El contenido del archivo no corresponde a su tipo',
+};
 
 /** "" (campo opcional sin llenar) -> null para la base de datos, mismo criterio que juridico.service.ts. */
 function vacioANulo(valor: string): string | null {
@@ -73,18 +86,38 @@ export class RegistroConsultaService {
   }
 
   /**
-   * Registro clínico completo de la consulta (§5.4, §7.3 del plan). `borrador: true` no cambia
-   * el estado de la cita todavía — solo persiste el avance del formulario.
+   * Registro de la sesión. Al finalizar hace, todo o nada, lo que se deriva de él: la primera
+   * sesión atendida pasa el proceso a Seguimiento y "¿Qué sigue?" puede dejar programada la
+   * próxima cita. `borrador: true` solo guarda el avance: ni cambia la cita ni programa nada.
+   * Cerrar el proceso nunca ocurre aquí: es una acción aparte que la psicóloga confirma.
    */
   async registrarConsulta(
     citaId: string,
     datos: RegistroConsultaInput,
     contexto: ContextoAuditoria,
-  ): Promise<CitaResumen> {
-    await this.acceso.exigirAccesoCita(citaId, contexto.usuarioId);
-
-    const cita = await this.citasRepository.registrarConsulta({
+  ): Promise<ConsultaRegistradaDto> {
+    const acceso = await this.acceso.exigirAccesoCita(
       citaId,
+      contexto.usuarioId,
+    );
+
+    const siguiente = datos.borrador ? undefined : datos.siguiente;
+    let proximaCita: { fechaHora: Date; duracionMinutos: number } | null = null;
+    if (siguiente?.tipo === 'PROGRAMAR') {
+      proximaCita = {
+        fechaHora: parseLocalGT(siguiente.fechaHora),
+        duracionMinutos: siguiente.duracionMinutos,
+      };
+      await avisarTraslape(this.citasRepository, {
+        ...proximaCita,
+        psicologaId: contexto.usuarioId,
+        confirmarTraslape: siguiente.confirmarTraslape ?? false,
+      });
+    }
+
+    const registrada = await this.citasRepository.registrarConsulta({
+      citaId,
+      psicologaId: contexto.usuarioId,
       estado: datos.borrador ? undefined : datos.estado,
       temas: vacioANulo(datos.temas),
       intervencion: vacioANulo(datos.intervencion),
@@ -93,7 +126,11 @@ export class RegistroConsultaService {
       observaciones: vacioANulo(datos.observaciones),
       motivoNoAsistencia: vacioANulo(datos.motivoNoAsistencia),
       borrador: datos.borrador,
+      proximaCita,
     });
+    if (!registrada) {
+      throw new ConflictException(MENSAJE_SESION_NO_REGISTRABLE);
+    }
 
     // Nunca temas/intervención/recomendaciones/motivoNoAsistencia en `detalles` — texto clínico
     // libre, mismo criterio que observaciones/acuerdos en `actualizarCita`.
@@ -105,10 +142,28 @@ export class RegistroConsultaService {
       entidadId: citaId,
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      detalles: { borrador: datos.borrador },
+      detalles: {
+        borrador: datos.borrador,
+        expedienteId: acceso.expedienteId,
+        procesoId: acceso.atencionId,
+        pasoASeguimiento: registrada.pasoASeguimiento,
+        proximaCitaId: registrada.proximaCitaId,
+      },
     });
 
-    return cita;
+    return {
+      cita: registrada.cita,
+      procesoId: acceso.atencionId,
+      pasoASeguimiento: registrada.pasoASeguimiento,
+      proximaCita:
+        registrada.proximaCitaId && proximaCita
+          ? {
+              id: registrada.proximaCitaId,
+              procesoId: acceso.atencionId,
+              fechaHora: proximaCita.fechaHora.toISOString(),
+            }
+          : null,
+    };
   }
 
   async subirDocumentoCita(
@@ -119,10 +174,14 @@ export class RegistroConsultaService {
     if (!archivo) {
       throw new BadRequestException('Debe adjuntar un archivo');
     }
-    // Reusa la misma lista blanca de MIME y el mismo límite de tamaño que el resto del
-    // sistema — nunca se confía en el `accept` del `<input>` del navegador.
-    if (!mimeTypePermitido(archivo.mimetype)) {
-      throw new BadRequestException('Tipo de archivo no permitido');
+    // No basta el tipo que declara el navegador: se miran los primeros bytes del archivo, con
+    // la misma lista blanca que el resto del sistema.
+    const motivo = validarArchivo({
+      mimeType: archivo.mimetype,
+      contenido: archivo.buffer,
+    });
+    if (motivo) {
+      throw new BadRequestException(MENSAJES_ARCHIVO[motivo]);
     }
 
     const acceso = await this.acceso.exigirAccesoCita(

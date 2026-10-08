@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { ForbiddenException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+} from '@nestjs/common';
 import type { CitaResumen } from '@akyuam/shared';
 import { RegistroConsultaService } from './registro-consulta.service';
 import type { AccesoPsicologiaService } from './acceso-psicologia.service';
@@ -71,10 +75,14 @@ describe('RegistroConsultaService', () => {
       crear: jest.fn(),
       actualizar: jest.fn(),
       listarAgenda: jest.fn(),
-      buscarCitasSolapadas: jest.fn(),
+      buscarCitasSolapadas: jest.fn().mockResolvedValue([]),
       obtenerDatosParaReprogramar: jest.fn(),
       reprogramar: jest.fn(),
-      registrarConsulta: jest.fn().mockResolvedValue(crearCita()),
+      registrarConsulta: jest.fn().mockResolvedValue({
+        cita: crearCita(),
+        pasoASeguimiento: false,
+        proximaCitaId: null,
+      }),
     };
     documentosRepository = {
       crearDocumento: jest.fn(),
@@ -173,6 +181,204 @@ describe('RegistroConsultaService', () => {
       expect(JSON.stringify(llamada.detalles ?? {})).not.toContain(
         'motivo sensible',
       );
+    });
+  });
+
+  describe('registrarConsulta · etapa y "¿Qué sigue?"', () => {
+    const programar = {
+      tipo: 'PROGRAMAR' as const,
+      fechaHora: '2026-10-15T09:00',
+      duracionMinutos: 45,
+    };
+
+    it('la primera sesión atendida avisa que el proceso pasó a Seguimiento', async () => {
+      citasRepository.registrarConsulta.mockResolvedValue({
+        cita: crearCita(),
+        pasoASeguimiento: true,
+        proximaCitaId: null,
+      });
+
+      const resultado = await service.registrarConsulta(
+        'cita-1',
+        datosBase,
+        contexto,
+      );
+
+      expect(resultado).toMatchObject({
+        procesoId: 'atencion-1',
+        pasoASeguimiento: true,
+        proximaCita: null,
+      });
+      expect(citasRepository.registrarConsulta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          psicologaId: 'psicologa-a',
+          estado: 'ATENDIDA',
+          proximaCita: null,
+        }),
+      );
+    });
+
+    it('"Programar" crea la próxima cita junto con el registro, en hora de Guatemala', async () => {
+      citasRepository.registrarConsulta.mockResolvedValue({
+        cita: crearCita(),
+        pasoASeguimiento: false,
+        proximaCitaId: 'cita-2',
+      });
+
+      const resultado = await service.registrarConsulta(
+        'cita-1',
+        { ...datosBase, siguiente: programar },
+        contexto,
+      );
+
+      expect(citasRepository.registrarConsulta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          proximaCita: {
+            fechaHora: new Date('2026-10-15T15:00:00.000Z'),
+            duracionMinutos: 45,
+          },
+        }),
+      );
+      expect(resultado.proximaCita).toEqual({
+        id: 'cita-2',
+        procesoId: 'atencion-1',
+        fechaHora: '2026-10-15T15:00:00.000Z',
+      });
+    });
+
+    it('si la próxima cita se traslapa, avisa con 409 y no guarda nada', async () => {
+      citasRepository.buscarCitasSolapadas.mockResolvedValue([crearCita()]);
+
+      await expect(
+        service.registrarConsulta(
+          'cita-1',
+          { ...datosBase, siguiente: programar },
+          contexto,
+        ),
+      ).rejects.toMatchObject({
+        response: { codigo: 'TRASLAPE_CITA' },
+      });
+      expect(citasRepository.registrarConsulta).not.toHaveBeenCalled();
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('con el traslape confirmado ya no consulta la agenda y guarda', async () => {
+      await service.registrarConsulta(
+        'cita-1',
+        {
+          ...datosBase,
+          siguiente: { ...programar, confirmarTraslape: true },
+        },
+        contexto,
+      );
+
+      expect(citasRepository.buscarCitasSolapadas).not.toHaveBeenCalled();
+      expect(citasRepository.registrarConsulta).toHaveBeenCalled();
+    });
+
+    it('un borrador no programa la próxima cita aunque venga en el formulario', async () => {
+      await service.registrarConsulta(
+        'cita-1',
+        { ...datosBase, borrador: true, siguiente: programar },
+        contexto,
+      );
+
+      expect(citasRepository.buscarCitasSolapadas).not.toHaveBeenCalled();
+      expect(citasRepository.registrarConsulta).toHaveBeenCalledWith(
+        expect.objectContaining({ estado: undefined, proximaCita: null }),
+      );
+    });
+
+    it('"Cerrar proceso" no cierra nada desde aquí: solo guarda la sesión', async () => {
+      const resultado = await service.registrarConsulta(
+        'cita-1',
+        { ...datosBase, siguiente: { tipo: 'CERRAR' } },
+        contexto,
+      );
+
+      expect(citasRepository.registrarConsulta).toHaveBeenCalledWith(
+        expect.objectContaining({ proximaCita: null }),
+      );
+      expect(resultado.proximaCita).toBeNull();
+    });
+
+    it('responde 409 si el proceso se cerró o la cita se movió, sin auditar un guardado', async () => {
+      citasRepository.registrarConsulta.mockResolvedValue(null);
+
+      await expect(
+        service.registrarConsulta('cita-1', datosBase, contexto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('subirDocumentoCita', () => {
+    const PDF = Buffer.from('%PDF-1.7 contenido de prueba');
+    function archivo(mimetype: string, buffer: Buffer): Express.Multer.File {
+      return {
+        mimetype,
+        buffer,
+        size: buffer.length,
+        originalname: 'formato.pdf',
+      } as Express.Multer.File;
+    }
+
+    it('rechaza un archivo cuyo contenido no es del tipo que declara', async () => {
+      await expect(
+        service.subirDocumentoCita(
+          'cita-1',
+          archivo('application/pdf', Buffer.from('MZ ejecutable disfrazado')),
+          contexto,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(objectStorage.subirObjeto).not.toHaveBeenCalled();
+    });
+
+    it('rechaza un tipo que no está en la lista blanca', async () => {
+      await expect(
+        service.subirDocumentoCita(
+          'cita-1',
+          archivo('text/html', Buffer.from('<html>')),
+          contexto,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(objectStorage.subirObjeto).not.toHaveBeenCalled();
+    });
+
+    it('no sube nada a la cita de otra psicóloga', async () => {
+      acceso.exigirAccesoCita.mockRejectedValue(new ForbiddenException());
+
+      await expect(
+        service.subirDocumentoCita(
+          'cita-ajena',
+          archivo('application/pdf', PDF),
+          contexto,
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(objectStorage.subirObjeto).not.toHaveBeenCalled();
+      expect(documentosRepository.crearDocumento).not.toHaveBeenCalled();
+    });
+
+    it('guarda un PDF real con una clave que no lleva el nombre del archivo', async () => {
+      documentosRepository.crearDocumento.mockResolvedValue({
+        id: 'doc-1',
+        tipo: 'FORMATO_ATENCION_PSICOLOGICA',
+        nombreArchivo: 'formato.pdf',
+        tamanioBytes: PDF.length,
+        createdAt: '2026-10-08T00:00:00.000Z',
+      });
+
+      await service.subirDocumentoCita(
+        'cita-1',
+        archivo('application/pdf', PDF),
+        contexto,
+      );
+
+      const [clave] = objectStorage.subirObjeto.mock.calls[0];
+      expect(clave).toMatch(/^citas-psicologicas\/exp-1\/cita-1\//);
+      expect(clave).not.toContain('formato');
+      const auditado = auditService.registrar.mock.calls[0][0];
+      expect(JSON.stringify(auditado.detalles)).not.toContain('formato');
     });
   });
 

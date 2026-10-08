@@ -33,8 +33,12 @@ export const RUTAS_PSICOLOGIA = {
    */
   agenda: (dia?: string, porAgendar?: string) => conQuery('/psicologia/agenda', { dia, porAgendar }),
   procesos: (filtro?: FiltroProcesosPsicologia) => conQuery('/psicologia/procesos', { filtro }),
-  /** `sesion` (id de la cita) abre el detalle con esa sesión ya desplegada. */
-  proceso: (procesoId: string, sesion?: string) => conQuery(`/psicologia/procesos/${procesoId}`, { sesion }),
+  /**
+   * `sesion` (id de la cita) abre el detalle con esa sesión ya desplegada. `cerrar` lo abre con
+   * el modal de cierre a la vista: así llega quien eligió "Cerrar proceso" al registrar una sesión.
+   */
+  proceso: (procesoId: string, sesion?: string, cerrar?: boolean) =>
+    conQuery(`/psicologia/procesos/${procesoId}`, { sesion, cerrar: cerrar ? '1' : undefined }),
   documentosProceso: (procesoId: string) => `/psicologia/procesos/${procesoId}/documentos`,
   usuarias: (filtro?: FiltroUsuariasPsicologia) => conQuery('/psicologia/usuarias', { filtro }),
   usuaria: (usuariaId: string) => `/psicologia/usuarias/${usuariaId}`,

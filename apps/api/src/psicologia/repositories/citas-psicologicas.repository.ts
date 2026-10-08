@@ -10,6 +10,7 @@ import type {
   ActualizarCitaParams,
   BuscarSolapamientoParams,
   CitaParaAgregado,
+  ConsultaRegistrada,
   CrearCitaParams,
   DatosCitaOrigen,
   ICitasPsicologicasRepository,
@@ -21,6 +22,8 @@ import type {
   ReprogramarCitaParams,
 } from '../interfaces/citas-psicologicas-repository.interface';
 import type { PaginaConCursorRepo } from '../interfaces/atencion-psicologica-repository.interface';
+import { codigoProceso } from '../dominio/codigo-proceso';
+import { etapaTrasSesionAtendida } from '../dominio/etapa-proceso';
 import { procesoLegible } from './acceso-expediente';
 import { INCLUDE_CITA, mapearCita } from './citas-psicologicas.mapper';
 
@@ -224,24 +227,94 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     return mapearCita(nueva);
   }
 
-  async registrarConsulta(
+  registrarConsulta(
     params: RegistrarConsultaParams,
-  ): Promise<CitaResumen> {
-    const cita = await this.prisma.citaPsicologica.update({
-      where: { id: params.citaId },
-      data: {
-        estado: params.estado,
-        temas: params.temas,
-        intervencion: params.intervencion,
-        recomendaciones: params.recomendaciones,
-        acuerdos: params.acuerdos,
-        observaciones: params.observaciones,
-        motivoNoAsistencia: params.motivoNoAsistencia,
-        borrador: params.borrador,
-      },
-      include: INCLUDE_CITA,
+  ): Promise<ConsultaRegistrada | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const actual = await tx.citaPsicologica.findUnique({
+        where: { id: params.citaId },
+        select: { atencionId: true, ninoId: true },
+      });
+      if (!actual) {
+        return null;
+      }
+      // Bloquea la fila del proceso (la escritura no cambia ningún dato): un cierre simultáneo
+      // espera, y no queda una sesión ni una cita nueva colgando de un proceso cerrado.
+      const bloqueados = await tx.atencionPsicologica.updateMany({
+        where: {
+          id: actual.atencionId,
+          psicologaAsignadaId: params.psicologaId,
+          estado: { not: 'CIERRE' },
+        },
+        data: { psicologaAsignadaId: params.psicologaId },
+      });
+      if (bloqueados.count !== 1) {
+        return null;
+      }
+
+      // La condición va en el WHERE: una cita que se movió a otra fecha ya no se registra.
+      const registradas = await tx.citaPsicologica.updateMany({
+        where: { id: params.citaId, estado: { not: 'REPROGRAMADA' } },
+        data: {
+          estado: params.estado,
+          temas: params.temas,
+          intervencion: params.intervencion,
+          recomendaciones: params.recomendaciones,
+          acuerdos: params.acuerdos,
+          observaciones: params.observaciones,
+          motivoNoAsistencia: params.motivoNoAsistencia,
+          borrador: params.borrador,
+        },
+      });
+      if (registradas.count !== 1) {
+        return null;
+      }
+
+      let pasoASeguimiento = false;
+      if (params.estado === 'ATENDIDA') {
+        const avanzados = await tx.atencionPsicologica.updateMany({
+          where: { id: actual.atencionId, estado: 'INICIO' },
+          data: {
+            estado: etapaTrasSesionAtendida('INICIO'),
+            actualizadoPorId: params.psicologaId,
+            version: { increment: 1 },
+          },
+        });
+        pasoASeguimiento = avanzados.count === 1;
+        if (pasoASeguimiento) {
+          await tx.cambioEstadoAtencion.create({
+            data: {
+              atencionId: actual.atencionId,
+              estadoAnterior: 'INICIO',
+              estadoNuevo: etapaTrasSesionAtendida('INICIO'),
+              registradoPorId: params.psicologaId,
+            },
+          });
+        }
+      }
+
+      let proximaCitaId: string | null = null;
+      if (params.proximaCita) {
+        const proxima = await tx.citaPsicologica.create({
+          data: {
+            atencionId: actual.atencionId,
+            fechaHora: params.proximaCita.fechaHora,
+            duracionMinutos: params.proximaCita.duracionMinutos,
+            tipo: 'SEGUIMIENTO',
+            ninoId: actual.ninoId,
+            atendidoPorId: params.psicologaId,
+          },
+          select: { id: true },
+        });
+        proximaCitaId = proxima.id;
+      }
+
+      const cita = await tx.citaPsicologica.findUniqueOrThrow({
+        where: { id: params.citaId },
+        include: INCLUDE_CITA,
+      });
+      return { cita: mapearCita(cita), pasoASeguimiento, proximaCitaId };
     });
-    return mapearCita(cita);
   }
 
   async listarCitasEnRango(
@@ -306,9 +379,12 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       where: { id: citaId },
       include: {
         ...INCLUDE_CITA,
+        nino: { select: { nombres: true, apellidos: true } },
         atencion: {
           select: {
             expedienteId: true,
+            consecutivo: true,
+            estado: true,
             expediente: {
               select: {
                 numero: true,
@@ -325,6 +401,15 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       ...mapearCita(cita),
       expedienteId: cita.atencion.expedienteId,
       numero: cita.atencion.expediente.numero,
+      procesoId: cita.atencionId,
+      procesoCodigo: codigoProceso(
+        cita.atencion.consecutivo,
+        cita.atencion.expediente.numero,
+      ),
+      procesoEtapa: cita.atencion.estado,
+      ninoNombreCompleto: cita.nino
+        ? `${cita.nino.nombres} ${cita.nino.apellidos}`
+        : null,
       usuariaNombreCompleto: `${cita.atencion.expediente.usuaria.nombres} ${cita.atencion.expediente.usuaria.apellidos}`,
     };
   }
