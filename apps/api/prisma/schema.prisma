@@ -211,12 +211,13 @@ model ReferidoArea {
 
   // Solo Jurídico. Una referencia está pendiente mientras no se atienda ni se devuelva; se
   // atiende al registrar el primer lote de procesos desde ella.
-  atendidoEn        DateTime?         @db.Timestamptz(3)
-  devueltoEn        DateTime?         @db.Timestamptz(3)
-  motivoDevolucion  String?           @db.VarChar(500)
-  devueltoPorId     String?
-  devueltoPor       Usuario?          @relation("ReferidoDevueltoPor", fields: [devueltoPorId], references: [id])
-  procesosJuridicos ProcesoJuridico[]
+  atendidoEn             DateTime?             @db.Timestamptz(3)
+  devueltoEn             DateTime?             @db.Timestamptz(3)
+  motivoDevolucion       String?               @db.VarChar(500)
+  devueltoPorId          String?
+  devueltoPor            Usuario?              @relation("ReferidoDevueltoPor", fields: [devueltoPorId], references: [id])
+  procesosJuridicos      ProcesoJuridico[]
+  atencionesPsicologicas AtencionPsicologica[]
 
   @@unique([expedienteId, area])
   @@index([area])
@@ -240,6 +241,8 @@ model Nino {
   apellidos       String
   fechaNacimiento DateTime      @db.Date
   genero          GeneroPersona
+
+  citasPsicologicas CitaPsicologica[]
 
   @@index([expedienteId])
 }
@@ -572,25 +575,50 @@ enum EstadoAtencionPsicologica {
 // convierte en su dueña exclusiva: a partir de ahí ninguna otra psicóloga puede leer ni
 // escribir nada de este expediente (403 genérico, sin distinguir el motivo).
 model AtencionPsicologica {
-  id                  String                    @id @default(uuid())
-  expedienteId        String                    @unique
-  expediente          Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
-  estado              EstadoAtencionPsicologica @default(INICIO)
-  psicologaAsignadaId String?
-  psicologaAsignada   Usuario?                  @relation("AtencionPsicologicaAsignada", fields: [psicologaAsignadaId], references: [id])
-  tomadaEn            DateTime?                 @db.Timestamptz(3)
-  fechaInicio         DateTime?                 @db.Timestamptz(3)
-  fechaCierre         DateTime?                 @db.Timestamptz(3)
-  motivoCierre        String?                   @db.Text
-  actualizadoPorId    String
-  actualizadoPor      Usuario                   @relation("AtencionPsicologicaActualizadaPor", fields: [actualizadoPorId], references: [id])
-  createdAt           DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime                  @updatedAt @db.Timestamptz(3)
+  id                   String                    @id @default(uuid())
+  expedienteId         String                    @unique
+  expediente           Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  estado               EstadoAtencionPsicologica @default(INICIO)
+  psicologaAsignadaId  String?
+  psicologaAsignada    Usuario?                  @relation("AtencionPsicologicaAsignada", fields: [psicologaAsignadaId], references: [id])
+  tomadaEn             DateTime?                 @db.Timestamptz(3)
+  fechaInicio          DateTime?                 @db.Timestamptz(3)
+  fechaCierre          DateTime?                 @db.Timestamptz(3)
+  // @deprecated Texto libre anterior al rediseño; lo reemplazan `motivoCierreCatalogo` y
+  // `resumenCierre`. Se elimina en la última migración del rediseño.
+  motivoCierre         String?                   @db.Text
+  // El código visible "P{consecutivo}-{numero de expediente}" se deriva, no se guarda.
+  consecutivo          Int                       @default(1)
+  motivoCierreCatalogo MotivoCierrePsicologia?
+  // Texto de la psicóloga al cerrar (obligatorio si el motivo es OTRO). La app lo limita a 2000.
+  resumenCierre        String?                   @db.Text
+  // Si Jurídico / Médica ven etapa, fechas y documentos del proceso. Trabajo Social siempre
+  // los ve; las notas de sesión no salen de Psicología en ningún caso.
+  visibleJuridico      Boolean                   @default(false)
+  visibleMedica        Boolean                   @default(false)
+  // Referencia de Trabajo Social que lo originó; null si se abrió desde la ficha de la usuaria.
+  referidoId           String?
+  referido             ReferidoArea?             @relation(fields: [referidoId], references: [id], onDelete: SetNull)
+  // Concurrencia optimista: cada escritura exige la versión leída y la incrementa.
+  version              Int                       @default(1)
+  actualizadoPorId     String
+  actualizadoPor       Usuario                   @relation("AtencionPsicologicaActualizadaPor", fields: [actualizadoPorId], references: [id])
+  createdAt            DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime                  @updatedAt @db.Timestamptz(3)
 
   citas         CitaPsicologica[]
   cambiosEstado CambioEstadoAtencion[]
 
   @@index([psicologaAsignadaId])
+  @@index([referidoId])
+}
+
+enum MotivoCierrePsicologia {
+  OBJETIVOS_CUMPLIDOS
+  DEJO_DE_ASISTIR
+  REFERIDA_OTRA_INSTITUCION
+  DECISION_USUARIA
+  OTRO
 }
 
 // Historial de hitos del proceso clínico (INICIO → SEGUIMIENTO → CIERRE), separado de
@@ -639,9 +667,14 @@ model CitaPsicologica {
   atencionId          String
   atencion            AtencionPsicologica   @relation(fields: [atencionId], references: [id], onDelete: Cascade)
   fechaHora           DateTime              @db.Timestamptz(3)
-  modalidad           ModalidadCita
+  // La atención es solo presencial en la ONG: el rediseño ya no pide modalidad, lugar ni motivo
+  // de la cita. Los defaults dejan que las citas nuevas se creen sin ellos.
+  modalidad           ModalidadCita         @default(PRESENCIAL)
   lugar               String?
-  motivo              String
+  motivo              String                @default("")
+  // Hijo/a que se atiende dentro del proceso de la madre; null = la usuaria.
+  ninoId              String?
+  nino                Nino?                 @relation(fields: [ninoId], references: [id], onDelete: SetNull)
   tipo                TipoCitaPsicologica   @default(SEGUIMIENTO)
   duracionMinutos     Int                   @default(45)
   estado              EstadoCitaPsicologica @default(PROGRAMADA)
@@ -663,4 +696,5 @@ model CitaPsicologica {
 
   @@index([atencionId, fechaHora])
   @@index([fechaHora])
+  @@index([ninoId])
 }
