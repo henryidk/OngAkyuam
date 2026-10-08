@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   Get,
   HttpCode,
@@ -10,10 +11,17 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
+  agendarCitaPsicologicaSchema,
   huecosAgendaQuerySchema,
+  moverCitaPsicologicaSchema,
   rangoFechasQuerySchema,
 } from '@akyuam/shared';
-import type { HuecosAgendaQuery, RangoFechasQuery } from '@akyuam/shared';
+import type {
+  AgendarCitaPsicologicaInput,
+  HuecosAgendaQuery,
+  MoverCitaPsicologicaInput,
+  RangoFechasQuery,
+} from '@akyuam/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -46,6 +54,35 @@ export class AgendaPsicologiaController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.agendaService.huecos(query, usuario.id);
+  }
+
+  @Get('agenda/procesos')
+  listarProcesosParaAgendar(@CurrentUser() usuario: AuthenticatedUser) {
+    return this.agendaService.listarProcesosParaAgendar(usuario.id);
+  }
+
+  @Post('procesos/:procesoId/citas')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  programarCita(
+    @Param('procesoId', ParseUUIDPipe) procesoId: string,
+    @Body(new ZodValidationPipe(agendarCitaPsicologicaSchema))
+    datos: AgendarCitaPsicologicaInput,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.agendaService.programarCita(procesoId, datos, contexto);
+  }
+
+  @Post('citas/:citaId/reprogramacion')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  moverCita(
+    @Param('citaId', ParseUUIDPipe) citaId: string,
+    @Body(new ZodValidationPipe(moverCitaPsicologicaSchema))
+    datos: MoverCitaPsicologicaInput,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.agendaService.moverCita(citaId, datos, contexto);
   }
 
   @Post('citas/:citaId/no-asistio')

@@ -15,16 +15,33 @@ import {
   crearProcesosRepository,
   eventosAuditados,
   EXPEDIENTE_ID,
+  NINO_ID,
   PROCESO_ID,
+  procesoConAcceso,
 } from '../pruebas/dobles';
 import { AgendaPsicologiaService } from './agenda-psicologia.service';
 
 // "Ahora" fijo: miércoles 2026-10-07, 10:05 en Guatemala (16:05 UTC).
 const AHORA = new Date('2026-10-07T16:05:00.000Z');
+const CITA_NUEVA_ID = '77777777-7777-4777-8777-777777777777';
+// Jueves 2026-10-08, 09:00 en Guatemala (15:00 UTC).
+const NUEVA_FECHA = new Date('2026-10-08T15:00:00.000Z');
+const DATOS_CITA = {
+  fechaHora: '2026-10-08T09:00',
+  duracionMinutos: 45 as const,
+  ninoId: null,
+  confirmarTraslape: false,
+};
+const DATOS_MOVER = {
+  fechaHora: '2026-10-08T09:00',
+  duracionMinutos: 60 as const,
+  confirmarTraslape: false,
+};
 
 describe('AgendaPsicologiaService', () => {
   let agendaRepository: jest.Mocked<IAgendaPsicologiaRepository>;
   let citasRepository: ReturnType<typeof crearCitasRepository>;
+  let procesosRepository: ReturnType<typeof crearProcesosRepository>;
   let auditService: ReturnType<typeof crearAuditService>;
   let service: AgendaPsicologiaService;
 
@@ -34,14 +51,20 @@ describe('AgendaPsicologiaService', () => {
       listarCitas: jest.fn().mockResolvedValue([]),
       listarOcupadas: jest.fn().mockResolvedValue([]),
       marcarNoAsistio: jest.fn().mockResolvedValue(true),
+      listarProcesosParaAgendar: jest.fn().mockResolvedValue([]),
+      programarCita: jest.fn().mockResolvedValue(CITA_NUEVA_ID),
+      moverCita: jest.fn().mockResolvedValue(CITA_NUEVA_ID),
     };
     citasRepository = crearCitasRepository();
+    procesosRepository = crearProcesosRepository();
     auditService = crearAuditService();
     service = new AgendaPsicologiaService(
       agendaRepository,
+      citasRepository,
+      procesosRepository,
       crearAcceso(
         crearBandejaRepository(),
-        crearProcesosRepository(),
+        procesosRepository,
         citasRepository,
       ),
       auditService,
@@ -162,6 +185,188 @@ describe('AgendaPsicologiaService', () => {
 
       await expect(
         service.marcarNoAsistio(CITA_ID, contexto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('procesos para agendar', () => {
+    it('pide solo los procesos de quien consulta', async () => {
+      await service.listarProcesosParaAgendar('psicologa-a');
+
+      expect(agendaRepository.listarProcesosParaAgendar).toHaveBeenCalledWith(
+        'psicologa-a',
+        AHORA,
+      );
+    });
+  });
+
+  describe('programar cita en un proceso', () => {
+    it('rechaza con 403 el proceso de otra psicóloga, sin crear nada ni auditar', async () => {
+      procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
+
+      await expect(
+        service.programarCita(PROCESO_ID, DATOS_CITA, contexto),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(procesosRepository.buscarAccesoProceso).toHaveBeenCalledWith(
+        PROCESO_ID,
+        'psicologa-a',
+      );
+      expect(citasRepository.buscarCitasSolapadas).not.toHaveBeenCalled();
+      expect(agendaRepository.programarCita).not.toHaveBeenCalled();
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('responde 409 si el proceso ya está cerrado', async () => {
+      procesosRepository.buscarAccesoProceso.mockResolvedValue(
+        procesoConAcceso({ etapa: 'CIERRE' }),
+      );
+
+      await expect(
+        service.programarCita(PROCESO_ID, DATOS_CITA, contexto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(agendaRepository.programarCita).not.toHaveBeenCalled();
+    });
+
+    it('rechaza con 400 a un niño que no es del expediente del proceso', async () => {
+      procesosRepository.ninoPerteneceAExpediente.mockResolvedValue(false);
+
+      await expect(
+        service.programarCita(
+          PROCESO_ID,
+          { ...DATOS_CITA, ninoId: NINO_ID },
+          contexto,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(procesosRepository.ninoPerteneceAExpediente).toHaveBeenCalledWith(
+        NINO_ID,
+        EXPEDIENTE_ID,
+      );
+      expect(agendaRepository.programarCita).not.toHaveBeenCalled();
+    });
+
+    it('avisa del traslape con 409 y su código, y no crea la cita', async () => {
+      citasRepository.buscarCitasSolapadas.mockResolvedValue([
+        { id: CITA_ID } as never,
+      ]);
+
+      await expect(
+        service.programarCita(PROCESO_ID, DATOS_CITA, contexto),
+      ).rejects.toMatchObject({
+        response: { codigo: 'TRASLAPE_CITA', detalle: { citas: [{}] } },
+      });
+      expect(citasRepository.buscarCitasSolapadas).toHaveBeenCalledWith({
+        psicologaId: 'psicologa-a',
+        fechaHora: NUEVA_FECHA,
+        duracionMinutos: 45,
+        excluirCitaId: undefined,
+      });
+      expect(agendaRepository.programarCita).not.toHaveBeenCalled();
+    });
+
+    it('con el traslape confirmado crea la cita para el niño y lo audita solo con ids', async () => {
+      await expect(
+        service.programarCita(
+          PROCESO_ID,
+          { ...DATOS_CITA, ninoId: NINO_ID, confirmarTraslape: true },
+          contexto,
+        ),
+      ).resolves.toEqual({
+        id: CITA_NUEVA_ID,
+        procesoId: PROCESO_ID,
+        fechaHora: NUEVA_FECHA.toISOString(),
+      });
+      expect(citasRepository.buscarCitasSolapadas).not.toHaveBeenCalled();
+      expect(agendaRepository.programarCita).toHaveBeenCalledWith({
+        procesoId: PROCESO_ID,
+        psicologaId: 'psicologa-a',
+        fechaHora: NUEVA_FECHA,
+        duracionMinutos: 45,
+        ninoId: NINO_ID,
+      });
+      expect(eventosAuditados(auditService)).toEqual([
+        expect.objectContaining({
+          accion: 'CITA_PSICOLOGICA_PROGRAMADA',
+          entidadId: CITA_NUEVA_ID,
+          detalles: { expedienteId: EXPEDIENTE_ID, procesoId: PROCESO_ID },
+        }),
+      ]);
+    });
+
+    it('responde 409 sin auditar si el proceso se cerró mientras se programaba', async () => {
+      agendaRepository.programarCita.mockResolvedValue(null);
+
+      await expect(
+        service.programarCita(PROCESO_ID, DATOS_CITA, contexto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('mover cita', () => {
+    it('rechaza con 403 la cita de otra psicóloga, sin tocarla ni auditar', async () => {
+      citasRepository.buscarAccesoCita.mockResolvedValue(null);
+
+      await expect(
+        service.moverCita(CITA_ID, DATOS_MOVER, contexto),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(citasRepository.buscarAccesoCita).toHaveBeenCalledWith(
+        CITA_ID,
+        'psicologa-a',
+      );
+      expect(agendaRepository.moverCita).not.toHaveBeenCalled();
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('revisa el traslape sin contar la propia cita y avisa con 409', async () => {
+      citasRepository.buscarCitasSolapadas.mockResolvedValue([
+        { id: CITA_NUEVA_ID } as never,
+      ]);
+
+      await expect(
+        service.moverCita(CITA_ID, DATOS_MOVER, contexto),
+      ).rejects.toMatchObject({ response: { codigo: 'TRASLAPE_CITA' } });
+      expect(citasRepository.buscarCitasSolapadas).toHaveBeenCalledWith({
+        psicologaId: 'psicologa-a',
+        fechaHora: NUEVA_FECHA,
+        duracionMinutos: 60,
+        excluirCitaId: CITA_ID,
+      });
+      expect(agendaRepository.moverCita).not.toHaveBeenCalled();
+    });
+
+    it('mueve la cita y lo audita solo con ids', async () => {
+      await expect(
+        service.moverCita(CITA_ID, DATOS_MOVER, contexto),
+      ).resolves.toEqual({
+        id: CITA_NUEVA_ID,
+        procesoId: PROCESO_ID,
+        fechaHora: NUEVA_FECHA.toISOString(),
+      });
+      expect(agendaRepository.moverCita).toHaveBeenCalledWith({
+        citaId: CITA_ID,
+        psicologaId: 'psicologa-a',
+        fechaHora: NUEVA_FECHA,
+        duracionMinutos: 60,
+      });
+      expect(eventosAuditados(auditService)).toEqual([
+        expect.objectContaining({
+          accion: 'CITA_PSICOLOGICA_REPROGRAMADA',
+          entidadId: CITA_NUEVA_ID,
+          detalles: {
+            expedienteId: EXPEDIENTE_ID,
+            procesoId: PROCESO_ID,
+            citaAnteriorId: CITA_ID,
+          },
+        }),
+      ]);
+    });
+
+    it('responde 409 sin auditar si la cita ya no estaba programada', async () => {
+      agendaRepository.moverCita.mockResolvedValue(null);
+
+      await expect(
+        service.moverCita(CITA_ID, DATOS_MOVER, contexto),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(auditService.registrar).not.toHaveBeenCalled();
     });

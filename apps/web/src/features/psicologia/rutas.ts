@@ -27,8 +27,11 @@ interface OpcionesNuevaCita {
 export const RUTAS_PSICOLOGIA = {
   /** Pantalla de entrada del módulo: las referencias de Trabajo Social que nadie ha tomado. */
   atencion: () => '/psicologia/atencion',
-  /** `porAgendar` resalta el caso recién tomado en el panel "Casos tomados por agendar". */
-  agenda: (fecha?: string, porAgendar?: string) => conQuery('/psicologia/agenda', { fecha, porAgendar }),
+  /**
+   * `dia` (`YYYY-MM-DD`) abre la agenda en ese día y en su semana; sin él, en hoy. `porAgendar`
+   * resalta el caso recién tomado en el panel "Casos tomados por agendar".
+   */
+  agenda: (dia?: string, porAgendar?: string) => conQuery('/psicologia/agenda', { dia, porAgendar }),
   nuevaCita: ({ expedienteId, tipo, fecha }: OpcionesNuevaCita = {}) =>
     conQuery('/psicologia/agenda/nueva-cita', { expediente: expedienteId, tipo, fecha }),
   reprogramarCita: (citaId: string) =>

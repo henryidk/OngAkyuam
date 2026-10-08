@@ -4,7 +4,6 @@ import {
   diasDesdeGT,
   nombreMunicipio,
   type CasoPorAgendarDto,
-  type PersonaAtendidaDto,
   type ReferenciaBandejaPsicologiaDto,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -13,7 +12,7 @@ import type {
   ReferenciaPsicologia,
 } from '../interfaces/bandeja-psicologia-repository.interface';
 import { EXPEDIENTE_SIN_TOMAR } from './acceso-expediente';
-import { edad, nombreCompleto } from './personas';
+import { edad, nombreCompleto, personasDelExpediente } from './personas';
 
 /** Tope de seguridad de las dos colas: son listas de trabajo, no un historial. */
 const LIMITE_COLA = 200;
@@ -37,28 +36,6 @@ const SELECT_EXPEDIENTE_COLA = {
     orderBy: { fechaNacimiento: 'asc' },
   },
 } satisfies Prisma.ExpedienteSelect;
-
-type ExpedienteCola = Prisma.ExpedienteGetPayload<{
-  select: typeof SELECT_EXPEDIENTE_COLA;
-}>;
-
-/** La usuaria primero y luego sus hijos/as: las personas a quienes se puede dar la cita. */
-function personasDelExpediente(
-  expediente: ExpedienteCola,
-): PersonaAtendidaDto[] {
-  return [
-    {
-      ninoId: null,
-      nombreCompleto: nombreCompleto(expediente.usuaria),
-      edad: edad(expediente.usuaria),
-    },
-    ...expediente.ninos.map((nino) => ({
-      ninoId: nino.id,
-      nombreCompleto: nombreCompleto(nino),
-      edad: edad(nino),
-    })),
-  ];
-}
 
 /** Caso que la psicóloga tomó y al que todavía no le agenda la primera cita. */
 export function casoPorAgendar(psicologaId: string) {

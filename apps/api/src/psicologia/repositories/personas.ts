@@ -39,3 +39,16 @@ export function personaAtendida(
     edad: edad(persona),
   };
 }
+
+/** La usuaria primero y luego sus hijos/as: las personas a quienes se puede dar la cita. */
+export function personasDelExpediente(expediente: {
+  usuaria: PersonaConNacimiento;
+  ninos: (PersonaConNacimiento & { id: string })[];
+}): PersonaAtendidaDto[] {
+  return [
+    personaAtendida(expediente.usuaria, null),
+    ...expediente.ninos.map((nino) =>
+      personaAtendida(expediente.usuaria, nino),
+    ),
+  ];
+}

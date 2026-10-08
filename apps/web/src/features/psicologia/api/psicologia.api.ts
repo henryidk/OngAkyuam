@@ -1,18 +1,22 @@
 import type {
-  AgendaCita,
   AgendaResumenDia,
   AgendaResumenQuery,
   AgendarCitaPsicologicaInput,
   BuscarExpedientesQuery,
   CasoPorAgendarDto,
   CasoPsicologiaTomadoDto,
+  CitaAgendaDto,
+  CitaProgramadaDto,
   CitaPsicologicaDetalle,
   CitasPaginadas,
   ExpedienteResumenPsicologia,
   ExpedientesPaginados,
   HistorialCitasQuery,
+  HuecoLibreDto,
   IndicadoresPsicologia,
   IndicadoresQuery,
+  MoverCitaPsicologicaInput,
+  ProcesoParaAgendarDto,
   ProcesoPsicologiaAbiertoDto,
   ProgramarCitaInput,
   RangoFechasQuery,
@@ -20,15 +24,10 @@ import type {
   RegistroConsultaInput,
   ReprogramarCitaInput,
   ResumenProcesosPsicologia,
-  TableroPsicologia,
 } from '@akyuam/shared'
 import { api } from '../../../lib/api'
 
 /** Cliente tipado del módulo de psicología — una función por endpoint, nunca `api.get` suelto en un componente. */
-
-export function obtenerTablero() {
-  return api.get<TableroPsicologia>('/psicologia/tablero').then((res) => res.data)
-}
 
 export function obtenerResumenProcesos() {
   return api.get<ResumenProcesosPsicologia>('/psicologia/procesos/resumen').then((res) => res.data)
@@ -60,8 +59,31 @@ export function atenderReferencia(referidoId: string, datos: AgendarCitaPsicolog
     .then((res) => res.data)
 }
 
-export function listarAgenda(query: RangoFechasQuery) {
-  return api.get<AgendaCita[]>('/psicologia/agenda', { params: query }).then((res) => res.data)
+/** Mi agenda en un rango de días de Guatemala (máximo seis semanas). */
+export function listarCitasAgenda(query: RangoFechasQuery) {
+  return api.get<CitaAgendaDto[]>('/psicologia/agenda/citas', { params: query }).then((res) => res.data)
+}
+
+/** Tramos libres de un día dentro del horario habitual: una sugerencia, no un límite. */
+export function listarHuecos(fecha: string) {
+  return api.get<HuecoLibreDto[]>('/psicologia/agenda/huecos', { params: { fecha } }).then((res) => res.data)
+}
+
+/** Mis procesos abiertos, con las personas a quienes se puede citar y su próxima cita. */
+export function listarProcesosParaAgendar() {
+  return api.get<ProcesoParaAgendarDto[]>('/psicologia/agenda/procesos').then((res) => res.data)
+}
+
+export function programarCitaEnProceso(procesoId: string, datos: AgendarCitaPsicologicaInput) {
+  return api.post<CitaProgramadaDto>(`/psicologia/procesos/${procesoId}/citas`, datos).then((res) => res.data)
+}
+
+export function moverCita(citaId: string, datos: MoverCitaPsicologicaInput) {
+  return api.post<CitaProgramadaDto>(`/psicologia/citas/${citaId}/reprogramacion`, datos).then((res) => res.data)
+}
+
+export function marcarNoAsistio(citaId: string) {
+  return api.post(`/psicologia/citas/${citaId}/no-asistio`).then(() => undefined)
 }
 
 export function obtenerResumenAgenda(query: AgendaResumenQuery) {

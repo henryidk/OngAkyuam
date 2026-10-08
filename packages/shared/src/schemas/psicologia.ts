@@ -99,6 +99,13 @@ export const agendarCitaPsicologicaSchema = z.object({
 })
 export type AgendarCitaPsicologicaInput = z.infer<typeof agendarCitaPsicologicaSchema>
 
+/**
+ * `POST /psicologia/citas/:citaId/reprogramacion` — mueve una cita a otra fecha. La persona
+ * atendida no se elige: es la misma de la cita que se mueve.
+ */
+export const moverCitaPsicologicaSchema = agendarCitaPsicologicaSchema.omit({ ninoId: true })
+export type MoverCitaPsicologicaInput = z.infer<typeof moverCitaPsicologicaSchema>
+
 export const RESUMEN_CIERRE_PSICOLOGIA_MAX = 2000
 
 /** `POST /psicologia/procesos/:id/cierre`. */
@@ -513,6 +520,27 @@ export interface HuecoLibreDto {
 /** Referencia mínima a una cita, para las columnas "Última sesión" y "Próxima cita". */
 export interface CitaRefDto {
   id: string
+  fechaHora: string
+}
+
+/**
+ * Fila de `GET /psicologia/agenda/procesos`: un proceso mío sin cerrar, con lo necesario para
+ * programarle una cita (a quién se puede atender) y saber si se quedó sin siguiente fecha.
+ */
+export interface ProcesoParaAgendarDto {
+  procesoId: string
+  codigo: string
+  usuariaId: string
+  usuariaNombreCompleto: string
+  /** La usuaria y los hijos/as registrados en el expediente. */
+  personas: PersonaAtendidaDto[]
+  proximaCita: CitaRefDto | null
+}
+
+/** Respuesta de programar o mover una cita desde la agenda. */
+export interface CitaProgramadaDto {
+  id: string
+  procesoId: string
   fechaHora: string
 }
 
