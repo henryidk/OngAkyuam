@@ -36,6 +36,10 @@ import ProgramarCita from './features/psicologia/citas/ProgramarCita'
 import DetalleCita from './features/psicologia/citas/DetalleCita'
 import RegistroConsulta from './features/psicologia/citas/RegistroConsulta'
 import Indicadores from './features/psicologia/indicadores/Indicadores'
+import ListaProcesosPsicologia from './features/psicologia/procesos/ListaProcesos'
+import DetalleProcesoPsicologia from './features/psicologia/procesos/DetalleProceso'
+import PestanaSesionesPsicologia from './features/psicologia/procesos/PestanaSesiones'
+import PestanaDocumentosProcesoPsicologia from './features/psicologia/procesos/PestanaDocumentos'
 import PsicologiaLayout from './pages/psicologia/PsicologiaLayout'
 import { RUTAS_PSICOLOGIA } from './features/psicologia/rutas'
 import TrabajoSocialLayout from './pages/trabajo-social/TrabajoSocialLayout'
@@ -139,6 +143,11 @@ function App() {
             <Route path="atencion" element={<BandejaPsicologia />} />
             <Route path="agenda" element={<Agenda />} />
             <Route path="agenda/nueva-cita" element={<ProgramarCita />} />
+            <Route path="procesos" element={<ListaProcesosPsicologia />} />
+            <Route path="procesos/:procesoId" element={<DetalleProcesoPsicologia />}>
+              <Route index element={<PestanaSesionesPsicologia />} />
+              <Route path="documentos" element={<PestanaDocumentosProcesoPsicologia />} />
+            </Route>
             <Route path="expedientes" element={<BuscarExpedientes />} />
             <Route path="expedientes/:expedienteId" element={<ExpedienteUsuaria />}>
               <Route index element={<PestanaResumen />} />

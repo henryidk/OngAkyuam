@@ -5,6 +5,7 @@ import type {
   BuscarExpedientesQuery,
   CasoPorAgendarDto,
   CasoPsicologiaTomadoDto,
+  CerrarProcesoPsicologiaInput,
   CitaAgendaDto,
   CitaProgramadaDto,
   CitaPsicologicaDetalle,
@@ -15,15 +16,22 @@ import type {
   HuecoLibreDto,
   IndicadoresPsicologia,
   IndicadoresQuery,
+  ListarProcesosPsicologiaQuery,
   MoverCitaPsicologicaInput,
   ProcesoParaAgendarDto,
   ProcesoPsicologiaAbiertoDto,
+  ProcesoPsicologiaCerradoDto,
+  ProcesoPsicologiaDetalle,
+  ProcesosPsicologiaPaginados,
   ProgramarCitaInput,
   RangoFechasQuery,
   ReferenciaBandejaPsicologiaDto,
   RegistroConsultaInput,
   ReprogramarCitaInput,
   ResumenProcesosPsicologia,
+  SesionesProcesoPaginadas,
+  VisibilidadProcesoPsicologiaDto,
+  VisibilidadProcesoPsicologiaInput,
 } from '@akyuam/shared'
 import { api } from '../../../lib/api'
 
@@ -84,6 +92,37 @@ export function moverCita(citaId: string, datos: MoverCitaPsicologicaInput) {
 
 export function marcarNoAsistio(citaId: string) {
   return api.post(`/psicologia/citas/${citaId}/no-asistio`).then(() => undefined)
+}
+
+/** Mis procesos, por páginas. `filtro` y `q` son opcionales: el servidor aplica "Activos" por defecto. */
+export function listarProcesos(query: Partial<ListarProcesosPsicologiaQuery>) {
+  return api.get<ProcesosPsicologiaPaginados>('/psicologia/procesos', { params: query }).then((res) => res.data)
+}
+
+export function obtenerProceso(procesoId: string) {
+  return api.get<ProcesoPsicologiaDetalle>(`/psicologia/procesos/${procesoId}`).then((res) => res.data)
+}
+
+/** Sesiones del proceso con sus notas, de la más reciente a la más antigua. */
+export function listarSesionesProceso(procesoId: string, cursor?: string) {
+  return api
+    .get<SesionesProcesoPaginadas>(`/psicologia/procesos/${procesoId}/sesiones`, { params: { cursor } })
+    .then((res) => res.data)
+}
+
+export function cerrarProceso(procesoId: string, datos: CerrarProcesoPsicologiaInput) {
+  return api.post<ProcesoPsicologiaCerradoDto>(`/psicologia/procesos/${procesoId}/cierre`, datos).then((res) => res.data)
+}
+
+export function actualizarVisibilidadProceso(procesoId: string, datos: VisibilidadProcesoPsicologiaInput) {
+  return api
+    .patch<VisibilidadProcesoPsicologiaDto>(`/psicologia/procesos/${procesoId}/visibilidad`, datos)
+    .then((res) => res.data)
+}
+
+/** URL firmada y de corta duración para descargar el documento adjunto a una sesión. */
+export function obtenerUrlDocumentoCita(citaId: string) {
+  return api.get<{ url: string }>(`/psicologia/citas/${citaId}/documento/url`).then((res) => res.data.url)
 }
 
 export function obtenerResumenAgenda(query: AgendaResumenQuery) {

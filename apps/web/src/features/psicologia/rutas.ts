@@ -1,4 +1,4 @@
-import type { TipoCitaPsicologica } from '@akyuam/shared'
+import type { FiltroProcesosPsicologia, TipoCitaPsicologica } from '@akyuam/shared'
 
 /**
  * Constructor único de las URLs del módulo (§8.1 del plan). Ningún componente arma un path de
@@ -32,6 +32,10 @@ export const RUTAS_PSICOLOGIA = {
    * resalta el caso recién tomado en el panel "Casos tomados por agendar".
    */
   agenda: (dia?: string, porAgendar?: string) => conQuery('/psicologia/agenda', { dia, porAgendar }),
+  procesos: (filtro?: FiltroProcesosPsicologia) => conQuery('/psicologia/procesos', { filtro }),
+  /** `sesion` (id de la cita) abre el detalle con esa sesión ya desplegada. */
+  proceso: (procesoId: string, sesion?: string) => conQuery(`/psicologia/procesos/${procesoId}`, { sesion }),
+  documentosProceso: (procesoId: string) => `/psicologia/procesos/${procesoId}/documentos`,
   nuevaCita: ({ expedienteId, tipo, fecha }: OpcionesNuevaCita = {}) =>
     conQuery('/psicologia/agenda/nueva-cita', { expediente: expedienteId, tipo, fecha }),
   reprogramarCita: (citaId: string) =>

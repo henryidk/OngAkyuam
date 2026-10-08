@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BarChart3, CalendarDays, FolderSearch, Inbox } from 'lucide-react'
+import { BarChart3, CalendarDays, FolderSearch, HeartHandshake, Inbox } from 'lucide-react'
 import type { ResumenProcesosPsicologia } from '@akyuam/shared'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { obtenerResumenProcesos } from '../../features/psicologia/api/psicologia.api'
@@ -18,6 +18,7 @@ const ITEMS_NAV: ItemNav[] = [
     rutasRelacionadas: ['/psicologia/citas'],
     Icono: CalendarDays,
   },
+  { ruta: RUTAS_PSICOLOGIA.procesos(), etiqueta: 'Procesos', fin: false, Icono: HeartHandshake },
   { ruta: '/psicologia/expedientes', etiqueta: 'Expedientes', fin: false, Icono: FolderSearch },
   { ruta: '/psicologia/indicadores', etiqueta: 'Indicadores', fin: false, Icono: BarChart3 },
 ]
@@ -59,6 +60,7 @@ export default function PsicologiaLayout() {
   const contadores = resumen && {
     [RUTAS_PSICOLOGIA.atencion()]: resumen.referenciasSinTomar,
     [RUTAS_PSICOLOGIA.agenda()]: resumen.casosPorAgendar + resumen.citasSinRegistrar,
+    [RUTAS_PSICOLOGIA.procesos()]: resumen.procesos.ACTIVOS,
   }
 
   return (

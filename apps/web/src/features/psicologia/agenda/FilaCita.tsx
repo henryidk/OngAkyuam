@@ -91,10 +91,20 @@ export default function FilaCita({ cita, esHoy, principal, onNoAsistio, onReprog
             Reprogramar
           </button>
         ) : (
-          <Link to={RUTAS_PSICOLOGIA.detalleCita(cita.id)} className={CLASE_ENLACE}>
+          <Link
+            to={
+              cita.estado === 'ATENDIDA' || cita.estado === 'NO_ASISTIO'
+                ? RUTAS_PSICOLOGIA.proceso(cita.procesoId, cita.id)
+                : RUTAS_PSICOLOGIA.detalleCita(cita.id)
+            }
+            className={CLASE_ENLACE}
+          >
             {cita.estado === 'ATENDIDA' ? 'Ver sesión' : 'Ver detalle'}
           </Link>
         )}
+        <Link to={RUTAS_PSICOLOGIA.proceso(cita.procesoId)} className={CLASE_ENLACE}>
+          Ver proceso
+        </Link>
       </div>
     </li>
   )
