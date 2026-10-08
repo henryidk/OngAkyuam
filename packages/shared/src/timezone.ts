@@ -161,3 +161,14 @@ export function fechaCalendarioGT(fecha: Date): string {
 export function mesCalendarioGT(fecha: Date): string {
   return DateTime.fromJSDate(fecha).setZone(GUATEMALA_TZ).toFormat('LL')
 }
+
+/** Minutos transcurridos desde la medianoche de Guatemala para un instante (ej. 09:30 → 570). */
+export function minutosDelDiaGT(fecha: Date): number {
+  const local = DateTime.fromJSDate(fecha).setZone(GUATEMALA_TZ)
+  return local.hour * 60 + local.minute
+}
+
+/** Día ISO de la semana (1 = lunes … 7 = domingo) de una fecha de calendario "YYYY-MM-DD". */
+export function diaSemanaGT(fechaIso: string): number {
+  return DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).weekday
+}

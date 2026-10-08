@@ -232,6 +232,10 @@ export const listarProcesosPsicologiaQuerySchema = z.object({
 })
 export type ListarProcesosPsicologiaQuery = z.infer<typeof listarProcesosPsicologiaQuerySchema>
 
+/** `GET /psicologia/procesos/:id/sesiones` — sesiones del proceso, de la más reciente a la más antigua. */
+export const sesionesProcesoPsicologiaQuerySchema = z.object({ cursor: z.string().optional() })
+export type SesionesProcesoPsicologiaQuery = z.infer<typeof sesionesProcesoPsicologiaQuerySchema>
+
 export const filtroUsuariasPsicologiaSchema = z.enum(FILTROS_USUARIAS_PSICOLOGIA)
 export type FiltroUsuariasPsicologia = z.infer<typeof filtroUsuariasPsicologiaSchema>
 

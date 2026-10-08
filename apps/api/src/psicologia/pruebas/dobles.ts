@@ -67,10 +67,19 @@ export function crearBandejaRepository(): jest.Mocked<IBandejaPsicologiaReposito
 export function crearProcesosRepository(): jest.Mocked<IProcesosPsicologiaRepository> {
   return {
     buscarAccesoProceso: jest.fn().mockResolvedValue(procesoConAcceso()),
+    buscarAccesoUsuaria: jest.fn().mockResolvedValue({
+      usuariaId: USUARIA_ID,
+      expediente: { id: EXPEDIENTE_ID, numero: '05-2026' },
+    }),
     ninoPerteneceAExpediente: jest.fn().mockResolvedValue(true),
     abrir: jest.fn().mockResolvedValue({
       procesoId: PROCESO_ID,
       consecutivo: 1,
+      citaId: CITA_ID,
+    }),
+    abrirNuevo: jest.fn().mockResolvedValue({
+      procesoId: PROCESO_ID,
+      consecutivo: 2,
       citaId: CITA_ID,
     }),
     cerrar: jest.fn().mockResolvedValue({ version: 4, citasCanceladas: 2 }),
@@ -78,16 +87,21 @@ export function crearProcesosRepository(): jest.Mocked<IProcesosPsicologiaReposi
   };
 }
 
-type CitasParaTraslape = Pick<
+type CitasParaAcceso = Pick<
   jest.Mocked<ICitasPsicologicasRepository>,
-  'buscarCitasSolapadas'
+  'buscarCitasSolapadas' | 'buscarAccesoCita'
 > &
   ICitasPsicologicasRepository;
 
-export function crearCitasRepository(): CitasParaTraslape {
+export function crearCitasRepository(): CitasParaAcceso {
   return {
     buscarCitasSolapadas: jest.fn().mockResolvedValue([]),
-  } as unknown as CitasParaTraslape;
+    buscarAccesoCita: jest.fn().mockResolvedValue({
+      id: CITA_ID,
+      atencionId: PROCESO_ID,
+      expedienteId: EXPEDIENTE_ID,
+    }),
+  } as unknown as CitasParaAcceso;
 }
 
 type AtencionParaTomar = Pick<
@@ -106,10 +120,11 @@ export function crearAtencionRepository(): AtencionParaTomar {
 export function crearAcceso(
   bandejaRepository: IBandejaPsicologiaRepository,
   procesosRepository: IProcesosPsicologiaRepository,
+  citasRepository: ICitasPsicologicasRepository = crearCitasRepository(),
 ): AccesoPsicologiaService {
   return new AccesoPsicologiaService(
     crearAtencionRepository(),
-    crearCitasRepository(),
+    citasRepository,
     bandejaRepository,
     procesosRepository,
   );

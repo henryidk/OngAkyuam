@@ -24,10 +24,9 @@ const LIMITE_EXTRA_CURSOR = 1;
 const RESUMEN_CIERRE_SIN_MOTIVO =
   'Cerrado antes de registrar el motivo de cierre';
 
-/** Referencia "sin tomar": ninguna psicóloga se ha hecho cargo de un proceso en ese expediente. */
-export const EXPEDIENTE_SIN_TOMAR = {
-  atencionesPsicologicas: { none: { psicologaAsignadaId: { not: null } } },
-} satisfies Prisma.ExpedienteWhereInput;
+import { EXPEDIENTE_SIN_TOMAR } from './acceso-expediente';
+
+export { EXPEDIENTE_SIN_TOMAR };
 
 const INCLUDE_ATENCION = {
   actualizadoPor: { select: { nombreCompleto: true } },

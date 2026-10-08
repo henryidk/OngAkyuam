@@ -42,8 +42,10 @@ describe('AccesoPsicologiaService', () => {
     };
     procesosRepository = {
       buscarAccesoProceso: jest.fn(),
+      buscarAccesoUsuaria: jest.fn(),
       ninoPerteneceAExpediente: jest.fn(),
       abrir: jest.fn(),
+      abrirNuevo: jest.fn(),
       cerrar: jest.fn(),
       actualizarVisibilidad: jest.fn(),
     };
@@ -86,6 +88,32 @@ describe('AccesoPsicologiaService', () => {
         'proc-1',
         'psicologa-a',
       );
+    });
+  });
+
+  describe('exigirAccesoUsuaria', () => {
+    it('rechaza con 403 a la usuaria inexistente o que solo atiende otra psicóloga', async () => {
+      procesosRepository.buscarAccesoUsuaria.mockResolvedValue(null);
+
+      await expect(
+        service.exigirAccesoUsuaria('usuaria-ajena', 'psicologa-a'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(procesosRepository.buscarAccesoUsuaria).toHaveBeenCalledWith(
+        'usuaria-ajena',
+        'psicologa-a',
+      );
+    });
+
+    it('devuelve el acceso cuando la psicóloga puede verla', async () => {
+      const acceso = {
+        usuariaId: 'usuaria-1',
+        expediente: { id: 'exp-1', numero: '05-2026' },
+      };
+      procesosRepository.buscarAccesoUsuaria.mockResolvedValue(acceso);
+
+      await expect(
+        service.exigirAccesoUsuaria('usuaria-1', 'psicologa-a'),
+      ).resolves.toEqual(acceso);
     });
   });
 

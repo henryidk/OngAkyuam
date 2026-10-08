@@ -10,6 +10,7 @@ import {
   OtroProcesoActivoError,
   ProcesoNoDisponibleError,
   ProcesoYaAbiertoError,
+  ReferenciaPendienteError,
 } from '../interfaces/procesos-psicologia-repository.interface';
 import {
   CITA_ID,
@@ -98,6 +99,7 @@ describe('AperturaProcesoService', () => {
           expedienteId: EXPEDIENTE_ID,
           procesoId: PROCESO_ID,
           citaId: CITA_ID,
+          origen: 'REFERENCIA',
         },
       }),
     ]);
@@ -277,6 +279,151 @@ describe('AperturaProcesoService', () => {
         service.atender(REFERIDO_ID, datos(), contexto, 'a b'),
       ).rejects.toBeInstanceOf(BadRequestException);
       expect(procesosRepository.abrir).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('abrir desde la ficha de la usuaria', () => {
+    it('abre un proceso más en el expediente que ya atendía, con su primera cita', async () => {
+      await expect(
+        service.abrirDesdeFicha(USUARIA_ID, datos(), contexto),
+      ).resolves.toEqual({
+        procesoId: PROCESO_ID,
+        codigo: 'P2-05-2026',
+        citaId: CITA_ID,
+      });
+      expect(procesosRepository.abrirNuevo).toHaveBeenCalledWith({
+        expedienteId: EXPEDIENTE_ID,
+        usuariaId: USUARIA_ID,
+        psicologaId: 'psicologa-a',
+        fechaHora: new Date('2026-10-07T15:00:00.000Z'),
+        duracionMinutos: 45,
+        ninoId: null,
+      });
+      expect(eventosAuditados(auditService)).toEqual([
+        expect.objectContaining({
+          accion: 'PROCESO_PSICOLOGICO_ABIERTO',
+          entidadId: PROCESO_ID,
+          detalles: {
+            expedienteId: EXPEDIENTE_ID,
+            procesoId: PROCESO_ID,
+            citaId: CITA_ID,
+            origen: 'FICHA',
+          },
+        }),
+      ]);
+    });
+
+    it('rechaza con 403 a la usuaria que atiende otra psicóloga, sin abrir ni auditar', async () => {
+      procesosRepository.buscarAccesoUsuaria.mockResolvedValue(null);
+
+      await expect(
+        service.abrirDesdeFicha(USUARIA_ID, datos(), contexto),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(procesosRepository.buscarAccesoUsuaria).toHaveBeenCalledWith(
+        USUARIA_ID,
+        'psicologa-a',
+      );
+      expect(procesosRepository.abrirNuevo).not.toHaveBeenCalled();
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('no devuelve una respuesta guardada a quien ya no puede ver a la usuaria', async () => {
+      const clave = 'clave-abrir-0001';
+      await service.abrirDesdeFicha(USUARIA_ID, datos(), contexto, clave);
+      procesosRepository.buscarAccesoUsuaria.mockResolvedValue(null);
+
+      await expect(
+        service.abrirDesdeFicha(USUARIA_ID, datos(), contexto, clave),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('pide atender la referencia (409) si solo la ve por una referencia sin tomar', async () => {
+      procesosRepository.buscarAccesoUsuaria.mockResolvedValue({
+        usuariaId: USUARIA_ID,
+        expediente: null,
+      });
+
+      await expect(
+        service.abrirDesdeFicha(USUARIA_ID, datos(), contexto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(procesosRepository.abrirNuevo).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['otro proceso activo', new OtroProcesoActivoError(), ConflictException],
+      [
+        'una referencia pendiente',
+        new ReferenciaPendienteError(),
+        ConflictException,
+      ],
+      [
+        'un expediente que dejó de ser suyo',
+        new ProcesoNoDisponibleError(),
+        ForbiddenException,
+      ],
+    ])('no abre si hay %s', async (_caso, error, excepcion) => {
+      procesosRepository.abrirNuevo.mockRejectedValue(error);
+
+      await expect(
+        service.abrirDesdeFicha(USUARIA_ID, datos(), contexto),
+      ).rejects.toBeInstanceOf(excepcion);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('rechaza con 400 un niño que no es de ese expediente', async () => {
+      procesosRepository.ninoPerteneceAExpediente.mockResolvedValue(false);
+
+      await expect(
+        service.abrirDesdeFicha(
+          USUARIA_ID,
+          datos({ ninoId: NINO_ID }),
+          contexto,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(procesosRepository.ninoPerteneceAExpediente).toHaveBeenCalledWith(
+        NINO_ID,
+        EXPEDIENTE_ID,
+      );
+      expect(procesosRepository.abrirNuevo).not.toHaveBeenCalled();
+    });
+
+    it('avisa del traslape con 409 y agenda si se confirma', async () => {
+      citasRepository.buscarCitasSolapadas.mockResolvedValue([
+        { id: 'otra-cita' } as never,
+      ]);
+
+      await expect(
+        service.abrirDesdeFicha(USUARIA_ID, datos(), contexto),
+      ).rejects.toBeInstanceOf(ConflictException);
+      await expect(
+        service.abrirDesdeFicha(
+          USUARIA_ID,
+          datos({ confirmarTraslape: true }),
+          contexto,
+        ),
+      ).resolves.toMatchObject({ procesoId: PROCESO_ID });
+    });
+
+    it('un doble envío con la misma clave no abre dos procesos', async () => {
+      const clave = 'clave-abrir-0002';
+      const primera = await service.abrirDesdeFicha(
+        USUARIA_ID,
+        datos(),
+        contexto,
+        clave,
+      );
+      const segunda = await service.abrirDesdeFicha(
+        USUARIA_ID,
+        datos(),
+        contexto,
+        clave,
+      );
+
+      expect(segunda).toEqual(primera);
+      expect(procesosRepository.abrirNuevo).toHaveBeenCalledTimes(1);
+      expect([...redis.datos.keys()]).toEqual([
+        `psicologia:abrir:psicologa-a:${USUARIA_ID}:${clave}`,
+      ]);
     });
   });
 });

@@ -5,16 +5,24 @@ import {
   OtroProcesoActivoError,
   ProcesoNoDisponibleError,
   ProcesoYaAbiertoError,
+  ReferenciaPendienteError,
 } from '../interfaces/procesos-psicologia-repository.interface';
 import type {
+  AbrirProcesoNuevoParams,
   AbrirProcesoParams,
   AccesoProcesoPsicologia,
+  AccesoUsuariaPsicologia,
   ActualizarVisibilidadParams,
   CerrarProcesoParams,
   IProcesosPsicologiaRepository,
   ProcesoAbierto,
   ProcesoCerrado,
 } from '../interfaces/procesos-psicologia-repository.interface';
+import {
+  EXPEDIENTE_SIN_TOMAR,
+  expedienteAccesible,
+  expedienteConProcesoDe,
+} from './acceso-expediente';
 
 const INTENTOS_MAXIMOS = 3;
 
@@ -63,6 +71,34 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
     };
   }
 
+  async buscarAccesoUsuaria(
+    usuariaId: string,
+    psicologaId: string,
+  ): Promise<AccesoUsuariaPsicologia | null> {
+    const usuaria = await this.prisma.usuaria.findFirst({
+      where: {
+        id: usuariaId,
+        expedientes: { some: expedienteAccesible(psicologaId) },
+      },
+      select: {
+        id: true,
+        expedientes: {
+          where: expedienteConProcesoDe(psicologaId),
+          select: { id: true, numero: true },
+          orderBy: [{ fecha: 'desc' }, { createdAt: 'desc' }],
+          take: 1,
+        },
+      },
+    });
+    if (!usuaria) {
+      return null;
+    }
+    return {
+      usuariaId: usuaria.id,
+      expediente: usuaria.expedientes[0] ?? null,
+    };
+  }
+
   async ninoPerteneceAExpediente(
     ninoId: string,
     expedienteId: string,
@@ -84,6 +120,111 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
         }
       }
     }
+  }
+
+  async abrirNuevo(params: AbrirProcesoNuevoParams): Promise<ProcesoAbierto> {
+    for (let intento = 1; ; intento += 1) {
+      try {
+        return await this.abrirNuevoEnTransaccion(params);
+      } catch (error) {
+        if (intento >= INTENTOS_MAXIMOS || !esReintentable(error)) {
+          throw error;
+        }
+      }
+    }
+  }
+
+  private abrirNuevoEnTransaccion(
+    params: AbrirProcesoNuevoParams,
+  ): Promise<ProcesoAbierto> {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const expediente = await tx.expediente.findFirst({
+          where: {
+            id: params.expedienteId,
+            usuariaId: params.usuariaId,
+            ...expedienteConProcesoDe(params.psicologaId),
+          },
+          select: { id: true },
+        });
+        if (!expediente) {
+          throw new ProcesoNoDisponibleError();
+        }
+
+        // Cualquier atención sin cerrar de la usuaria, de cualquier psicóloga y en cualquier
+        // expediente. Sin fecha de inicio es un caso tomado que espera su primera cita.
+        const sinCerrar = await tx.atencionPsicologica.findFirst({
+          where: {
+            estado: { not: 'CIERRE' },
+            expediente: { usuariaId: params.usuariaId },
+          },
+          select: { fechaInicio: true },
+          orderBy: { fechaInicio: { sort: 'desc', nulls: 'last' } },
+        });
+        if (sinCerrar) {
+          throw sinCerrar.fechaInicio
+            ? new OtroProcesoActivoError()
+            : new ReferenciaPendienteError();
+        }
+        const referenciaSinTomar = await tx.referidoArea.findFirst({
+          where: {
+            area: 'PSICOLOGIA',
+            expediente: {
+              usuariaId: params.usuariaId,
+              ...EXPEDIENTE_SIN_TOMAR,
+            },
+          },
+          select: { id: true },
+        });
+        if (referenciaSinTomar) {
+          throw new ReferenciaPendienteError();
+        }
+
+        const ultimo = await tx.atencionPsicologica.aggregate({
+          where: { expedienteId: expediente.id },
+          _max: { consecutivo: true },
+        });
+        const ahora = new Date();
+        const proceso = await tx.atencionPsicologica.create({
+          data: {
+            expedienteId: expediente.id,
+            consecutivo: (ultimo._max.consecutivo ?? 0) + 1,
+            estado: 'INICIO',
+            psicologaAsignadaId: params.psicologaId,
+            tomadaEn: ahora,
+            fechaInicio: ahora,
+            actualizadoPorId: params.psicologaId,
+          },
+          select: { id: true, consecutivo: true },
+        });
+        await tx.cambioEstadoAtencion.create({
+          data: {
+            atencionId: proceso.id,
+            estadoAnterior: null,
+            estadoNuevo: 'INICIO',
+            registradoPorId: params.psicologaId,
+          },
+        });
+        const cita = await tx.citaPsicologica.create({
+          data: {
+            atencionId: proceso.id,
+            fechaHora: params.fechaHora,
+            duracionMinutos: params.duracionMinutos,
+            tipo: 'PRIMERA_ATENCION',
+            ninoId: params.ninoId,
+            atendidoPorId: params.psicologaId,
+          },
+          select: { id: true },
+        });
+
+        return {
+          procesoId: proceso.id,
+          consecutivo: proceso.consecutivo,
+          citaId: cita.id,
+        };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
   }
 
   private abrirEnTransaccion(

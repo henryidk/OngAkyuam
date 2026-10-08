@@ -9,6 +9,7 @@ import {
   MENSAJE_SIN_ACCESO_EXPEDIENTE,
   MENSAJE_SIN_ACCESO_PROCESO,
   MENSAJE_SIN_ACCESO_REFERENCIA,
+  MENSAJE_SIN_ACCESO_USUARIA,
   MENSAJE_TOMAR_PRIMERO,
 } from '../compartido/mensajes';
 import { BANDEJA_PSICOLOGIA_REPOSITORY } from '../interfaces/bandeja-psicologia-repository.interface';
@@ -19,6 +20,7 @@ import type {
 import { PROCESOS_PSICOLOGIA_REPOSITORY } from '../interfaces/procesos-psicologia-repository.interface';
 import type {
   AccesoProcesoPsicologia,
+  AccesoUsuariaPsicologia,
   IProcesosPsicologiaRepository,
 } from '../interfaces/procesos-psicologia-repository.interface';
 import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicologica-repository.interface';
@@ -57,6 +59,24 @@ export class AccesoPsicologiaService {
     );
     if (!acceso) {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_PROCESO);
+    }
+    return acceso;
+  }
+
+  /**
+   * La usuaria tiene una referencia sin tomar o un proceso de esta psicóloga. Si solo la atiende
+   * otra psicóloga, el mismo 403 que si no existiera.
+   */
+  async exigirAccesoUsuaria(
+    usuariaId: string,
+    psicologaId: string,
+  ): Promise<AccesoUsuariaPsicologia> {
+    const acceso = await this.procesosRepository.buscarAccesoUsuaria(
+      usuariaId,
+      psicologaId,
+    );
+    if (!acceso) {
+      throw new ForbiddenException(MENSAJE_SIN_ACCESO_USUARIA);
     }
     return acceso;
   }

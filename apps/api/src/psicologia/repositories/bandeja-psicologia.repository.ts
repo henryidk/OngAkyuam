@@ -2,8 +2,6 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   diasDesdeGT,
-  edadEnAniosGT,
-  fechaColumnaISO,
   nombreMunicipio,
   type CasoPorAgendarDto,
   type PersonaAtendidaDto,
@@ -14,7 +12,8 @@ import type {
   IBandejaPsicologiaRepository,
   ReferenciaPsicologia,
 } from '../interfaces/bandeja-psicologia-repository.interface';
-import { EXPEDIENTE_SIN_TOMAR } from './atencion-psicologica.repository';
+import { EXPEDIENTE_SIN_TOMAR } from './acceso-expediente';
+import { edad, nombreCompleto } from './personas';
 
 /** Tope de seguridad de las dos colas: son listas de trabajo, no un historial. */
 const LIMITE_COLA = 200;
@@ -43,20 +42,6 @@ type ExpedienteCola = Prisma.ExpedienteGetPayload<{
   select: typeof SELECT_EXPEDIENTE_COLA;
 }>;
 
-interface PersonaConNacimiento {
-  nombres: string;
-  apellidos: string;
-  fechaNacimiento: Date;
-}
-
-function nombreCompleto(persona: PersonaConNacimiento): string {
-  return `${persona.nombres} ${persona.apellidos}`;
-}
-
-function edad(persona: PersonaConNacimiento): number {
-  return edadEnAniosGT(fechaColumnaISO(persona.fechaNacimiento));
-}
-
 /** La usuaria primero y luego sus hijos/as: las personas a quienes se puede dar la cita. */
 function personasDelExpediente(
   expediente: ExpedienteCola,
@@ -73,6 +58,16 @@ function personasDelExpediente(
       edad: edad(nino),
     })),
   ];
+}
+
+/** Caso que la psicóloga tomó y al que todavía no le agenda la primera cita. */
+export function casoPorAgendar(psicologaId: string) {
+  return {
+    psicologaAsignadaId: psicologaId,
+    estado: { not: 'CIERRE' },
+    referidoId: { not: null },
+    citas: { none: {} },
+  } satisfies Prisma.AtencionPsicologicaWhereInput;
 }
 
 @Injectable()
@@ -123,12 +118,7 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
 
   async listarPorAgendar(psicologaId: string): Promise<CasoPorAgendarDto[]> {
     const atenciones = await this.prisma.atencionPsicologica.findMany({
-      where: {
-        psicologaAsignadaId: psicologaId,
-        estado: { not: 'CIERRE' },
-        referidoId: { not: null },
-        citas: { none: {} },
-      },
+      where: casoPorAgendar(psicologaId),
       select: {
         referidoId: true,
         tomadaEn: true,

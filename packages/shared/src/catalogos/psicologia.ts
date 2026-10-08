@@ -80,6 +80,10 @@ export const HORARIO_PSICOLOGIA = {
 /** Duraciones que ofrece el formulario de cita. La primera es la que viene seleccionada. */
 export const DURACIONES_CITA_PSICOLOGICA_MINUTOS = [45, 60, 90] as const
 
+/** Filas por página de la lista de Usuarias y de las listas por cursor del rediseño. */
+export const USUARIAS_PSICOLOGIA_POR_PAGINA = 20
+export const PROCESOS_PSICOLOGIA_POR_PAGINA = 20
+
 /** Una referencia sin tomar con estos días de espera o más se resalta en el Área de atención. */
 export const DIAS_ALERTA_ESPERA_PSICOLOGIA = 5
 

@@ -5,6 +5,7 @@ export const MENSAJE_SIN_ACCESO_CITA = 'No tiene acceso a esta cita';
 export const MENSAJE_SIN_ACCESO_PROCESO = 'No tiene acceso a este proceso';
 export const MENSAJE_SIN_ACCESO_REFERENCIA =
   'No tiene acceso a esta referencia';
+export const MENSAJE_SIN_ACCESO_USUARIA = 'No tiene acceso a esta usuaria';
 export const MENSAJE_CASO_YA_TOMADO =
   'Este caso ya fue tomado por otra profesional';
 export const MENSAJE_TOMAR_PRIMERO =
@@ -19,3 +20,9 @@ export const MENSAJE_CONFLICTO_VERSION =
 export const MENSAJE_PERSONA_AJENA =
   'La persona seleccionada no pertenece a este expediente';
 export const MENSAJE_TRASLAPE = 'Ya existe una cita programada en ese horario';
+export const MENSAJE_REFERENCIA_PENDIENTE =
+  'La usuaria tiene una referencia pendiente: atiéndala desde el Área de atención o la Agenda';
+export const MENSAJE_CITA_NO_MARCABLE =
+  'La cita ya fue registrada o todavía no ha ocurrido';
+export const MENSAJE_RANGO_AGENDA_INVALIDO =
+  'El rango de fechas de la agenda no es válido';
