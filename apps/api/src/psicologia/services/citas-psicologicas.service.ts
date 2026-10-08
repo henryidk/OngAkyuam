@@ -31,14 +31,13 @@ import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicolog
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
+import { CODIGO_TRASLAPE_CITA, MENSAJE_TRASLAPE } from '../compartido/mensajes';
 import { AccesoPsicologiaService } from './acceso-psicologia.service';
 
 /** "" (campo opcional sin llenar) -> null para la base de datos, mismo criterio que juridico.service.ts. */
 function vacioANulo(valor: string): string | null {
   return valor === '' ? null : valor;
 }
-
-const MENSAJE_TRASLAPE = 'Ya existe una cita programada en ese horario';
 
 /** Tamaño de página fijo para los listados por cursor de psicología (§7.3/§7.5 del plan). */
 const LIMITE_PAGINA = 20;
@@ -69,8 +68,9 @@ export class CitasPsicologicasService {
     });
     if (solapadas.length > 0 && !datos.confirmarTraslape) {
       throw new ConflictException({
-        mensaje: MENSAJE_TRASLAPE,
-        citasEnConflicto: solapadas,
+        message: MENSAJE_TRASLAPE,
+        codigo: CODIGO_TRASLAPE_CITA,
+        detalle: { citas: solapadas },
       });
     }
 
@@ -146,8 +146,9 @@ export class CitasPsicologicasService {
     });
     if (solapadas.length > 0 && !datos.confirmarTraslape) {
       throw new ConflictException({
-        mensaje: MENSAJE_TRASLAPE,
-        citasEnConflicto: solapadas,
+        message: MENSAJE_TRASLAPE,
+        codigo: CODIGO_TRASLAPE_CITA,
+        detalle: { citas: solapadas },
       });
     }
 

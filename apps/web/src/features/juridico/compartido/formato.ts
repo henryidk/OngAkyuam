@@ -1,16 +1,7 @@
-import { diasDesdeGT, fechaCalendarioGT, formatFechaGT, type ProcesoResumen } from '@akyuam/shared'
+import { diasDesdeGT, formatFechaGT, type ProcesoResumen } from '@akyuam/shared'
+import { fechaDeInstante, iniciales } from '../../../lib/formato'
 
-/** Día de Guatemala ("dd/mm/aaaa") en que ocurrió un instante — nunca el día en UTC. */
-export function fechaDeInstante(instanteIso: string): string {
-  return formatFechaGT(fechaCalendarioGT(new Date(instanteIso)))
-}
-
-export function iniciales(nombreCompleto: string): string {
-  const partes = nombreCompleto.trim().split(/\s+/)
-  const primera = partes[0]?.[0] ?? ''
-  const ultima = partes.length > 1 ? partes[partes.length - 1][0] : ''
-  return (primera + ultima).toUpperCase()
-}
+export { fechaDeInstante, iniciales }
 
 /** La fecha que más importa según el estado: el cierre si ya cerró, la última actuación si no. */
 export function fechaDeReferencia(proceso: ProcesoResumen): string {

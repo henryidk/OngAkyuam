@@ -20,6 +20,8 @@ export const MENSAJE_CONFLICTO_VERSION =
 export const MENSAJE_PERSONA_AJENA =
   'La persona seleccionada no pertenece a este expediente';
 export const MENSAJE_TRASLAPE = 'Ya existe una cita programada en ese horario';
+/** `codigo` del 409 de traslape: el frontend lo reconoce para ofrecer "programar de todos modos". */
+export const CODIGO_TRASLAPE_CITA = 'TRASLAPE_CITA';
 export const MENSAJE_REFERENCIA_PENDIENTE =
   'La usuaria tiene una referencia pendiente: atiéndala desde el Área de atención o la Agenda';
 export const MENSAJE_CITA_NO_MARCABLE =

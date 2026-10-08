@@ -9,15 +9,6 @@ interface ColaPendientesDeAgendarProps {
   fecha: string
 }
 
-/**
- * Un proceso sin ninguna cita registrada nunca ha sido atendido: lo que le toca es una primera
- * atención, no un seguimiento. Confundir ambos casos es lo que hacía que un caso recién tomado
- * ofreciera "Agendar seguimiento" (§5.1 del plan).
- */
-function esPrimeraCita(proceso: ProcesoSinProximaCita) {
-  return proceso.ultimaCitaFechaHora === null
-}
-
 interface GrupoProps {
   titulo: string
   descripcion: string
@@ -59,9 +50,13 @@ function GrupoPendientes({ titulo, descripcion, procesos, tipo, etiquetaAccion, 
   )
 }
 
+/**
+ * Procesos en curso que se quedaron sin siguiente fecha. Los casos tomados que aún no tienen
+ * primera cita no entran aquí: viven en "Casos tomados por agendar", que es donde se abre el
+ * proceso.
+ */
 export default function ColaPendientesDeAgendar({ procesos, fecha }: ColaPendientesDeAgendarProps) {
-  const sinPrimeraCita = procesos.filter(esPrimeraCita)
-  const sinSeguimiento = procesos.filter((proceso) => !esPrimeraCita(proceso))
+  const sinSeguimiento = procesos.filter((proceso) => proceso.ultimaCitaFechaHora !== null)
 
   return (
     <section className="space-y-4">
@@ -70,27 +65,17 @@ export default function ColaPendientesDeAgendar({ procesos, fecha }: ColaPendien
         <p className="text-xs text-gray-500">Mis procesos activos sin próxima cita.</p>
       </div>
 
-      {procesos.length === 0 ? (
+      {sinSeguimiento.length === 0 ? (
         <p className="text-sm text-gray-400">Todos mis procesos activos tienen próxima cita.</p>
       ) : (
-        <>
-          <GrupoPendientes
-            titulo="Sin primera cita"
-            descripcion="Casos tomados que aún no han sido atendidos."
-            procesos={sinPrimeraCita}
-            tipo="PRIMERA_ATENCION"
-            etiquetaAccion="Agendar primera cita"
-            fecha={fecha}
-          />
-          <GrupoPendientes
-            titulo="Seguimiento sin próxima cita"
-            descripcion="Procesos en curso que se quedaron sin siguiente fecha."
-            procesos={sinSeguimiento}
-            tipo="SEGUIMIENTO"
-            etiquetaAccion="Agendar seguimiento"
-            fecha={fecha}
-          />
-        </>
+        <GrupoPendientes
+          titulo="Seguimiento sin próxima cita"
+          descripcion="Procesos en curso que se quedaron sin siguiente fecha."
+          procesos={sinSeguimiento}
+          tipo="SEGUIMIENTO"
+          etiquetaAccion="Agendar seguimiento"
+          fecha={fecha}
+        />
       )}
     </section>
   )

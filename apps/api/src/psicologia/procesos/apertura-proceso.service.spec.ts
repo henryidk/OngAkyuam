@@ -203,8 +203,9 @@ describe('AperturaProcesoService', () => {
 
       expect(error).toBeInstanceOf(ConflictException);
       expect((error as ConflictException).getResponse()).toEqual({
-        mensaje: 'Ya existe una cita programada en ese horario',
-        citasEnConflicto: [solapada],
+        message: 'Ya existe una cita programada en ese horario',
+        codigo: 'TRASLAPE_CITA',
+        detalle: { citas: [solapada] },
       });
       expect(citasRepository.buscarCitasSolapadas).toHaveBeenCalledWith(
         expect.objectContaining({ psicologaId: 'psicologa-a' }),

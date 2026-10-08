@@ -326,10 +326,14 @@ export interface AgendaCita extends CitaResumen {
   usuariaNombreCompleto: string
 }
 
-/** Cuerpo del 409 de `programarCita`/`reprogramarCita` cuando hay traslape (§7.5 del plan: aviso, no bloqueo duro). */
+/** `codigo` del 409 que el backend responde cuando la cita se cruza con otra de la misma psicóloga. */
+export const CODIGO_TRASLAPE_CITA = 'TRASLAPE_CITA'
+
+/** Cuerpo del 409 de traslape al programar o reprogramar: es un aviso, no un bloqueo duro. */
 export interface ConflictoTraslapeCita {
-  mensaje: string
-  citasEnConflicto: CitaResumen[]
+  message: string
+  codigo: typeof CODIGO_TRASLAPE_CITA
+  detalle: { citas: CitaResumen[] }
 }
 
 export interface ReportePsicologia {

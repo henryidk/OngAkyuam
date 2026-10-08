@@ -1,11 +1,13 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { AreasModule } from '../areas/areas.module';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
 import { LimitePorUsuarioGuard } from '../juridico/compartido/limite-por-usuario.guard';
 import { AgendaPsicologiaController } from './agenda/agenda-psicologia.controller';
 import { AgendaPsicologiaService } from './agenda/agenda-psicologia.service';
+import { AvisosPsicologiaListener } from './bandeja/avisos-psicologia.listener';
 import { BandejaPsicologiaController } from './bandeja/bandeja-psicologia.controller';
 import { BandejaPsicologiaService } from './bandeja/bandeja-psicologia.service';
 import { AGENDA_PSICOLOGIA_REPOSITORY } from './interfaces/agenda-psicologia-repository.interface';
@@ -45,6 +47,7 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
   imports: [
     PrismaModule,
     AuthModule,
+    AreasModule,
     StorageModule,
     // Solo aplica donde un endpoint usa `LimitePorUsuarioGuard`; el tope de cada uno va en
     // su `@Throttle`.
@@ -65,6 +68,7 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     IndicadoresPsicologiaService,
     TableroPsicologiaService,
     BandejaPsicologiaService,
+    AvisosPsicologiaListener,
     AperturaProcesoService,
     CierreProcesoService,
     ProcesosPsicologiaService,

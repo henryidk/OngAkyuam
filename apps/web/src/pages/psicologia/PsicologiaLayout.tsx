@@ -1,15 +1,21 @@
-import { BarChart3, CalendarDays, FolderSearch } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { BarChart3, CalendarDays, FolderSearch, Inbox } from 'lucide-react'
+import type { ResumenProcesosPsicologia } from '@akyuam/shared'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
+import { obtenerResumenProcesos } from '../../features/psicologia/api/psicologia.api'
+import type { ContextoPsicologia } from '../../features/psicologia/compartido/contexto'
+import { RUTAS_PSICOLOGIA } from '../../features/psicologia/rutas'
+import { crearSocketArea } from '../../lib/socket'
 
-// Tres secciones (§5 del plan): la agenda es la pantalla de entrada del área, por eso vive en
-// "/psicologia" con fin: true — al ser prefijo de las demás, con fin: false se resaltaría junto
-// con ellas. `rutasRelacionadas` devuelve el resaltado en el formulario de agendar, que es suyo.
+// El detalle y el registro de una cita cuelgan de "/psicologia/citas", pero son parte de la
+// agenda: `rutasRelacionadas` mantiene resaltado su ítem ahí.
 const ITEMS_NAV: ItemNav[] = [
+  { ruta: RUTAS_PSICOLOGIA.atencion(), etiqueta: 'Área de atención', fin: false, Icono: Inbox },
   {
-    ruta: '/psicologia',
+    ruta: RUTAS_PSICOLOGIA.agenda(),
     etiqueta: 'Agenda',
-    fin: true,
-    rutasRelacionadas: ['/psicologia/agenda', '/psicologia/citas'],
+    fin: false,
+    rutasRelacionadas: ['/psicologia/citas'],
     Icono: CalendarDays,
   },
   { ruta: '/psicologia/expedientes', etiqueta: 'Expedientes', fin: false, Icono: FolderSearch },
@@ -17,5 +23,50 @@ const ITEMS_NAV: ItemNav[] = [
 ]
 
 export default function PsicologiaLayout() {
-  return <SidebarLayout items={ITEMS_NAV} subtitulo="Psicológica" />
+  const [resumen, setResumen] = useState<ResumenProcesosPsicologia | null>(null)
+  const [versionNovedades, setVersionNovedades] = useState(0)
+
+  // Las insignias son un apoyo: si el resumen falla, el menú sigue funcionando sin ellas.
+  const recargarResumen = useCallback(() => {
+    obtenerResumenProcesos()
+      .then(setResumen)
+      .catch(() => undefined)
+  }, [])
+
+  useEffect(() => {
+    recargarResumen()
+  }, [recargarResumen])
+
+  // El aviso no trae datos: solo dice "vuelve a pedir". Lo que cada psicóloga puede ver se
+  // decide en el backend, en cada petición HTTP.
+  useEffect(() => {
+    const socket = crearSocketArea()
+    socket.on('novedades:cambio', () => {
+      recargarResumen()
+      setVersionNovedades((version) => version + 1)
+    })
+    return () => {
+      socket.disconnect()
+    }
+  }, [recargarResumen])
+
+  const contexto = useMemo<ContextoPsicologia>(
+    () => ({ resumen, recargarResumen, versionNovedades }),
+    [resumen, recargarResumen, versionNovedades],
+  )
+  // La insignia de la agenda suma lo que pide acción ahí: casos tomados sin primera cita y citas
+  // ya pasadas sin registrar.
+  const contadores = resumen && {
+    [RUTAS_PSICOLOGIA.atencion()]: resumen.referenciasSinTomar,
+    [RUTAS_PSICOLOGIA.agenda()]: resumen.casosPorAgendar + resumen.citasSinRegistrar,
+  }
+
+  return (
+    <SidebarLayout
+      items={ITEMS_NAV}
+      subtitulo="Psicológica"
+      contadores={contadores ?? undefined}
+      outletContext={contexto}
+    />
+  )
 }

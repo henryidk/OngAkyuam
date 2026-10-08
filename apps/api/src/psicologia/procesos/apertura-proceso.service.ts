@@ -15,6 +15,7 @@ import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { RedisService } from '../../redis/redis.service';
 import { eventoAuditoria } from '../compartido/auditoria';
 import {
+  CODIGO_TRASLAPE_CITA,
   MENSAJE_OTRO_PROCESO_ACTIVO,
   MENSAJE_PERSONA_AJENA,
   MENSAJE_PROCESO_YA_ABIERTO,
@@ -179,8 +180,9 @@ export class AperturaProcesoService {
       });
       if (solapadas.length > 0) {
         throw new ConflictException({
-          mensaje: MENSAJE_TRASLAPE,
-          citasEnConflicto: solapadas,
+          message: MENSAJE_TRASLAPE,
+          codigo: CODIGO_TRASLAPE_CITA,
+          detalle: { citas: solapadas },
         });
       }
     }

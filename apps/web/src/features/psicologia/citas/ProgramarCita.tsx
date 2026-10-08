@@ -5,6 +5,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import axios from 'axios'
 import type { z } from 'zod'
 import {
+  CODIGO_TRASLAPE_CITA,
   DURACION_CITA_PSICOLOGICA_MINUTOS_DEFAULT,
   ETIQUETAS_MODALIDAD_CITA,
   ETIQUETAS_TIPO_CITA_PSICOLOGICA,
@@ -13,6 +14,7 @@ import {
   fechaCalendarioGT,
   programarCitaSchema,
   type CitaResumen,
+  type ConflictoTraslapeCita,
   type ProgramarCitaInput,
   type TipoCitaPsicologica,
 } from '@akyuam/shared'
@@ -111,10 +113,10 @@ export default function ProgramarCita() {
       volverAlDiaDeLaCita(datos.fechaHora)
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 409) {
-        const data = err.response.data as { mensaje?: string; citasEnConflicto?: CitaResumen[] }
-        if (data.citasEnConflicto) {
-          setConflicto(data.citasEnConflicto)
-          setErrorEnvio(data.mensaje ?? 'La cita se traslapa con otra ya programada.')
+        const data = err.response.data as Partial<ConflictoTraslapeCita>
+        if (data.codigo === CODIGO_TRASLAPE_CITA && data.detalle) {
+          setConflicto(data.detalle.citas)
+          setErrorEnvio(data.message ?? 'La cita se traslapa con otra ya programada.')
           return
         }
       }

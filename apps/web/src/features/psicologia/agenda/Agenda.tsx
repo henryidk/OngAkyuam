@@ -1,46 +1,51 @@
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import { hoyGT } from '@akyuam/shared'
+import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { hoyGT, type CasoPorAgendarDto, type ProcesoPsicologiaAbiertoDto } from '@akyuam/shared'
+import { useToast } from '../../../components/ui/Toast'
+import { useRecurso } from '../../../lib/useRecurso'
+import { listarPorAgendar } from '../api/psicologia.api'
+import ModalProgramarCita from '../citas/ModalProgramarCita'
+import { useContextoPsicologia } from '../compartido/contexto'
 import { useAgendaRango } from '../hooks/useAgendaRango'
-import { useReclamarCaso } from '../hooks/useReclamarCaso'
 import { useTableroDia } from '../hooks/useTableroDia'
-import { RUTAS_PSICOLOGIA } from '../rutas'
 import CabeceraAgenda from './CabeceraAgenda'
 import ColaPendientesDeAgendar from './ColaPendientesDeAgendar'
-import ColaReferenciasSinTomar from './ColaReferenciasSinTomar'
 import CerradosRecientes from './CerradosRecientes'
 import MetricasDelDia from './MetricasDelDia'
+import PanelPorAgendar from './PanelPorAgendar'
 import VistaDiaAgenda from './VistaDiaAgenda'
 
 /**
- * Pantalla de entrada del módulo (§5.1 del plan). Su trabajo es planificar el tiempo: a la
- * izquierda lo que ya está agendado, a la derecha lo que falta por agendar. Este componente solo
+ * Su trabajo es planificar el tiempo: a la izquierda lo que ya está agendado, a la derecha lo que
+ * falta por agendar (primero los casos recién tomados, que aún no tienen proceso). Este componente solo
  * orquesta —resuelve el día abierto y reparte datos— y no contiene marcado de las secciones.
  *
  * Las vistas de mes y semana entran en la fase 9; hoy la columna principal es la vista día.
  */
 export default function Agenda() {
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
+  const { mostrar } = useToast()
+  const { recargarResumen } = useContextoPsicologia()
   const fecha = searchParams.get('fecha') ?? hoyGT()
 
-  const { tablero, error: errorTablero, recargar: recargarTablero } = useTableroDia()
-  const { citas, error: errorCitas } = useAgendaRango(fecha, fecha)
-  const { reclamandoId, error: errorReclamar, reclamar } = useReclamarCaso()
+  const { tablero, error: errorTablero } = useTableroDia()
+  const { citas, error: errorCitas, recargar: recargarCitas } = useAgendaRango(fecha, fecha)
+  const { datos: porAgendar, error: errorPorAgendar, recargar: recargarPorAgendar } = useRecurso(listarPorAgendar)
+  const [aAgendar, setAAgendar] = useState<CasoPorAgendarDto | null>(null)
 
   function onCambiarFecha(nuevaFecha: string) {
-    // "Hoy" se representa con la URL limpia: `/psicologia` siempre abre en el día actual.
+    // "Hoy" se representa con la URL limpia: la agenda siempre abre en el día actual.
     setSearchParams(nuevaFecha === hoyGT() ? {} : { fecha: nuevaFecha })
   }
 
-  /** Reclamar y agendar es un solo acto: un caso tomado sin primera cita es el fallo que la cola existe para evitar. */
-  function onTomarYAgendar(expedienteId: string) {
-    void reclamar(expedienteId, () =>
-      navigate(RUTAS_PSICOLOGIA.nuevaCita({ expedienteId, tipo: 'PRIMERA_ATENCION', fecha })),
-    )
-  }
-
-  function onSoloTomar(expedienteId: string) {
-    void reclamar(expedienteId, recargarTablero)
+  function alAgendar(proceso: ProcesoPsicologiaAbiertoDto, fechaCita: string) {
+    setAAgendar(null)
+    mostrar(`Proceso ${proceso.codigo} abierto con su primera cita`)
+    void recargarPorAgendar()
+    recargarResumen()
+    // La agenda salta al día de la cita para que se vea dónde quedó.
+    if (fechaCita === fecha) void recargarCitas()
+    else onCambiarFecha(fechaCita)
   }
 
   return (
@@ -57,22 +62,30 @@ export default function Agenda() {
         <VistaDiaAgenda citas={citas} error={errorCitas} fecha={fecha} />
 
         <aside className="space-y-6">
+          <PanelPorAgendar
+            casos={porAgendar}
+            error={errorPorAgendar?.mensaje ?? null}
+            resaltadoId={searchParams.get('porAgendar')}
+            onAgendar={setAAgendar}
+          />
           {!tablero && !errorTablero && <p className="text-sm text-gray-500">Cargando colas de trabajo…</p>}
           {tablero && (
             <>
-              <ColaReferenciasSinTomar
-                referencias={tablero.referenciasSinTomar}
-                reclamandoId={reclamandoId}
-                error={errorReclamar}
-                onTomarYAgendar={onTomarYAgendar}
-                onSoloTomar={onSoloTomar}
-              />
               <ColaPendientesDeAgendar procesos={tablero.procesosSinProximaCita} fecha={fecha} />
               <CerradosRecientes cerrados={tablero.cerradosEstaSemana} />
             </>
           )}
         </aside>
       </div>
+
+      {aAgendar && (
+        <ModalProgramarCita
+          caso={aAgendar}
+          fechaInicial={fecha}
+          onCerrar={() => setAAgendar(null)}
+          onAgendada={alAgendar}
+        />
+      )}
     </div>
   )
 }

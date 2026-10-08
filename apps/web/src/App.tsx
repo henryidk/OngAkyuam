@@ -24,6 +24,7 @@ import Login from './pages/Login'
 import Medica from './pages/Medica'
 import MedicaExpediente from './pages/MedicaExpediente'
 import Agenda from './features/psicologia/agenda/Agenda'
+import BandejaPsicologia from './features/psicologia/bandeja/BandejaPsicologia'
 import BuscarExpedientes from './features/psicologia/expedientes/BuscarExpedientes'
 import ExpedienteUsuaria from './features/psicologia/expedientes/ExpedienteUsuaria'
 import PestanaResumen from './features/psicologia/expedientes/PestanaResumen'
@@ -134,7 +135,9 @@ function App() {
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['PSICOLOGIA']} />}>
           <Route path="/psicologia" element={<PsicologiaLayout />}>
-            <Route index element={<Agenda />} />
+            <Route index element={<Navigate to={RUTAS_PSICOLOGIA.atencion()} replace />} />
+            <Route path="atencion" element={<BandejaPsicologia />} />
+            <Route path="agenda" element={<Agenda />} />
             <Route path="agenda/nueva-cita" element={<ProgramarCita />} />
             <Route path="expedientes" element={<BuscarExpedientes />} />
             <Route path="expedientes/:expedienteId" element={<ExpedienteUsuaria />}>
@@ -148,7 +151,6 @@ function App() {
             <Route path="citas/:citaId/atencion" element={<RegistroConsulta />} />
             <Route path="indicadores" element={<Indicadores />} />
             {/* Redirects de compatibilidad de la reestructura (§8.1 del plan). */}
-            <Route path="agenda" element={<Navigate to="/psicologia" replace />} />
             <Route path="expedientes/:expedienteId/citas/nueva" element={<RedirigirANuevaCita />} />
             <Route path="pacientes/:id" element={<RedirigirAExpediente />} />
             <Route path="reporte" element={<Navigate to="/psicologia/indicadores" replace />} />

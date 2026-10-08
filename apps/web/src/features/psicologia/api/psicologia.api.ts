@@ -2,8 +2,10 @@ import type {
   AgendaCita,
   AgendaResumenDia,
   AgendaResumenQuery,
-  AtencionPsicologicaDetalle,
+  AgendarCitaPsicologicaInput,
   BuscarExpedientesQuery,
+  CasoPorAgendarDto,
+  CasoPsicologiaTomadoDto,
   CitaPsicologicaDetalle,
   CitasPaginadas,
   ExpedienteResumenPsicologia,
@@ -11,11 +13,13 @@ import type {
   HistorialCitasQuery,
   IndicadoresPsicologia,
   IndicadoresQuery,
+  ProcesoPsicologiaAbiertoDto,
   ProgramarCitaInput,
   RangoFechasQuery,
-  ReferenciaSinTomar,
+  ReferenciaBandejaPsicologiaDto,
   RegistroConsultaInput,
   ReprogramarCitaInput,
+  ResumenProcesosPsicologia,
   TableroPsicologia,
 } from '@akyuam/shared'
 import { api } from '../../../lib/api'
@@ -26,13 +30,33 @@ export function obtenerTablero() {
   return api.get<TableroPsicologia>('/psicologia/tablero').then((res) => res.data)
 }
 
-export function listarReferenciasSinTomar() {
-  return api.get<ReferenciaSinTomar[]>('/psicologia/referencias-sin-tomar').then((res) => res.data)
+export function obtenerResumenProcesos() {
+  return api.get<ResumenProcesosPsicologia>('/psicologia/procesos/resumen').then((res) => res.data)
 }
 
-export function tomarCaso(expedienteId: string) {
+/** Área de atención: referencias de Trabajo Social que ninguna psicóloga ha tomado. */
+export function listarBandeja() {
+  return api.get<ReferenciaBandejaPsicologiaDto[]>('/psicologia/bandeja').then((res) => res.data)
+}
+
+export function tomarCaso(referidoId: string) {
+  return api.post<CasoPsicologiaTomadoDto>(`/psicologia/bandeja/${referidoId}/tomar`).then((res) => res.data)
+}
+
+/** Casos que la psicóloga ya tomó y todavía no tienen primera cita. */
+export function listarPorAgendar() {
+  return api.get<CasoPorAgendarDto[]>('/psicologia/agenda/por-agendar').then((res) => res.data)
+}
+
+/**
+ * Programa la primera cita y con ella abre el proceso. `claveIdempotencia` evita que un doble
+ * envío (doble clic, reintento de red) abra dos procesos.
+ */
+export function atenderReferencia(referidoId: string, datos: AgendarCitaPsicologicaInput, claveIdempotencia: string) {
   return api
-    .post<AtencionPsicologicaDetalle>(`/psicologia/expedientes/${expedienteId}/tomar`)
+    .post<ProcesoPsicologiaAbiertoDto>(`/psicologia/bandeja/${referidoId}/atender`, datos, {
+      headers: { 'Idempotency-Key': claveIdempotencia },
+    })
     .then((res) => res.data)
 }
 
