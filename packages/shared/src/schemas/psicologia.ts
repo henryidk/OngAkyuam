@@ -1,13 +1,19 @@
 import { z } from 'zod'
 import {
   DURACION_CITA_PSICOLOGICA_MINUTOS_DEFAULT,
+  DURACIONES_CITA_PSICOLOGICA_MINUTOS,
   ESTADOS_ATENCION_PSICOLOGICA,
   ESTADOS_CITA_PSICOLOGICA,
+  FILTROS_PROCESOS_PSICOLOGIA,
+  FILTROS_USUARIAS_PSICOLOGIA,
   MODALIDADES_CITA,
+  MOTIVOS_CIERRE_PSICOLOGIA,
   TIPOS_CITA_PSICOLOGICA,
 } from '../catalogos/psicologia.js'
 import { MUNICIPIOS_ALTA_VERAPAZ } from '../catalogos/registroUsuaria.js'
+import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
 import type { TipoDocumento } from './documentos.js'
+import type { TipoRegistro } from './registroUsuaria.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -67,6 +73,80 @@ export const reprogramarCitaSchema = z.object({
 })
 export type ReprogramarCitaInput = z.infer<typeof reprogramarCitaSchema>
 
+// ---- Rediseño: cita sin modalidad ni lugar, cierre, visibilidad y "¿Qué sigue?" ----
+
+/** Contador de concurrencia optimista: el cliente devuelve la versión que leyó. */
+const versionSchema = z.number().int().min(1)
+
+export const motivoCierrePsicologiaSchema = z.enum(MOTIVOS_CIERRE_PSICOLOGIA)
+export type MotivoCierrePsicologia = z.infer<typeof motivoCierrePsicologiaSchema>
+
+export const duracionCitaPsicologicaSchema = z.literal(DURACIONES_CITA_PSICOLOGICA_MINUTOS, 'Duración inválida')
+
+/**
+ * Cita del rediseño: la atención es solo presencial en la ONG, así que no se pide modalidad ni
+ * lugar (el backend guarda `PRESENCIAL`). Es el body de programar/reprogramar una cita de un
+ * proceso y de las dos aperturas (`bandeja/:referidoId/atender`, `usuarias/:id/procesos`), donde
+ * la cita es la de primera atención.
+ */
+export const agendarCitaPsicologicaSchema = z.object({
+  fechaHora: fechaHoraLocalSchema,
+  duracionMinutos: duracionCitaPsicologicaSchema.default(DURACIONES_CITA_PSICOLOGICA_MINUTOS[0]),
+  /** Hijo/a que se atiende dentro del proceso de la madre; null = la usuaria. */
+  ninoId: z.uuid().nullable().default(null),
+  /** true solo en el reintento tras que la psicóloga confirmó el aviso de traslape. */
+  confirmarTraslape: z.boolean().default(false),
+})
+export type AgendarCitaPsicologicaInput = z.infer<typeof agendarCitaPsicologicaSchema>
+
+export const RESUMEN_CIERRE_PSICOLOGIA_MAX = 2000
+
+/** `POST /psicologia/procesos/:id/cierre`. */
+export const cerrarProcesoPsicologiaSchema = z
+  .object({
+    motivo: motivoCierrePsicologiaSchema,
+    resumen: z.string().trim().max(RESUMEN_CIERRE_PSICOLOGIA_MAX),
+    version: versionSchema,
+  })
+  .refine((datos) => datos.motivo !== 'OTRO' || datos.resumen.length > 0, {
+    path: ['resumen'],
+    message: 'Describa el motivo de cierre',
+  })
+export type CerrarProcesoPsicologiaInput = z.infer<typeof cerrarProcesoPsicologiaSchema>
+
+/**
+ * `PATCH /psicologia/procesos/:id/visibilidad` — qué otras áreas ven etapa, fechas y documentos
+ * del proceso. Trabajo Social no es un interruptor: siempre los ve. Las notas de sesión no
+ * entran aquí en ningún caso.
+ */
+export const visibilidadProcesoPsicologiaSchema = z.object({
+  visibleJuridico: z.boolean(),
+  visibleMedica: z.boolean(),
+  version: versionSchema,
+})
+export type VisibilidadProcesoPsicologiaInput = z.infer<typeof visibilidadProcesoPsicologiaSchema>
+
+export const TIPOS_SIGUIENTE_PASO_SESION = ['PROGRAMAR', 'NINGUNA', 'CERRAR'] as const
+
+/**
+ * "¿Qué sigue?" al guardar una sesión. `PROGRAMAR` crea la próxima cita en la misma transacción;
+ * `CERRAR` solo le indica al frontend que abra el diálogo de cierre después de guardar — el
+ * backend nunca cierra un proceso de forma implícita.
+ */
+export const siguientePasoSesionSchema = z.discriminatedUnion('tipo', [
+  z.object({
+    tipo: z.literal('PROGRAMAR'),
+    fechaHora: fechaHoraLocalSchema,
+    duracionMinutos: duracionCitaPsicologicaSchema,
+    // Opcional y sin `.default()`: un default aquí vuelve distinto el tipo de entrada del de
+    // salida y rompe el `useForm` del registro actual bajo `tsc -b`. Ausente = false.
+    confirmarTraslape: z.boolean().optional(),
+  }),
+  z.object({ tipo: z.literal('NINGUNA') }),
+  z.object({ tipo: z.literal('CERRAR') }),
+])
+export type SiguientePasoSesion = z.infer<typeof siguientePasoSesionSchema>
+
 /**
  * `PUT /psicologia/citas/:id/registro` — registro clínico de la consulta (§5.4, §7.3 del
  * plan). `borrador: true` permite guardar sin finalizar; los campos de texto son libres
@@ -82,6 +162,8 @@ export const registroConsultaSchema = z
     observaciones: z.string(),
     motivoNoAsistencia: z.string(),
     borrador: z.boolean().default(false),
+    /** "¿Qué sigue?" — ausente equivale a `NINGUNA` (los formularios anteriores al rediseño no lo envían). */
+    siguiente: siguientePasoSesionSchema.optional(),
   })
   .refine(
     (datos) =>
@@ -134,6 +216,36 @@ export const indicadoresQuerySchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
 })
 export type IndicadoresQuery = z.infer<typeof indicadoresQuerySchema>
+
+// ---- Rediseño: queries de Procesos, Usuarias y huecos de la agenda ----
+
+export const BUSQUEDA_PSICOLOGIA_MAX = 80
+
+export const filtroProcesosPsicologiaSchema = z.enum(FILTROS_PROCESOS_PSICOLOGIA)
+export type FiltroProcesosPsicologia = z.infer<typeof filtroProcesosPsicologiaSchema>
+
+/** `GET /psicologia/procesos` — siempre "mis" procesos, paginados por cursor. */
+export const listarProcesosPsicologiaQuerySchema = z.object({
+  filtro: filtroProcesosPsicologiaSchema.default('ACTIVOS'),
+  q: z.string().trim().min(3).max(BUSQUEDA_PSICOLOGIA_MAX).optional(),
+  cursor: z.string().optional(),
+})
+export type ListarProcesosPsicologiaQuery = z.infer<typeof listarProcesosPsicologiaQuerySchema>
+
+export const filtroUsuariasPsicologiaSchema = z.enum(FILTROS_USUARIAS_PSICOLOGIA)
+export type FiltroUsuariasPsicologia = z.infer<typeof filtroUsuariasPsicologiaSchema>
+
+/** `GET /psicologia/usuarias` — referidas sin tomar (de cualquier psicóloga) o tomadas por mí. */
+export const listarUsuariasPsicologiaQuerySchema = z.object({
+  filtro: filtroUsuariasPsicologiaSchema.optional(),
+  q: z.string().trim().max(BUSQUEDA_PSICOLOGIA_MAX).optional(),
+  pagina: z.coerce.number().int().min(1).default(1),
+})
+export type ListarUsuariasPsicologiaQuery = z.infer<typeof listarUsuariasPsicologiaQuerySchema>
+
+/** `GET /psicologia/agenda/huecos` — huecos libres de un día de calendario de Guatemala. */
+export const huecosAgendaQuerySchema = z.object({ fecha: fechaCalendarioSchema })
+export type HuecosAgendaQuery = z.infer<typeof huecosAgendaQuerySchema>
 
 // ---- DTOs de respuesta (misma forma consumida por backend y frontend) ----
 
@@ -321,4 +433,210 @@ export interface IndicadoresPsicologia {
   tasaInasistencia: number
   distribucionPorMunicipio: Record<string, number>
   distribucionPorTipoCita: Record<TipoCitaPsicologica, number>
+}
+
+// ---- Rediseño: Área de atención, Agenda, Procesos y Usuarias ----
+
+/** A quién se atiende en una cita o se piensa atender en una referencia: la usuaria o uno de sus hijos/as. */
+export interface PersonaAtendidaDto {
+  /** null = la usuaria. */
+  ninoId: string | null
+  nombreCompleto: string
+  /** Años cumplidos, en hora de Guatemala. */
+  edad: number
+}
+
+/** Tarjeta del Área de atención (`GET /psicologia/bandeja`): referencia que ninguna psicóloga ha tomado. */
+export interface ReferenciaBandejaPsicologiaDto {
+  referidoId: string
+  expedienteId: string
+  expedienteNumero: string
+  usuariaId: string
+  usuariaNombreCompleto: string
+  edad: number
+  municipio: string | null
+  motivo: string | null
+  referidoEn: string
+  referidoPor: string
+  /** Días calendario de Guatemala desde la referencia; se resalta desde `DIAS_ALERTA_ESPERA_PSICOLOGIA`. */
+  diasEsperando: number
+  /** La usuaria y los hijos/as registrados en el expediente. */
+  personas: PersonaAtendidaDto[]
+  /** Ya tuvo un proceso psicológico, de cualquier estado: la usuaria regresa. */
+  atendidaAntes: boolean
+}
+
+/** Fila de `GET /psicologia/agenda/por-agendar`: caso que tomé y todavía no tiene primera cita. */
+export interface CasoPorAgendarDto {
+  referidoId: string
+  expedienteId: string
+  expedienteNumero: string
+  usuariaId: string
+  usuariaNombreCompleto: string
+  tomadaEn: string
+  personas: PersonaAtendidaDto[]
+}
+
+/** Cita tal como la pinta la agenda del rediseño: sin modalidad, lugar ni texto clínico. */
+export interface CitaAgendaDto {
+  id: string
+  procesoId: string
+  /** "P1-05-2026". */
+  procesoCodigo: string
+  usuariaId: string
+  usuariaNombreCompleto: string
+  persona: PersonaAtendidaDto
+  fechaHora: string
+  duracionMinutos: number
+  tipo: TipoCitaPsicologica
+  estado: EstadoCitaPsicologica
+  /** Derivado, no se guarda: sigue `PROGRAMADA` y ya terminó su horario. */
+  sinRegistrar: boolean
+  /** Tiene un registro de sesión guardado como borrador. */
+  borrador: boolean
+}
+
+/** Tramo libre de un día, en minutos desde la medianoche de Guatemala. */
+export interface HuecoLibreDto {
+  desdeMin: number
+  hastaMin: number
+}
+
+/** Referencia mínima a una cita, para las columnas "Última sesión" y "Próxima cita". */
+export interface CitaRefDto {
+  id: string
+  fechaHora: string
+}
+
+/** Fila de `GET /psicologia/procesos`. */
+export interface ProcesoPsicologiaResumen {
+  id: string
+  codigo: string
+  usuariaId: string
+  usuariaNombreCompleto: string
+  expedienteNumero: string
+  etapa: EstadoAtencionPsicologica
+  sesionesAtendidas: number
+  ultimaSesion: CitaRefDto | null
+  proximaCita: CitaRefDto | null
+  fechaInicio: string
+  fechaCierre: string | null
+}
+
+export type ProcesosPsicologiaPaginados = PaginaConCursor<ProcesoPsicologiaResumen>
+
+/** `GET /psicologia/procesos/resumen` — tarjetas de Procesos y contadores del menú lateral. */
+export interface ResumenProcesosPsicologia {
+  procesos: Record<FiltroProcesosPsicologia, number>
+  referenciasSinTomar: number
+  casosPorAgendar: number
+  citasSinRegistrar: number
+}
+
+export const ACCIONES_PROCESO_PSICOLOGIA = ['PROGRAMAR_CITA', 'REGISTRAR_SESION', 'CERRAR', 'EDITAR_VISIBILIDAD'] as const
+export type AccionProcesoPsicologia = (typeof ACCIONES_PROCESO_PSICOLOGIA)[number]
+
+/** `GET /psicologia/procesos/:id` — solo para la psicóloga dueña del proceso. */
+export interface ProcesoPsicologiaDetalle extends ProcesoPsicologiaResumen {
+  expedienteId: string
+  version: number
+  psicologa: string
+  motivoReferencia: string | null
+  motivoCierre: MotivoCierrePsicologia | null
+  resumenCierre: string | null
+  personasAtendidas: PersonaAtendidaDto[]
+  visibilidad: { visibleJuridico: boolean; visibleMedica: boolean }
+  /** Lo calcula el backend; el frontend no repite las reglas de etapa. */
+  accionesDisponibles: AccionProcesoPsicologia[]
+}
+
+/** Fila de `GET /psicologia/procesos/:id/sesiones` — con texto clínico: nunca sale de Psicología ni de su dueña. */
+export interface SesionProcesoDto {
+  citaId: string
+  /** Número de sesión dentro del proceso; null en una inasistencia. */
+  numero: number | null
+  fechaHora: string
+  duracionMinutos: number
+  estado: EstadoCitaPsicologica
+  persona: PersonaAtendidaDto
+  temas: string | null
+  intervencion: string | null
+  recomendaciones: string | null
+  acuerdos: string | null
+  observaciones: string | null
+  motivoNoAsistencia: string | null
+  documento: DocumentoCitaDto | null
+}
+
+export type SesionesProcesoPaginadas = PaginaConCursor<SesionProcesoDto>
+
+/**
+ * Lo único de un proceso psicológico que puede cruzar a otra área. Es un tipo aparte, y no un
+ * recorte de `ProcesoPsicologiaDetalle`, para que agregarle un campo clínico al detalle no lo
+ * filtre hacia afuera por accidente.
+ */
+export interface ProcesoPsicologiaCompartidoDto {
+  codigo: string
+  etapa: EstadoAtencionPsicologica
+  fechaInicio: string
+  fechaCierre: string | null
+  proximaCita: string | null
+}
+
+/** Columna "Proceso" de la lista de Usuarias; null = todavía sin procesos. */
+export type EstadoProcesoUsuariaPsicologia = 'ACTIVO' | 'CERRADO'
+
+/** Fila de `GET /psicologia/usuarias`. */
+export interface FilaUsuariaPsicologia {
+  usuariaId: string
+  nombreCompleto: string
+  dpi: string | null
+  edad: number
+  expedienteNumero: string
+  estadoProceso: EstadoProcesoUsuariaPsicologia | null
+  referenciaPendiente: boolean
+  ultimaActividadEn: string
+}
+
+/** `GET /psicologia/usuarias` — página de filas + contador de cada chip (con la búsqueda aplicada). */
+export interface ListaUsuariasPsicologia {
+  filas: FilaUsuariaPsicologia[]
+  pagina: number
+  porPagina: number
+  total: number
+  contadores: { TODAS: number } & Record<FiltroUsuariasPsicologia, number>
+}
+
+export const ESTADOS_REFERENCIA_PSICOLOGIA = ['SIN_TOMAR', 'POR_AGENDAR', 'ATENDIDA'] as const
+export type EstadoReferenciaPsicologia = (typeof ESTADOS_REFERENCIA_PSICOLOGIA)[number]
+
+export interface ReferenciaHistorialPsicologiaDto {
+  referidoId: string
+  expedienteId: string
+  expedienteNumero: string
+  referidoEn: string
+  referidoPor: string
+  motivo: string | null
+  estado: EstadoReferenciaPsicologia
+}
+
+/** `GET /psicologia/usuarias/:usuariaId` — encabezado de la ficha y lo que Psicología lleva de la usuaria. */
+export interface FichaUsuariaPsicologiaDto {
+  usuaria: {
+    id: string
+    nombreCompleto: string
+    dpi: string | null
+    edad: number
+    grupoEtnico: (typeof GRUPOS_ETNICOS)[number]
+    municipio: string | null
+  }
+  /** El expediente más reciente referido a Psicología: de él salen los datos y documentos de Trabajo Social. */
+  expediente: { id: string; numero: string; tipoRegistro: TipoRegistro; enAlbergue: boolean }
+  contadores: { enProceso: number; cerrados: number }
+  /** Solo los míos; de los de otra psicóloga no se devuelve nada. */
+  procesos: ProcesoPsicologiaResumen[]
+  /** Más reciente primero. */
+  referencias: ReferenciaHistorialPsicologiaDto[]
+  /** Se puede abrir un proceso nuevo: no hay uno activo ni una referencia pendiente. */
+  puedeAbrirProceso: boolean
 }
