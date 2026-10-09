@@ -9,6 +9,7 @@ import {
 const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/
 const DIAS_LABORALES = 5
 const DIAS_SEMANA = 7
+const MESES_CORTOS = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic']
 
 /** Lunes de la semana a la que pertenece una fecha de calendario. */
 export function lunesDe(fecha: string): string {
@@ -48,6 +49,24 @@ export function citaPrincipal(citasDeHoy: CitaAgendaDto[], ahora: number): strin
       new Date(cita.fechaHora).getTime() + cita.duracionMinutos * 60_000 > ahora,
   )
   return pendiente?.id ?? null
+}
+
+/** La cita ya empezó. Junto con `citaPrincipal` distingue "en curso" de "la que sigue". */
+export function citaYaEmpezo(cita: CitaAgendaDto, ahora: number): boolean {
+  return new Date(cita.fechaHora).getTime() <= ahora
+}
+
+/**
+ * Tramo de fechas de calendario en corto: "5 – 9 oct 2026", "28 sep – 2 oct 2026" o
+ * "29 dic 2025 – 2 ene 2026". Solo se repite lo que cambia entre un extremo y el otro.
+ */
+export function rangoDeFechas(desde: string, hasta: string): string {
+  const [anioDesde, mesDesde, diaDesde] = desde.split('-').map(Number)
+  const [anioHasta, mesHasta, diaHasta] = hasta.split('-').map(Number)
+  const fin = `${diaHasta} ${MESES_CORTOS[mesHasta - 1]} ${anioHasta}`
+  if (anioDesde !== anioHasta) return `${diaDesde} ${MESES_CORTOS[mesDesde - 1]} ${anioDesde} – ${fin}`
+  if (mesDesde !== mesHasta) return `${diaDesde} ${MESES_CORTOS[mesDesde - 1]} – ${fin}`
+  return `${diaDesde} – ${fin}`
 }
 
 /** "6 citas · 3 por atender · 1 atendida · 1 no asistió · 1 sin registrar". */

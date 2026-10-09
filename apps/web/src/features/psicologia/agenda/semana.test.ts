@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 import type { CitaAgendaDto, ProcesoParaAgendarDto } from '@akyuam/shared'
 import {
   citaPrincipal,
+  citaYaEmpezo,
   citasSinRegistrarFuera,
   diasVisibles,
   fechaValida,
   lunesDe,
   procesosSinProximaCita,
+  rangoDeFechas,
   resumenDelDia,
 } from './semana'
 
@@ -125,5 +127,21 @@ describe('pendientes de la agenda: cada uno en un solo lugar', () => {
       proceso({ procesoId: 'con-cita', proximaCita: { id: 'c', fechaHora: '2026-10-09T15:00:00.000Z' } }),
     ]
     expect(procesosSinProximaCita(procesos).map((p) => p.procesoId)).toEqual(['sin-nada'])
+  })
+})
+
+describe('cita en curso o por empezar', () => {
+  it('distingue la que ya empezó de la que todavía no', () => {
+    const laCita = cita({ fechaHora: '2026-10-07T15:00:00.000Z' })
+    expect(citaYaEmpezo(laCita, Date.parse('2026-10-07T15:00:00.000Z'))).toBe(true)
+    expect(citaYaEmpezo(laCita, Date.parse('2026-10-07T14:59:00.000Z'))).toBe(false)
+  })
+})
+
+describe('tramo de fechas en corto', () => {
+  it('repite solo lo que cambia entre los dos extremos', () => {
+    expect(rangoDeFechas('2026-10-05', '2026-10-09')).toBe('5 – 9 oct 2026')
+    expect(rangoDeFechas('2026-09-28', '2026-10-02')).toBe('28 sep – 2 oct 2026')
+    expect(rangoDeFechas('2025-12-29', '2026-01-02')).toBe('29 dic 2025 – 2 ene 2026')
   })
 })

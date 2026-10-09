@@ -1,5 +1,6 @@
 import type { HuecoLibreDto } from '@akyuam/shared'
 import { duracionLegible, horaDeMinutos } from '../compartido/horas'
+import { CLASE_COLUMNA_HORA } from './estilos'
 
 interface FilaHuecoProps {
   hueco: HuecoLibreDto
@@ -11,17 +12,17 @@ interface FilaHuecoProps {
 export default function FilaHueco({ hueco, onProgramar }: FilaHuecoProps) {
   const desde = horaDeMinutos(hueco.desdeMin)
   return (
-    <li className="flex items-center gap-4 bg-gray-50/60 px-4 py-2.5">
-      <span className="w-12 flex-none font-mono text-xs text-gray-400">{desde}</span>
-      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-gray-300 px-3 py-2">
-        <span className="text-sm text-gray-500">
+    <li className="flex items-center gap-4 bg-gray-50/70 px-[18px] py-2">
+      <span className={`${CLASE_COLUMNA_HORA} text-[13px] text-gray-400`}>{desde}</span>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md border border-dashed border-gray-300 px-3 py-1.5">
+        <span className="text-[13px] text-gray-500 tabular-nums">
           <strong className="font-semibold text-gray-800">Libre</strong> · {desde} – {horaDeMinutos(hueco.hastaMin)} ·{' '}
           {duracionLegible(hueco.hastaMin - hueco.desdeMin)}
         </span>
         <button
           type="button"
           onClick={() => onProgramar(desde)}
-          className="rounded px-1 text-sm font-semibold text-brand-600 hover:text-brand-800"
+          className="whitespace-nowrap rounded px-1 text-[13px] font-semibold text-brand-600 hover:text-brand-800"
         >
           + Programar aquí
         </button>

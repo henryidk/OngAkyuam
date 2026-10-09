@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { CalendarDays } from 'lucide-react'
+import { CalendarDays, Plus } from 'lucide-react'
 import {
   formatFechaLargaGT,
   hoyGT,
@@ -25,6 +25,7 @@ import ModalProgramarCita, { type DestinoCita } from '../citas/ModalProgramarCit
 import { useContextoPsicologia } from '../compartido/contexto'
 import { horaDeInstante } from '../compartido/horas'
 import ColaPendientesDeAgendar from './ColaPendientesDeAgendar'
+import ControlSemana from './ControlSemana'
 import FilaCita from './FilaCita'
 import FilaHueco from './FilaHueco'
 import NavegadorSemana from './NavegadorSemana'
@@ -32,12 +33,14 @@ import PanelPorAgendar from './PanelPorAgendar'
 import PanelSinRegistrar from './PanelSinRegistrar'
 import {
   citaPrincipal,
+  citaYaEmpezo,
   citasSinRegistrarFuera,
   diaDeCita,
   diasVisibles,
   fechaValida,
   lunesDe,
   procesosSinProximaCita,
+  rangoDeFechas,
   resumenDelDia,
 } from './semana'
 
@@ -181,41 +184,49 @@ export default function Agenda() {
     recargarTodo()
   }
 
+  const dias = diasVisibles(lunes, dia, new Set(citasPorDia.keys()))
   const fechaLarga = formatFechaLargaGT(dia)
   const titulo = esHoy ? `Hoy, ${fechaLarga.charAt(0).toLowerCase()}${fechaLarga.slice(1)}` : fechaLarga
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900">{titulo}</h1>
+    <div className="mx-auto max-w-6xl space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">{titulo}</h1>
           <p className="text-sm text-gray-500">{semana.datos ? resumenDelDia(citasDelDia) : 'Cargando…'}</p>
         </div>
-        <Button
-          tamano="md"
-          disabled={!procesos.datos}
-          onClick={() =>
-            procesos.datos &&
-            setModal({ destino: { tipo: 'PROCESO', procesos: procesos.datos, procesoId: null }, fecha: dia })
-          }
-        >
-          Programar cita
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <ControlSemana
+            rango={rangoDeFechas(dias[0], dias[dias.length - 1])}
+            onSemanaAnterior={() => moverSemana(-DIAS_SEMANA)}
+            onSemanaSiguiente={() => moverSemana(DIAS_SEMANA)}
+            onHoy={() => irA(hoy)}
+          />
+          <Button
+            tamano="md"
+            className="font-semibold"
+            disabled={!procesos.datos}
+            onClick={() =>
+              procesos.datos &&
+              setModal({ destino: { tipo: 'PROCESO', procesos: procesos.datos, procesoId: null }, fecha: dia })
+            }
+          >
+            <Plus aria-hidden className="h-4 w-4" />
+            Programar cita
+          </Button>
+        </div>
       </div>
 
       <NavegadorSemana
-        dias={diasVisibles(lunes, dia, new Set(citasPorDia.keys()))}
+        dias={dias}
         diaAbierto={dia}
         hoy={hoy}
         citasPorDia={citasPorDia}
         diasSinRegistrar={diasSinRegistrar}
         onElegirDia={(elegido) => irA(elegido, lunes)}
-        onSemanaAnterior={() => moverSemana(-DIAS_SEMANA)}
-        onSemanaSiguiente={() => moverSemana(DIAS_SEMANA)}
-        onHoy={() => irA(hoy)}
       />
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_330px]">
+      <div className="grid items-start gap-5 pt-1 xl:grid-cols-[minmax(0,1fr)_320px]">
         <section aria-label={`Citas del ${fechaLarga.toLowerCase()}`}>
           {semana.error ? (
             <ErrorVista
@@ -233,7 +244,7 @@ export default function Agenda() {
               descripcion={dia < hoy ? 'Fue un día sin citas.' : 'Usa "Programar cita" para agendar una.'}
             />
           ) : (
-            <ul className="divide-y divide-gray-100 overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
               {renglones.map((renglon) =>
                 renglon.tipo === 'CITA' ? (
                   <FilaCita
@@ -241,6 +252,7 @@ export default function Agenda() {
                     cita={renglon.cita}
                     esHoy={esHoy}
                     principal={renglon.cita.id === principalId}
+                    enCurso={citaYaEmpezo(renglon.cita, ahora)}
                     onNoAsistio={setAMarcar}
                     onReprogramar={(cita) =>
                       setModal({
@@ -269,7 +281,7 @@ export default function Agenda() {
           )}
         </section>
 
-        <aside className="space-y-6">
+        <aside className="space-y-4 xl:sticky xl:top-6">
           <PanelPorAgendar
             casos={porAgendar.datos}
             error={porAgendar.error?.mensaje ?? null}
