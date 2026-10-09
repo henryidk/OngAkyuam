@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { IndicadoresPsicologiaService } from './indicadores-psicologia.service';
-import type { IIndicadoresPsicologiaRepository } from '../interfaces/indicadores-psicologia-repository.interface';
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import type { AuditService } from '../../auth/services/audit.service';
@@ -27,7 +26,6 @@ function crearCitaAgregado(
 
 describe('IndicadoresPsicologiaService', () => {
   let service: IndicadoresPsicologiaService;
-  let indicadoresRepository: jest.Mocked<IIndicadoresPsicologiaRepository>;
   let atencionRepository: jest.Mocked<IAtencionPsicologicaRepository>;
   let citasRepository: jest.Mocked<ICitasPsicologicasRepository>;
   let auditService: jest.Mocked<AuditService>;
@@ -40,36 +38,18 @@ describe('IndicadoresPsicologiaService', () => {
   };
 
   beforeEach(() => {
-    indicadoresRepository = {
-      obtenerReporte: jest.fn(),
-    };
     atencionRepository = {
-      buscarExpedienteConAcceso: jest.fn(),
-      obtenerOCrear: jest.fn(),
-      actualizarEstado: jest.fn(),
-      existeReferidoPsicologia: jest.fn(),
       tomarCaso: jest.fn(),
-      listarReferenciasSinTomar: jest.fn(),
       contarCasosActivos: jest.fn(),
       contarIniciadosEnRango: jest.fn(),
       contarCerradosEnRango: jest.fn(),
-      listarProcesosSinProximaCita: jest.fn(),
-      listarCerradosDesde: jest.fn(),
-      buscarExpedientes: jest.fn(),
-      obtenerResumenExpediente: jest.fn(),
     };
     citasRepository = {
       buscarAccesoCita: jest.fn(),
       buscarLecturaCita: jest.fn(),
-      crear: jest.fn(),
-      actualizar: jest.fn(),
-      listarAgenda: jest.fn(),
       buscarCitasSolapadas: jest.fn(),
-      obtenerDatosParaReprogramar: jest.fn(),
-      reprogramar: jest.fn(),
       registrarConsulta: jest.fn(),
       listarCitasEnRango: jest.fn(),
-      listarHistorial: jest.fn(),
       obtenerDetalle: jest.fn(),
     };
     auditService = {
@@ -77,7 +57,6 @@ describe('IndicadoresPsicologiaService', () => {
     } as unknown as jest.Mocked<AuditService>;
 
     service = new IndicadoresPsicologiaService(
-      indicadoresRepository,
       atencionRepository,
       citasRepository,
       auditService,

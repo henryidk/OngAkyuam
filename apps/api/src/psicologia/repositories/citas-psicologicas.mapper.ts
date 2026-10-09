@@ -3,7 +3,7 @@ import type { CitaResumen, DocumentoCitaDto } from '@akyuam/shared';
 
 /**
  * Solo el documento más reciente de la cita (normalmente hay a lo más uno, el Formato
- * General escaneado) — se usa en `CitaResumen.documento`, ver programarCitaSchema.
+ * General escaneado): es el que viaja en `CitaResumen.documento`.
  */
 export const INCLUDE_CITA = {
   atendidoPor: { select: { nombreCompleto: true } },
@@ -37,11 +37,7 @@ export function mapearDocumentoCita(
   };
 }
 
-/**
- * Mapeo único de `CitaPsicologica` -> `CitaResumen`, reusado tanto por
- * `AtencionPsicologicaRepository` (historial dentro de una atención) como por
- * `CitasPsicologicasRepository` (agenda) — evita duplicar la forma del DTO en dos lugares.
- */
+/** Mapeo único de `CitaPsicologica` -> `CitaResumen`. */
 export function mapearCita(cita: CitaConRelaciones): CitaResumen {
   const documento = mapearDocumentoCita(cita.documentos[0]);
 

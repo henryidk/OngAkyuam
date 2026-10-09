@@ -19,14 +19,7 @@ const ITEMS_NAV: ItemNav[] = [
     Icono: CalendarDays,
   },
   { ruta: RUTAS_PSICOLOGIA.procesos(), etiqueta: 'Procesos', fin: false, Icono: HeartHandshake },
-  {
-    ruta: RUTAS_PSICOLOGIA.usuarias(),
-    etiqueta: 'Usuarias',
-    fin: false,
-    // La pantalla anterior del expediente sigue viva hasta que se retire: pertenece a este ítem.
-    rutasRelacionadas: ['/psicologia/expedientes'],
-    Icono: Users,
-  },
+  { ruta: RUTAS_PSICOLOGIA.usuarias(), etiqueta: 'Usuarias', fin: false, Icono: Users },
   { ruta: '/psicologia/indicadores', etiqueta: 'Reportes', fin: false, Icono: BarChart3 },
 ]
 

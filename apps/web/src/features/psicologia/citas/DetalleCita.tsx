@@ -42,7 +42,9 @@ export default function DetalleCita() {
   return (
     <div className="max-w-xl space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-semibold text-gray-800">{cita.usuariaNombreCompleto}</h1>
+        <h1 className="text-lg font-semibold text-gray-800">
+          {cita.ninoNombreCompleto ?? cita.usuariaNombreCompleto}
+        </h1>
         <Badge>{ETIQUETAS_ESTADO_CITA_PSICOLOGICA[cita.estado]}</Badge>
       </div>
 
@@ -76,11 +78,13 @@ export default function DetalleCita() {
       </dl>
 
       <div className="flex flex-wrap gap-3 text-sm font-medium">
-        <Link to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id)} className="text-brand-600 hover:underline">
-          Registrar consulta
-        </Link>
-        <Link to={RUTAS_PSICOLOGIA.expediente(cita.expedienteId)} className="text-gray-600 hover:underline">
-          Ver expediente
+        {cita.estado === 'PROGRAMADA' && (
+          <Link to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id)} className="text-brand-600 hover:underline">
+            Registrar sesión
+          </Link>
+        )}
+        <Link to={RUTAS_PSICOLOGIA.proceso(cita.procesoId)} className="text-gray-600 hover:underline">
+          Ver proceso <span className="font-mono">{cita.procesoCodigo}</span>
         </Link>
       </div>
     </div>

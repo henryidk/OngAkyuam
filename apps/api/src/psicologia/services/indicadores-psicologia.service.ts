@@ -2,16 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   ESTADOS_CITA_PSICOLOGICA,
   TIPOS_CITA_PSICOLOGICA,
-  finDiaGT,
   finMesGT,
-  inicioDiaGT,
   inicioMesGT,
   mesCalendarioGT,
   type EstadoCitaPsicologica,
   type IndicadoresPsicologia,
   type IndicadoresQuery,
-  type RangoFechasQuery,
-  type ReportePsicologia,
   type TipoCitaPsicologica,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
@@ -20,8 +16,6 @@ import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicolog
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
-import { INDICADORES_PSICOLOGIA_REPOSITORY } from '../interfaces/indicadores-psicologia-repository.interface';
-import type { IIndicadoresPsicologiaRepository } from '../interfaces/indicadores-psicologia-repository.interface';
 
 function contadorEnCero<T extends string>(
   claves: readonly T[],
@@ -35,8 +29,6 @@ function contadorEnCero<T extends string>(
 @Injectable()
 export class IndicadoresPsicologiaService {
   constructor(
-    @Inject(INDICADORES_PSICOLOGIA_REPOSITORY)
-    private readonly indicadoresRepository: IIndicadoresPsicologiaRepository,
     @Inject(ATENCION_PSICOLOGICA_REPOSITORY)
     private readonly atencionRepository: IAtencionPsicologicaRepository,
     @Inject(CITAS_PSICOLOGICAS_REPOSITORY)
@@ -44,18 +36,9 @@ export class IndicadoresPsicologiaService {
     private readonly auditService: AuditService,
   ) {}
 
-  async obtenerReporte(query: RangoFechasQuery): Promise<ReportePsicologia> {
-    const agregado = await this.indicadoresRepository.obtenerReporte({
-      desde: inicioDiaGT(query.desde),
-      hasta: finDiaGT(query.hasta),
-    });
-    return { desde: query.desde, hasta: query.hasta, ...agregado };
-  }
-
   /**
-   * Siempre "mis" indicadores (§5.5 del plan) — nunca agrega sobre otras psicólogas, a
-   * diferencia del `obtenerReporte` legado. Solo `personasAtendidasPorMes` necesita el corte
-   * de mes en GT (§7.5): el resto son totales del año, calculados aquí en memoria a partir de
+   * Siempre "mis" indicadores (§5.5 del plan) — nunca agrega sobre otras psicólogas. Solo
+   * `personasAtendidasPorMes` necesita el corte de mes en GT (§7.5): el resto son totales del año, calculados aquí en memoria a partir de
    * `listarCitasEnRango`, nunca con `date_trunc` en la base de datos.
    */
   async obtenerIndicadores(

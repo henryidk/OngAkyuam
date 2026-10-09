@@ -8,8 +8,6 @@ import {
 } from '@nestjs/common';
 import {
   parseLocalGT,
-  type ActualizarCitaInput,
-  type CitaResumen,
   type ConsultaRegistradaDto,
   type DocumentoCitaDto,
   type RegistroConsultaInput,
@@ -54,36 +52,6 @@ export class RegistroConsultaService {
     private readonly objectStorage: IObjectStorage,
     private readonly auditService: AuditService,
   ) {}
-
-  async actualizarCita(
-    citaId: string,
-    datos: ActualizarCitaInput,
-    contexto: ContextoAuditoria,
-  ): Promise<CitaResumen> {
-    await this.acceso.exigirAccesoCita(citaId, contexto.usuarioId);
-
-    const cita = await this.citasRepository.actualizar({
-      citaId,
-      estado: datos.estado,
-      observaciones: vacioANulo(datos.observaciones),
-      acuerdos: vacioANulo(datos.acuerdos),
-    });
-
-    // Nunca observaciones/acuerdos en `detalles` — mismo criterio que las notas de avance
-    // en jurídico: el audit log guarda IDs/enums, nunca texto libre personal.
-    await this.auditService.registrar({
-      usuarioId: contexto.usuarioId,
-      username: contexto.username,
-      accion: 'CITA_PSICOLOGICA_ACTUALIZADA',
-      entidad: 'CitaPsicologica',
-      entidadId: citaId,
-      ipAddress: contexto.ipAddress,
-      userAgent: contexto.userAgent,
-      detalles: { estado: datos.estado },
-    });
-
-    return cita;
-  }
 
   /**
    * Registro de la sesión. Al finalizar hace, todo o nada, lo que se deriva de él: la primera
@@ -133,7 +101,7 @@ export class RegistroConsultaService {
     }
 
     // Nunca temas/intervención/recomendaciones/motivoNoAsistencia en `detalles` — texto clínico
-    // libre, mismo criterio que observaciones/acuerdos en `actualizarCita`.
+    // libre, el audit log guarda IDs/enums, nunca texto libre personal.
     await this.auditService.registrar({
       usuarioId: contexto.usuarioId,
       username: contexto.username,

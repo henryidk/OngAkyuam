@@ -62,27 +62,22 @@ describe('RegistroConsultaService', () => {
 
   beforeEach(() => {
     acceso = {
-      exigirAccesoExpediente: jest.fn(),
       exigirAccesoCita: jest.fn().mockResolvedValue(accesoCita),
       exigirLecturaCita: jest
         .fn()
         .mockResolvedValue({ ...accesoCita, propia: true }),
-      exigirReferidoPsicologia: jest.fn(),
     } as unknown as jest.Mocked<AccesoPsicologiaService>;
     citasRepository = {
       buscarAccesoCita: jest.fn(),
       buscarLecturaCita: jest.fn(),
-      crear: jest.fn(),
-      actualizar: jest.fn(),
-      listarAgenda: jest.fn(),
       buscarCitasSolapadas: jest.fn().mockResolvedValue([]),
-      obtenerDatosParaReprogramar: jest.fn(),
-      reprogramar: jest.fn(),
       registrarConsulta: jest.fn().mockResolvedValue({
         cita: crearCita(),
         pasoASeguimiento: false,
         proximaCitaId: null,
       }),
+      listarCitasEnRango: jest.fn(),
+      obtenerDetalle: jest.fn(),
     };
     documentosRepository = {
       crearDocumento: jest.fn(),

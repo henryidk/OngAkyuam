@@ -4,7 +4,6 @@ import {
   Get,
   Param,
   ParseUUIDPipe,
-  Patch,
   Post,
   Put,
   Query,
@@ -15,26 +14,10 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
-  actualizarCitaSchema,
-  actualizarEstadoAtencionSchema,
-  agendaResumenQuerySchema,
-  buscarExpedientesQuerySchema,
-  historialCitasQuerySchema,
   indicadoresQuerySchema,
-  programarCitaSchema,
-  rangoFechasQuerySchema,
   registroConsultaSchema,
-  reprogramarCitaSchema,
-  type ActualizarCitaInput,
-  type ActualizarEstadoAtencionInput,
-  type AgendaResumenQuery,
-  type BuscarExpedientesQuery,
-  type HistorialCitasQuery,
   type IndicadoresQuery,
-  type ProgramarCitaInput,
-  type RangoFechasQuery,
   type RegistroConsultaInput,
-  type ReprogramarCitaInput,
 } from '@akyuam/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -45,115 +28,18 @@ import type { ContextoAuditoria as IContextoAuditoria } from '../common/types/co
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
 import { CitasPsicologicasService } from './services/citas-psicologicas.service';
 import { IndicadoresPsicologiaService } from './services/indicadores-psicologia.service';
-import { ProcesoPsicologicoService } from './services/proceso-psicologico.service';
 import { RegistroConsultaService } from './services/registro-consulta.service';
-import { TableroPsicologiaService } from './services/tablero-psicologia.service';
 
+/** Lo que cuelga de una cita ya existente (su registro y su documento) y los indicadores. */
 @Controller('psicologia')
 @UseGuards(RolesGuard)
 @Roles('PSICOLOGIA')
 export class PsicologiaController {
   constructor(
-    private readonly procesoService: ProcesoPsicologicoService,
     private readonly citasService: CitasPsicologicasService,
     private readonly registroService: RegistroConsultaService,
     private readonly indicadoresService: IndicadoresPsicologiaService,
-    private readonly tableroService: TableroPsicologiaService,
   ) {}
-
-  @Get('tablero')
-  obtenerTablero(@CurrentUser() usuario: AuthenticatedUser) {
-    return this.tableroService.obtenerTablero(usuario.id);
-  }
-
-  @Get('expedientes')
-  buscarExpedientes(
-    @Query(new ZodValidationPipe(buscarExpedientesQuerySchema))
-    query: BuscarExpedientesQuery,
-    @CurrentUser() usuario: AuthenticatedUser,
-  ) {
-    return this.procesoService.buscarExpedientes(query, usuario.id);
-  }
-
-  @Get('expedientes/:expedienteId/resumen')
-  obtenerResumenExpediente(
-    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-  ) {
-    return this.procesoService.obtenerResumenExpediente(
-      expedienteId,
-      usuario.id,
-    );
-  }
-
-  @Get('expedientes/:expedienteId/citas')
-  listarHistorialCitas(
-    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
-    @Query(new ZodValidationPipe(historialCitasQuerySchema))
-    query: HistorialCitasQuery,
-    @CurrentUser() usuario: AuthenticatedUser,
-  ) {
-    return this.citasService.listarHistorialCitas(
-      expedienteId,
-      query,
-      usuario.id,
-    );
-  }
-
-  @Get('expedientes/:expedienteId/atencion')
-  obtenerAtencion(
-    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
-  ) {
-    return this.procesoService.obtenerAtencion(expedienteId, contexto);
-  }
-
-  @Patch('expedientes/:expedienteId/atencion')
-  actualizarEstadoAtencion(
-    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
-    @Body(new ZodValidationPipe(actualizarEstadoAtencionSchema))
-    datos: ActualizarEstadoAtencionInput,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
-  ) {
-    return this.procesoService.actualizarEstadoAtencion(
-      expedienteId,
-      datos,
-      contexto,
-    );
-  }
-
-  @Post('expedientes/:expedienteId/tomar')
-  tomarCaso(
-    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
-  ) {
-    return this.procesoService.tomarCaso(expedienteId, contexto);
-  }
-
-  @Get('referencias-sin-tomar')
-  listarReferenciasSinTomar() {
-    return this.procesoService.listarReferenciasSinTomar();
-  }
-
-  @Post('expedientes/:expedienteId/citas')
-  programarCita(
-    @Param('expedienteId', ParseUUIDPipe) expedienteId: string,
-    @Body(new ZodValidationPipe(programarCitaSchema))
-    datos: ProgramarCitaInput,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
-  ) {
-    return this.citasService.programarCita(expedienteId, datos, contexto);
-  }
-
-  @Post('citas/:citaId/reprogramar')
-  reprogramarCita(
-    @Param('citaId', ParseUUIDPipe) citaId: string,
-    @Body(new ZodValidationPipe(reprogramarCitaSchema))
-    datos: ReprogramarCitaInput,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
-  ) {
-    return this.citasService.reprogramarCita(citaId, datos, contexto);
-  }
 
   @Put('citas/:citaId/registro')
   registrarConsulta(
@@ -171,16 +57,6 @@ export class PsicologiaController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.citasService.obtenerDetalleCita(citaId, usuario.id);
-  }
-
-  @Patch('citas/:citaId')
-  actualizarCita(
-    @Param('citaId', ParseUUIDPipe) citaId: string,
-    @Body(new ZodValidationPipe(actualizarCitaSchema))
-    datos: ActualizarCitaInput,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
-  ) {
-    return this.registroService.actualizarCita(citaId, datos, contexto);
   }
 
   @Post('citas/:citaId/documento')
@@ -206,33 +82,6 @@ export class PsicologiaController {
       citaId,
       contexto,
     );
-  }
-
-  // Rutas sin :id, no colisionan con las de arriba (un segmento menos).
-  @Get('agenda')
-  listarAgenda(
-    @Query(new ZodValidationPipe(rangoFechasQuerySchema))
-    query: RangoFechasQuery,
-    @CurrentUser() usuario: AuthenticatedUser,
-  ) {
-    return this.citasService.listarAgenda(query, usuario.id);
-  }
-
-  @Get('agenda/resumen')
-  obtenerResumenAgenda(
-    @Query(new ZodValidationPipe(agendaResumenQuerySchema))
-    query: AgendaResumenQuery,
-    @CurrentUser() usuario: AuthenticatedUser,
-  ) {
-    return this.citasService.obtenerResumenAgenda(query, usuario.id);
-  }
-
-  @Get('reporte')
-  obtenerReporte(
-    @Query(new ZodValidationPipe(rangoFechasQuerySchema))
-    query: RangoFechasQuery,
-  ) {
-    return this.indicadoresService.obtenerReporte(query);
   }
 
   @Get('indicadores')

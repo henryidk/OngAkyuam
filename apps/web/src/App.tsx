@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Navigate, Route, Routes, useParams, useSearchParams } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from './components/ui/Toast'
 import AdminLayout from './pages/admin/AdminLayout'
 import Usuarios from './pages/admin/Usuarios'
@@ -25,13 +25,6 @@ import Medica from './pages/Medica'
 import MedicaExpediente from './pages/MedicaExpediente'
 import Agenda from './features/psicologia/agenda/Agenda'
 import BandejaPsicologia from './features/psicologia/bandeja/BandejaPsicologia'
-import ExpedienteUsuaria from './features/psicologia/expedientes/ExpedienteUsuaria'
-import PestanaResumen from './features/psicologia/expedientes/PestanaResumen'
-import PestanaHistorialCitas from './features/psicologia/expedientes/PestanaHistorialCitas'
-import PestanaConsultas from './features/psicologia/expedientes/PestanaConsultas'
-import PestanaDocumentos from './features/psicologia/expedientes/PestanaDocumentos'
-import PestanaDatosUsuaria from './features/psicologia/expedientes/PestanaDatosUsuaria'
-import ProgramarCita from './features/psicologia/citas/ProgramarCita'
 import DetalleCita from './features/psicologia/citas/DetalleCita'
 import RegistroConsulta from './features/psicologia/citas/RegistroConsulta'
 import Indicadores from './features/psicologia/indicadores/Indicadores'
@@ -63,27 +56,6 @@ import ReportesTs from './features/trabajo-social/reportes/Reportes'
 import ProtectedRoute from './routes/ProtectedRoute'
 import PublicRoute from './routes/PublicRoute'
 import { useAuthStore } from './store/auth.store'
-
-/** Redirect de compatibilidad para la ruta vieja `/psicologia/pacientes/:id` (§8.1 del plan). */
-function RedirigirAExpediente() {
-  const { id } = useParams<{ id: string }>()
-  return <Navigate to={RUTAS_PSICOLOGIA.expediente(id!)} replace />
-}
-
-/**
- * Redirect de compatibilidad para `/psicologia/expedientes/:id/citas/nueva` (§8.1 del plan):
- * agendar dejó de colgar del expediente y ahora vive en la agenda. Se conserva `?reprograma=`
- * porque era la mitad del significado de esa URL vieja.
- */
-function RedirigirANuevaCita() {
-  const { expedienteId } = useParams<{ expedienteId: string }>()
-  const [searchParams] = useSearchParams()
-  const citaAReprogramar = searchParams.get('reprograma')
-  const destino = citaAReprogramar
-    ? RUTAS_PSICOLOGIA.reprogramarCita(citaAReprogramar)
-    : RUTAS_PSICOLOGIA.nuevaCita({ expedienteId })
-  return <Navigate to={destino} replace />
-}
 
 function App() {
   const checkAuth = useAuthStore((state) => state.checkAuth)
@@ -148,7 +120,6 @@ function App() {
             <Route index element={<Navigate to={RUTAS_PSICOLOGIA.atencion()} replace />} />
             <Route path="atencion" element={<BandejaPsicologia />} />
             <Route path="agenda" element={<Agenda />} />
-            <Route path="agenda/nueva-cita" element={<ProgramarCita />} />
             <Route path="procesos" element={<ListaProcesosPsicologia />} />
             <Route path="procesos/:procesoId" element={<DetalleProcesoPsicologia />}>
               <Route index element={<PestanaSesionesPsicologia />} />
@@ -162,21 +133,13 @@ function App() {
               <Route path="documentos" element={<PestanaDocumentosTsPsicologia />} />
               <Route path="referencias" element={<PestanaReferenciasPsicologia />} />
             </Route>
-            {/* El buscador de expedientes lo reemplaza la lista de usuarias. */}
-            <Route path="expedientes" element={<Navigate to={RUTAS_PSICOLOGIA.usuarias()} replace />} />
-            <Route path="expedientes/:expedienteId" element={<ExpedienteUsuaria />}>
-              <Route index element={<PestanaResumen />} />
-              <Route path="citas" element={<PestanaHistorialCitas />} />
-              <Route path="consultas" element={<PestanaConsultas />} />
-              <Route path="documentos" element={<PestanaDocumentos />} />
-              <Route path="datos" element={<PestanaDatosUsuaria />} />
-            </Route>
             <Route path="citas/:citaId" element={<DetalleCita />} />
             <Route path="citas/:citaId/atencion" element={<RegistroConsulta />} />
             <Route path="indicadores" element={<Indicadores />} />
-            {/* Redirects de compatibilidad de la reestructura (§8.1 del plan). */}
-            <Route path="expedientes/:expedienteId/citas/nueva" element={<RedirigirANuevaCita />} />
-            <Route path="pacientes/:id" element={<RedirigirAExpediente />} />
+            {/* Direcciones de antes del rediseño: llevan a la pantalla que las reemplazó. */}
+            <Route path="expedientes/*" element={<Navigate to={RUTAS_PSICOLOGIA.usuarias()} replace />} />
+            <Route path="pacientes/*" element={<Navigate to={RUTAS_PSICOLOGIA.usuarias()} replace />} />
+            <Route path="agenda/nueva-cita" element={<Navigate to={RUTAS_PSICOLOGIA.agenda()} replace />} />
             <Route path="reporte" element={<Navigate to="/psicologia/indicadores" replace />} />
           </Route>
         </Route>

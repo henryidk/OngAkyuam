@@ -6,7 +6,6 @@ import {
 } from '@nestjs/common';
 import {
   MENSAJE_SIN_ACCESO_CITA,
-  MENSAJE_SIN_ACCESO_EXPEDIENTE,
   MENSAJE_SIN_ACCESO_PROCESO,
   MENSAJE_SIN_ACCESO_REFERENCIA,
   MENSAJE_SIN_ACCESO_USUARIA,
@@ -24,8 +23,6 @@ import type {
   IProcesosPsicologiaRepository,
   LecturaProcesoPsicologia,
 } from '../interfaces/procesos-psicologia-repository.interface';
-import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicologica-repository.interface';
-import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type {
   AccesoCitaPsicologica,
@@ -40,8 +37,6 @@ import type {
 @Injectable()
 export class AccesoPsicologiaService {
   constructor(
-    @Inject(ATENCION_PSICOLOGICA_REPOSITORY)
-    private readonly atencionRepository: IAtencionPsicologicaRepository,
     @Inject(CITAS_PSICOLOGICAS_REPOSITORY)
     private readonly citasRepository: ICitasPsicologicasRepository,
     @Inject(BANDEJA_PSICOLOGIA_REPOSITORY)
@@ -135,22 +130,6 @@ export class AccesoPsicologiaService {
     return { ...referencia, procesoId: referencia.procesoId };
   }
 
-  async exigirAccesoExpediente(
-    expedienteId: string,
-    psicologaId: string,
-  ): Promise<void> {
-    const expediente = await this.atencionRepository.buscarExpedienteConAcceso(
-      expedienteId,
-      psicologaId,
-    );
-    if (!expediente) {
-      // Mismo mensaje/código sin importar el motivo real: expediente inexistente, no referido
-      // a PSICOLOGIA, referido pero aún sin tomar, o tomado por otra psicóloga — los cuatro
-      // casos son indistinguibles desde afuera (§7.4 del plan, anti-enumeración).
-      throw new ForbiddenException(MENSAJE_SIN_ACCESO_EXPEDIENTE);
-    }
-  }
-
   async exigirAccesoCita(
     citaId: string,
     psicologaId: string,
@@ -178,18 +157,5 @@ export class AccesoPsicologiaService {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_CITA);
     }
     return lectura;
-  }
-
-  /**
-   * Usado solo por `tomarCaso` — el referido a PSICOLOGIA debe existir, pero la reclamación es
-   * precisamente lo que esa acción establece, así que aquí no se exige todavía tener
-   * `psicologaAsignadaId` asignado (a diferencia de `exigirAccesoExpediente`).
-   */
-  async exigirReferidoPsicologia(expedienteId: string): Promise<void> {
-    const existe =
-      await this.atencionRepository.existeReferidoPsicologia(expedienteId);
-    if (!existe) {
-      throw new ForbiddenException(MENSAJE_SIN_ACCESO_EXPEDIENTE);
-    }
   }
 }

@@ -1,8 +1,5 @@
 import type {
-  AgendaResumenDia,
-  AgendaResumenQuery,
   AgendarCitaPsicologicaInput,
-  BuscarExpedientesQuery,
   CasoPorAgendarDto,
   CasoPorReasignarDto,
   CasoPsicologiaTomadoDto,
@@ -13,12 +10,8 @@ import type {
   CitaPsicologicaDetalle,
   ConsultaRegistradaDto,
   DocumentoCitaDto,
-  CitasPaginadas,
   ExpedienteDetalleArea,
-  ExpedienteResumenPsicologia,
-  ExpedientesPaginados,
   FichaUsuariaPsicologiaDto,
-  HistorialCitasQuery,
   HuecoLibreDto,
   IndicadoresPsicologia,
   IndicadoresQuery,
@@ -31,11 +24,9 @@ import type {
   ProcesoPsicologiaCerradoDto,
   ProcesoPsicologiaDetalle,
   ProcesosPsicologiaPaginados,
-  ProgramarCitaInput,
   RangoFechasQuery,
   ReferenciaBandejaPsicologiaDto,
   RegistroConsultaInput,
-  ReprogramarCitaInput,
   ResumenProcesosPsicologia,
   SesionesProcesoPaginadas,
   VisibilidadProcesoPsicologiaDto,
@@ -168,34 +159,6 @@ export function obtenerExpedienteTs(expedienteId: string) {
   return api.get<ExpedienteDetalleArea>(`/areas/expedientes/${expedienteId}`).then((res) => res.data)
 }
 
-
-export function obtenerResumenAgenda(query: AgendaResumenQuery) {
-  return api.get<AgendaResumenDia[]>('/psicologia/agenda/resumen', { params: query }).then((res) => res.data)
-}
-
-export function buscarExpedientes(query: BuscarExpedientesQuery) {
-  return api.get<ExpedientesPaginados>('/psicologia/expedientes', { params: query }).then((res) => res.data)
-}
-
-export function obtenerResumenExpediente(expedienteId: string) {
-  return api
-    .get<ExpedienteResumenPsicologia>(`/psicologia/expedientes/${expedienteId}/resumen`)
-    .then((res) => res.data)
-}
-
-export function listarHistorialCitas(expedienteId: string, query: HistorialCitasQuery) {
-  return api
-    .get<CitasPaginadas>(`/psicologia/expedientes/${expedienteId}/citas`, { params: query })
-    .then((res) => res.data)
-}
-
-export function programarCita(expedienteId: string, datos: ProgramarCitaInput) {
-  return api.post(`/psicologia/expedientes/${expedienteId}/citas`, datos).then((res) => res.data)
-}
-
-export function reprogramarCita(citaId: string, datos: ReprogramarCitaInput) {
-  return api.post(`/psicologia/citas/${citaId}/reprogramar`, datos).then((res) => res.data)
-}
 
 export function obtenerDetalleCita(citaId: string) {
   return api.get<CitaPsicologicaDetalle>(`/psicologia/citas/${citaId}`).then((res) => res.data)

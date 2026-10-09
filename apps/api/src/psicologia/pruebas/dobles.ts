@@ -136,7 +136,6 @@ export function crearAcceso(
   citasRepository: ICitasPsicologicasRepository = crearCitasRepository(),
 ): AccesoPsicologiaService {
   return new AccesoPsicologiaService(
-    crearAtencionRepository(),
     citasRepository,
     bandejaRepository,
     procesosRepository,

@@ -12,9 +12,9 @@ export interface ItemNav {
   /** `true` = calce exacto. Necesario cuando la ruta es prefijo de las demás (el índice del área). */
   fin: boolean
   /**
-   * Rutas que no cuelgan de `ruta` pero pertenecen a esta sección — p. ej. el formulario
-   * `/psicologia/agenda/nueva-cita` frente al índice `/psicologia`. Sin esto, una sección con
-   * `fin: true` deja el sidebar sin nada resaltado en sus propias pantallas hijas.
+   * Rutas que no cuelgan de `ruta` pero pertenecen a esta sección — p. ej. el registro de
+   * una sesión, `/psicologia/citas/:id/atencion`, frente a `/psicologia/agenda`. Sin esto, el
+   * sidebar se queda sin nada resaltado en esas pantallas.
    */
   rutasRelacionadas?: string[]
   Icono: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>

@@ -1,6 +1,4 @@
 // Mensajes uniformes: nunca se distingue "no existe" de "existe pero no es tuyo" (sin IDOR).
-export const MENSAJE_SIN_ACCESO_EXPEDIENTE =
-  'No tiene acceso a este expediente';
 export const MENSAJE_SIN_ACCESO_CITA = 'No tiene acceso a esta cita';
 export const MENSAJE_SIN_ACCESO_PROCESO = 'No tiene acceso a este proceso';
 export const MENSAJE_SIN_ACCESO_REFERENCIA =
