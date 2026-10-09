@@ -11,6 +11,7 @@ import Badge from '../../../components/ui/Badge'
 import { extraerMensajeError } from '../../../lib/errors'
 import { obtenerDetalleCita } from '../api/psicologia.api'
 import { RUTAS_PSICOLOGIA } from '../rutas'
+import CodigoProceso from '../compartido/CodigoProceso'
 
 export default function DetalleCita() {
   const { citaId } = useParams<{ citaId: string }>()
@@ -84,7 +85,7 @@ export default function DetalleCita() {
           </Link>
         )}
         <Link to={RUTAS_PSICOLOGIA.proceso(cita.procesoId)} className="text-gray-600 hover:underline">
-          Ver proceso <span className="font-mono">{cita.procesoCodigo}</span>
+          Ver proceso <CodigoProceso codigo={cita.procesoCodigo} />
         </Link>
       </div>
     </div>

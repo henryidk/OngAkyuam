@@ -1,6 +1,7 @@
 import type {
   CasoPorAgendarDto,
   CasoPorReasignarDto,
+  ExpedientePreviaTomaDto,
   ReferenciaBandejaPsicologiaDto,
 } from '@akyuam/shared';
 
@@ -54,6 +55,13 @@ export interface IBandejaPsicologiaRepository {
    * está por reasignar o si otra psicóloga lo tomó primero — indistinguibles desde afuera.
    */
   reasignar(params: ReasignarProcesoParams): Promise<ProcesoReasignado | null>;
+  /**
+   * Vista previa del expediente de una referencia de Psicología, sin agresor, dirección,
+   * teléfono, DPI ni ubicación: esas columnas ni siquiera se piden a la base. `null` si no existe.
+   */
+  obtenerPreviaToma(
+    referidoId: string,
+  ): Promise<ExpedientePreviaTomaDto | null>;
   /** `null` si la referencia no existe o no es de Psicología — indistinguibles desde afuera. */
   buscarReferencia(
     referidoId: string,

@@ -4,6 +4,7 @@ import { fechaDeInstante } from '../../../lib/formato'
 import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import { textoSesiones, textoSiguiente } from './textoProceso'
+import CodigoProceso from '../compartido/CodigoProceso'
 
 interface TarjetaProcesoProps {
   proceso: ProcesoPsicologiaResumen
@@ -20,7 +21,7 @@ export default function TarjetaProceso({ proceso, psicologa }: TarjetaProcesoPro
     >
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[13px] font-medium text-gray-700">{proceso.codigo}</span>
+          <CodigoProceso codigo={proceso.codigo} className="text-gray-700" />
           <EtiquetaEtapa etapa={proceso.etapa} />
         </div>
         <p className="text-sm font-semibold text-gray-900">

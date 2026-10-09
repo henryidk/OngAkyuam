@@ -32,9 +32,9 @@ export default function TarjetaReferencia({
   ]
 
   return (
-    <article className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-      <div className="p-5">
-        <div className="flex items-start gap-3">
+    <article className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
+        <div className="flex min-w-0 flex-1 items-start gap-3">
           <span
             aria-hidden="true"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700"
@@ -50,7 +50,7 @@ export default function TarjetaReferencia({
                 </span>
               )}
               <span
-                className={`ml-auto rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums ${
+                className={`rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums ${
                   enAlerta ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'
                 }`}
               >
@@ -58,28 +58,26 @@ export default function TarjetaReferencia({
               </span>
             </div>
             <p className="mt-0.5 text-[13px] text-gray-500 tabular-nums">{detalle.join(' · ')}</p>
+            <p className="mt-2 text-sm text-gray-800">
+              <span className="font-medium text-gray-700">Motivo:</span>{' '}
+              {referencia.motivo || 'Sin motivo registrado.'}
+            </p>
+            <p className="mt-1 text-sm text-gray-600">
+              <span className="font-medium text-gray-700">Personas a atender:</span>{' '}
+              {referencia.personas.map(etiquetaPersona).join(', ')}
+            </p>
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Motivo de referencia</p>
-            <p className="mt-1 text-sm text-gray-800">{referencia.motivo || 'Sin motivo registrado.'}</p>
-          </div>
-          <p className="text-sm text-gray-600">
-            <span className="font-medium text-gray-700">Personas a atender:</span>{' '}
-            {referencia.personas.map(etiquetaPersona).join(', ')}
-          </p>
+        {/* A la derecha del encabezado; en pantallas angostas (< 768 px) baja a su propia fila. */}
+        <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 pt-3 md:border-t-0 md:pt-0">
+          <Button variante="secondary" tamano="sm" onClick={onVerExpediente}>
+            Ver expediente
+          </Button>
+          <Button tamano="sm" cargando={tomando} disabled={deshabilitada} onClick={onTomar}>
+            Tomar caso
+          </Button>
         </div>
-      </div>
-
-      <div className="flex flex-wrap justify-end gap-2 border-t border-gray-100 bg-gray-50/60 px-5 py-3">
-        <Button variante="secondary" onClick={onVerExpediente}>
-          Ver expediente
-        </Button>
-        <Button cargando={tomando} disabled={deshabilitada} onClick={onTomar}>
-          Tomar caso
-        </Button>
       </div>
     </article>
   )

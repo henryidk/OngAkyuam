@@ -3,6 +3,7 @@ import {
   citaSinRegistrar,
   estaCerrado,
   etapaTrasSesionAtendida,
+  situacionCitasProgramadas,
 } from './etapa-proceso';
 
 describe('reglas de etapa del proceso psicológico', () => {
@@ -58,5 +59,50 @@ describe('reglas de etapa del proceso psicológico', () => {
         ).toBe(false);
       },
     );
+  });
+
+  describe('situacionCitasProgramadas', () => {
+    const AHORA = new Date('2026-10-08T18:00:00.000Z');
+    const programada = (id: string, fechaHora: string) => ({
+      id,
+      estado: 'PROGRAMADA' as const,
+      fechaHora: new Date(fechaHora),
+      duracionMinutos: 45,
+    });
+
+    it('sin citas programadas no hay próxima ni nada por registrar', () => {
+      expect(situacionCitasProgramadas([], AHORA)).toEqual({
+        proxima: null,
+        tieneSinRegistrar: false,
+      });
+    });
+
+    it('una cita que ya pasó sin registro no cuenta como próxima', () => {
+      const pasada = programada('pasada', '2026-10-08T15:00:00.000Z');
+
+      expect(situacionCitasProgramadas([pasada], AHORA)).toEqual({
+        proxima: null,
+        tieneSinRegistrar: true,
+      });
+    });
+
+    it('la que está en curso es la próxima, no una sin registrar', () => {
+      const enCurso = programada('en-curso', '2026-10-08T17:30:00.000Z');
+
+      expect(situacionCitasProgramadas([enCurso], AHORA)).toEqual({
+        proxima: enCurso,
+        tieneSinRegistrar: false,
+      });
+    });
+
+    it('con una atrasada y una futura informa las dos cosas', () => {
+      const pasada = programada('pasada', '2026-10-01T15:00:00.000Z');
+      const futura = programada('futura', '2026-10-15T15:00:00.000Z');
+
+      expect(situacionCitasProgramadas([pasada, futura], AHORA)).toEqual({
+        proxima: futura,
+        tieneSinRegistrar: true,
+      });
+    });
   });
 });

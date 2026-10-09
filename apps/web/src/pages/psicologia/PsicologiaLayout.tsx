@@ -20,7 +20,7 @@ const ITEMS_NAV: ItemNav[] = [
   },
   { ruta: RUTAS_PSICOLOGIA.procesos(), etiqueta: 'Procesos', fin: false, Icono: HeartHandshake },
   { ruta: RUTAS_PSICOLOGIA.usuarias(), etiqueta: 'Usuarias', fin: false, Icono: Users },
-  { ruta: '/psicologia/indicadores', etiqueta: 'Reportes', fin: false, Icono: BarChart3 },
+  { ruta: RUTAS_PSICOLOGIA.reportes(), etiqueta: 'Reportes', fin: false, Icono: BarChart3 },
 ]
 
 export default function PsicologiaLayout() {

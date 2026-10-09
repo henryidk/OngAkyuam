@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import type { CitaAgendaDto } from '@akyuam/shared'
-import { citaPrincipal, diasVisibles, fechaValida, lunesDe, resumenDelDia } from './semana'
+import type { CitaAgendaDto, ProcesoParaAgendarDto } from '@akyuam/shared'
+import {
+  citaPrincipal,
+  citasSinRegistrarFuera,
+  diasVisibles,
+  fechaValida,
+  lunesDe,
+  procesosSinProximaCita,
+  resumenDelDia,
+} from './semana'
 
 // Datos ficticios. 2026-10-07 es miércoles; las horas están en UTC (Guatemala = UTC-6).
 function cita(parcial: Partial<CitaAgendaDto>): CitaAgendaDto {
@@ -75,5 +83,47 @@ describe('resumen del día', () => {
 
   it('un día vacío lo dice sin ceros', () => {
     expect(resumenDelDia([])).toBe('Sin citas')
+  })
+})
+
+describe('pendientes de la agenda: cada uno en un solo lugar', () => {
+  const HOY = '2026-10-07'
+  const deHoy = cita({ id: 'hoy', fechaHora: '2026-10-07T15:00:00.000Z', sinRegistrar: true })
+  const deAyer = cita({ id: 'ayer', fechaHora: '2026-10-06T15:00:00.000Z', sinRegistrar: true })
+
+  function proceso(parcial: Partial<ProcesoParaAgendarDto>): ProcesoParaAgendarDto {
+    return {
+      procesoId: 'proceso-1',
+      codigo: 'P1-05-2026',
+      usuariaId: 'usuaria-1',
+      usuariaNombreCompleto: 'Usuaria Ficticia',
+      personas: [],
+      proximaCita: null,
+      tieneCitaSinRegistrar: false,
+      ...parcial,
+    }
+  }
+
+  it('la cita sin registrar de hoy queda solo en la lista del día, no en el panel', () => {
+    expect(citasSinRegistrarFuera(HOY, [deHoy, deAyer]).map((c) => c.id)).toEqual(['ayer'])
+  })
+
+  it('la de ayer sale en el panel mientras el día abierto sea otro', () => {
+    expect(citasSinRegistrarFuera(HOY, [deAyer]).map((c) => c.id)).toEqual(['ayer'])
+    expect(citasSinRegistrarFuera('2026-10-06', [deAyer])).toEqual([])
+  })
+
+  it('el panel ignora las citas que ya están resueltas o aún no terminan', () => {
+    const pendiente = cita({ id: 'luego', fechaHora: '2026-10-06T15:00:00.000Z', sinRegistrar: false })
+    expect(citasSinRegistrarFuera(HOY, [pendiente])).toEqual([])
+  })
+
+  it('un proceso con una cita sin registrar no aparece en "Sin próxima cita"', () => {
+    const procesos = [
+      proceso({ procesoId: 'sin-nada' }),
+      proceso({ procesoId: 'atrasado', tieneCitaSinRegistrar: true }),
+      proceso({ procesoId: 'con-cita', proximaCita: { id: 'c', fechaHora: '2026-10-09T15:00:00.000Z' } }),
+    ]
+    expect(procesosSinProximaCita(procesos).map((p) => p.procesoId)).toEqual(['sin-nada'])
   })
 })

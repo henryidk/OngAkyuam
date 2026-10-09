@@ -3,11 +3,12 @@ import { formatFechaGT, type CitaAgendaDto } from '@akyuam/shared'
 import { horaDeInstante } from '../compartido/horas'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import { diaDeCita } from './semana'
+import CodigoProceso from '../compartido/CodigoProceso'
 
 interface PanelSinRegistrarProps {
-  /** Citas de las últimas semanas que ya pasaron y siguen sin sesión ni inasistencia. */
+  /** Citas de las últimas semanas que ya pasaron sin sesión ni inasistencia, salvo las del día abierto. */
   citas: CitaAgendaDto[]
-  /** Las que existen en total (contador del menú): si hay más, son anteriores a la ventana cargada. */
+  /** Las que existen fuera del día abierto: si hay más que `citas`, son anteriores a la ventana cargada. */
   total: number
   onVerDia: (dia: string) => void
   onNoAsistio: (cita: CitaAgendaDto) => void
@@ -38,7 +39,7 @@ export default function PanelSinRegistrar({ citas, total, onVerDia, onNoAsistio 
                 className="text-xs text-gray-500 tabular-nums hover:text-brand-700 hover:underline"
               >
                 {formatFechaGT(dia)} · {horaDeInstante(cita.fechaHora)} ·{' '}
-                <span className="font-mono">{cita.procesoCodigo}</span>
+                <CodigoProceso codigo={cita.procesoCodigo} className="text-gray-700" />
               </button>
               <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-sm font-medium">
                 <Link to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id)} className="text-brand-700 hover:underline">

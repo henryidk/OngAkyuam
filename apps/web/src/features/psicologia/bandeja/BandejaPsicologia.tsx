@@ -8,13 +8,13 @@ import EmptyState from '../../../components/ui/EmptyState'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
 import { useRecurso } from '../../../lib/useRecurso'
-import ContenidoDetalleExpediente from '../../area-atencion/ContenidoDetalleExpediente'
 import { listarBandeja, listarPorReasignar } from '../api/psicologia.api'
 import { useContextoPsicologia } from '../compartido/contexto'
 import { useReclamarCaso } from '../hooks/useReclamarCaso'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import SeccionPorReasignar from './SeccionPorReasignar'
 import TarjetaReferencia from './TarjetaReferencia'
+import VistaPreviaExpediente from './VistaPreviaExpediente'
 
 function textoTotal(total: number): string {
   if (total === 0) return 'Todo al día'
@@ -66,7 +66,7 @@ export default function BandejaPsicologia() {
   }
 
   return (
-    <div className="mx-auto max-w-[920px] space-y-5">
+    <div className="mx-auto max-w-6xl space-y-5">
       <div className="max-w-2xl">
         <h2 className="text-[22px] font-semibold text-gray-900">
           {referencias && !(referencias.length === 0 && porReasignar?.length) ? textoTotal(referencias.length) : 'Referencias sin tomar'}
@@ -129,7 +129,13 @@ export default function BandejaPsicologia() {
         subtitulo={enDetalle ? `Expediente ${enDetalle.expedienteNumero}` : undefined}
         onCerrar={() => setEnDetalle(null)}
       >
-        {enDetalle && <ContenidoDetalleExpediente expedienteId={enDetalle.expedienteId} />}
+        {enDetalle && (
+          <VistaPreviaExpediente
+            key={enDetalle.referidoId}
+            referidoId={enDetalle.referidoId}
+            usuariaId={enDetalle.usuariaId}
+          />
+        )}
       </Drawer>
     </div>
   )

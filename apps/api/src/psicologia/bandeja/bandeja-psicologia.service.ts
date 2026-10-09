@@ -1,9 +1,15 @@
-import { ConflictException, Inject, Injectable } from '@nestjs/common';
+import {
+  ConflictException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+} from '@nestjs/common';
 import type {
   CasoPorAgendarDto,
   CasoPorReasignarDto,
   CasoPsicologiaTomadoDto,
   CasoReasignadoDto,
+  ExpedientePreviaTomaDto,
   ReferenciaBandejaPsicologiaDto,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
@@ -12,6 +18,7 @@ import { eventoAuditoria } from '../compartido/auditoria';
 import {
   MENSAJE_CASO_NO_REASIGNABLE,
   MENSAJE_CASO_YA_TOMADO,
+  MENSAJE_SIN_ACCESO_REFERENCIA,
 } from '../compartido/mensajes';
 import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicologica-repository.interface';
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
@@ -33,6 +40,37 @@ export class BandejaPsicologiaService {
   /** Cola del área: la ven todas las psicólogas, porque cualquiera puede tomar un caso. */
   listarSinTomar(): Promise<ReferenciaBandejaPsicologiaDto[]> {
     return this.bandejaRepository.listarSinTomar();
+  }
+
+  /**
+   * Lo que se ve de un expediente antes de tomar el caso: sin agresor, dirección, teléfono ni
+   * ubicación. Si otra psicóloga ya lo tomó, el mismo 403 que si la referencia no existiera.
+   */
+  async obtenerPreviaToma(
+    referidoId: string,
+    contexto: ContextoAuditoria,
+  ): Promise<ExpedientePreviaTomaDto> {
+    const referencia = await this.acceso.exigirReferencia(
+      referidoId,
+      contexto.usuarioId,
+    );
+    const previa =
+      referencia.situacion === 'NO_DISPONIBLE'
+        ? null
+        : await this.bandejaRepository.obtenerPreviaToma(referidoId);
+    if (!previa) {
+      throw new ForbiddenException(MENSAJE_SIN_ACCESO_REFERENCIA);
+    }
+
+    await this.auditService.registrar(
+      eventoAuditoria(contexto, {
+        accion: 'EXPEDIENTE_PREVIA_CONSULTADA',
+        entidad: 'Expediente',
+        entidadId: referencia.expedienteId,
+        detalles: { referidoId },
+      }),
+    );
+    return previa;
   }
 
   /** Casos que esta psicóloga tomó y aún no tienen primera cita. */

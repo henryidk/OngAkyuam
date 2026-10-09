@@ -2,6 +2,9 @@ import type {
   CitaPsicologicaDetalle,
   CitaResumen,
   EstadoCitaPsicologica,
+  GRUPOS_ETNICOS,
+  MUNICIPIOS_ALTA_VERAPAZ,
+  TIPOLOGIAS_DELITO,
   TipoCitaPsicologica,
 } from '@akyuam/shared';
 
@@ -52,13 +55,24 @@ export interface ConsultaRegistrada {
   proximaCitaId: string | null;
 }
 
-/** Fila mínima para los agregados de indicadores; el corte de mes en GT se calcula en el servicio, nunca aquí. */
+/**
+ * Fila mínima para los agregados de indicadores y el reporte. Lleva los datos demográficos que
+ * capturó Trabajo Social, pero nunca nombres; el corte de mes en GT se calcula en el dominio.
+ */
 export interface CitaParaAgregado {
   fechaHora: Date;
   estado: EstadoCitaPsicologica;
   tipo: TipoCitaPsicologica;
   usuariaId: string;
-  municipio: string | null;
+  /** null = se atendió a la usuaria. */
+  ninoId: string | null;
+  /** "YYYY-MM-DD" de la persona atendida (la usuaria o el hijo/a). */
+  fechaNacimiento: string;
+  /** Los hijos/as heredan el grupo étnico, el municipio y la tipología del expediente de la madre. */
+  grupoEtnico: (typeof GRUPOS_ETNICOS)[number];
+  municipio: (typeof MUNICIPIOS_ALTA_VERAPAZ)[number] | null;
+  tipologias: (typeof TIPOLOGIAS_DELITO)[number][];
+  procesoCodigo: string;
 }
 
 export interface ListarCitasEnRangoParams {
@@ -104,9 +118,9 @@ export interface ICitasPsicologicasRepository {
     params: RegistrarConsultaParams,
   ): Promise<ConsultaRegistrada | null>;
   /**
-   * Filas crudas de citas de esta psicóloga dentro de un rango acotado: alimenta los agregados
-   * de `/indicadores` (un año). Nunca agrupa por mes aquí: eso lo hace el servicio con
-   * `timezone.ts`.
+   * Filas crudas de citas de esta psicóloga dentro de un rango acotado (un año), de la más
+   * antigua a la más reciente: una sola consulta alimenta todos los agregados de `/indicadores`
+   * y el reporte. Nunca agrupa por mes aquí: eso lo hace el dominio con `timezone.ts`.
    */
   listarCitasEnRango(
     params: ListarCitasEnRangoParams,

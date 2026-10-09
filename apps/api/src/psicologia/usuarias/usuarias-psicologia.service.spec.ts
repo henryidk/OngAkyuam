@@ -59,7 +59,7 @@ const LISTA_VACIA = {
   pagina: 1,
   porPagina: 20,
   total: 0,
-  contadores: { TODAS: 0, REFERENCIA_NUEVA: 0, CON_ACTIVO: 0, SIN_ACTIVO: 0 },
+  contadores: { TODAS: 0, CON_ACTIVO: 0, SIN_ACTIVO: 0 },
 };
 
 describe('UsuariasPsicologiaService', () => {

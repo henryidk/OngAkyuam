@@ -5,6 +5,7 @@ import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import { useContextoFicha } from './contextoFicha'
 import { textoSesiones, textoSiguiente } from './textoProceso'
+import CodigoProceso from '../compartido/CodigoProceso'
 
 function FilaProcesoActivo({ proceso }: { proceso: ProcesoPsicologiaResumen }) {
   return (
@@ -12,7 +13,7 @@ function FilaProcesoActivo({ proceso }: { proceso: ProcesoPsicologiaResumen }) {
       <Link to={RUTAS_PSICOLOGIA.proceso(proceso.id)} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-gray-50">
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-[13px] font-medium text-gray-700">{proceso.codigo}</span>
+            <CodigoProceso codigo={proceso.codigo} className="text-gray-700" />
             <EtiquetaEtapa etapa={proceso.etapa} />
           </div>
           <p className="text-xs text-gray-500 tabular-nums">{textoSesiones(proceso)}</p>

@@ -45,6 +45,7 @@ function detalle(
     motivoCierre: null,
     resumenCierre: null,
     personasAtendidas: [],
+    citasSinRegistrar: [],
     visibilidad: { visibleJuridico: false, visibleMedica: false },
     ...parcial,
   };

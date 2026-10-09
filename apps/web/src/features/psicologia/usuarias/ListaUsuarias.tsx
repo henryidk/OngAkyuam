@@ -16,6 +16,7 @@ import { ErrorVista } from '../../../components/ui/EstadosVista'
 import { useRecurso } from '../../../lib/useRecurso'
 import { rangoEdadCorto } from '../../trabajo-social/usuarias/filaUsuaria'
 import { listarUsuarias } from '../api/psicologia.api'
+import InsigniaReferencia from '../compartido/InsigniaReferencia'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 
 const ESPERA_BUSQUEDA_MS = 350
@@ -185,9 +186,7 @@ export default function ListaUsuarias() {
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex flex-wrap gap-1.5">
-                          {fila.referenciaPendiente && (
-                            <span className={`${CLASE_PILDORA} bg-[#fef3c7] text-[#b45309]`}>Referencia nueva</span>
-                          )}
+                          {fila.referenciaPendiente && <InsigniaReferencia estado={fila.referenciaPendiente} />}
                           {pildora && <span className={`${CLASE_PILDORA} ${pildora.clase}`}>{pildora.etiqueta}</span>}
                           {!pildora && !fila.referenciaPendiente && <span className="text-gray-400">—</span>}
                         </div>

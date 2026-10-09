@@ -3,7 +3,11 @@ import type { Prisma } from '@prisma/client';
 import type { CitaAgendaDto, ProcesoParaAgendarDto } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { codigoProceso } from '../dominio/codigo-proceso';
-import { citaSinRegistrar, estaCerrado } from '../dominio/etapa-proceso';
+import {
+  citaSinRegistrar,
+  estaCerrado,
+  situacionCitasProgramadas,
+} from '../dominio/etapa-proceso';
 import type {
   CitaOcupada,
   IAgendaPsicologiaRepository,
@@ -22,6 +26,8 @@ import {
 const LIMITE_CITAS = 500;
 /** Tope de seguridad: una psicóloga lleva decenas de procesos abiertos, no cientos. */
 const LIMITE_PROCESOS = 300;
+/** Tope de seguridad: un proceso abierto tiene una o dos citas programadas, no decenas. */
+const LIMITE_PROGRAMADAS_POR_PROCESO = 50;
 
 function ocupanAgenda(
   params: RangoAgendaParams,
@@ -141,11 +147,18 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
             },
           },
         },
+        // Todas las que siguen programadas, en la misma consulta: de ellas sale tanto la próxima
+        // como si alguna pasó sin registro (depende de la duración de cada una).
         citas: {
-          where: { estado: 'PROGRAMADA', fechaHora: { gte: ahora } },
-          select: { id: true, fechaHora: true },
+          where: { estado: 'PROGRAMADA' },
+          select: {
+            id: true,
+            fechaHora: true,
+            duracionMinutos: true,
+            estado: true,
+          },
           orderBy: { fechaHora: 'asc' },
-          take: 1,
+          take: LIMITE_PROGRAMADAS_POR_PROCESO,
         },
       },
       orderBy: [
@@ -158,7 +171,10 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
 
     return procesos.map((proceso) => {
       const { expediente } = proceso;
-      const proxima = proceso.citas.at(0);
+      const { proxima, tieneSinRegistrar } = situacionCitasProgramadas(
+        proceso.citas,
+        ahora,
+      );
       return {
         procesoId: proceso.id,
         codigo: codigoProceso(proceso.consecutivo, expediente.numero),
@@ -168,6 +184,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         proximaCita: proxima
           ? { id: proxima.id, fechaHora: proxima.fechaHora.toISOString() }
           : null,
+        tieneCitaSinRegistrar: tieneSinRegistrar,
       };
     });
   }

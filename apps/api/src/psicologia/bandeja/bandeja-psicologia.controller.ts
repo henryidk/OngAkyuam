@@ -56,6 +56,15 @@ export class BandejaPsicologiaController {
     return this.bandejaService.listarPorAgendar(usuario.id);
   }
 
+  /** Vista previa del expediente antes de tomar el caso: sin agresor, dirección ni teléfono. */
+  @Get('bandeja/:referidoId/previa')
+  obtenerPreviaToma(
+    @Param('referidoId', ParseUUIDPipe) referidoId: string,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.bandejaService.obtenerPreviaToma(referidoId, contexto);
+  }
+
   @Post('bandeja/:referidoId/tomar')
   @UseGuards(LimitePorUsuarioGuard)
   @Throttle({ default: { limit: 20, ttl: 60_000 } })

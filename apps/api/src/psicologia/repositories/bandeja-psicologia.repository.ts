@@ -2,9 +2,12 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import {
   diasDesdeGT,
+  ETIQUETAS_GRUPO_ETNICO,
+  ETIQUETAS_TIPOLOGIA_DELITO,
   nombreMunicipio,
   type CasoPorAgendarDto,
   type CasoPorReasignarDto,
+  type ExpedientePreviaTomaDto,
   type ReferenciaBandejaPsicologiaDto,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -43,6 +46,34 @@ const SELECT_EXPEDIENTE_COLA = {
     orderBy: { fechaNacimiento: 'asc' },
   },
 } satisfies Prisma.ExpedienteSelect;
+
+// Vista previa antes de tomar el caso. Lista cerrada a propósito: lo que no está aquí no sale
+// de la base, así que no puede colarse en la respuesta (agresor, dirección, teléfono, DPI,
+// ubicación y observaciones quedan fuera).
+const SELECT_PREVIA_TOMA = {
+  id: true,
+  motivo: true,
+  createdAt: true,
+  puedeVerDatosCaso: true,
+  otorgadoPor: { select: { nombreCompleto: true } },
+  expediente: {
+    select: {
+      numero: true,
+      tipologiaDelito: true,
+      usuaria: {
+        select: {
+          nombres: true,
+          apellidos: true,
+          fechaNacimiento: true,
+          municipio: true,
+          municipioOtro: true,
+          grupoEtnico: true,
+        },
+      },
+      ninos: SELECT_EXPEDIENTE_COLA.ninos,
+    },
+  },
+} satisfies Prisma.ReferidoAreaSelect;
 
 /** Caso que la psicóloga tomó y al que todavía no le agenda la primera cita. */
 export function casoPorAgendar(psicologaId: string) {
@@ -228,6 +259,41 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
         citasCanceladas: canceladas.count,
       };
     });
+  }
+
+  async obtenerPreviaToma(
+    referidoId: string,
+  ): Promise<ExpedientePreviaTomaDto | null> {
+    const referido = await this.prisma.referidoArea.findFirst({
+      where: { id: referidoId, area: 'PSICOLOGIA' },
+      select: SELECT_PREVIA_TOMA,
+    });
+    if (!referido) {
+      return null;
+    }
+
+    const { expediente } = referido;
+    return {
+      referidoId: referido.id,
+      expedienteNumero: expediente.numero,
+      usuariaNombreCompleto: nombreCompleto(expediente.usuaria),
+      edad: edad(expediente.usuaria),
+      municipio: nombreMunicipio(
+        expediente.usuaria.municipio,
+        expediente.usuaria.municipioOtro,
+      ),
+      grupoEtnico: ETIQUETAS_GRUPO_ETNICO[expediente.usuaria.grupoEtnico],
+      // La tipología es parte de los "datos del caso": solo sale si Trabajo Social los compartió.
+      tipologias: referido.puedeVerDatosCaso
+        ? expediente.tipologiaDelito.map(
+            (tipologia) => ETIQUETAS_TIPOLOGIA_DELITO[tipologia],
+          )
+        : null,
+      motivo: referido.motivo,
+      referidoEn: referido.createdAt.toISOString(),
+      referidoPor: referido.otorgadoPor.nombreCompleto,
+      personas: personasDelExpediente(expediente),
+    };
   }
 
   async buscarReferencia(

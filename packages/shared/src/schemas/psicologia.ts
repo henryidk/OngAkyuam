@@ -12,6 +12,7 @@ import {
 import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
 import type { TipoDocumento } from './documentos.js'
 import type { TipoRegistro } from './registroUsuaria.js'
+import type { ConteoReporte } from './trabajoSocial.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -264,18 +265,44 @@ export interface ConsultaRegistradaDto {
   proximaCita: CitaProgramadaDto | null
 }
 
-/** `GET /psicologia/indicadores` — siempre "mis" casos del año consultado (§5.5, §7.4 del plan). */
+/**
+ * Desgloses de un periodo. Los cuatro primeros cuentan **personas atendidas distintas** (una
+ * persona con dos tipologías suma en ambas); los dos últimos cuentan **citas**.
+ */
+export interface DesglosesIndicadores {
+  rangoEdad: ConteoReporte[]
+  grupoEtnico: ConteoReporte[]
+  tipologia: ConteoReporte[]
+  municipio: ConteoReporte[]
+  citasPorEstado: ConteoReporte[]
+  citasPorTipo: ConteoReporte[]
+}
+
+/** Cifras de un periodo (el año completo o uno de sus meses). */
+export interface PeriodoIndicadores {
+  /** Personas distintas (usuarias e hijos/as) con al menos una sesión atendida. */
+  personasAtendidas: number
+  sesionesRealizadas: number
+  inasistencias: number
+  /** Todas las citas del periodo, en cualquier estado. */
+  citas: number
+  desgloses: DesglosesIndicadores
+}
+
+/**
+ * `GET /psicologia/indicadores` — siempre "mis" procesos del año consultado. Solo cifras: nunca
+ * nombres ni datos de una persona.
+ */
 export interface IndicadoresPsicologia {
   anio: number
+  /** Del año en curso hacia atrás, hasta el de mi primer proceso. */
+  aniosDisponibles: number[]
   procesosActivos: number
   procesosIniciadosEnElAnio: number
   procesosCerradosEnElAnio: number
-  personasAtendidasPorMes: Record<string, number>
-  personasAtendidasEnElAnio: number
-  citasPorEstado: Record<EstadoCitaPsicologica, number>
-  tasaInasistencia: number
-  distribucionPorMunicipio: Record<string, number>
-  distribucionPorTipoCita: Record<TipoCitaPsicologica, number>
+  anual: PeriodoIndicadores
+  /** Los 12 meses, de enero a diciembre, con ceros donde no hubo atención. */
+  meses: PeriodoIndicadores[]
 }
 
 // ---- Rediseño: Área de atención, Agenda, Procesos y Usuarias ----
@@ -307,6 +334,27 @@ export interface ReferenciaBandejaPsicologiaDto {
   personas: PersonaAtendidaDto[]
   /** Ya tuvo un proceso psicológico, de cualquier estado: la usuaria regresa. */
   atendidaAntes: boolean
+}
+
+/**
+ * Lo que una psicóloga ve de un expediente antes de tomar el caso
+ * (`GET /psicologia/bandeja/:referidoId/previa`): lo justo para decidir si lo toma. Nunca lleva
+ * agresor, dirección, teléfono, DPI ni ubicación: eso se ve después de tomarlo.
+ */
+export interface ExpedientePreviaTomaDto {
+  referidoId: string
+  expedienteNumero: string
+  usuariaNombreCompleto: string
+  edad: number
+  municipio: string | null
+  /** Etiqueta del catálogo, lista para mostrar. */
+  grupoEtnico: string
+  /** Etiquetas del Decreto 22-2008. `null` = Trabajo Social no compartió los datos del caso con Psicología. */
+  tipologias: string[] | null
+  motivo: string | null
+  referidoEn: string
+  referidoPor: string
+  personas: PersonaAtendidaDto[]
 }
 
 /** Fila de `GET /psicologia/agenda/por-agendar`: caso que tomé y todavía no tiene primera cita. */
@@ -394,7 +442,10 @@ export interface ProcesoParaAgendarDto {
   usuariaNombreCompleto: string
   /** La usuaria y los hijos/as registrados en el expediente. */
   personas: PersonaAtendidaDto[]
+  /** La cita programada que sigue: la que está en curso o, si no hay, la primera futura. */
   proximaCita: CitaRefDto | null
+  /** Tiene una cita que ya pasó sin sesión ni inasistencia: lo pendiente es registrarla. */
+  tieneCitaSinRegistrar: boolean
 }
 
 /** Respuesta de programar o mover una cita desde la agenda. */
@@ -451,6 +502,9 @@ export interface PsicologaAnteriorDto {
  * `GET /psicologia/procesos/:id` — para la psicóloga dueña del proceso, o en solo lectura para
  * quien retoma a la usuaria cuando el proceso de su colega ya está cerrado.
  */
+/** Cuántas citas sin registrar lista el detalle de un proceso: en la práctica es una. */
+export const MAX_CITAS_SIN_REGISTRAR_EN_DETALLE = 5
+
 export interface ProcesoPsicologiaDetalle extends ProcesoPsicologiaResumen {
   expedienteId: string
   version: number
@@ -463,6 +517,12 @@ export interface ProcesoPsicologiaDetalle extends ProcesoPsicologiaResumen {
   motivoCierre: MotivoCierrePsicologia | null
   resumenCierre: string | null
   personasAtendidas: PersonaAtendidaDto[]
+  /**
+   * Citas que ya pasaron sin sesión ni inasistencia (misma regla que la agenda), de la más
+   * antigua a la más reciente y como mucho `MAX_CITAS_SIN_REGISTRAR_EN_DETALLE`. Vacío en un
+   * proceso cerrado o de solo lectura: ahí no queda nada que registrar.
+   */
+  citasSinRegistrar: CitaRefDto[]
   visibilidad: { visibleJuridico: boolean; visibleMedica: boolean }
   /** Lo calcula el backend; el frontend no repite las reglas de etapa. */
   accionesDisponibles: AccionProcesoPsicologia[]
@@ -554,7 +614,8 @@ export interface FilaUsuariaPsicologia {
   edad: number
   expedienteNumero: string
   estadoProceso: EstadoProcesoUsuariaPsicologia | null
-  referenciaPendiente: boolean
+  /** `SIN_TOMAR` = nadie la ha tomado; `POR_AGENDAR` = la tomé y falta su primera cita; null = nada pendiente. */
+  referenciaPendiente: ReferenciaPendientePsicologia | null
   ultimaActividadEn: string
 }
 
@@ -569,6 +630,8 @@ export interface ListaUsuariasPsicologia {
 
 export const ESTADOS_REFERENCIA_PSICOLOGIA = ['SIN_TOMAR', 'POR_AGENDAR', 'ATENDIDA'] as const
 export type EstadoReferenciaPsicologia = (typeof ESTADOS_REFERENCIA_PSICOLOGIA)[number]
+/** Referencia que todavía pide algo a la psicóloga: tomarla, o agendarle la primera cita. */
+export type ReferenciaPendientePsicologia = Exclude<EstadoReferenciaPsicologia, 'ATENDIDA'>
 
 export interface ReferenciaHistorialPsicologiaDto {
   referidoId: string

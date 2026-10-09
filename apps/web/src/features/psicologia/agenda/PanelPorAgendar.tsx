@@ -1,6 +1,10 @@
+import { useEffect, useRef } from 'react'
 import type { CasoPorAgendarDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import { fechaDeInstante } from '../../../lib/formato'
+
+/** Aire que se deja sobre la tarjeta al desplazar la página hasta ella. */
+const MARGEN_SUPERIOR_PX = 96
 
 interface PanelPorAgendarProps {
   casos: CasoPorAgendarDto[] | null
@@ -12,6 +16,17 @@ interface PanelPorAgendarProps {
 
 /** Casos que la psicóloga ya tomó y siguen sin primera cita: mientras estén aquí, no hay proceso. */
 export default function PanelPorAgendar({ casos, error, resaltadoId, onAgendar }: PanelPorAgendarProps) {
+  const tarjetaResaltada = useRef<HTMLDivElement>(null)
+  const hayResaltado = casos?.some((caso) => caso.referidoId === resaltadoId) ?? false
+
+  // El caso recién tomado se lleva a la vista una vez, cuando ya está pintado.
+  useEffect(() => {
+    const tarjeta = tarjetaResaltada.current
+    if (!hayResaltado || !tarjeta) return
+    const arriba = tarjeta.getBoundingClientRect().top + window.scrollY - MARGEN_SUPERIOR_PX
+    window.scrollTo({ top: Math.max(arriba, 0), behavior: 'smooth' })
+  }, [hayResaltado])
+
   // Sin casos el panel no aporta nada: la agenda queda solo con lo que sí pide atención.
   if (!error && casos?.length === 0) return null
 
@@ -31,6 +46,7 @@ export default function PanelPorAgendar({ casos, error, resaltadoId, onAgendar }
         {casos?.map((caso) => (
           <div
             key={caso.referidoId}
+            ref={caso.referidoId === resaltadoId ? tarjetaResaltada : undefined}
             className={`rounded-lg border bg-white p-3 shadow-sm ${
               caso.referidoId === resaltadoId ? 'border-brand-500 ring-1 ring-brand-500' : 'border-gray-200'
             }`}
@@ -39,7 +55,7 @@ export default function PanelPorAgendar({ casos, error, resaltadoId, onAgendar }
             <p className="text-xs text-gray-500 tabular-nums">
               Exp. {caso.expedienteNumero} · tomado {fechaDeInstante(caso.tomadaEn)}
             </p>
-            <Button className="mt-3 w-full justify-center" onClick={() => onAgendar(caso)}>
+            <Button tamano="sm" className="mt-3" onClick={() => onAgendar(caso)}>
               Agendar primera cita
             </Button>
           </div>

@@ -106,6 +106,67 @@ describe('BandejaPsicologiaService', () => {
     });
   });
 
+  describe('obtenerPreviaToma', () => {
+    // Datos ficticios.
+    const previa = {
+      referidoId: REFERIDO_ID,
+      expedienteNumero: '05-2026',
+      usuariaNombreCompleto: 'Usuaria Ficticia',
+      edad: 30,
+      municipio: 'Cobán',
+      grupoEtnico: 'Maya',
+      tipologias: ['Violencia física'],
+      motivo: 'Motivo ficticio',
+      referidoEn: '2026-10-01T15:00:00.000Z',
+      referidoPor: 'Trabajadora Social Ficticia',
+      personas: [],
+    };
+
+    beforeEach(() => {
+      bandejaRepository.buscarReferencia
+        .mockReset()
+        .mockResolvedValue(sinTomar);
+      bandejaRepository.obtenerPreviaToma.mockResolvedValue(previa);
+    });
+
+    it('devuelve la vista previa de una referencia sin tomar y audita solo ids', async () => {
+      await expect(
+        service.obtenerPreviaToma(REFERIDO_ID, contexto),
+      ).resolves.toEqual(previa);
+      expect(eventosAuditados(auditService)).toEqual([
+        expect.objectContaining({
+          accion: 'EXPEDIENTE_PREVIA_CONSULTADA',
+          entidadId: EXPEDIENTE_ID,
+          detalles: { referidoId: REFERIDO_ID },
+        }),
+      ]);
+    });
+
+    it('rechaza con 403 una referencia inexistente o de otra área, sin consultar nada', async () => {
+      bandejaRepository.buscarReferencia.mockReset().mockResolvedValue(null);
+
+      await expect(
+        service.obtenerPreviaToma(REFERIDO_ID, contexto),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(bandejaRepository.obtenerPreviaToma).not.toHaveBeenCalled();
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('rechaza con 403 el caso que ya tomó otra psicóloga, sin consultar nada', async () => {
+      bandejaRepository.buscarReferencia
+        .mockReset()
+        .mockResolvedValue(
+          referencia({ situacion: 'NO_DISPONIBLE', procesoId: null }),
+        );
+
+      await expect(
+        service.obtenerPreviaToma(REFERIDO_ID, contexto),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(bandejaRepository.obtenerPreviaToma).not.toHaveBeenCalled();
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+  });
+
   describe('tomarPorReasignar', () => {
     const reasignado = {
       procesoId: PROCESO_ID,

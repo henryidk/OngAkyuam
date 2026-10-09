@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
   FILTROS_PROCESOS_PSICOLOGIA,
+  MAX_CITAS_SIN_REGISTRAR_EN_DETALLE,
   type CitaRefDto,
   type FiltroProcesosPsicologia,
   type PersonaAtendidaDto,
@@ -12,6 +13,7 @@ import {
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { codigoProceso } from '../dominio/codigo-proceso';
+import { citaSinRegistrar, estaCerrado } from '../dominio/etapa-proceso';
 import type { PaginaConCursorRepo } from '../interfaces/atencion-psicologica-repository.interface';
 import type {
   DetalleProcesoRepo,
@@ -32,6 +34,8 @@ import { nombreCompleto, personaAtendida, SELECT_PERSONA } from './personas';
 const LIMITE_EXTRA_CURSOR = 1;
 /** Tope de procesos de una misma usuaria con una misma psicóloga: en la práctica son uno o dos. */
 const LIMITE_PROCESOS_POR_USUARIA = 50;
+/** Citas que empezaron pero aún no terminan: se piden de más para no dejar fuera una atrasada. */
+const MARGEN_CITAS_EN_CURSO = 5;
 
 /**
  * Un caso tomado al que todavía no se le agenda la primera cita no es un proceso: vive en
@@ -47,7 +51,6 @@ function citaFutura(ahora: Date): Prisma.CitaPsicologicaWhereInput {
 
 function condicionFiltro(
   filtro: FiltroProcesosPsicologia,
-  ahora: Date,
 ): Prisma.AtencionPsicologicaWhereInput {
   switch (filtro) {
     case 'ACTIVOS':
@@ -57,9 +60,11 @@ function condicionFiltro(
     case 'SEGUIMIENTO':
       return { estado: 'SEGUIMIENTO' };
     case 'SIN_PROXIMA':
+      // Ninguna cita programada: ni futura ni pasada sin registrar. Con una sin registrar lo
+      // pendiente es registrarla, y esa ya se cuenta aparte en "Citas sin registrar".
       return {
         estado: { not: 'CIERRE' },
-        citas: { none: citaFutura(ahora) },
+        citas: { none: { estado: 'PROGRAMADA' } },
       };
     case 'CERRADOS':
       return { estado: 'CIERRE' };
@@ -150,7 +155,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         psicologaAsignadaId: params.psicologaId,
         AND: [
           ES_PROCESO,
-          condicionFiltro(params.filtro, params.ahora),
+          condicionFiltro(params.filtro),
           ...condicionBusqueda(params.palabras),
         ],
       },
@@ -232,7 +237,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       this.prisma.atencionPsicologica.count({
         where: {
           psicologaAsignadaId: psicologaId,
-          AND: [ES_PROCESO, condicionFiltro(filtro, ahora)],
+          AND: [ES_PROCESO, condicionFiltro(filtro)],
         },
       });
 
@@ -306,9 +311,14 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       return null;
     }
 
-    const [proximas, personasAtendidas] = await Promise.all([
+    const soloLectura = proceso.psicologaAsignadaId !== psicologaId;
+    const [proximas, personasAtendidas, citasSinRegistrar] = await Promise.all([
       this.proximasCitas([proceso.id], ahora),
       this.personasAtendidas(proceso.id, proceso.expediente.usuaria),
+      // Solo donde todavía se puede registrar: ni en un proceso cerrado ni en el de una colega.
+      soloLectura || estaCerrado(proceso.estado)
+        ? []
+        : this.citasSinRegistrar(proceso.id, ahora),
     ]);
 
     return {
@@ -316,7 +326,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       expedienteId: proceso.expedienteId,
       version: proceso.version,
       psicologa: proceso.psicologaAsignada?.nombreCompleto ?? '',
-      soloLectura: proceso.psicologaAsignadaId !== psicologaId,
+      soloLectura,
       psicologasAnteriores: proceso.reasignaciones.map((reasignacion) => ({
         nombre: reasignacion.dePsicologa.nombreCompleto,
         hasta: reasignacion.createdAt.toISOString(),
@@ -325,11 +335,42 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       motivoCierre: proceso.motivoCierreCatalogo,
       resumenCierre: proceso.resumenCierre,
       personasAtendidas,
+      citasSinRegistrar,
       visibilidad: {
         visibleJuridico: proceso.visibleJuridico,
         visibleMedica: proceso.visibleMedica,
       },
     };
+  }
+
+  /** Citas del proceso que ya terminaron y siguen programadas, de la más antigua a la más reciente. */
+  private async citasSinRegistrar(
+    procesoId: string,
+    ahora: Date,
+  ): Promise<CitaRefDto[]> {
+    const yaEmpezadas = await this.prisma.citaPsicologica.findMany({
+      where: {
+        atencionId: procesoId,
+        estado: 'PROGRAMADA',
+        fechaHora: { lte: ahora },
+      },
+      select: {
+        id: true,
+        fechaHora: true,
+        duracionMinutos: true,
+        estado: true,
+      },
+      orderBy: [{ fechaHora: 'asc' }, { id: 'asc' }],
+      take: MAX_CITAS_SIN_REGISTRAR_EN_DETALLE + MARGEN_CITAS_EN_CURSO,
+    });
+    // Que ya terminó depende de la duración de cada cita: lo decide la regla del dominio.
+    return yaEmpezadas
+      .filter((cita) => citaSinRegistrar(cita, ahora))
+      .slice(0, MAX_CITAS_SIN_REGISTRAR_EN_DETALLE)
+      .map((cita) => ({
+        id: cita.id,
+        fechaHora: cita.fechaHora.toISOString(),
+      }));
   }
 
   async listarSesiones(

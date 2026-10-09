@@ -2,16 +2,19 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Param,
   ParseUUIDPipe,
   Post,
   Put,
   Query,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Throttle } from '@nestjs/throttler';
 import {
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
   indicadoresQuerySchema,
@@ -26,6 +29,7 @@ import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface
 import { ContextoAuditoria } from '../common/decorators/contexto-auditoria.decorator';
 import type { ContextoAuditoria as IContextoAuditoria } from '../common/types/contexto-auditoria';
 import { ZodValidationPipe } from '../common/pipes/zod-validation.pipe';
+import { LimitePorUsuarioGuard } from '../juridico/compartido/limite-por-usuario.guard';
 import { CitasPsicologicasService } from './services/citas-psicologicas.service';
 import { IndicadoresPsicologiaService } from './services/indicadores-psicologia.service';
 import { RegistroConsultaService } from './services/registro-consulta.service';
@@ -96,5 +100,28 @@ export class PsicologiaController {
       usuario.id,
       contexto,
     );
+  }
+
+  /** Excel de personas atendidas en el año. Pocas descargas por minuto: genera un archivo completo. */
+  @Get('indicadores.xlsx')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @Header('Cache-Control', 'no-store')
+  async exportarIndicadores(
+    @Query(new ZodValidationPipe(indicadoresQuerySchema))
+    query: IndicadoresQuery,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ): Promise<StreamableFile> {
+    const archivo = await this.indicadoresService.exportar(
+      query,
+      usuario.id,
+      contexto,
+    );
+    return new StreamableFile(archivo.contenido, {
+      type: archivo.tipoContenido,
+      disposition: `attachment; filename="${archivo.nombreArchivo}"`,
+      length: archivo.contenido.length,
+    });
   }
 }

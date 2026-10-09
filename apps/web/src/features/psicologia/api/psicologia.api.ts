@@ -11,6 +11,7 @@ import type {
   ConsultaRegistradaDto,
   DocumentoCitaDto,
   ExpedienteDetalleArea,
+  ExpedientePreviaTomaDto,
   FichaUsuariaPsicologiaDto,
   HuecoLibreDto,
   IndicadoresPsicologia,
@@ -52,6 +53,11 @@ export function tomarCasoPorReasignar(procesoId: string) {
 /** Área de atención: referencias de Trabajo Social que ninguna psicóloga ha tomado. */
 export function listarBandeja() {
   return api.get<ReferenciaBandejaPsicologiaDto[]>('/psicologia/bandeja').then((res) => res.data)
+}
+
+/** Lo que se puede ver de un expediente antes de tomar el caso: sin agresor, dirección ni teléfono. */
+export function obtenerPreviaToma(referidoId: string) {
+  return api.get<ExpedientePreviaTomaDto>(`/psicologia/bandeja/${referidoId}/previa`).then((res) => res.data)
 }
 
 export function tomarCaso(referidoId: string) {
@@ -181,4 +187,11 @@ export function subirDocumentoCita(citaId: string, archivo: File, onProgreso: (p
 
 export function obtenerIndicadores(query: IndicadoresQuery) {
   return api.get<IndicadoresPsicologia>('/psicologia/indicadores', { params: query }).then((res) => res.data)
+}
+
+/** El Excel de personas atendidas, como `Blob` en memoria: nunca se guarda una copia en el servidor. */
+export function descargarIndicadores(query: IndicadoresQuery) {
+  return api
+    .get<Blob>('/psicologia/indicadores.xlsx', { params: query, responseType: 'blob' })
+    .then((res) => res.data)
 }

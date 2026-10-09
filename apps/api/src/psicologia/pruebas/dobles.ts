@@ -62,6 +62,7 @@ export function crearBandejaRepository(): jest.Mocked<IBandejaPsicologiaReposito
     listarPorAgendar: jest.fn().mockResolvedValue([]),
     listarPorReasignar: jest.fn().mockResolvedValue([]),
     reasignar: jest.fn().mockResolvedValue(null),
+    obtenerPreviaToma: jest.fn().mockResolvedValue(null),
     buscarReferencia: jest.fn().mockResolvedValue(referencia()),
   };
 }

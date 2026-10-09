@@ -3,6 +3,7 @@ import { formatInstanteGT, type ProcesoPsicologiaResumen } from '@akyuam/shared'
 import { fechaDeInstante } from '../../../lib/formato'
 import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
 import { RUTAS_PSICOLOGIA } from '../rutas'
+import CodigoProceso from '../compartido/CodigoProceso'
 
 function ProximaCita({ proceso }: { proceso: ProcesoPsicologiaResumen }) {
   if (proceso.fechaCierre) return <span className="text-gray-500">Cerrado {fechaDeInstante(proceso.fechaCierre)}</span>
@@ -20,9 +21,9 @@ export default function FilaProceso({ proceso }: { proceso: ProcesoPsicologiaRes
         <Link
           to={destino}
           onClick={(evento) => evento.stopPropagation()}
-          className="font-mono text-[13px] font-medium text-brand-700 hover:underline"
+          className="text-brand-700 hover:underline"
         >
-          {proceso.codigo}
+          <CodigoProceso codigo={proceso.codigo} />
         </Link>
       </td>
       <td className="px-4 py-3">

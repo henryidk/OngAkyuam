@@ -98,10 +98,9 @@ export const ETIQUETAS_FILTRO_PROCESOS_PSICOLOGIA: Record<(typeof FILTROS_PROCES
   CERRADOS: 'Cerrados',
 }
 
-export const FILTROS_USUARIAS_PSICOLOGIA = ['REFERENCIA_NUEVA', 'CON_ACTIVO', 'SIN_ACTIVO'] as const
+export const FILTROS_USUARIAS_PSICOLOGIA = ['CON_ACTIVO', 'SIN_ACTIVO'] as const
 
 export const ETIQUETAS_FILTRO_USUARIAS_PSICOLOGIA: Record<(typeof FILTROS_USUARIAS_PSICOLOGIA)[number], string> = {
-  REFERENCIA_NUEVA: 'Referencia nueva',
   CON_ACTIVO: 'Con proceso activo',
   SIN_ACTIVO: 'Sin proceso activo',
 }

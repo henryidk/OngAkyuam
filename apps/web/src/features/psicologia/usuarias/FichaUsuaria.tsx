@@ -7,6 +7,7 @@ import {
   type ExpedienteDetalleArea,
   type FichaUsuariaPsicologiaDto,
   type ReferenciaHistorialPsicologiaDto,
+  type ReferenciaPendientePsicologia,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import Button from '../../../components/ui/Button'
@@ -20,6 +21,8 @@ import { rangoEdadCorto } from '../../trabajo-social/usuarias/filaUsuaria'
 import { obtenerExpedienteTs, obtenerFichaUsuaria } from '../api/psicologia.api'
 import ModalProgramarCita from '../citas/ModalProgramarCita'
 import { useContextoPsicologia } from '../compartido/contexto'
+import InsigniaReferencia from '../compartido/InsigniaReferencia'
+import { referenciaPendiente } from '../compartido/referencias'
 import { useReclamarCaso } from '../hooks/useReclamarCaso'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import type { ContextoFicha } from './contextoFicha'
@@ -55,10 +58,7 @@ function useExpedienteTs(expedienteId: string | undefined) {
   return { expediente: vigente?.expediente ?? null, error: vigente?.error ?? null }
 }
 
-function BadgeRegistro({ ficha, pendiente }: { ficha: FichaUsuariaPsicologiaDto; pendiente: boolean }) {
-  if (pendiente) {
-    return <span className="rounded-full bg-[#fef3c7] px-2.5 py-0.5 text-xs font-medium text-[#b45309]">Referencia nueva</span>
-  }
+function BadgeRegistro({ ficha }: { ficha: FichaUsuariaPsicologiaDto }) {
   const clase = ficha.expediente.enAlbergue ? 'bg-[#dcfce7] text-[#15803d]' : 'bg-[#f3f4f6] text-[#374151]'
   return (
     <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${clase}`}>
@@ -94,7 +94,7 @@ export default function FichaUsuaria() {
   if (!ficha) return <Esqueleto />
 
   const { usuaria, expediente, contadores, procesos, referencias } = ficha
-  const pendiente = referencias.find((referencia) => referencia.estado !== 'ATENDIDA')
+  const pendiente = referenciaPendiente(referencias)
   const contexto: ContextoFicha = { ficha, expedienteTs, errorExpedienteTs }
 
   function tomar(referencia: ReferenciaHistorialPsicologiaDto) {
@@ -126,7 +126,11 @@ export default function FichaUsuaria() {
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[22px] font-semibold text-gray-900">{usuaria.nombreCompleto}</h2>
-              <BadgeRegistro ficha={ficha} pendiente={Boolean(pendiente)} />
+              {pendiente ? (
+                <InsigniaReferencia estado={pendiente.estado as ReferenciaPendientePsicologia} />
+              ) : (
+                <BadgeRegistro ficha={ficha} />
+              )}
             </div>
             <p className="text-sm text-gray-500 tabular-nums">
               Expediente <strong className="font-semibold text-gray-800">{expediente.numero}</strong> ·{' '}
@@ -172,7 +176,10 @@ export default function FichaUsuaria() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-5 py-4">
           <div className="min-w-0 space-y-0.5">
             <p className="text-sm font-semibold text-gray-900">
-              Referencia nueva de Trabajo Social · {fechaDeInstante(pendiente.referidoEn)}
+              {pendiente.estado === 'SIN_TOMAR'
+                ? 'Referencia nueva de Trabajo Social'
+                : 'Caso tomado: falta agendar la primera cita'}{' '}
+              · {fechaDeInstante(pendiente.referidoEn)}
             </p>
             <p className="text-sm text-gray-700">{pendiente.motivo || 'Sin motivo registrado.'}</p>
             <p className="text-xs text-gray-500">

@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { fechaColumnaISO } from '@akyuam/shared';
 import type { CitaPsicologicaDetalle, CitaResumen } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
@@ -205,16 +206,32 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         fechaHora: { gte: params.desde, lte: params.hasta },
         atencion: { psicologaAsignadaId: params.psicologaId },
       },
+      orderBy: [{ fechaHora: 'asc' }, { id: 'asc' }],
       select: {
         fechaHora: true,
         estado: true,
         tipo: true,
+        ninoId: true,
+        nino: { select: { fechaNacimiento: true } },
         atencion: {
           select: {
+            consecutivo: true,
             expediente: {
               select: {
+                numero: true,
                 usuariaId: true,
-                usuaria: { select: { municipio: true } },
+                tipologiaDelito: true,
+                referidos: {
+                  where: { area: 'PSICOLOGIA' },
+                  select: { puedeVerDatosCaso: true },
+                },
+                usuaria: {
+                  select: {
+                    fechaNacimiento: true,
+                    grupoEtnico: true,
+                    municipio: true,
+                  },
+                },
               },
             },
           },
@@ -222,13 +239,29 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       },
     });
 
-    return citas.map((cita) => ({
-      fechaHora: cita.fechaHora,
-      estado: cita.estado,
-      tipo: cita.tipo,
-      usuariaId: cita.atencion.expediente.usuariaId,
-      municipio: cita.atencion.expediente.usuaria.municipio,
-    }));
+    return citas.map((cita) => {
+      const { expediente } = cita.atencion;
+      const persona = cita.nino ?? expediente.usuaria;
+      return {
+        fechaHora: cita.fechaHora,
+        estado: cita.estado,
+        tipo: cita.tipo,
+        usuariaId: expediente.usuariaId,
+        ninoId: cita.ninoId,
+        fechaNacimiento: fechaColumnaISO(persona.fechaNacimiento),
+        grupoEtnico: expediente.usuaria.grupoEtnico,
+        municipio: expediente.usuaria.municipio,
+        // La tipología es parte de los "datos del caso": si Trabajo Social no los compartió
+        // con Psicología, tampoco entra en sus reportes.
+        tipologias: expediente.referidos[0]?.puedeVerDatosCaso
+          ? expediente.tipologiaDelito
+          : [],
+        procesoCodigo: codigoProceso(
+          cita.atencion.consecutivo,
+          expediente.numero,
+        ),
+      };
+    });
   }
 
   async obtenerDetalle(citaId: string): Promise<CitaPsicologicaDetalle | null> {

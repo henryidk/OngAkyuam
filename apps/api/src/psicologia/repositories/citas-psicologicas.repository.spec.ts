@@ -177,3 +177,57 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
     });
   });
 });
+
+describe('CitasPsicologicasRepository.listarCitasEnRango', () => {
+  // Fila ficticia con la forma del `select` de los reportes.
+  function filaCita(puedeVerDatosCaso: boolean | null) {
+    return {
+      fechaHora: new Date('2026-10-01T15:00:00.000Z'),
+      estado: 'ATENDIDA',
+      tipo: 'SEGUIMIENTO',
+      ninoId: null,
+      nino: null,
+      atencion: {
+        consecutivo: 1,
+        expediente: {
+          numero: '05-2026',
+          usuariaId: 'usuaria-1',
+          tipologiaDelito: ['FISICA'],
+          referidos: puedeVerDatosCaso === null ? [] : [{ puedeVerDatosCaso }],
+          usuaria: {
+            fechaNacimiento: new Date('1990-01-15T00:00:00.000Z'),
+            grupoEtnico: 'LADINO',
+            municipio: 'COBAN',
+          },
+        },
+      },
+    };
+  }
+
+  async function tipologiasCon(puedeVerDatosCaso: boolean | null) {
+    const prisma = {
+      citaPsicologica: {
+        findMany: jest.fn().mockResolvedValue([filaCita(puedeVerDatosCaso)]),
+      },
+    } as unknown as PrismaService;
+    const [cita] = await new CitasPsicologicasRepository(
+      prisma,
+    ).listarCitasEnRango({
+      psicologaId: 'psicologa-a',
+      desde: new Date('2026-01-01T06:00:00.000Z'),
+      hasta: new Date('2027-01-01T05:59:59.999Z'),
+    });
+    return cita.tipologias;
+  }
+
+  it('incluye la tipología si Trabajo Social compartió los datos del caso', async () => {
+    await expect(tipologiasCon(true)).resolves.toEqual(['FISICA']);
+  });
+
+  it.each([false, null])(
+    'no incluye la tipología si los datos del caso no se compartieron (%s)',
+    async (permiso) => {
+      await expect(tipologiasCon(permiso)).resolves.toEqual([]);
+    },
+  );
+});

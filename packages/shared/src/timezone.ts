@@ -12,11 +12,6 @@ export function hoyGT(): string {
   return DateTime.now().setZone(GUATEMALA_TZ).toISODate()!
 }
 
-/** Medianoche de hoy en Guatemala, como instante UTC — para queries tipo "registros de hoy". */
-export function inicioHoyGT(): Date {
-  return DateTime.now().setZone(GUATEMALA_TZ).startOf('day').toUTC().toJSDate()
-}
-
 /** Formatea un "YYYY-MM-DD" para mostrar (ej. "30/04/2026") por manipulación de string, sin pasar por un objeto Date — elimina el bug de rollover de medianoche. */
 export function formatFechaGT(iso: string): string {
   const [anio, mes, dia] = iso.split('-')
@@ -118,18 +113,21 @@ export function edadEnAniosGT(fechaNacimientoIso: string): number {
   return Math.floor(hoy.diff(nacimiento, 'years').years)
 }
 
-/**
- * Lunes 00:00 de la semana actual en Guatemala, como instante UTC. Usa aritmética explícita
- * sobre `weekday` (1 = lunes ISO) en vez de `.startOf('week')` de Luxon, cuyo primer día
- * depende del locale del proceso — aquí no puede quedar ambiguo entre domingo y lunes.
- */
-export function inicioSemanaActualGT(): Date {
-  const hoy = DateTime.now().setZone(GUATEMALA_TZ)
-  return hoy
-    .minus({ days: hoy.weekday - 1 })
-    .startOf('day')
-    .toUTC()
-    .toJSDate()
+/** Edad en años cumplidos que tenía una persona en una fecha de calendario dada (ambas "YYYY-MM-DD"). */
+export function edadEnFecha(fechaNacimientoIso: string, fechaIso: string): number {
+  const nacimiento = DateTime.fromISO(fechaNacimientoIso, { zone: GUATEMALA_TZ })
+  const fecha = DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ })
+  return Math.floor(fecha.diff(nacimiento, 'years').years)
+}
+
+/** Año de calendario en curso en Guatemala. */
+export function anioActualGT(): number {
+  return DateTime.now().setZone(GUATEMALA_TZ).year
+}
+
+/** Año de calendario en Guatemala al que pertenece un instante. */
+export function anioCalendarioGT(fecha: Date): number {
+  return DateTime.fromJSDate(fecha).setZone(GUATEMALA_TZ).year
 }
 
 /** Medianoche del primer día del mes (`anio`-`mes`) en Guatemala, como instante UTC — límite inferior para agregados mensuales. */

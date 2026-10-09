@@ -34,6 +34,7 @@ type FilaListaRow = {
   activos: number;
   total: number;
   referenciaPendiente: boolean;
+  sinTomar: boolean;
   ultimaActividadEn: Date;
 };
 
@@ -61,6 +62,7 @@ function cteLista(params: ListarUsuariasPsicologiaParams) {
         p.activos,
         p.total,
         (r.sin_tomar OR p.por_agendar) AS "referenciaPendiente",
+        r.sin_tomar AS "sinTomar",
         GREATEST(r.ultima, p.ultima) AS "ultimaActividadEn"
       FROM "Usuaria" u
       -- El expediente visible más reciente; sin ninguno, la usuaria no aparece.
@@ -96,7 +98,6 @@ function cteLista(params: ListarUsuariasPsicologiaParams) {
 }
 
 const FILTRO_SQL: Record<FiltroUsuariasPsicologia, Prisma.Sql> = {
-  REFERENCIA_NUEVA: Prisma.sql`"referenciaPendiente"`,
   CON_ACTIVO: Prisma.sql`activos > 0`,
   SIN_ACTIVO: Prisma.sql`NOT "referenciaPendiente" AND activos = 0`,
 };
@@ -122,7 +123,6 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
         ${base}
         SELECT
           count(*)::int AS "TODAS",
-          count(*) FILTER (WHERE ${FILTRO_SQL.REFERENCIA_NUEVA})::int AS "REFERENCIA_NUEVA",
           count(*) FILTER (WHERE ${FILTRO_SQL.CON_ACTIVO})::int AS "CON_ACTIVO",
           count(*) FILTER (WHERE ${FILTRO_SQL.SIN_ACTIVO})::int AS "SIN_ACTIVO"
         FROM lista
@@ -138,7 +138,11 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
         expedienteNumero: fila.expedienteNumero,
         estadoProceso:
           fila.activos > 0 ? 'ACTIVO' : fila.total > 0 ? 'CERRADO' : null,
-        referenciaPendiente: fila.referenciaPendiente,
+        referenciaPendiente: !fila.referenciaPendiente
+          ? null
+          : fila.sinTomar
+            ? 'SIN_TOMAR'
+            : 'POR_AGENDAR',
         ultimaActividadEn: fila.ultimaActividadEn.toISOString(),
       })),
       pagina: params.pagina,

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { CalendarDays } from 'lucide-react'
 import {
@@ -10,19 +10,17 @@ import {
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import Button from '../../../components/ui/Button'
-import ConfirmModal from '../../../components/ui/ConfirmModal'
 import EmptyState from '../../../components/ui/EmptyState'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
-import { extraerMensajeError } from '../../../lib/errors'
 import { useRecurso } from '../../../lib/useRecurso'
 import {
   listarCitasAgenda,
   listarHuecos,
   listarPorAgendar,
   listarProcesosParaAgendar,
-  marcarNoAsistio,
 } from '../api/psicologia.api'
+import ConfirmarNoAsistio from '../citas/ConfirmarNoAsistio'
 import ModalProgramarCita, { type DestinoCita } from '../citas/ModalProgramarCita'
 import { useContextoPsicologia } from '../compartido/contexto'
 import { horaDeInstante } from '../compartido/horas'
@@ -32,7 +30,16 @@ import FilaHueco from './FilaHueco'
 import NavegadorSemana from './NavegadorSemana'
 import PanelPorAgendar from './PanelPorAgendar'
 import PanelSinRegistrar from './PanelSinRegistrar'
-import { citaPrincipal, diaDeCita, diasVisibles, fechaValida, lunesDe, resumenDelDia } from './semana'
+import {
+  citaPrincipal,
+  citasSinRegistrarFuera,
+  diaDeCita,
+  diasVisibles,
+  fechaValida,
+  lunesDe,
+  procesosSinProximaCita,
+  resumenDelDia,
+} from './semana'
 
 /** Lo más atrás que el servidor deja pedir de una vez: seis semanas. */
 const DIAS_VENTANA_ATRASADAS = 42
@@ -55,8 +62,9 @@ function minutoDe(hora: string): number {
 
 /**
  * Su trabajo es planificar el tiempo: a la izquierda la semana y el día abierto con sus citas y
- * sus tramos libres; a la derecha lo que pide atención (citas que pasaron sin registro, casos
- * tomados sin primera cita y procesos sin siguiente fecha). Este componente solo orquesta: decide
+ * sus tramos libres; a la derecha lo que pide atención (casos tomados sin primera cita, citas de
+ * otros días que pasaron sin registro y procesos sin siguiente fecha). Cada pendiente aparece en
+ * un solo lugar. Este componente solo orquesta: decide
  * qué semana y qué día se ven, y reparte datos.
  */
 export default function Agenda() {
@@ -65,6 +73,7 @@ export default function Agenda() {
   const { mostrar } = useToast()
   const { resumen, recargarResumen } = useContextoPsicologia()
 
+  const totalMenu = resumen?.citasSinRegistrar ?? 0
   const hoy = hoyGT()
   const diaPedido = fechaValida(searchParams.get('dia'))
   const semanaPedida = fechaValida(searchParams.get('semana'))
@@ -83,10 +92,24 @@ export default function Agenda() {
 
   const [modal, setModal] = useState<ModalAbierto | null>(null)
   const [aMarcar, setAMarcar] = useState<CitaAgendaDto | null>(null)
-  const [marcando, setMarcando] = useState(false)
-  const [errorMarcar, setErrorMarcar] = useState<string | null>(null)
   // El reloj se lee una vez al abrir la pantalla: basta para decidir cuál de las citas de hoy toca.
   const [ahora] = useState(() => Date.now())
+  // Caso recién tomado en el Área de atención. Se guarda al entrar porque el parámetro se quita
+  // de la URL en cuanto se muestra: recargar o volver atrás no debe resaltarlo otra vez.
+  const [resaltadoId] = useState(() => searchParams.get('porAgendar'))
+  const hayParametroPorAgendar = searchParams.has('porAgendar')
+
+  useEffect(() => {
+    if (!hayParametroPorAgendar) return
+    setSearchParams(
+      (actuales) => {
+        const sinParametro = new URLSearchParams(actuales)
+        sinParametro.delete('porAgendar')
+        return sinParametro
+      },
+      { replace: true },
+    )
+  }, [hayParametroPorAgendar, setSearchParams])
 
   const { citasPorDia, diasSinRegistrar } = useMemo(() => {
     const cuenta = new Map<string, number>()
@@ -109,9 +132,12 @@ export default function Agenda() {
     return [...citas, ...libres].sort((a, b) => a.minuto - b.minuto)
   }, [citasDelDia, huecos.datos])
 
-  const sinRegistrar = useMemo(() => (atrasadas.datos ?? []).filter((cita) => cita.sinRegistrar), [atrasadas.datos])
+  // Las del día abierto ya están en la lista principal: en el panel van solo las demás, y el
+  // total se descuenta igual para que el número coincida con lo que se ve.
+  const sinRegistrar = useMemo(() => citasSinRegistrarFuera(dia, atrasadas.datos ?? []), [atrasadas.datos, dia])
+  const totalSinRegistrar = totalMenu - citasDelDia.filter((cita) => cita.sinRegistrar).length
   const sinProxima = useMemo(
-    () => procesos.datos?.filter((proceso) => proceso.proximaCita === null) ?? null,
+    () => (procesos.datos ? procesosSinProximaCita(procesos.datos) : null),
     [procesos.datos],
   )
 
@@ -146,33 +172,20 @@ export default function Agenda() {
     if (fechaCita !== dia) irA(fechaCita)
   }
 
-  async function confirmarNoAsistio() {
-    if (!aMarcar) return
-    setMarcando(true)
-    setErrorMarcar(null)
-    try {
-      await marcarNoAsistio(aMarcar.id)
+  function alIntentarNoAsistio(marcada: boolean) {
+    if (marcada) {
       setAMarcar(null)
       mostrar('Inasistencia registrada')
-    } catch (err) {
-      setErrorMarcar(extraerMensajeError(err))
-    } finally {
-      setMarcando(false)
-      // También si falló: lo más probable es que otra pestaña ya la haya registrado.
-      recargarTodo()
     }
-  }
-
-  function abrirNoAsistio(cita: CitaAgendaDto) {
-    setErrorMarcar(null)
-    setAMarcar(cita)
+    // También si falló: lo más probable es que otra pestaña ya la haya registrado.
+    recargarTodo()
   }
 
   const fechaLarga = formatFechaLargaGT(dia)
   const titulo = esHoy ? `Hoy, ${fechaLarga.charAt(0).toLowerCase()}${fechaLarga.slice(1)}` : fechaLarga
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">{titulo}</h1>
@@ -228,7 +241,7 @@ export default function Agenda() {
                     cita={renglon.cita}
                     esHoy={esHoy}
                     principal={renglon.cita.id === principalId}
-                    onNoAsistio={abrirNoAsistio}
+                    onNoAsistio={setAMarcar}
                     onReprogramar={(cita) =>
                       setModal({
                         destino: { tipo: 'MOVER', cita },
@@ -257,17 +270,17 @@ export default function Agenda() {
         </section>
 
         <aside className="space-y-6">
-          <PanelSinRegistrar
-            citas={sinRegistrar}
-            total={resumen?.citasSinRegistrar ?? 0}
-            onVerDia={(elegido) => irA(elegido)}
-            onNoAsistio={abrirNoAsistio}
-          />
           <PanelPorAgendar
             casos={porAgendar.datos}
             error={porAgendar.error?.mensaje ?? null}
-            resaltadoId={searchParams.get('porAgendar')}
+            resaltadoId={resaltadoId}
             onAgendar={(caso) => setModal({ destino: { tipo: 'PRIMERA', caso }, fecha: dia })}
+          />
+          <PanelSinRegistrar
+            citas={sinRegistrar}
+            total={totalSinRegistrar}
+            onVerDia={(elegido) => irA(elegido)}
+            onNoAsistio={setAMarcar}
           />
           <ColaPendientesDeAgendar
             procesos={sinProxima}
@@ -293,19 +306,10 @@ export default function Agenda() {
         />
       )}
 
-      <ConfirmModal
-        abierto={aMarcar !== null}
-        titulo="¿Marcar que no asistió?"
-        descripcion={
-          aMarcar
-            ? `${aMarcar.persona.nombreCompleto} · ${aMarcar.procesoCodigo}. La cita queda como inasistencia y deja de estar pendiente de registro.`
-            : undefined
-        }
-        confirmarLabel="Marcar no asistió"
-        cargando={marcando}
-        error={errorMarcar}
-        onConfirmar={() => void confirmarNoAsistio()}
+      <ConfirmarNoAsistio
+        cita={aMarcar && { id: aMarcar.id, descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.procesoCodigo}` }}
         onCancelar={() => setAMarcar(null)}
+        onIntento={alIntentarNoAsistio}
       />
     </div>
   )

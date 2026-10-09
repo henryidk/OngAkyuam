@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { normalizarNombrePropio } from '../nombres.js'
 import { edadEnAniosGT } from '../timezone.js'
 import type { TipoDocumento } from './documentos.js'
 import type { EstadoCasoTs, EstadoTs } from './trabajoSocial.js'
@@ -44,6 +45,15 @@ const telefonoSchema = z.string().refine((valor) => valor === '' || /^\d{8}$/.te
 
 const textoOpcionalSchema = z.string()
 
+/**
+ * Nombre o apellido obligatorio de una persona. Se guarda ya normalizado (mayúscula inicial, sin
+ * espacios de más) para que no dependa de cómo lo tecleó quien registra. El tipo de entrada y el
+ * de salida siguen siendo `string`, así que el formulario no cambia.
+ */
+const nombrePersonaSchema = z.string().trim().min(1, 'Requerido').transform(normalizarNombrePropio)
+/** Igual, para quien puede quedar sin nombre (el agresor): vacío se queda vacío. */
+const nombrePersonaOpcionalSchema = z.string().transform(normalizarNombrePropio)
+
 const REQUERIDO = 'Selecciona una opción'
 
 export const grupoEtnicoSchema = z.enum(GRUPOS_ETNICOS, REQUERIDO)
@@ -65,8 +75,8 @@ export const areaAtencionSchema = z.enum(AREAS_ATENCION)
  */
 export const identidadUsuariaSchema = z
   .object({
-    nombres: z.string().min(1, 'Requerido'),
-    apellidos: z.string().min(1, 'Requerido'),
+    nombres: nombrePersonaSchema,
+    apellidos: nombrePersonaSchema,
     dpi: dpiSchema,
     telefono: telefonoSchema,
     direccion: textoOpcionalSchema,
@@ -131,8 +141,8 @@ function errorUbicacionFuera(
 export const editarIdentidadUsuariaSchema = identidadUsuariaSchema
 
 export const datosAgresorSchema = z.object({
-  nombres: textoOpcionalSchema,
-  apellidos: textoOpcionalSchema,
+  nombres: nombrePersonaOpcionalSchema,
+  apellidos: nombrePersonaOpcionalSchema,
   telefono: telefonoSchema,
   direccion: textoOpcionalSchema,
 })
@@ -143,8 +153,8 @@ const fechaNacimientoNinoSchema = fechaCalendarioSchema.refine(
 )
 
 export const ninoSchema = z.object({
-  nombres: z.string().min(1, 'Requerido'),
-  apellidos: z.string().min(1, 'Requerido'),
+  nombres: nombrePersonaSchema,
+  apellidos: nombrePersonaSchema,
   fechaNacimiento: fechaNacimientoNinoSchema,
   genero: generoSchema,
 })

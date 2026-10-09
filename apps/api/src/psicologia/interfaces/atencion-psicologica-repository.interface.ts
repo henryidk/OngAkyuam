@@ -26,6 +26,8 @@ export interface IAtencionPsicologicaRepository {
    * revela a quién pertenece un caso ya tomado — el llamador solo distingue `TOMADO`/`YA_TOMADO`.
    */
   tomarCaso(params: TomarCasoParams): Promise<ResultadoTomarCaso>;
+  /** Cuándo tomó esta psicóloga su primer proceso; `null` si aún no tiene ninguno. */
+  fechaPrimerProceso(psicologaId: string): Promise<Date | null>;
   /** Casos activos (estado != CIERRE) tomados por esta psicóloga — "casos activos" de indicadores. */
   contarCasosActivos(psicologaId: string): Promise<number>;
   /** Casos tomados por esta psicóloga cuya atención se creó dentro del rango — "procesos iniciados" de indicadores. */

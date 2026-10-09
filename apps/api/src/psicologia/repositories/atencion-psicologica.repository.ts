@@ -80,6 +80,15 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
     }
   }
 
+  async fechaPrimerProceso(psicologaId: string): Promise<Date | null> {
+    const primero = await this.prisma.atencionPsicologica.findFirst({
+      where: { psicologaAsignadaId: psicologaId },
+      orderBy: { createdAt: 'asc' },
+      select: { createdAt: true },
+    });
+    return primero?.createdAt ?? null;
+  }
+
   async contarCasosActivos(psicologaId: string): Promise<number> {
     return this.prisma.atencionPsicologica.count({
       where: { psicologaAsignadaId: psicologaId, estado: { not: 'CIERRE' } },

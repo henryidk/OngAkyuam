@@ -34,6 +34,7 @@ import { horaDeInstante } from '../compartido/horas'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import FormatoGeneral from './FormatoGeneral'
 import QueSigue, { type EstadoQueSigue } from './QueSigue'
+import CodigoProceso from '../compartido/CodigoProceso'
 
 function esResultado(estado: string): estado is ResultadoSesionPsicologica {
   return (RESULTADOS_SESION_PSICOLOGICA as readonly string[]).includes(estado)
@@ -233,8 +234,8 @@ export default function RegistroConsulta() {
         <h2 className="text-[22px] font-semibold tracking-tight text-gray-900">Registrar sesión · {persona}</h2>
         <p className="mt-1 text-sm text-gray-600">
           {cita.ninoNombreCompleto !== null && <>Hija/o de {cita.usuariaNombreCompleto} · </>}
-          <Link to={rutaProceso} className="font-mono font-medium text-brand-700 hover:underline">
-            {cita.procesoCodigo}
+          <Link to={rutaProceso} className="text-brand-700 hover:underline">
+            <CodigoProceso codigo={cita.procesoCodigo} />
           </Link>{' '}
           · {formatInstanteGT(cita.fechaHora)} · {cita.duracionMinutos} min
         </p>

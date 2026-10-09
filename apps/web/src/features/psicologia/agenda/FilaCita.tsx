@@ -8,6 +8,7 @@ import {
 } from '@akyuam/shared'
 import { horaDeMinutos } from '../compartido/horas'
 import { RUTAS_PSICOLOGIA } from '../rutas'
+import CodigoProceso from '../compartido/CodigoProceso'
 
 const MINUTOS_DIA = 24 * 60
 const CLASE_INSIGNIA = 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium'
@@ -66,7 +67,7 @@ export default function FilaCita({ cita, esHoy, principal, onNoAsistio, onReprog
         </div>
         <p className="mt-0.5 truncate text-xs text-gray-500">
           {cita.persona.ninoId !== null && <>Hija/o de {cita.usuariaNombreCompleto} · </>}
-          <span className="font-mono">{cita.procesoCodigo}</span> · {ETIQUETAS_TIPO_CITA_PSICOLOGICA[cita.tipo]} ·{' '}
+          <CodigoProceso codigo={cita.procesoCodigo} className="text-gray-700" /> · {ETIQUETAS_TIPO_CITA_PSICOLOGICA[cita.tipo]} ·{' '}
           {cita.duracionMinutos} min
         </p>
       </div>

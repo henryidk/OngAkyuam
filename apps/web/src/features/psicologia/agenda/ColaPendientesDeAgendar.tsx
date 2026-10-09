@@ -1,5 +1,6 @@
 import type { ProcesoParaAgendarDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
+import CodigoProceso from '../compartido/CodigoProceso'
 
 interface ColaPendientesDeAgendarProps {
   /** Procesos abiertos que no tienen ninguna cita programada de aquí en adelante. */
@@ -32,7 +33,9 @@ export default function ColaPendientesDeAgendar({ procesos, error, onProgramar }
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-gray-800">{proceso.usuariaNombreCompleto}</p>
-              <p className="font-mono text-xs text-gray-500">{proceso.codigo}</p>
+              <p>
+                <CodigoProceso codigo={proceso.codigo} className="text-gray-700" />
+              </p>
             </div>
             <Button variante="acento" className="flex-none" onClick={() => onProgramar(proceso)}>
               Programar cita

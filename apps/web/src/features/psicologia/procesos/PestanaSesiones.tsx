@@ -91,7 +91,7 @@ function TarjetaSesion({ sesion, abiertaAlEntrar }: { sesion: SesionProcesoDto; 
 
 /** Sesiones e inasistencias del proceso, de la más reciente a la más antigua. Las notas se abren a pedido. */
 export default function PestanaSesiones() {
-  const { sesiones } = useContextoDetalle()
+  const { proceso, sesiones } = useContextoDetalle()
   const [params] = useSearchParams()
   // Desde la agenda se llega con "?sesion=": esa sesión aparece ya desplegada.
   const sesionPedida = params.get('sesion')
@@ -105,7 +105,11 @@ export default function PestanaSesiones() {
       <EmptyState
         Icono={CalendarClock}
         titulo="Todavía no hay sesiones registradas"
-        descripcion="Aparecerán aquí al registrar la primera sesión desde la agenda."
+        descripcion={
+          proceso.citasSinRegistrar.length > 0
+            ? 'Registra la cita pendiente para que aparezca aquí.'
+            : 'Aparecerán aquí al registrar la primera sesión desde la agenda.'
+        }
       />
     )
   }

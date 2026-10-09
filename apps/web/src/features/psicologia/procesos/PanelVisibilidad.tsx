@@ -54,9 +54,12 @@ export default function PanelVisibilidad({ proceso, onCambio }: PanelVisibilidad
         Las notas de sesión son privadas. Elige qué áreas pueden ver etapa, fechas y documentos.
       </p>
       <ul className="mt-3 divide-y divide-gray-100">
-        <li className="flex items-center justify-between gap-3 py-2">
-          <span className="text-[13px] text-gray-900">Trabajo Social</span>
-          <Switch encendido bloqueado onChange={() => undefined} ariaLabel="Trabajo Social ve el proceso" etiqueta="Siempre" />
+        {/* Texto fijo, no un interruptor: esto no se puede cambiar. */}
+        <li className="py-2">
+          <p className="text-[13px] text-gray-900">Trabajo Social · siempre ve etapa y fechas</p>
+          <p className="mt-0.5 text-xs text-gray-500">
+            También la próxima cita y los documentos. No se puede cambiar; las notas de sesión no las ve.
+          </p>
         </li>
         {AREAS.map(({ campo, nombre }) => (
           <li key={campo} className="flex items-center justify-between gap-3 py-2">

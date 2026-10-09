@@ -135,12 +135,13 @@ function App() {
             </Route>
             <Route path="citas/:citaId" element={<DetalleCita />} />
             <Route path="citas/:citaId/atencion" element={<RegistroConsulta />} />
-            <Route path="indicadores" element={<Indicadores />} />
+            <Route path="reportes" element={<Indicadores />} />
             {/* Direcciones de antes del rediseño: llevan a la pantalla que las reemplazó. */}
             <Route path="expedientes/*" element={<Navigate to={RUTAS_PSICOLOGIA.usuarias()} replace />} />
             <Route path="pacientes/*" element={<Navigate to={RUTAS_PSICOLOGIA.usuarias()} replace />} />
             <Route path="agenda/nueva-cita" element={<Navigate to={RUTAS_PSICOLOGIA.agenda()} replace />} />
-            <Route path="reporte" element={<Navigate to="/psicologia/indicadores" replace />} />
+            <Route path="reporte" element={<Navigate to={RUTAS_PSICOLOGIA.reportes()} replace />} />
+            <Route path="indicadores" element={<Navigate to={RUTAS_PSICOLOGIA.reportes()} replace />} />
           </Route>
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['MEDICA']} />}>

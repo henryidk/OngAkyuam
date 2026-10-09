@@ -46,7 +46,8 @@ export interface IAgendaPsicologiaRepository {
   marcarNoAsistio(citaId: string, ahora: Date): Promise<boolean>;
   /**
    * Mis procesos sin cerrar que ya abrieron (tienen primera cita agendada), con las personas a
-   * quienes se puede citar y su próxima cita programada, si la tienen.
+   * quienes se puede citar, su próxima cita programada (si la tienen) y si alguna cita suya
+   * pasó sin registro.
    */
   listarProcesosParaAgendar(
     psicologaId: string,

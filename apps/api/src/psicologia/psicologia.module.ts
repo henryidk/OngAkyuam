@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { ExcelJsExportador } from '../common/hoja-calculo/exceljs-exportador';
+import { EXPORTADOR_HOJA_CALCULO } from '../common/hoja-calculo/exportador-hoja-calculo.interface';
 import { AreasModule } from '../areas/areas.module';
 import { AuthModule } from '../auth/auth.module';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -70,6 +72,7 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     UsuariasPsicologiaService,
     AgendaPsicologiaService,
     LimitePorUsuarioGuard,
+    { provide: EXPORTADOR_HOJA_CALCULO, useClass: ExcelJsExportador },
     {
       provide: BANDEJA_PSICOLOGIA_REPOSITORY,
       useClass: BandejaPsicologiaRepository,

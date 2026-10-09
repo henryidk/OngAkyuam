@@ -52,3 +52,31 @@ export function citaSinRegistrar(
   const fin = cita.fechaHora.getTime() + cita.duracionMinutos * 60_000;
   return fin <= ahora.getTime();
 }
+
+export interface SituacionCitasProgramadas<T> {
+  /** La que sigue: la que está en curso ahora mismo o, si no hay, la primera futura. */
+  proxima: T | null;
+  /** Alguna ya terminó y nadie anotó si la persona asistió. */
+  tieneSinRegistrar: boolean;
+}
+
+/**
+ * Reparte las citas que siguen programadas de un proceso, ordenadas por fecha: cada una o ya
+ * pasó sin registro o es la que sigue. Un proceso "sin próxima cita" es el que no tiene ninguna
+ * de las dos: mientras haya una sin registrar, lo pendiente es registrarla, no agendar otra.
+ */
+export function situacionCitasProgramadas<T extends CitaParaEstadoDerivado>(
+  citasPorFecha: T[],
+  ahora: Date,
+): SituacionCitasProgramadas<T> {
+  const programadas = citasPorFecha.filter(
+    (cita) => cita.estado === 'PROGRAMADA',
+  );
+  const proxima = programadas.find((cita) => !citaSinRegistrar(cita, ahora));
+  return {
+    proxima: proxima ?? null,
+    tieneSinRegistrar: programadas.some((cita) =>
+      citaSinRegistrar(cita, ahora),
+    ),
+  };
+}
