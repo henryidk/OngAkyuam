@@ -588,9 +588,6 @@ model AtencionPsicologica {
   tomadaEn             DateTime?                 @db.Timestamptz(3)
   fechaInicio          DateTime?                 @db.Timestamptz(3)
   fechaCierre          DateTime?                 @db.Timestamptz(3)
-  // @deprecated Texto libre anterior al rediseño; lo reemplazan `motivoCierreCatalogo` y
-  // `resumenCierre`. Se elimina en la última migración del rediseño.
-  motivoCierre         String?                   @db.Text
   // El código visible "P{consecutivo}-{numero de expediente}" se deriva, no se guarda.
   consecutivo          Int                       @default(1)
   motivoCierreCatalogo MotivoCierrePsicologia?
