@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Inbox } from 'lucide-react'
 import type { ReferenciaBandejaPsicologiaDto } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import Drawer from '../../../components/ui/Drawer'
 import EmptyState from '../../../components/ui/EmptyState'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
@@ -14,7 +13,6 @@ import { useReclamarCaso } from '../hooks/useReclamarCaso'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import SeccionPorReasignar from './SeccionPorReasignar'
 import TarjetaReferencia from './TarjetaReferencia'
-import VistaPreviaExpediente from './VistaPreviaExpediente'
 
 function textoTotal(total: number): string {
   if (total === 0) return 'Todo al día'
@@ -36,7 +34,6 @@ export default function BandejaPsicologia() {
   // Si esta lista falla no se tapa la bandeja: simplemente no se muestra la sección.
   const { datos: porReasignar, recargar: recargarPorReasignar } = useRecurso(listarPorReasignar)
   const { reclamandoId, error: errorReclamar, reclamar } = useReclamarCaso()
-  const [enDetalle, setEnDetalle] = useState<ReferenciaBandejaPsicologiaDto | null>(null)
 
   const recargar = useCallback(async () => {
     await Promise.all([recargarReferencias(), recargarPorReasignar()])
@@ -117,26 +114,10 @@ export default function BandejaPsicologia() {
               tomando={reclamandoId === referencia.referidoId}
               deshabilitada={reclamandoId !== null}
               onTomar={() => tomar(referencia)}
-              onVerExpediente={() => setEnDetalle(referencia)}
             />
           ))}
         </div>
       )}
-
-      <Drawer
-        abierto={enDetalle !== null}
-        titulo={enDetalle?.usuariaNombreCompleto ?? ''}
-        subtitulo={enDetalle ? `Expediente ${enDetalle.expedienteNumero}` : undefined}
-        onCerrar={() => setEnDetalle(null)}
-      >
-        {enDetalle && (
-          <VistaPreviaExpediente
-            key={enDetalle.referidoId}
-            referidoId={enDetalle.referidoId}
-            usuariaId={enDetalle.usuariaId}
-          />
-        )}
-      </Drawer>
     </div>
   )
 }

@@ -1,7 +1,9 @@
+import { Link } from 'react-router-dom'
 import { DIAS_ALERTA_ESPERA_PSICOLOGIA, type ReferenciaBandejaPsicologiaDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import { fechaDeInstante, iniciales } from '../../../lib/formato'
 import { etiquetaPersona } from '../compartido/personas'
+import { RUTAS_PSICOLOGIA } from '../rutas'
 
 interface TarjetaReferenciaProps {
   referencia: ReferenciaBandejaPsicologiaDto
@@ -9,8 +11,10 @@ interface TarjetaReferenciaProps {
   /** Mientras se toma otro caso no se puede tomar este: evita dos tomas a la vez. */
   deshabilitada: boolean
   onTomar: () => void
-  onVerExpediente: () => void
 }
+
+const CLASE_ENLACE_BOTON =
+  'inline-flex items-center rounded-md border border-gray-300 bg-white px-3.5 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50'
 
 function textoEspera(dias: number): string {
   if (dias === 0) return 'Llegó hoy'
@@ -22,7 +26,6 @@ export default function TarjetaReferencia({
   tomando,
   deshabilitada,
   onTomar,
-  onVerExpediente,
 }: TarjetaReferenciaProps) {
   const enAlerta = referencia.diasEsperando >= DIAS_ALERTA_ESPERA_PSICOLOGIA
   const detalle = [
@@ -71,10 +74,11 @@ export default function TarjetaReferencia({
 
         {/* A la derecha del encabezado; en pantallas angostas (< 768 px) baja a su propia fila. */}
         <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 pt-3 md:border-t-0 md:pt-0">
-          <Button variante="secondary" tamano="sm" onClick={onVerExpediente}>
+          {/* Igual que en Jurídico: abre la ficha de la usuaria, donde también se puede tomar el caso. */}
+          <Link to={RUTAS_PSICOLOGIA.usuaria(referencia.usuariaId)} className={CLASE_ENLACE_BOTON}>
             Ver expediente
-          </Button>
-          <Button tamano="sm" cargando={tomando} disabled={deshabilitada} onClick={onTomar}>
+          </Link>
+          <Button tamano="md" cargando={tomando} disabled={deshabilitada} onClick={onTomar}>
             Tomar caso
           </Button>
         </div>

@@ -11,7 +11,6 @@ import type {
   ConsultaRegistradaDto,
   DocumentoCitaDto,
   ExpedienteDetalleArea,
-  ExpedientePreviaTomaDto,
   FichaUsuariaPsicologiaDto,
   HuecoLibreDto,
   IndicadoresPsicologia,
@@ -53,11 +52,6 @@ export function tomarCasoPorReasignar(procesoId: string) {
 /** Área de atención: referencias de Trabajo Social que ninguna psicóloga ha tomado. */
 export function listarBandeja() {
   return api.get<ReferenciaBandejaPsicologiaDto[]>('/psicologia/bandeja').then((res) => res.data)
-}
-
-/** Lo que se puede ver de un expediente antes de tomar el caso: sin agresor, dirección ni teléfono. */
-export function obtenerPreviaToma(referidoId: string) {
-  return api.get<ExpedientePreviaTomaDto>(`/psicologia/bandeja/${referidoId}/previa`).then((res) => res.data)
 }
 
 export function tomarCaso(referidoId: string) {
