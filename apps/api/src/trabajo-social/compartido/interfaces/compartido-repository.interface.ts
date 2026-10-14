@@ -1,4 +1,7 @@
-import type { ProcesoPsicologiaCompartidoDto } from '@akyuam/shared';
+import type {
+  ProcesoPsicologiaCompartidoDto,
+  ResumenMedicoParaTs,
+} from '@akyuam/shared';
 import type {
   FaseProcesoJuridico,
   SituacionProcesoJuridico,
@@ -32,4 +35,10 @@ export interface ICompartidoRepository {
   procesosPsicologicos(
     expedienteId: string,
   ): Promise<ProcesoPsicologiaCompartidoDto[]>;
+  /**
+   * Atenciones médicas del expediente, de la más antigua a la más reciente: código, estado,
+   * fechas de consulta, próxima consulta y los signos vitales de la última consulta de la
+   * usuaria. Nunca diagnóstico, plan, receta ni documentos.
+   */
+  atencionesMedicas(expedienteId: string): Promise<ResumenMedicoParaTs[]>;
 }

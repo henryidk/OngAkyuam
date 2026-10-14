@@ -17,10 +17,13 @@ export interface ListarUsuariasPsicologiaParams {
   porPagina: number;
 }
 
-/** La ficha sin los procesos: esos salen de `IConsultasProcesosRepository`. */
+/**
+ * La ficha sin los procesos (salen de `IConsultasProcesosRepository`) ni lo que comparte
+ * Medicina (sale de `IVisibilidadMedicaReader`).
+ */
 export type FichaUsuariaRepo = Omit<
   FichaUsuariaPsicologiaDto,
-  'procesos' | 'procesosDeColegas' | 'contadores'
+  'procesos' | 'procesosDeColegas' | 'contadores' | 'medicina'
 >;
 
 /**

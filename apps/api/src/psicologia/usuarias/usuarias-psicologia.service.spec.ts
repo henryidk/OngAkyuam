@@ -14,6 +14,7 @@ import {
   PROCESO_ID,
   USUARIA_ID,
 } from '../pruebas/dobles';
+import type { IVisibilidadMedicaReader } from '../../medica/interfaces/visibilidad-medica-reader.interface';
 import { UsuariasPsicologiaService } from './usuarias-psicologia.service';
 
 // Datos ficticios.
@@ -68,6 +69,7 @@ describe('UsuariasPsicologiaService', () => {
     Pick<IConsultasProcesosRepository, 'listarDeUsuaria' | 'listarDeColegas'>
   >;
   let auditService: ReturnType<typeof crearAuditService>;
+  let visibilidadMedica: jest.Mocked<IVisibilidadMedicaReader>;
   let service: UsuariasPsicologiaService;
 
   beforeEach(() => {
@@ -86,10 +88,16 @@ describe('UsuariasPsicologiaService', () => {
       listarDeColegas: jest.fn().mockResolvedValue([]),
     };
     auditService = crearAuditService();
+    visibilidadMedica = {
+      paraJuridico: jest.fn(),
+      constanciaParaJuridico: jest.fn(),
+      paraPsicologia: jest.fn().mockResolvedValue([]),
+    };
     service = new UsuariasPsicologiaService(
       usuariasRepository,
       consultasRepository as unknown as IConsultasProcesosRepository,
       auditService,
+      visibilidadMedica,
     );
   });
 
@@ -146,6 +154,7 @@ describe('UsuariasPsicologiaService', () => {
       );
       expect(consultasRepository.listarDeUsuaria).not.toHaveBeenCalled();
       expect(consultasRepository.listarDeColegas).not.toHaveBeenCalled();
+      expect(visibilidadMedica.paraPsicologia).not.toHaveBeenCalled();
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
 
@@ -177,6 +186,27 @@ describe('UsuariasPsicologiaService', () => {
       expect(ficha.contadores).toEqual({ enProceso: 1, cerrados: 2 });
     });
 
+    it('incluye solo lo que Medicina compartió con Psicología: fechas de consulta', async () => {
+      visibilidadMedica.paraPsicologia.mockResolvedValue([
+        {
+          codigo: 'M1-05-2026',
+          estado: 'ACTIVA',
+          fechasConsulta: ['2026-10-01T15:00:00.000Z'],
+        },
+      ]);
+
+      const ficha = await service.obtener(USUARIA_ID, contexto);
+
+      expect(visibilidadMedica.paraPsicologia).toHaveBeenCalledWith(USUARIA_ID);
+      expect(ficha.medicina).toEqual([
+        {
+          codigo: 'M1-05-2026',
+          estado: 'ACTIVA',
+          fechasConsulta: ['2026-10-01T15:00:00.000Z'],
+        },
+      ]);
+    });
+
     it('audita la consulta solo con ids', async () => {
       await service.obtener(USUARIA_ID, contexto);
 
@@ -184,7 +214,11 @@ describe('UsuariasPsicologiaService', () => {
         expect.objectContaining({
           accion: 'FICHA_USUARIA_PSICOLOGIA_CONSULTADA',
           entidadId: USUARIA_ID,
-          detalles: { expedienteId: EXPEDIENTE_ID, procesosDeColegas: 0 },
+          detalles: {
+            expedienteId: EXPEDIENTE_ID,
+            procesosDeColegas: 0,
+            atencionesMedicas: 0,
+          },
         }),
       ]);
     });

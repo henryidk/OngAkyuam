@@ -170,3 +170,14 @@ export function minutosDelDiaGT(fecha: Date): number {
 export function diaSemanaGT(fechaIso: string): number {
   return DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).weekday
 }
+
+/** Hora "HH:mm" en Guatemala de un instante — la hora de una cita tal como se muestra y se compara con el horario del área. */
+export function horaGT(fecha: Date | string): string {
+  const dt = typeof fecha === 'string' ? DateTime.fromISO(fecha) : DateTime.fromJSDate(fecha)
+  return dt.setZone(GUATEMALA_TZ).toFormat('HH:mm')
+}
+
+/** Lunes de la semana (ISO) a la que pertenece una fecha de calendario "YYYY-MM-DD". */
+export function lunesDeSemanaGT(fechaIso: string): string {
+  return DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).startOf('week').toISODate()!
+}

@@ -24,6 +24,7 @@ describe('CompartidoService', () => {
         .mockResolvedValue(['JURIDICO', 'PSICOLOGIA', 'MEDICA']),
       procesosJuridicos: jest.fn().mockResolvedValue([]),
       procesosPsicologicos: jest.fn().mockResolvedValue([]),
+      atencionesMedicas: jest.fn().mockResolvedValue([]),
     };
     auditService = {
       registrar: jest.fn(),
@@ -223,6 +224,77 @@ describe('CompartidoService', () => {
       referida: false,
       lineas: [],
     });
+  });
+
+  const atencionMedica = {
+    codigo: 'M1-05-2026',
+    estado: 'ACTIVA' as const,
+    fechasConsulta: ['2026-10-01T15:00:00.000Z', '2026-10-08T02:00:00.000Z'],
+    proximaConsulta: '2026-10-16T16:00:00.000Z',
+    signosVitales: {
+      fecha: '2026-10-08T02:00:00.000Z',
+      valores: {
+        presionSistolica: 120,
+        presionDiastolica: 80,
+        frecuenciaCardiaca: 78,
+        frecuenciaResp: null,
+        temperaturaC: 36.5,
+        saturacionO2: 98,
+        glucosaMgDl: null,
+        pesoKg: 60,
+        tallaM: 1.55,
+      },
+    },
+  };
+
+  async function lineasMedicina(): Promise<string[]> {
+    const compartido = await service.obtener('exp-1', contexto);
+    return compartido[2].lineas;
+  }
+
+  it('Medicina comparte estado, fechas de consulta, próxima y signos vitales con etiquetas completas', async () => {
+    repositorio.atencionesMedicas.mockResolvedValue([atencionMedica]);
+
+    expect(await lineasMedicina()).toEqual([
+      'M1-05-2026 · En atención',
+      'Consultas: 01/10/2026, 07/10/2026',
+      'Próxima consulta: 16/10/2026 10:00',
+      'Signos vitales (07/10/2026): Presión arterial 120/80 mmHg · Frecuencia cardíaca 78 latidos/min · Temperatura 36.5 °C · Oxígeno en sangre 98 % · Peso 60 kg · Talla 1.55 m · Índice de masa corporal 25',
+    ]);
+  });
+
+  it('Medicina de alta sin consultas solo anuncia el estado', async () => {
+    repositorio.atencionesMedicas.mockResolvedValue([
+      {
+        ...atencionMedica,
+        estado: 'ALTA',
+        fechasConsulta: [],
+        proximaConsulta: null,
+        signosVitales: null,
+      },
+    ]);
+
+    expect(await lineasMedicina()).toEqual(['M1-05-2026 · De alta']);
+  });
+
+  it('Medicina nunca expone diagnóstico, plan, receta ni documentos aunque el repositorio los trajera', async () => {
+    repositorio.atencionesMedicas.mockResolvedValue([
+      {
+        ...atencionMedica,
+        diagnostico: 'DIAGNOSTICO-CLINICO',
+        planTratamiento: 'PLAN-CLINICO',
+        recetaLaboratorios: 'RECETA-CLINICA',
+        motivoConsulta: 'MOTIVO-CLINICO',
+        documentos: [
+          { id: 'doc-medico', nombreArchivo: 'ARCHIVO-CLINICO.pdf' },
+        ],
+      } as never,
+    ]);
+
+    const respuesta = JSON.stringify(await service.obtener('exp-1', contexto));
+
+    expect(respuesta).not.toContain('CLINIC');
+    expect(respuesta).not.toContain('doc-medico');
   });
 
   it('audita la consulta sin detalles', async () => {

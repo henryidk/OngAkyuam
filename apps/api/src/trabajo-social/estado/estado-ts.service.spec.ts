@@ -23,6 +23,7 @@ describe('EstadoTsService', () => {
     repositorio = {
       procesosJuridicos: jest.fn().mockResolvedValue([]),
       atencionPsicologica: jest.fn().mockResolvedValue(null),
+      atencionMedica: jest.fn().mockResolvedValue(null),
     };
     service = new EstadoTsService(new ResolveresEstadoArea(repositorio));
   });

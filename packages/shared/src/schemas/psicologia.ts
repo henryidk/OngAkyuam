@@ -13,6 +13,7 @@ import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
 import type { TipoDocumento } from './documentos.js'
 import type { TipoRegistro } from './registroUsuaria.js'
 import type { ConteoReporte } from './trabajoSocial.js'
+import type { VistaMedicaParaPsicologia } from './medica.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -664,4 +665,6 @@ export interface FichaUsuariaPsicologiaDto {
   referencias: ReferenciaHistorialPsicologiaDto[]
   /** Se puede abrir un proceso nuevo: no hay uno activo ni una referencia pendiente. */
   puedeAbrirProceso: boolean
+  /** Fechas de consulta de las atenciones médicas que Medicina compartió con Psicología. */
+  medicina: VistaMedicaParaPsicologia[]
 }

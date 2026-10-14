@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { ETIQUETAS_TIPO_REGISTRO, type ProcesoPsicologiaResumen } from '@akyuam/shared'
 import { textoAgresor, textoHijas, textoTipologia } from '../../juridico/usuarias/textoCaso'
+import AtencionesCompartidas from '../../medica/compartido/AtencionesCompartidas'
 import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import { useContextoFicha } from './contextoFicha'
@@ -67,44 +68,47 @@ export default function PestanaResumen() {
         )}
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-          <h3 className="text-sm font-semibold text-gray-900">Situación según Trabajo Social</h3>
-          <Link to={RUTAS_PSICOLOGIA.usuariaDatos(ficha.usuaria.id)} className="text-xs font-medium text-brand-700 hover:underline">
-            Ver caso
-          </Link>
-        </div>
-        <div className="px-5 py-3">
-          {errorExpedienteTs ? (
-            <p className="text-sm text-red-700">{errorExpedienteTs}</p>
-          ) : !expedienteTs ? (
-            <div className="h-24 animate-pulse rounded bg-gray-100" />
-          ) : (
-            <>
-              <dl>
-                {datosCaso && (
-                  <>
-                    <Dato etiqueta="Tipología" valor={textoTipologia(datosCaso)} />
-                    <Dato etiqueta="Agresor" valor={textoAgresor(datosCaso)} />
-                  </>
+      <div className="space-y-4">
+        <section className="rounded-xl border border-gray-200 bg-white">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+            <h3 className="text-sm font-semibold text-gray-900">Situación según Trabajo Social</h3>
+            <Link to={RUTAS_PSICOLOGIA.usuariaDatos(ficha.usuaria.id)} className="text-xs font-medium text-brand-700 hover:underline">
+              Ver caso
+            </Link>
+          </div>
+          <div className="px-5 py-3">
+            {errorExpedienteTs ? (
+              <p className="text-sm text-red-700">{errorExpedienteTs}</p>
+            ) : !expedienteTs ? (
+              <div className="h-24 animate-pulse rounded bg-gray-100" />
+            ) : (
+              <>
+                <dl>
+                  {datosCaso && (
+                    <>
+                      <Dato etiqueta="Tipología" valor={textoTipologia(datosCaso)} />
+                      <Dato etiqueta="Agresor" valor={textoAgresor(datosCaso)} />
+                    </>
+                  )}
+                  <Dato etiqueta="Registro" valor={ETIQUETAS_TIPO_REGISTRO[expedienteTs.tipoRegistro]} />
+                  <Dato etiqueta="Hijas e hijos" valor={textoHijas(expedienteTs.ninos)} />
+                </dl>
+                {datosCaso?.observaciones && (
+                  <p className="mt-2 whitespace-pre-line rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    {datosCaso.observaciones}
+                  </p>
                 )}
-                <Dato etiqueta="Registro" valor={ETIQUETAS_TIPO_REGISTRO[expedienteTs.tipoRegistro]} />
-                <Dato etiqueta="Hijas e hijos" valor={textoHijas(expedienteTs.ninos)} />
-              </dl>
-              {datosCaso?.observaciones && (
-                <p className="mt-2 whitespace-pre-line rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                  {datosCaso.observaciones}
-                </p>
-              )}
-              {!datosCaso && (
-                <p className="mt-2 text-xs text-gray-500">
-                  Trabajo Social no compartió con Psicología la tipología, el agresor ni las observaciones.
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      </section>
+                {!datosCaso && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Trabajo Social no compartió con Psicología la tipología, el agresor ni las observaciones.
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+        <AtencionesCompartidas atenciones={ficha.medicina} />
+      </div>
     </div>
   )
 }

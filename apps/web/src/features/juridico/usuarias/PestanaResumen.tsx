@@ -1,8 +1,13 @@
+import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { ETIQUETAS_FASE, ETIQUETAS_TIPO_PROCESO_JURIDICO, ETIQUETAS_TIPO_REGISTRO, type ProcesoResumen } from '@akyuam/shared'
 import { BarraAvanceCompacta } from '../compartido/BarraAvance'
 import EtiquetaEstado from '../compartido/EtiquetaEstado'
 import { fechaDeReferencia } from '../compartido/formato'
+import AccionesDocumento from '../../medica/compartido/AccionesDocumento'
+import AtencionesCompartidas from '../../medica/compartido/AtencionesCompartidas'
+import { obtenerMedicinaCompartida, obtenerUrlConstanciaMedica } from '../api/medicina.api'
+import { useRecurso } from '../compartido/useRecurso'
 import { RUTAS_JURIDICO } from '../rutas'
 import { useContextoFicha } from './contextoFicha'
 import { textoAgresor, textoHijas, textoTipologia } from './textoCaso'
@@ -34,6 +39,26 @@ function FilaProcesoActivo({ proceso }: { proceso: ProcesoResumen }) {
         </div>
       </Link>
     </li>
+  )
+}
+
+/** Fechas de consulta y constancias que Medicina decidió compartir con Jurídico. */
+function MedicinaCompartida({ usuariaId }: { usuariaId: string }) {
+  const cargar = useCallback(() => obtenerMedicinaCompartida(usuariaId), [usuariaId])
+  const { datos: atenciones, error } = useRecurso(cargar)
+  if (error) return <p className="text-sm text-red-700">No se pudo cargar lo compartido por Medicina.</p>
+  if (!atenciones) return null
+  return (
+    <AtencionesCompartidas
+      atenciones={atenciones}
+      accionesConstancia={(constancia) => (
+        <AccionesDocumento
+          documentoId={constancia.id}
+          nombre={constancia.nombreVisible}
+          obtenerUrl={(documentoId, modo) => obtenerUrlConstanciaMedica(usuariaId, documentoId, modo)}
+        />
+      )}
+    />
   )
 }
 
@@ -78,35 +103,38 @@ export default function PestanaResumen() {
         )}
       </section>
 
-      <section className="rounded-xl border border-gray-200 bg-white">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-          <h3 className="text-sm font-semibold text-gray-900">Situación según Trabajo Social</h3>
-          <Link to={RUTAS_JURIDICO.usuariaDatos(ficha.usuaria.id)} className="text-xs font-medium text-brand-700 hover:underline">
-            Ver caso
-          </Link>
-        </div>
-        <div className="px-5 py-3">
-          {errorExpedienteTs ? (
-            <p className="text-sm text-red-700">{errorExpedienteTs}</p>
-          ) : !expedienteTs ? (
-            <div className="h-24 animate-pulse rounded bg-gray-100" />
-          ) : (
-            <>
-              <dl>
-                <Dato etiqueta="Tipología" valor={datosCaso ? textoTipologia(datosCaso) : null} />
-                <Dato etiqueta="Agresor" valor={datosCaso ? textoAgresor(datosCaso) : null} />
-                <Dato etiqueta="Registro" valor={ETIQUETAS_TIPO_REGISTRO[expedienteTs.tipoRegistro]} />
-                <Dato etiqueta="Hijas e hijos" valor={textoHijas(expedienteTs.ninos)} />
-              </dl>
-              {datosCaso?.observaciones && (
-                <p className="mt-2 whitespace-pre-line rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">
-                  {datosCaso.observaciones}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      </section>
+      <div className="space-y-4">
+        <section className="rounded-xl border border-gray-200 bg-white">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+            <h3 className="text-sm font-semibold text-gray-900">Situación según Trabajo Social</h3>
+            <Link to={RUTAS_JURIDICO.usuariaDatos(ficha.usuaria.id)} className="text-xs font-medium text-brand-700 hover:underline">
+              Ver caso
+            </Link>
+          </div>
+          <div className="px-5 py-3">
+            {errorExpedienteTs ? (
+              <p className="text-sm text-red-700">{errorExpedienteTs}</p>
+            ) : !expedienteTs ? (
+              <div className="h-24 animate-pulse rounded bg-gray-100" />
+            ) : (
+              <>
+                <dl>
+                  <Dato etiqueta="Tipología" valor={datosCaso ? textoTipologia(datosCaso) : null} />
+                  <Dato etiqueta="Agresor" valor={datosCaso ? textoAgresor(datosCaso) : null} />
+                  <Dato etiqueta="Registro" valor={ETIQUETAS_TIPO_REGISTRO[expedienteTs.tipoRegistro]} />
+                  <Dato etiqueta="Hijas e hijos" valor={textoHijas(expedienteTs.ninos)} />
+                </dl>
+                {datosCaso?.observaciones && (
+                  <p className="mt-2 whitespace-pre-line rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                    {datosCaso.observaciones}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+        </section>
+        <MedicinaCompartida usuariaId={ficha.usuaria.id} />
+      </div>
     </div>
   )
 }

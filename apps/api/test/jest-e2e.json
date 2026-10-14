@@ -3,7 +3,23 @@
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
+  "setupFiles": ["<rootDir>/e2e/entorno-e2e.ts"],
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": [
+      "ts-jest",
+      {
+        "tsconfig": {
+          "module": "commonjs",
+          "moduleResolution": "node16",
+          "allowJs": true,
+          "isolatedModules": true
+        }
+      }
+    ]
+  },
+  "transformIgnorePatterns": ["/node_modules/(?!\\.pnpm/@nestjs\\+|@nestjs/)"],
+  "moduleNameMapper": {
+    "^@akyuam/shared$": "<rootDir>/../../../packages/shared/src/index.ts",
+    "^(\\.{1,2}/.*)\\.js$": "$1"
   }
 }

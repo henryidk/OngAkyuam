@@ -19,7 +19,7 @@ export class ResolveresEstadoArea {
     this.resolveres = {
       JURIDICO: new JuridicoEstadoResolver(repositorio),
       PSICOLOGIA: new PsicologiaEstadoResolver(repositorio),
-      MEDICA: new MedicaEstadoResolver(),
+      MEDICA: new MedicaEstadoResolver(repositorio),
     };
   }
 

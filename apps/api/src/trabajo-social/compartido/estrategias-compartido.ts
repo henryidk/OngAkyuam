@@ -19,7 +19,7 @@ export class EstrategiasCompartido {
     this.estrategias = {
       JURIDICO: new JuridicoCompartidoEstrategia(repositorio),
       PSICOLOGIA: new PsicologiaCompartidoEstrategia(repositorio),
-      MEDICA: new MedicaCompartidoEstrategia(),
+      MEDICA: new MedicaCompartidoEstrategia(repositorio),
     };
   }
 

@@ -38,8 +38,8 @@ model Usuario {
 
   refreshTokens                      RefreshToken[]
   expedientesCreados                 Expediente[]
-  referidosOtorgados                 ReferidoArea[]             @relation("ReferidoOtorgadoPor")
-  referidosAsignados                 ReferidoArea[]             @relation("ReferidoProfesionalAsignado")
+  referidosOtorgados                 ReferidoArea[]                    @relation("ReferidoOtorgadoPor")
+  referidosAsignados                 ReferidoArea[]                    @relation("ReferidoProfesionalAsignado")
   documentosSubidos                  Documento[]
   visibilidadesOtorgadas             DocumentoVisibilidadArea[]
   procesosJuridicosCreados           ProcesoJuridico[]
@@ -48,14 +48,20 @@ model Usuario {
   abandonosRegistrados               AbandonoProceso[]
   suspensionesProcesoRegistradas     SuspensionProceso[]
   carpetasProcesoCreadas             CarpetaDocumentoProceso[]
-  referidosDevueltos                 ReferidoArea[]             @relation("ReferidoDevueltoPor")
-  atencionesPsicologicasActualizadas AtencionPsicologica[]      @relation("AtencionPsicologicaActualizadaPor")
-  atencionesPsicologicasAsignadas    AtencionPsicologica[]      @relation("AtencionPsicologicaAsignada")
-  cambiosEstadoAtencionRegistrados   CambioEstadoAtencion[]     @relation("CambioEstadoAtencionRegistradoPor")
+  referidosDevueltos                 ReferidoArea[]                    @relation("ReferidoDevueltoPor")
+  atencionesPsicologicasActualizadas AtencionPsicologica[]             @relation("AtencionPsicologicaActualizadaPor")
+  atencionesPsicologicasAsignadas    AtencionPsicologica[]             @relation("AtencionPsicologicaAsignada")
+  cambiosEstadoAtencionRegistrados   CambioEstadoAtencion[]            @relation("CambioEstadoAtencionRegistradoPor")
   reasignacionesPsicologiaCedidas    ReasignacionAtencionPsicologica[] @relation("ReasignacionPsicologiaDe")
   reasignacionesPsicologiaTomadas    ReasignacionAtencionPsicologica[] @relation("ReasignacionPsicologiaA")
-  citasPsicologicasAtendidas         CitaPsicologica[]          @relation("CitaPsicologicaAtendidaPor")
+  citasPsicologicasAtendidas         CitaPsicologica[]                 @relation("CitaPsicologicaAtendidaPor")
   documentosPendientesSubidos        DocumentoPendiente[]
+  atencionesMedicasCreadas           AtencionMedica[]                  @relation("AtencionMedicaCreadaPor")
+  atencionesMedicasAsignadas         AtencionMedica[]                  @relation("AtencionMedicaMedica")
+  citasMedicasCreadas                CitaMedica[]
+  consultasMedicasRegistradas        ConsultaMedica[]
+  documentosMedicosSubidos           DocumentoMedico[]
+  documentosMedicosPendientes        DocumentoMedicoPendiente[]
   fichaPersonal                      Personal?
 }
 
@@ -187,6 +193,7 @@ model Expediente {
   documentos             Documento[]
   procesosJuridicos      ProcesoJuridico[]
   atencionesPsicologicas AtencionPsicologica[]
+  atencionesMedicas      AtencionMedica[]
 
   @@index([usuariaId])
   @@index([fecha])
@@ -220,6 +227,7 @@ model ReferidoArea {
   devueltoPor            Usuario?              @relation("ReferidoDevueltoPor", fields: [devueltoPorId], references: [id])
   procesosJuridicos      ProcesoJuridico[]
   atencionesPsicologicas AtencionPsicologica[]
+  atencionesMedicas      AtencionMedica[]
 
   @@unique([expedienteId, area])
   @@index([area])
@@ -245,6 +253,8 @@ model Nino {
   genero          GeneroPersona
 
   citasPsicologicas CitaPsicologica[]
+  citasMedicas      CitaMedica[]
+  consultasMedicas  ConsultaMedica[]
 
   @@index([expedienteId])
 }
@@ -716,4 +726,179 @@ model CitaPsicologica {
   @@index([atencionId, fechaHora])
   @@index([fechaHora])
   @@index([ninoId])
+}
+
+// ---- Medicina ----
+// Lo clínico nunca se borra (`onDelete: Restrict`): cancelar o dar de alta es un cambio de
+// estado. Los índices parciales y los CHECK de estas tablas viven en la migración
+// `medica_restricciones` porque Prisma no sabe declararlos.
+
+enum EstadoAtencionMedica {
+  ACTIVA
+  ALTA
+}
+
+enum MotivoAltaMedica {
+  ALTA_MEDICA
+  REFERIDA_OTRA_INSTITUCION
+  DEJO_DE_ASISTIR
+  OTRO
+}
+
+enum EstadoCitaMedica {
+  PROGRAMADA
+  ATENDIDA
+  NO_ASISTIO
+  CANCELADA
+}
+
+enum TipoDocumentoMedico {
+  RESULTADO_LABORATORIO
+  RECETA
+  ORDEN_MEDICA
+  CONSTANCIA
+  IMAGEN
+  OTRO
+}
+
+// Episodio de atención médica de un expediente. Se abre al agendar la primera consulta; la base
+// solo deja una ACTIVA por expediente ("AtencionMedica_activa_uq"). El código visible
+// "M{consecutivo}-{numero de expediente}" se deriva, no se guarda.
+model AtencionMedica {
+  id                String               @id @default(uuid())
+  expedienteId      String
+  expediente        Expediente           @relation(fields: [expedienteId], references: [id], onDelete: Restrict)
+  consecutivo       Int
+  estado            EstadoAtencionMedica @default(ACTIVA)
+  // Referencia de Trabajo Social que la originó.
+  referidoId        String?
+  referido          ReferidoArea?        @relation(fields: [referidoId], references: [id], onDelete: SetNull)
+  // Hoy hay una sola médica; la columna deja lista la asignación si llegaran a ser varias.
+  medicaId          String?
+  medica            Usuario?             @relation("AtencionMedicaMedica", fields: [medicaId], references: [id], onDelete: Restrict)
+  fechaInicio       DateTime             @db.Date
+  fechaAlta         DateTime?            @db.Date
+  motivoAlta        MotivoAltaMedica?
+  notaAlta          String?              @db.VarChar(500)
+  // Lo que Medicina comparte con Jurídico (fechas y constancias) y Psicología (fechas).
+  visibleJuridico   Boolean              @default(false)
+  visiblePsicologia Boolean              @default(false)
+  // Concurrencia optimista: cada escritura exige la versión leída y la incrementa.
+  version           Int                  @default(1)
+  creadoPorId       String
+  creadoPor         Usuario              @relation("AtencionMedicaCreadaPor", fields: [creadoPorId], references: [id], onDelete: Restrict)
+  createdAt         DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime             @updatedAt @db.Timestamptz(3)
+
+  citas     CitaMedica[]
+  consultas ConsultaMedica[]
+
+  @@unique([expedienteId, consecutivo])
+  @@index([estado])
+  @@index([referidoId])
+}
+
+// Cita de 30 minutos. Un horario solo admite una cita PROGRAMADA o ATENDIDA
+// ("CitaMedica_horario_uq"); EN_CURSO y SIN_REGISTRAR se derivan del reloj.
+model CitaMedica {
+  id                  String           @id @default(uuid())
+  atencionId          String
+  atencion            AtencionMedica   @relation(fields: [atencionId], references: [id], onDelete: Restrict)
+  // Hijo/a que se atiende; null = la usuaria. Debe ser del mismo expediente (se valida en el servicio).
+  ninoId              String?
+  nino                Nino?            @relation(fields: [ninoId], references: [id], onDelete: Restrict)
+  inicio              DateTime         @db.Timestamptz(3)
+  duracionMin         Int              @default(30)
+  estado              EstadoCitaMedica @default(PROGRAMADA)
+  reprogramadaDesdeId String?          @unique
+  reprogramadaDesde   CitaMedica?      @relation("ReprogramacionMedica", fields: [reprogramadaDesdeId], references: [id], onDelete: Restrict)
+  reprogramadaA       CitaMedica?      @relation("ReprogramacionMedica")
+  version             Int              @default(1)
+  creadoPorId         String
+  creadoPor           Usuario          @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
+  createdAt           DateTime         @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime         @updatedAt @db.Timestamptz(3)
+
+  consulta ConsultaMedica?
+
+  @@index([inicio])
+  @@index([atencionId, estado])
+  @@index([ninoId])
+}
+
+// Consulta registrada. Los rangos de los signos vitales los valida también un CHECK
+// ("ConsultaMedica_rangos_chk") con los mismos valores de `RANGOS_SIGNOS_VITALES` en shared.
+model ConsultaMedica {
+  id                 String         @id @default(uuid())
+  atencionId         String
+  atencion           AtencionMedica @relation(fields: [atencionId], references: [id], onDelete: Restrict)
+  citaId             String?        @unique
+  cita               CitaMedica?    @relation(fields: [citaId], references: [id], onDelete: Restrict)
+  ninoId             String?
+  nino               Nino?          @relation(fields: [ninoId], references: [id], onDelete: Restrict)
+  fechaHora          DateTime       @db.Timestamptz(3)
+  motivoConsulta     String?        @db.VarChar(2000)
+  presionSistolica   Int?           @db.SmallInt
+  presionDiastolica  Int?           @db.SmallInt
+  frecuenciaCardiaca Int?           @db.SmallInt
+  frecuenciaResp     Int?           @db.SmallInt
+  temperaturaC       Decimal?       @db.Decimal(4, 1)
+  saturacionO2       Int?           @db.SmallInt
+  glucosaMgDl        Int?           @db.SmallInt
+  pesoKg             Decimal?       @db.Decimal(5, 2)
+  tallaM             Decimal?       @db.Decimal(3, 2)
+  diagnostico        String         @db.VarChar(2000)
+  planTratamiento    String?        @db.VarChar(4000)
+  recetaLaboratorios String?        @db.VarChar(4000)
+  registradaPorId    String
+  registradaPor      Usuario        @relation(fields: [registradaPorId], references: [id], onDelete: Restrict)
+  createdAt          DateTime       @default(now()) @db.Timestamptz(3)
+
+  documentos DocumentoMedico[]
+
+  @@index([atencionId, fechaHora])
+  @@index([ninoId])
+}
+
+model DocumentoMedico {
+  id            String              @id @default(uuid())
+  consultaId    String
+  consulta      ConsultaMedica      @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  tipo          TipoDocumentoMedico
+  nombreVisible String              @db.VarChar(120)
+  // Solo para mostrar — nunca forma parte de la clave del objeto.
+  nombreArchivo String              @db.VarChar(255)
+  // "medica/{expedienteId}/{atencionId}/{uuid}"
+  claveObjeto   String              @unique @db.VarChar(255)
+  mimeType      String              @db.VarChar(100)
+  tamanioBytes  Int
+  subidoPorId   String
+  subidoPor     Usuario             @relation(fields: [subidoPorId], references: [id], onDelete: Restrict)
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+
+  @@index([consultaId])
+}
+
+// Documento subido mientras se llena una consulta que aún no se guarda. Al guardar, la misma
+// transacción lo convierte en `DocumentoMedico` y borra esta fila (la clave en R2 no cambia).
+// La limpieza diaria borra fila y objeto vencidos para no dejar archivos clínicos huérfanos.
+model DocumentoMedicoPendiente {
+  id            String              @id @default(uuid())
+  // Agrupa los documentos de un mismo formulario de consulta.
+  lote          String              @db.Uuid
+  tipo          TipoDocumentoMedico
+  nombreVisible String              @db.VarChar(120)
+  nombreArchivo String              @db.VarChar(255)
+  // "medica/{expedienteId}/{atencionId}/{uuid}" — ya definitiva al subir.
+  claveObjeto   String              @unique @db.VarChar(255)
+  mimeType      String              @db.VarChar(100)
+  tamanioBytes  Int
+  atencionId    String
+  subidoPorId   String
+  subidoPor     Usuario             @relation(fields: [subidoPorId], references: [id], onDelete: Restrict)
+  expiraEn      DateTime            @db.Timestamptz(3)
+  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+
+  @@index([lote, subidoPorId])
+  @@index([expiraEn])
 }

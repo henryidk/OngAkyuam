@@ -8,6 +8,8 @@ import type {
 import { AuditService } from '../../auth/services/audit.service';
 import { interpretarBusqueda } from '../../common/busqueda-usuarias';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
+import { VISIBILIDAD_MEDICA_READER } from '../../medica/interfaces/visibilidad-medica-reader.interface';
+import type { IVisibilidadMedicaReader } from '../../medica/interfaces/visibilidad-medica-reader.interface';
 import { eventoAuditoria } from '../compartido/auditoria';
 import { MENSAJE_SIN_ACCESO_USUARIA } from '../compartido/mensajes';
 import { estaCerrado } from '../dominio/etapa-proceso';
@@ -24,6 +26,8 @@ export class UsuariasPsicologiaService {
     @Inject(CONSULTAS_PROCESOS_REPOSITORY)
     private readonly consultasRepository: IConsultasProcesosRepository,
     private readonly auditService: AuditService,
+    @Inject(VISIBILIDAD_MEDICA_READER)
+    private readonly visibilidadMedica: IVisibilidadMedicaReader,
   ) {}
 
   async listar(
@@ -69,13 +73,14 @@ export class UsuariasPsicologiaService {
     if (!ficha) {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_USUARIA);
     }
-    const [procesos, procesosDeColegas] = await Promise.all([
+    const [procesos, procesosDeColegas, medicina] = await Promise.all([
       this.consultasRepository.listarDeUsuaria(
         usuariaId,
         contexto.usuarioId,
         new Date(),
       ),
       this.consultasRepository.listarDeColegas(usuariaId, contexto.usuarioId),
+      this.visibilidadMedica.paraPsicologia(usuariaId),
     ]);
 
     await this.auditService.registrar(
@@ -86,6 +91,7 @@ export class UsuariasPsicologiaService {
         detalles: {
           expedienteId: ficha.expediente.id,
           procesosDeColegas: procesosDeColegas.length,
+          atencionesMedicas: medicina.length,
         },
       }),
     );
@@ -98,6 +104,7 @@ export class UsuariasPsicologiaService {
       contadores: { enProceso: procesos.length - cerrados, cerrados },
       procesos,
       procesosDeColegas,
+      medicina,
     };
   }
 }

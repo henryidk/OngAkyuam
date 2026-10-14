@@ -12,9 +12,9 @@ import Button from '../../../components/ui/Button'
 import { useDialogoModal } from '../../../components/ui/useDialogoModal'
 import { ACCEPT_DOCUMENTOS, formatearTamanio } from '../../../lib/documentos/archivoDocumento'
 import { extraerMensajeError } from '../../../lib/errors'
-import { crearCarpeta } from '../api/juridico.api'
+import { useColaSubida, type ItemCola } from '../../../lib/documentos/useColaSubida'
+import { crearCarpeta, subirDocumento } from '../api/juridico.api'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../compartido/campos'
-import { useColaSubida, type ItemCola } from './useColaSubida'
 
 interface ModalSubidaProps {
   procesoId: string
@@ -121,7 +121,9 @@ export default function ModalSubida({
   archivosIniciales,
   onCerrar,
 }: ModalSubidaProps) {
-  const cola = useColaSubida(procesoId)
+  const cola = useColaSubida<string>((item, { destino: carpetaId, ...opciones }) =>
+    subirDocumento(procesoId, carpetaId, item.archivo, item.nombreVisible.trim(), opciones),
+  )
   const { agregar } = cola
   const [destino, setDestino] = useState(() => destinoPorDefecto(carpetas, carpetaInicialId))
   const [nombreOtra, setNombreOtra] = useState('')

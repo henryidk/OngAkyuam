@@ -4,6 +4,7 @@ import { ExcelJsExportador } from '../common/hoja-calculo/exceljs-exportador';
 import { EXPORTADOR_HOJA_CALCULO } from '../common/hoja-calculo/exportador-hoja-calculo.interface';
 import { AreasModule } from '../areas/areas.module';
 import { AuthModule } from '../auth/auth.module';
+import { MedicaModule } from '../medica/medica.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
 import { LimitePorUsuarioGuard } from '../juridico/compartido/limite-por-usuario.guard';
@@ -47,6 +48,8 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     AuthModule,
     AreasModule,
     StorageModule,
+    // Solo por la interfaz `IVisibilidadMedicaReader` que exporta.
+    MedicaModule,
     // Solo aplica donde un endpoint usa `LimitePorUsuarioGuard`; el tope de cada uno va en
     // su `@Throttle`.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),

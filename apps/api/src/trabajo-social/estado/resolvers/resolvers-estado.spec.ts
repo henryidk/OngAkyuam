@@ -1,4 +1,5 @@
 import type {
+  AtencionMedicaParaEstado,
   IEstadoAreasRepository,
   ProcesoJuridicoParaEstado,
 } from '../interfaces/estado-areas-repository.interface';
@@ -12,6 +13,7 @@ function repositorio(): jest.Mocked<IEstadoAreasRepository> {
   return {
     procesosJuridicos: jest.fn().mockResolvedValue([]),
     atencionPsicologica: jest.fn().mockResolvedValue(null),
+    atencionMedica: jest.fn().mockResolvedValue(null),
   };
 }
 
@@ -124,13 +126,78 @@ describe('PsicologiaEstadoResolver', () => {
 });
 
 describe('MedicaEstadoResolver', () => {
-  it('mientras no exista cierre médico, referida = activa', async () => {
-    await expect(
-      new MedicaEstadoResolver().resolver(referido),
-    ).resolves.toEqual({
+  const activa: AtencionMedicaParaEstado = {
+    estado: 'ACTIVA',
+    motivoAlta: null,
+    fechaAlta: null,
+    posteriorAReferencia: true,
+    proximaCita: null,
+    citaSinRegistrar: false,
+  };
+  const alta: AtencionMedicaParaEstado = {
+    ...activa,
+    estado: 'ALTA',
+    motivoAlta: 'REFERIDA_OTRA_INSTITUCION',
+    fechaAlta: '2026-10-09',
+  };
+
+  async function resolver(atencion: AtencionMedicaParaEstado | null) {
+    const repo = repositorio();
+    repo.atencionMedica.mockResolvedValue(atencion);
+    return new MedicaEstadoResolver(repo).resolver(referido);
+  }
+
+  it('referida sin atención: pendiente de primera consulta', async () => {
+    await expect(resolver(null)).resolves.toEqual({
       estado: 'ACTIVA',
-      detalle: 'Referida',
+      detalle: 'Pendiente de primera consulta',
       profesional: null,
+    });
+  });
+
+  it('activa con cita: muestra la próxima consulta', async () => {
+    const resultado = await resolver({
+      ...activa,
+      proximaCita: new Date('2026-10-16T16:00:00.000Z'),
+    });
+    expect(resultado.estado).toBe('ACTIVA');
+    expect(resultado.detalle).toMatch(/^Próxima consulta /);
+  });
+
+  it('activa sin cita', async () => {
+    await expect(resolver(activa)).resolves.toMatchObject({
+      estado: 'ACTIVA',
+      detalle: 'Sin consulta programada',
+    });
+  });
+
+  it('una cita sin registrar manda sobre la próxima', async () => {
+    await expect(
+      resolver({
+        ...activa,
+        citaSinRegistrar: true,
+        proximaCita: new Date('2026-10-16T16:00:00.000Z'),
+      }),
+    ).resolves.toMatchObject({
+      estado: 'ACTIVA',
+      detalle: 'Consulta sin registrar',
+    });
+  });
+
+  it('alta: cerrada con el motivo y la fecha', async () => {
+    await expect(resolver(alta)).resolves.toEqual({
+      estado: 'CERRADA',
+      detalle: 'Alta · Referida a otra institución · 09/10/2026',
+      profesional: null,
+    });
+  });
+
+  it('alta seguida de una nueva referencia: vuelve a estar pendiente', async () => {
+    await expect(
+      resolver({ ...alta, posteriorAReferencia: false }),
+    ).resolves.toMatchObject({
+      estado: 'ACTIVA',
+      detalle: 'Pendiente de primera consulta',
     });
   });
 });

@@ -40,3 +40,69 @@ jobs:
 
       - name: Test api (unit)
         run: pnpm --filter @akyuam/api test
+
+  # Migraciones y E2E contra Postgres 16 y Redis reales. Son contenedores desechables del job,
+  # solo en 127.0.0.1 y sin contraseña (trust): no hay credencial que guardar en ningún lado.
+  # Los secretos JWT los genera test/e2e/entorno-e2e.ts en cada corrida.
+  migraciones-y-e2e:
+    runs-on: ubuntu-latest
+    env:
+      TZ: UTC
+      DATABASE_URL: postgresql://postgres@127.0.0.1:5432/akyuam_e2e?schema=public
+      SHADOW_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/akyuam_shadow
+      E2E_DATABASE_URL: postgresql://postgres@127.0.0.1:5432/akyuam_e2e?schema=public
+      E2E_REDIS_URL: redis://127.0.0.1:6379
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: akyuam_e2e
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 127.0.0.1:6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm --filter @akyuam/shared build
+
+      - run: pnpm --filter @akyuam/api exec prisma generate
+
+      - name: Base sombra para comparar migraciones
+        run: createdb -h 127.0.0.1 -U postgres akyuam_shadow
+
+      - name: Aplicar migraciones a una base vacía
+        run: pnpm --filter @akyuam/api exec prisma migrate deploy
+
+      - name: El esquema coincide con las migraciones
+        run: >-
+          pnpm --filter @akyuam/api exec prisma migrate diff
+          --from-migrations prisma/migrations
+          --to-schema-datamodel prisma/schema.prisma
+          --shadow-database-url "$SHADOW_DATABASE_URL"
+          --exit-code
+
+      - name: Test api (e2e)
+        run: pnpm --filter @akyuam/api test:e2e --runInBand

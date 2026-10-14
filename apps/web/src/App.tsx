@@ -3,7 +3,6 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import { ToastProvider } from './components/ui/Toast'
 import AdminLayout from './pages/admin/AdminLayout'
 import Usuarios from './pages/admin/Usuarios'
-import AreaLayout from './pages/area-atencion/AreaLayout'
 import JuridicoLayout from './pages/juridico/JuridicoLayout'
 import BandejaJuridico from './features/juridico/bandeja/BandejaJuridico'
 import InicioJuridico from './features/juridico/inicio/InicioJuridico'
@@ -21,8 +20,18 @@ import PestanaDocumentosTsJuridico from './features/juridico/usuarias/PestanaDoc
 import PestanaReferenciasJuridico from './features/juridico/usuarias/PestanaReferencias'
 import ReportesJuridico from './features/juridico/reportes/ReportesJuridico'
 import Login from './pages/Login'
-import Medica from './pages/Medica'
-import MedicaExpediente from './pages/MedicaExpediente'
+import MedicaLayout from './pages/medica/MedicaLayout'
+import BandejaMedica from './features/medica/bandeja/BandejaMedica'
+import AgendaMedica from './features/medica/agenda/Agenda'
+import ListaPacientesMedica from './features/medica/pacientes/ListaPacientes'
+import FichaPacienteMedica from './features/medica/pacientes/FichaPacienteLayout'
+import PestanaResumenMedica from './features/medica/pacientes/PestanaResumen'
+import PestanaHistoriaMedica from './features/medica/pacientes/PestanaHistoria'
+import PestanaDocumentosMedica from './features/medica/pacientes/PestanaDocumentos'
+import PestanaDatosMedica from './features/medica/pacientes/PestanaDatos'
+import RegistrarConsultaMedica from './features/medica/consultas/RegistrarConsulta'
+import ReportesMedica from './features/medica/reportes/Reportes'
+import { RUTAS_MEDICA } from './features/medica/rutas'
 import Agenda from './features/psicologia/agenda/Agenda'
 import BandejaPsicologia from './features/psicologia/bandeja/BandejaPsicologia'
 import DetalleCita from './features/psicologia/citas/DetalleCita'
@@ -145,9 +154,21 @@ function App() {
           </Route>
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['MEDICA']} />}>
-          <Route path="/medica" element={<AreaLayout subtitulo="Médica" basePath="/medica" />}>
-            <Route index element={<Medica />} />
-            <Route path=":id" element={<MedicaExpediente />} />
+          <Route path="/medica" element={<MedicaLayout />}>
+            <Route index element={<Navigate to={RUTAS_MEDICA.atencion()} replace />} />
+            <Route path="atencion" element={<BandejaMedica />} />
+            <Route path="agenda" element={<AgendaMedica />} />
+            <Route path="pacientes" element={<ListaPacientesMedica />} />
+            <Route path="pacientes/:usuariaId" element={<FichaPacienteMedica />}>
+              <Route index element={<PestanaResumenMedica />} />
+              <Route path="historia" element={<PestanaHistoriaMedica />} />
+              <Route path="documentos" element={<PestanaDocumentosMedica />} />
+              <Route path="datos" element={<PestanaDatosMedica />} />
+            </Route>
+            <Route path="consultas/nueva" element={<RegistrarConsultaMedica />} />
+            <Route path="reportes" element={<ReportesMedica />} />
+            {/* Ruta vieja del detalle por expediente: lleva al área de atención. */}
+            <Route path=":id" element={<Navigate to={RUTAS_MEDICA.atencion()} replace />} />
           </Route>
         </Route>
         <Route element={<ProtectedRoute allowedRoles={['ADMINISTRACION']} />}>

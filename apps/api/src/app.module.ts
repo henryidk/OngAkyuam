@@ -11,6 +11,7 @@ import { JwtAuthGuard } from './auth/guards/jwt-auth.guard';
 import { MustChangePasswordGuard } from './auth/guards/must-change-password.guard';
 import { validateEnv } from './config/env.schema';
 import { JuridicoModule } from './juridico/juridico.module';
+import { MedicaModule } from './medica/medica.module';
 import { PersonalModule } from './personal/personal.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PsicologiaModule } from './psicologia/psicologia.module';
@@ -32,6 +33,7 @@ import { TrabajoSocialModule } from './trabajo-social/trabajo-social.module';
     PersonalModule,
     JuridicoModule,
     PsicologiaModule,
+    MedicaModule,
     AdministracionModule,
   ],
   controllers: [AppController],

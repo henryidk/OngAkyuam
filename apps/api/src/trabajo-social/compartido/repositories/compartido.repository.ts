@@ -1,7 +1,15 @@
 import { Injectable } from '@nestjs/common';
-import type { ProcesoPsicologiaCompartidoDto } from '@akyuam/shared';
+import type {
+  ProcesoPsicologiaCompartidoDto,
+  ResumenMedicoParaTs,
+} from '@akyuam/shared';
 import type { Rol } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { codigoAtencion } from '../../../medica/dominio/codigo-atencion';
+import {
+  SELECT_SIGNOS,
+  signosDeFila,
+} from '../../../medica/repositories/mapeo';
 import { codigoProceso } from '../../../psicologia/dominio/codigo-proceso';
 import type {
   ICompartidoRepository,
@@ -91,6 +99,57 @@ export class CompartidoRepository implements ICompartidoRepository {
           tipo: documento.tipo,
           subidoEn: documento.createdAt.toISOString(),
         })),
+      };
+    });
+  }
+
+  async atencionesMedicas(
+    expedienteId: string,
+  ): Promise<ResumenMedicoParaTs[]> {
+    const ahora = new Date();
+    // `select` columna por columna: diagnóstico, plan, receta, motivo de consulta y documentos
+    // nunca salen de la base de datos por este camino.
+    const atenciones = await this.prisma.atencionMedica.findMany({
+      where: { expedienteId },
+      orderBy: { consecutivo: 'asc' },
+      select: {
+        consecutivo: true,
+        estado: true,
+        expediente: { select: { numero: true } },
+        consultas: {
+          orderBy: { fechaHora: 'asc' },
+          select: { fechaHora: true, ninoId: true, ...SELECT_SIGNOS },
+        },
+        citas: {
+          where: { estado: 'PROGRAMADA', inicio: { gte: ahora } },
+          orderBy: { inicio: 'asc' },
+          take: 1,
+          select: { inicio: true },
+        },
+      },
+    });
+
+    return atenciones.map((atencion) => {
+      // Solo los de la usuaria: los de sus hijos/as no son parte de lo que se comparte.
+      const ultimaDeUsuaria = atencion.consultas
+        .filter((consulta) => consulta.ninoId === null)
+        .at(-1);
+      return {
+        codigo: codigoAtencion(
+          atencion.consecutivo,
+          atencion.expediente.numero,
+        ),
+        estado: atencion.estado,
+        fechasConsulta: atencion.consultas.map((consulta) =>
+          consulta.fechaHora.toISOString(),
+        ),
+        proximaConsulta: atencion.citas[0]?.inicio.toISOString() ?? null,
+        signosVitales: ultimaDeUsuaria
+          ? {
+              fecha: ultimaDeUsuaria.fechaHora.toISOString(),
+              valores: signosDeFila(ultimaDeUsuaria),
+            }
+          : null,
       };
     });
   }

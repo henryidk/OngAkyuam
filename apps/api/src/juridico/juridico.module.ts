@@ -4,6 +4,7 @@ import { AreasModule } from '../areas/areas.module';
 import { AuthModule } from '../auth/auth.module';
 import { ExcelJsExportador } from '../common/hoja-calculo/exceljs-exportador';
 import { EXPORTADOR_HOJA_CALCULO } from '../common/hoja-calculo/exportador-hoja-calculo.interface';
+import { MedicaModule } from '../medica/medica.module';
 import { PersonalModule } from '../personal/personal.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
@@ -33,6 +34,8 @@ import { REPORTE_PROCESOS_REPOSITORY } from './interfaces/reporte-procesos-repos
 import { REGISTRO_PROCESOS_REPOSITORY } from './interfaces/registro-procesos-repository.interface';
 import { TRANSICIONES_REPOSITORY } from './interfaces/transiciones-repository.interface';
 import { USUARIAS_JURIDICO_REPOSITORY } from './interfaces/usuarias-repository.interface';
+import { VistaMedicaJuridicoController } from './medicina/vista-medica-juridico.controller';
+import { VistaMedicaJuridicoService } from './medicina/vista-medica-juridico.service';
 import { ProcesosController } from './procesos/procesos.controller';
 import { ProcesosService } from './procesos/procesos.service';
 import { RegistroProcesosService } from './procesos/registro-procesos.service';
@@ -58,6 +61,8 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     AreasModule,
     StorageModule,
     PersonalModule,
+    // Solo por la interfaz `IVisibilidadMedicaReader` que exporta.
+    MedicaModule,
     // Solo aplica donde un endpoint usa `LimitePorUsuarioGuard`; el tope de cada uno va en
     // su `@Throttle`.
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
@@ -71,6 +76,7 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     DocumentosProcesoController,
     HistorialUsuariaController,
     ReportesJuridicoController,
+    VistaMedicaJuridicoController,
   ],
   providers: [
     AccesoJuridicoService,
@@ -86,6 +92,7 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     InicioJuridicoService,
     AvisosJuridicoListener,
     ReporteProcesosService,
+    VistaMedicaJuridicoService,
     { provide: EXPORTADOR_HOJA_CALCULO, useClass: ExcelJsExportador },
     {
       provide: REPORTE_PROCESOS_REPOSITORY,

@@ -4,14 +4,21 @@ import { createPortal } from 'react-dom'
 
 export type TonoToast = 'success' | 'error' | 'info'
 
+/** Enlace dentro del aviso — p. ej. "Ver en historia clínica" después de guardar. */
+export interface AccionToast {
+  etiqueta: string
+  onClick: () => void
+}
+
 interface ToastItem {
   id: number
   tono: TonoToast
   mensaje: string
+  accion?: AccionToast
 }
 
 interface ContextoToast {
-  mostrar: (mensaje: string, tono?: TonoToast) => void
+  mostrar: (mensaje: string, tono?: TonoToast, accion?: AccionToast) => void
 }
 
 const ToastContext = createContext<ContextoToast | null>(null)
@@ -41,9 +48,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const mostrar = useCallback(
-    (mensaje: string, tono: TonoToast = 'success') => {
+    (mensaje: string, tono: TonoToast = 'success', accion?: AccionToast) => {
       const id = siguienteId++
-      setToasts((actuales) => [...actuales, { id, tono, mensaje }])
+      setToasts((actuales) => [...actuales, { id, tono, mensaje, accion }])
       setTimeout(() => quitar(id), DURACION_MS)
     },
     [quitar],
@@ -72,7 +79,21 @@ function ToastVisual({ toast, onCerrar }: { toast: ToastItem; onCerrar: () => vo
       className={`flex w-80 items-start gap-2 rounded-lg border px-3 py-2.5 text-sm shadow-lg ${CLASES_TONO[toast.tono]}`}
     >
       <Icono size={18} className="mt-0.5 shrink-0" />
-      <p className="flex-1">{toast.mensaje}</p>
+      <p className="flex-1">
+        {toast.mensaje}
+        {toast.accion && (
+          <button
+            type="button"
+            onClick={() => {
+              toast.accion!.onClick()
+              onCerrar()
+            }}
+            className="ml-2 font-semibold underline underline-offset-2 hover:no-underline"
+          >
+            {toast.accion.etiqueta}
+          </button>
+        )}
+      </p>
       <button
         type="button"
         aria-label="Cerrar aviso"
@@ -85,7 +106,7 @@ function ToastVisual({ toast, onCerrar }: { toast: ToastItem; onCerrar: () => vo
   )
 }
 
-/** `mostrar(mensaje)` para éxito; `mostrar(mensaje, 'error' | 'info')` para los otros tonos. */
+/** `mostrar(mensaje)` para éxito; `mostrar(mensaje, 'error' | 'info')` para los otros tonos; el tercer argumento añade un enlace. */
 export function useToast() {
   const contexto = useContext(ToastContext)
   if (!contexto) {
