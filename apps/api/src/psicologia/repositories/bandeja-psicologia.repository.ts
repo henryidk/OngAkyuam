@@ -310,7 +310,7 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
             numero: true,
             usuariaId: true,
             atencionesPsicologicas: {
-              where: { psicologaAsignadaId: { not: null } },
+              where: { psicologaAsignadaId: { not: null }, ninoId: null },
               select: { id: true, estado: true, psicologaAsignadaId: true },
             },
           },

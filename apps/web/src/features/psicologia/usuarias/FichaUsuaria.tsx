@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, Outlet, useNavigate, useParams } from 'react-router-dom'
 import {
+  edadEnAniosGT,
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_TIPO_REGISTRO,
   hoyGT,
@@ -89,7 +90,14 @@ export default function FichaUsuaria() {
   })
 
   if (error) {
-    return <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="esta usuaria" onReintentar={() => void recargar()} />
+    return (
+      <ErrorVista
+        mensaje={error.mensaje}
+        sinPermiso={error.sinPermiso}
+        recurso="esta usuaria"
+        onReintentar={() => void recargar()}
+      />
+    )
   }
   if (!ficha) return <Esqueleto />
 
@@ -134,8 +142,8 @@ export default function FichaUsuaria() {
             </div>
             <p className="text-sm text-gray-500 tabular-nums">
               Expediente <strong className="font-semibold text-gray-800">{expediente.numero}</strong> ·{' '}
-              {usuaria.edad} años ({rangoEdadCorto(usuaria.edad)})
-              {usuaria.dpi && ` · DPI ${usuaria.dpi}`} · {ETIQUETAS_GRUPO_ETNICO[usuaria.grupoEtnico]}
+              {usuaria.edad} años ({rangoEdadCorto(usuaria.edad)}){usuaria.dpi && ` · DPI ${usuaria.dpi}`} ·{' '}
+              {ETIQUETAS_GRUPO_ETNICO[usuaria.grupoEtnico]}
               {usuaria.municipio && ` · ${usuaria.municipio}`}
             </p>
           </div>
@@ -164,10 +172,16 @@ export default function FichaUsuaria() {
           className="mt-4"
           items={[
             { to: RUTAS_PSICOLOGIA.usuaria(usuaria.id), etiqueta: 'Resumen', fin: true },
-            { to: RUTAS_PSICOLOGIA.usuariaProcesos(usuaria.id), etiqueta: `Procesos (${procesos.length + ficha.procesosDeColegas.length})` },
+            {
+              to: RUTAS_PSICOLOGIA.usuariaProcesos(usuaria.id),
+              etiqueta: `Procesos (${procesos.length + ficha.procesosDeColegas.length})`,
+            },
             { to: RUTAS_PSICOLOGIA.usuariaDatos(usuaria.id), etiqueta: 'Datos y caso' },
             { to: RUTAS_PSICOLOGIA.usuariaDocumentos(usuaria.id), etiqueta: 'Documentos de TS' },
-            { to: RUTAS_PSICOLOGIA.usuariaReferencias(usuaria.id), etiqueta: `Referencias (${referencias.length})` },
+            {
+              to: RUTAS_PSICOLOGIA.usuariaReferencias(usuaria.id),
+              etiqueta: `Referencias (${referencias.length})`,
+            },
           ]}
         />
       </header>
@@ -193,11 +207,18 @@ export default function FichaUsuaria() {
             )}
           </div>
           {pendiente.estado === 'SIN_TOMAR' ? (
-            <Button tamano="md" cargando={reclamandoId === pendiente.referidoId} onClick={() => tomar(pendiente)}>
+            <Button
+              tamano="md"
+              cargando={reclamandoId === pendiente.referidoId}
+              onClick={() => tomar(pendiente)}
+            >
               Tomar caso
             </Button>
           ) : (
-            <Link to={RUTAS_PSICOLOGIA.agenda(undefined, pendiente.referidoId)} className={CLASE_BOTON_PRIMARIO}>
+            <Link
+              to={RUTAS_PSICOLOGIA.agenda(undefined, pendiente.referidoId)}
+              className={CLASE_BOTON_PRIMARIO}
+            >
               Agendar primera cita
             </Link>
           )}
@@ -213,6 +234,17 @@ export default function FichaUsuaria() {
             usuariaId: usuaria.id,
             usuariaNombreCompleto: usuaria.nombreCompleto,
             expedienteNumero: expediente.numero,
+            personas: [
+              { ninoId: null, nombreCompleto: usuaria.nombreCompleto, edad: usuaria.edad },
+              ...(expedienteTs?.ninos ?? [])
+                .filter((n) => n.id)
+                .map((n) => ({
+                  ninoId: n.id!,
+                  nombreCompleto: `${n.nombres} ${n.apellidos}`,
+                  edad: edadEnAniosGT(n.fechaNacimiento),
+                  expedienteNumero: n.numero,
+                })),
+            ],
           }}
           fechaInicial={hoyGT()}
           onCerrar={() => setAbriendoProceso(false)}

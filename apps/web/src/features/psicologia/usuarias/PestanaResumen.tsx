@@ -11,7 +11,10 @@ import CodigoProceso from '../compartido/CodigoProceso'
 function FilaProcesoActivo({ proceso }: { proceso: ProcesoPsicologiaResumen }) {
   return (
     <li>
-      <Link to={RUTAS_PSICOLOGIA.proceso(proceso.id)} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-gray-50">
+      <Link
+        to={RUTAS_PSICOLOGIA.proceso(proceso.id)}
+        className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-gray-50"
+      >
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <CodigoProceso codigo={proceso.codigo} className="text-gray-700" />
@@ -19,7 +22,9 @@ function FilaProcesoActivo({ proceso }: { proceso: ProcesoPsicologiaResumen }) {
           </div>
           <p className="text-xs text-gray-500 tabular-nums">{textoSesiones(proceso)}</p>
         </div>
-        <p className={`text-xs tabular-nums ${proceso.proximaCita ? 'text-gray-600' : 'font-medium text-amber-800'}`}>
+        <p
+          className={`text-xs tabular-nums ${proceso.proximaCita ? 'text-gray-600' : 'font-medium text-amber-800'}`}
+        >
           {textoSiguiente(proceso)}
         </p>
       </Link>
@@ -38,13 +43,16 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
 
 export default function PestanaResumen() {
   const { ficha, expedienteTs, errorExpedienteTs } = useContextoFicha()
-  const activos = ficha.procesos.filter((proceso) => proceso.etapa !== 'CIERRE')
+  const activos = [...ficha.procesos, ...ficha.procesosDeColegas].filter(
+    (proceso) => proceso.etapa !== 'CIERRE',
+  )
   const pendiente = ficha.referencias.some((referencia) => referencia.estado !== 'ATENDIDA')
   const datosCaso = expedienteTs?.datosCaso ?? null
 
   let sinActivos = 'No tienes procesos en curso con esta usuaria.'
   if (pendiente) sinActivos = 'Aún no tiene proceso. Se abre al agendar la primera cita de la referencia.'
-  else if (ficha.puedeAbrirProceso) sinActivos = 'No tiene procesos en curso. Usa “Abrir nuevo proceso” si regresa.'
+  else if (ficha.puedeAbrirProceso)
+    sinActivos = 'No tiene procesos en curso. Usa “Abrir nuevo proceso” si regresa.'
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
@@ -52,7 +60,10 @@ export default function PestanaResumen() {
         <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
           <h3 className="text-sm font-semibold text-gray-900">Procesos activos</h3>
           {ficha.procesos.length + ficha.procesosDeColegas.length > 0 && (
-            <Link to={RUTAS_PSICOLOGIA.usuariaProcesos(ficha.usuaria.id)} className="text-xs font-medium text-brand-700 hover:underline">
+            <Link
+              to={RUTAS_PSICOLOGIA.usuariaProcesos(ficha.usuaria.id)}
+              className="text-xs font-medium text-brand-700 hover:underline"
+            >
               Ver historial completo
             </Link>
           )}
@@ -72,7 +83,10 @@ export default function PestanaResumen() {
         <section className="rounded-xl border border-gray-200 bg-white">
           <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
             <h3 className="text-sm font-semibold text-gray-900">Situación según Trabajo Social</h3>
-            <Link to={RUTAS_PSICOLOGIA.usuariaDatos(ficha.usuaria.id)} className="text-xs font-medium text-brand-700 hover:underline">
+            <Link
+              to={RUTAS_PSICOLOGIA.usuariaDatos(ficha.usuaria.id)}
+              className="text-xs font-medium text-brand-700 hover:underline"
+            >
               Ver caso
             </Link>
           </div>

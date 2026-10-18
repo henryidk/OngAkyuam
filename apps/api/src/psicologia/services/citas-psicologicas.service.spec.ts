@@ -36,7 +36,7 @@ describe('CitasPsicologicasService', () => {
 
   beforeEach(() => {
     acceso = {
-      exigirAccesoCita: jest.fn(),
+      exigirLecturaCita: jest.fn().mockResolvedValue({ propia: true }),
     } as unknown as jest.Mocked<AccesoPsicologiaService>;
     citasRepository = {
       buscarAccesoCita: jest.fn(),
@@ -52,7 +52,7 @@ describe('CitasPsicologicasService', () => {
 
   describe('obtenerDetalleCita', () => {
     it('propaga el 403 del guard sin llegar al repositorio', async () => {
-      acceso.exigirAccesoCita.mockRejectedValue(
+      acceso.exigirLecturaCita.mockRejectedValue(
         new ForbiddenException('No tiene acceso a esta cita'),
       );
 
@@ -88,7 +88,7 @@ describe('CitasPsicologicasService', () => {
         'psicologa-a',
       );
 
-      expect(resultado).toEqual(detalle);
+      expect(resultado).toEqual({ ...detalle, soloLectura: false });
     });
   });
 });

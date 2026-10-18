@@ -16,9 +16,9 @@ import type {
   RangoAgendaParams,
 } from '../interfaces/agenda-psicologia-repository.interface';
 import {
+  numeroPersona,
   nombreCompleto,
   personaAtendida,
-  personasDelExpediente,
   SELECT_PERSONA,
 } from './personas';
 
@@ -56,7 +56,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         tipo: true,
         estado: true,
         borrador: true,
-        nino: { select: { id: true, ...SELECT_PERSONA } },
+        nino: { select: { id: true, consecutivo: true, ...SELECT_PERSONA } },
         atencion: {
           select: {
             id: true,
@@ -83,7 +83,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         procesoId: atencion.id,
         procesoCodigo: codigoProceso(
           atencion.consecutivo,
-          atencion.expediente.numero,
+          numeroPersona(atencion.expediente.numero, cita.nino),
         ),
         usuariaId: usuaria.id,
         usuariaNombreCompleto: nombreCompleto(usuaria),
@@ -137,6 +137,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       select: {
         id: true,
         consecutivo: true,
+        nino: { select: { id: true, consecutivo: true, ...SELECT_PERSONA } },
         expediente: {
           select: {
             numero: true,
@@ -177,10 +178,13 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       );
       return {
         procesoId: proceso.id,
-        codigo: codigoProceso(proceso.consecutivo, expediente.numero),
+        codigo: codigoProceso(
+          proceso.consecutivo,
+          numeroPersona(expediente.numero, proceso.nino),
+        ),
         usuariaId: expediente.usuaria.id,
         usuariaNombreCompleto: nombreCompleto(expediente.usuaria),
-        personas: personasDelExpediente(expediente),
+        personas: [personaAtendida(expediente.usuaria, proceso.nino)],
         proximaCita: proxima
           ? { id: proxima.id, fechaHora: proxima.fechaHora.toISOString() }
           : null,

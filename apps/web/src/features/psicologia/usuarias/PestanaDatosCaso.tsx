@@ -1,6 +1,6 @@
 import { ETIQUETAS_GRUPO_ETNICO, ETIQUETAS_TIPO_REGISTRO, formatFechaGT } from '@akyuam/shared'
 import { Esqueleto } from '../../../components/ui/EstadosVista'
-import { textoAgresor, textoHijas, textoTipologia } from '../../juridico/usuarias/textoCaso'
+import { textoAgresor, textoTipologia } from '../../juridico/usuarias/textoCaso'
 import { rangoEdadCorto } from '../../trabajo-social/usuarias/filaUsuaria'
 import { useContextoFicha } from './contextoFicha'
 
@@ -17,7 +17,11 @@ export default function PestanaDatosCaso() {
   const { ficha, expedienteTs, errorExpedienteTs } = useContextoFicha()
 
   if (errorExpedienteTs) {
-    return <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{errorExpedienteTs}</p>
+    return (
+      <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        {errorExpedienteTs}
+      </p>
+    )
   }
   if (!expedienteTs) return <Esqueleto filas={2} />
 
@@ -30,8 +34,8 @@ export default function PestanaDatosCaso() {
       <section className="rounded-xl border border-gray-200 bg-white px-5 py-4">
         <h3 className="text-sm font-semibold text-gray-900">Datos de la usuaria</h3>
         <p className="mt-0.5 text-xs text-gray-500">
-          Registrados por Trabajo Social. Psicología los consulta pero no los edita: así hay un solo registro para
-          todas las áreas y el reporte.
+          Registrados por Trabajo Social. Psicología los consulta pero no los edita: así hay un solo registro
+          para todas las áreas y el reporte.
         </p>
         <dl className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-6 gap-y-4">
           <Campo etiqueta="Nombres y apellidos" valor={`${usuaria.nombres} ${usuaria.apellidos}`} />
@@ -53,8 +57,12 @@ export default function PestanaDatosCaso() {
           <h3 className="text-sm font-semibold text-gray-900">
             Caso de Trabajo Social · Expediente {expedienteTs.numero}
           </h3>
-          <span className="rounded-full bg-[#f7f3fc] px-2 py-0.5 text-[11px] font-medium text-[#7346a5]">Actual</span>
-          <span className="ml-auto text-xs text-gray-500">{ETIQUETAS_TIPO_REGISTRO[expedienteTs.tipoRegistro]}</span>
+          <span className="rounded-full bg-[#f7f3fc] px-2 py-0.5 text-[11px] font-medium text-[#7346a5]">
+            Actual
+          </span>
+          <span className="ml-auto text-xs text-gray-500">
+            {ETIQUETAS_TIPO_REGISTRO[expedienteTs.tipoRegistro]}
+          </span>
         </div>
         <dl className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(200px,1fr))] gap-x-6 gap-y-4">
           {datosCaso && (
@@ -62,11 +70,33 @@ export default function PestanaDatosCaso() {
               <Campo etiqueta="Tipología (Decreto 22-2008)" valor={textoTipologia(datosCaso)} />
               <Campo
                 etiqueta="Agresor"
-                valor={agresor && telefonoAgresor ? `${agresor} · ${telefonoAgresor}` : (agresor ?? telefonoAgresor)}
+                valor={
+                  agresor && telefonoAgresor
+                    ? `${agresor} · ${telefonoAgresor}`
+                    : (agresor ?? telefonoAgresor)
+                }
               />
             </>
           )}
-          <Campo etiqueta="Hijas e hijos" valor={textoHijas(expedienteTs.ninos)} />
+          <div className="col-span-full">
+            <h4 className="text-sm font-semibold text-gray-900">Hijas e hijos · vinculados a la madre</h4>
+            {expedienteTs.ninos.length === 0 ? (
+              <p className="text-sm text-gray-500">Sin hijos registrados</p>
+            ) : (
+              expedienteTs.ninos.map((nino, i) => (
+                <div key={`${nino.nombres}-${i}`} className="mt-2 rounded-lg border border-gray-200 p-3">
+                  <p className="font-medium text-gray-900">
+                    {nino.nombres} {nino.apellidos}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Expediente {nino.numero ?? `${expedienteTs.numero}.${String(i + 1).padStart(2, '0')}`} ·{' '}
+                    {nino.genero === 'M' ? 'Mujer' : 'Hombre'} · Nacimiento:{' '}
+                    {formatFechaGT(nino.fechaNacimiento)}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
           {datosCaso && (
             <div className="col-span-full">
               <Campo etiqueta="Observaciones" valor={datosCaso.observaciones} />
@@ -75,7 +105,8 @@ export default function PestanaDatosCaso() {
         </dl>
         {!datosCaso && (
           <p className="mt-3 text-sm text-gray-500">
-            Trabajo Social no compartió con Psicología la tipología, el agresor ni las observaciones de este caso.
+            Trabajo Social no compartió con Psicología la tipología, el agresor ni las observaciones de este
+            caso.
           </p>
         )}
       </section>

@@ -170,7 +170,7 @@ describe('UsuariasPsicologiaService', () => {
       expect(ficha.contadores).toEqual({ enProceso: 1, cerrados: 2 });
     });
 
-    it('añade aparte los procesos cerrados de colegas, sin mezclarlos con los propios ni con sus contadores', async () => {
+    it('separa las listas de propias y colegas pero cuenta todos sus procesos en la ficha', async () => {
       consultasRepository.listarDeColegas.mockResolvedValue([
         { ...proceso('CIERRE'), psicologa: 'Colega De Prueba' },
       ]);
@@ -183,7 +183,7 @@ describe('UsuariasPsicologiaService', () => {
       );
       expect(ficha.procesosDeColegas).toHaveLength(1);
       expect(ficha.procesos).toHaveLength(3);
-      expect(ficha.contadores).toEqual({ enProceso: 1, cerrados: 2 });
+      expect(ficha.contadores).toEqual({ enProceso: 1, cerrados: 3 });
     });
 
     it('incluye solo lo que Medicina compartió con Psicología: fechas de consulta', async () => {

@@ -1,0 +1,4 @@
+services:
+  api-dev:
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/akyuam_psicologia_testing_20261017?schema=public

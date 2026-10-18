@@ -96,12 +96,13 @@ export class UsuariasPsicologiaService {
       }),
     );
 
-    const cerrados = procesos.filter((proceso) =>
+    const todos = [...procesos, ...procesosDeColegas];
+    const cerrados = todos.filter((proceso) =>
       estaCerrado(proceso.etapa),
     ).length;
     return {
       ...ficha,
-      contadores: { enProceso: procesos.length - cerrados, cerrados },
+      contadores: { enProceso: todos.length - cerrados, cerrados },
       procesos,
       procesosDeColegas,
       medicina,

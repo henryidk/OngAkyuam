@@ -26,7 +26,14 @@ function TarjetaSesion({ sesion, abiertaAlEntrar }: { sesion: SesionProcesoDto; 
   const atendida = sesion.estado === 'ATENDIDA'
   const idNotas = `notas-${sesion.citaId}`
   const hayNotas = atendida
-    ? [sesion.temas, sesion.intervencion, sesion.recomendaciones, sesion.acuerdos, sesion.observaciones].some(Boolean)
+    ? [
+        sesion.enfoqueTerapeutico,
+        sesion.temas,
+        sesion.intervencion,
+        sesion.recomendaciones,
+        sesion.acuerdos,
+        sesion.observaciones,
+      ].some(Boolean)
     : Boolean(sesion.motivoNoAsistencia)
 
   return (
@@ -38,11 +45,14 @@ function TarjetaSesion({ sesion, abiertaAlEntrar }: { sesion: SesionProcesoDto; 
               {atendida ? `Sesión ${sesion.numero ?? ''}`.trim() : 'No asistió'}
             </span>
             {!atendida && (
-              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Inasistencia</span>
+              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                Inasistencia
+              </span>
             )}
           </div>
           <p className="mt-0.5 text-xs text-gray-500 tabular-nums">
-            {formatInstanteGT(sesion.fechaHora)} · {sesion.duracionMinutos} min
+            {formatInstanteGT(sesion.fechaHora)} · {sesion.duracionMinutos} min ·{' '}
+            {sesion.atendidoPor || 'Profesional sin registrar'} · {sesion.clinica || 'Clínica sin registrar'}
             {sesion.persona.ninoId !== null && <> · {sesion.persona.nombreCompleto}</>}
           </p>
         </div>
@@ -63,6 +73,7 @@ function TarjetaSesion({ sesion, abiertaAlEntrar }: { sesion: SesionProcesoDto; 
         <dl id={idNotas} className="space-y-3 border-t border-gray-100 px-4 py-3">
           {atendida ? (
             <>
+              <Nota titulo="Enfoque terapéutico" texto={sesion.enfoqueTerapeutico ?? null} />
               <Nota titulo="Temas abordados" texto={sesion.temas} />
               <Nota titulo="Intervención" texto={sesion.intervencion} />
               <Nota titulo="Recomendaciones" texto={sesion.recomendaciones} />
@@ -118,7 +129,11 @@ export default function PestanaSesiones() {
     <>
       <ul className="space-y-3">
         {sesiones.items.map((sesion) => (
-          <TarjetaSesion key={sesion.citaId} sesion={sesion} abiertaAlEntrar={sesion.citaId === sesionPedida} />
+          <TarjetaSesion
+            key={sesion.citaId}
+            sesion={sesion}
+            abiertaAlEntrar={sesion.citaId === sesionPedida}
+          />
         ))}
       </ul>
       <PieSesiones sesiones={sesiones} />

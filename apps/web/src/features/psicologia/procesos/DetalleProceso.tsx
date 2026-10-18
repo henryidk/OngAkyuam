@@ -252,6 +252,7 @@ export default function DetalleProceso() {
             <h2 className="text-[22px] font-semibold tracking-tight text-pretty text-gray-900">
               Proceso psicológico · {proceso.usuariaNombreCompleto}
             </h2>
+            {proceso.madreNombreCompleto && <p className="text-sm text-gray-600">Hija/o de {proceso.madreNombreCompleto}. Su proceso y cierre son independientes.</p>}
             <p className="text-sm text-gray-600">
               Expediente {proceso.expedienteNumero} · Inicio {fechaDeInstante(proceso.fechaInicio)} · {proceso.psicologa} ·{' '}
               <Link to={RUTAS_PSICOLOGIA.usuaria(proceso.usuariaId)} className="font-medium text-brand-700 hover:underline">
@@ -306,8 +307,7 @@ export default function DetalleProceso() {
         <div className={`${CLASE_BANNER} border-gray-200 bg-gray-50 text-gray-800`}>
           <p className="font-semibold text-gray-900">Proceso de {proceso.psicologa} · solo lectura</p>
           <p className="mt-1 text-xs text-gray-600">
-            Lo llevó otra psicóloga y ya está cerrado. Puedes leer sus sesiones, notas y documentos para dar
-            continuidad a la atención; no se puede modificar. Cada consulta queda registrada.
+            Este proceso está a cargo de otra psicóloga. Puedes consultar sus sesiones, notas y documentos; la responsable conserva la edición. Cada consulta queda registrada.
           </p>
         </div>
       )}

@@ -89,6 +89,8 @@ export class AreasRepository implements IAreasRepository {
           : null,
       },
       ninos: expediente.ninos.map((nino) => ({
+        id: nino.id,
+        numero: `${expediente.numero}.${String(nino.consecutivo).padStart(2, '0')}`,
         nombres: nino.nombres,
         apellidos: nino.apellidos,
         fechaNacimiento: fechaColumnaISO(nino.fechaNacimiento),

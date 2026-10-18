@@ -25,8 +25,16 @@ interface QueSigueProps {
 
 const OPCIONES: { tipo: EstadoQueSigue['tipo']; titulo: string; ayuda: string }[] = [
   { tipo: 'PROGRAMAR', titulo: 'Programar la próxima cita', ayuda: 'Queda en tu agenda al guardar.' },
-  { tipo: 'NINGUNA', titulo: 'Decidir después', ayuda: 'El proceso sigue abierto y aparece en "Sin próxima cita".' },
-  { tipo: 'CERRAR', titulo: 'Cerrar el proceso', ayuda: 'Al guardar se abre el cierre para que lo confirmes.' },
+  {
+    tipo: 'NINGUNA',
+    titulo: 'Decidir después',
+    ayuda: 'El proceso sigue abierto y aparece en "Sin próxima cita".',
+  },
+  {
+    tipo: 'CERRAR',
+    titulo: 'Cerrar el proceso',
+    ayuda: 'Al guardar se abre el cierre para que lo confirmes.',
+  },
 ]
 
 const ATAJOS = [
@@ -101,6 +109,8 @@ export default function QueSigue({ valor, onCambio, diaBase, conflicto }: QueSig
               Hora
               <input
                 type="time"
+                min="08:00"
+                max={`${String(Math.floor((17 * 60 - valor.duracion) / 60)).padStart(2, '0')}:${String((17 * 60 - valor.duracion) % 60).padStart(2, '0')}`}
                 value={valor.hora}
                 onChange={(evento) => onCambio({ ...valor, hora: evento.target.value })}
                 className={CLASE_CAMPO}
@@ -128,7 +138,10 @@ export default function QueSigue({ valor, onCambio, diaBase, conflicto }: QueSig
           </div>
 
           {conflicto && (
-            <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            <div
+              role="alert"
+              className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+            >
               <p className="font-medium">Ya tienes una cita a esa hora:</p>
               <ul className="mt-1 list-disc pl-4">
                 {conflicto.map((cita) => (
@@ -137,7 +150,9 @@ export default function QueSigue({ valor, onCambio, diaBase, conflicto }: QueSig
                   </li>
                 ))}
               </ul>
-              <p className="mt-1">Cambia la hora o guarda de nuevo si es intencional. Todavía no se guardó nada.</p>
+              <p className="mt-1">
+                Cambia la hora o guarda de nuevo si es intencional. Todavía no se guardó nada.
+              </p>
             </div>
           )}
         </div>

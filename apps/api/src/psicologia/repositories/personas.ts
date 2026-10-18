@@ -4,6 +4,15 @@ import {
   type PersonaAtendidaDto,
 } from '@akyuam/shared';
 
+export function numeroPersona(
+  numero: string,
+  nino: { consecutivo: number } | null,
+): string {
+  return nino
+    ? `${numero}.${String(nino.consecutivo).padStart(2, '0')}`
+    : numero;
+}
+
 export interface PersonaConNacimiento {
   nombres: string;
   apellidos: string;

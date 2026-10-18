@@ -244,6 +244,7 @@ model Agresor {
 }
 
 model Nino {
+  consecutivo     Int           @default(0)
   id              String        @id @default(uuid())
   expedienteId    String
   expediente      Expediente    @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
@@ -252,10 +253,12 @@ model Nino {
   fechaNacimiento DateTime      @db.Date
   genero          GeneroPersona
 
-  citasPsicologicas CitaPsicologica[]
-  citasMedicas      CitaMedica[]
-  consultasMedicas  ConsultaMedica[]
+  procesosPsicologicos AtencionPsicologica[]
+  citasPsicologicas    CitaPsicologica[]
+  citasMedicas         CitaMedica[]
+  consultasMedicas     ConsultaMedica[]
 
+  @@unique([expedienteId, consecutivo])
   @@index([expedienteId])
 }
 
@@ -587,6 +590,8 @@ enum EstadoAtencionPsicologica {
 // convierte en su dueña exclusiva: a partir de ahí ninguna otra psicóloga puede leer ni
 // escribir nada de este expediente (403 genérico, sin distinguir el motivo).
 model AtencionPsicologica {
+  ninoId               String?
+  nino                 Nino?                     @relation(fields: [ninoId], references: [id], onDelete: Restrict)
   id                   String                    @id @default(uuid())
   // Un expediente puede tener varios procesos (la usuaria regresa); la base solo deja uno sin
   // cerrar a la vez (índice parcial "AtencionPsicologica_activa_uq", fuera del alcance de Prisma).
@@ -710,6 +715,7 @@ model CitaPsicologica {
   observaciones       String?               @db.Text
   acuerdos            String?               @db.Text
   motivoNoAsistencia  String?               @db.Text
+  enfoqueTerapeutico  String?               @db.Text
   temas               String?               @db.Text
   intervencion        String?               @db.Text
   recomendaciones     String?               @db.Text

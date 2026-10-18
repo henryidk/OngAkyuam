@@ -33,6 +33,8 @@ export interface BuscarSolapamientoParams {
 }
 
 export interface RegistrarConsultaParams {
+  enfoqueTerapeutico?: string | null;
+  clinica?: string | null;
   citaId: string;
   psicologaId: string;
   /** `undefined` cuando se guarda como borrador — el estado de la cita no cambia (§5.4 del plan). */
@@ -68,6 +70,7 @@ export interface CitaParaAgregado {
   ninoId: string | null;
   /** "YYYY-MM-DD" de la persona atendida (la usuaria o el hijo/a). */
   fechaNacimiento: string;
+  genero?: string;
   /** Los hijos/as heredan el grupo étnico, el municipio y la tipología del expediente de la madre. */
   grupoEtnico: (typeof GRUPOS_ETNICOS)[number];
   municipio: (typeof MUNICIPIOS_ALTA_VERAPAZ)[number] | null;

@@ -24,12 +24,16 @@ import type {
 import {
   EXPEDIENTE_SIN_TOMAR,
   PROCESO_POR_REASIGNAR,
-  procesoCerradoDeColega,
   procesoLegible,
 } from './acceso-expediente';
 import { casoPorAgendar } from './bandeja-psicologia.repository';
 import { mapearDocumentoCita } from './citas-psicologicas.mapper';
-import { nombreCompleto, personaAtendida, SELECT_PERSONA } from './personas';
+import {
+  nombreCompleto,
+  numeroPersona,
+  personaAtendida,
+  SELECT_PERSONA,
+} from './personas';
 
 const LIMITE_EXTRA_CURSOR = 1;
 /** Tope de procesos de una misma usuaria con una misma psicóloga: en la práctica son uno o dos. */
@@ -75,18 +79,31 @@ function condicionBusqueda(
   palabras: string[],
 ): Prisma.AtencionPsicologicaWhereInput[] {
   return palabras.map((palabra) => ({
-    expediente: {
-      OR: [
-        { numero: { contains: palabra } },
-        { usuaria: { nombres: { contains: palabra, mode: 'insensitive' } } },
-        { usuaria: { apellidos: { contains: palabra, mode: 'insensitive' } } },
-      ],
-    },
+    OR: [
+      {
+        expediente: {
+          OR: [
+            { numero: { contains: palabra } },
+            {
+              usuaria: { nombres: { contains: palabra, mode: 'insensitive' } },
+            },
+            {
+              usuaria: {
+                apellidos: { contains: palabra, mode: 'insensitive' },
+              },
+            },
+          ],
+        },
+      },
+      { nino: { nombres: { contains: palabra, mode: 'insensitive' } } },
+      { nino: { apellidos: { contains: palabra, mode: 'insensitive' } } },
+    ],
   }));
 }
 
 // Lo que pinta una fila de la lista. Sin texto clínico: ni notas ni resumen de cierre.
 const SELECT_RESUMEN = {
+  nino: { select: { id: true, consecutivo: true, ...SELECT_PERSONA } },
   id: true,
   consecutivo: true,
   estado: true,
@@ -125,10 +142,16 @@ function mapearResumen(
 ): ProcesoPsicologiaResumen {
   return {
     id: fila.id,
-    codigo: codigoProceso(fila.consecutivo, fila.expediente.numero),
+    codigo: codigoProceso(
+      fila.consecutivo,
+      numeroPersona(fila.expediente.numero, fila.nino),
+    ),
     usuariaId: fila.expediente.usuaria.id,
-    usuariaNombreCompleto: nombreCompleto(fila.expediente.usuaria),
-    expedienteNumero: fila.expediente.numero,
+    usuariaNombreCompleto: nombreCompleto(fila.nino ?? fila.expediente.usuaria),
+    madreNombreCompleto: fila.nino
+      ? nombreCompleto(fila.expediente.usuaria)
+      : null,
+    expedienteNumero: numeroPersona(fila.expediente.numero, fila.nino),
     etapa: fila.estado,
     sesionesAtendidas: fila._count.citas,
     ultimaSesion: referenciaCita(fila.citas[0]),
@@ -152,7 +175,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
   ): Promise<PaginaConCursorRepo<ProcesoPsicologiaResumen>> {
     const filas = await this.prisma.atencionPsicologica.findMany({
       where: {
-        psicologaAsignadaId: params.psicologaId,
+        ...procesoLegible(params.psicologaId),
         AND: [
           ES_PROCESO,
           condicionFiltro(params.filtro),
@@ -208,8 +231,12 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
     const filas = await this.prisma.atencionPsicologica.findMany({
       where: {
         AND: [
+          ES_PROCESO,
           { expediente: { usuariaId } },
-          procesoCerradoDeColega(psicologaId),
+          {
+            psicologaAsignadaId: { not: psicologaId },
+            ...procesoLegible(psicologaId),
+          },
         ],
       },
       select: {
@@ -220,9 +247,12 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       take: LIMITE_PROCESOS_POR_USUARIA,
     });
     // Un proceso cerrado no tiene próxima cita: al cerrarlo se cancelan las que quedaban.
-    const sinProximas = new Map<string, CitaRefDto>();
+    const proximas = await this.proximasCitas(
+      filas.map((f) => f.id),
+      new Date(),
+    );
     return filas.map((fila) => ({
-      ...mapearResumen(fila, sinProximas),
+      ...mapearResumen(fila, proximas),
       psicologa: fila.psicologaAsignada?.nombreCompleto ?? '',
     }));
   }
@@ -236,7 +266,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
     const contar = (filtro: FiltroProcesosPsicologia) =>
       this.prisma.atencionPsicologica.count({
         where: {
-          psicologaAsignadaId: psicologaId,
+          ...procesoLegible(psicologaId),
           AND: [ES_PROCESO, condicionFiltro(filtro)],
         },
       });
@@ -392,6 +422,9 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         acuerdos: true,
         observaciones: true,
         motivoNoAsistencia: true,
+        enfoqueTerapeutico: true,
+        lugar: true,
+        atendidoPor: { select: { nombreCompleto: true } },
         nino: { select: { id: true, ...SELECT_PERSONA } },
         atencion: {
           select: {
@@ -431,6 +464,9 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
     return {
       items: pagina.map((cita) => ({
         citaId: cita.id,
+        atendidoPor: cita.atendidoPor.nombreCompleto,
+        clinica: cita.lugar,
+        enfoqueTerapeutico: cita.enfoqueTerapeutico,
         numero: numeros.get(cita.id) ?? null,
         fechaHora: cita.fechaHora.toISOString(),
         duracionMinutos: cita.duracionMinutos,

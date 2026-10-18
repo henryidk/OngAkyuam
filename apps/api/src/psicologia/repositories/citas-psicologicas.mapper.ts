@@ -53,6 +53,7 @@ export function mapearCita(cita: CitaConRelaciones): CitaResumen {
     observaciones: cita.observaciones,
     acuerdos: cita.acuerdos,
     motivoNoAsistencia: cita.motivoNoAsistencia,
+    enfoqueTerapeutico: cita.enfoqueTerapeutico,
     temas: cita.temas,
     intervencion: cita.intervencion,
     recomendaciones: cita.recomendaciones,

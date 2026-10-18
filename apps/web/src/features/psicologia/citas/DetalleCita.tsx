@@ -49,6 +49,9 @@ export default function DetalleCita() {
         <Badge>{ETIQUETAS_ESTADO_CITA_PSICOLOGICA[cita.estado]}</Badge>
       </div>
 
+      <p className="text-sm text-gray-600">
+        Profesional: {cita.atendidoPor} · {cita.lugar || 'Clínica sin registrar'}
+      </p>
       <dl className="grid gap-3 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-2">
         <div>
           <dt className="text-xs text-gray-500">Fecha y hora</dt>

@@ -25,7 +25,7 @@ export default function TarjetaProceso({ proceso, psicologa }: TarjetaProcesoPro
           <EtiquetaEtapa etapa={proceso.etapa} />
         </div>
         <p className="text-sm font-semibold text-gray-900">
-          Proceso psicológico{psicologa !== undefined && ` · ${psicologa || 'otra psicóloga'}`}
+          {proceso.usuariaNombreCompleto}{psicologa !== undefined && ` · ${psicologa || 'otra psicóloga'}`}
         </p>
         <p className="text-xs text-gray-500 tabular-nums">
           Iniciado {fechaDeInstante(proceso.fechaInicio)} · {textoSesiones(proceso)} · {textoSiguiente(proceso)}

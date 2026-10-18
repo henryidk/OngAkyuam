@@ -26,6 +26,8 @@ import {
   procesoLegible,
 } from './acceso-expediente';
 
+import { numeroPersona } from './personas';
+
 const INTENTOS_MAXIMOS = 3;
 
 // P2034: Postgres abortó la transacción serializable por un conflicto con otra simultánea.
@@ -53,6 +55,8 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
       select: {
         id: true,
         expedienteId: true,
+        ninoId: true,
+        nino: { select: { consecutivo: true } },
         consecutivo: true,
         estado: true,
         version: true,
@@ -65,7 +69,8 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
     return {
       id: proceso.id,
       expedienteId: proceso.expedienteId,
-      expedienteNumero: proceso.expediente.numero,
+      ninoId: proceso.ninoId,
+      expedienteNumero: numeroPersona(proceso.expediente.numero, proceso.nino),
       usuariaId: proceso.expediente.usuariaId,
       consecutivo: proceso.consecutivo,
       etapa: proceso.estado,
@@ -131,6 +136,17 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
   }
 
   async abrir(params: AbrirProcesoParams): Promise<ProcesoAbierto> {
+    if (params.ninoId) {
+      const origen = await this.prisma.atencionPsicologica.findFirst({
+        where: {
+          id: params.procesoId,
+          psicologaAsignadaId: params.psicologaId,
+        },
+        select: { expedienteId: true },
+      });
+      if (!origen) throw new ProcesoNoDisponibleError();
+      return this.abrirNuevo({ ...params, expedienteId: origen.expedienteId });
+    }
     for (let intento = 1; ; intento += 1) {
       try {
         return await this.abrirEnTransaccion(params);
@@ -165,7 +181,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
             usuariaId: params.usuariaId,
             ...expedienteConProcesoDe(params.psicologaId),
           },
-          select: { id: true },
+          select: { id: true, numero: true },
         });
         if (!expediente) {
           throw new ProcesoNoDisponibleError();
@@ -176,6 +192,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
         const sinCerrar = await tx.atencionPsicologica.findFirst({
           where: {
             estado: { not: 'CIERRE' },
+            ninoId: params.ninoId,
             expediente: { usuariaId: params.usuariaId },
           },
           select: { fechaInicio: true },
@@ -208,6 +225,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
         const proceso = await tx.atencionPsicologica.create({
           data: {
             expedienteId: expediente.id,
+            ninoId: params.ninoId,
             consecutivo: (ultimo._max.consecutivo ?? 0) + 1,
             estado: 'INICIO',
             psicologaAsignadaId: params.psicologaId,
@@ -238,6 +256,15 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
         });
 
         return {
+          expedienteNumero: numeroPersona(
+            expediente.numero,
+            params.ninoId
+              ? await tx.nino.findUniqueOrThrow({
+                  where: { id: params.ninoId },
+                  select: { consecutivo: true },
+                })
+              : null,
+          ),
           procesoId: proceso.id,
           consecutivo: proceso.consecutivo,
           citaId: cita.id,
@@ -279,6 +306,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
             id: { not: proceso.id },
             estado: { not: 'CIERRE' },
             fechaInicio: { not: null },
+            ninoId: null,
             expediente: { usuariaId: params.usuariaId },
           },
           select: { id: true },

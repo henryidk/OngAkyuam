@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { AreaAtencion, MatrizAccesos } from '@akyuam/shared'
 import { extraerMensajeError } from '../../../lib/errors'
 import { actualizarAccesoArea, obtenerMatrizAccesos } from '../api/trabajoSocial.api'
-import { cambioDeCelda, conCeldaCambiada, type ClaveFilaAcceso } from './matrizAccesos'
+import { cambioDeCelda, conCeldaCambiada, type ClaveFilaAcceso } from './estadoMatrizAccesos'
 
 /**
  * Matriz de accesos con guardado al momento: el switch cambia en pantalla antes de que responda

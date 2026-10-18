@@ -9,8 +9,9 @@ export default function PestanaProcesos() {
   return (
     <section className="space-y-3">
       <p className="text-sm text-gray-500">
-        Los procesos que llevas o llevaste con esta usuaria. Cada código se forma con el número del proceso y el
-        expediente, por ejemplo <span className="font-mono text-gray-700">P1-{ficha.expediente.numero}</span>.
+        Los procesos que llevas o llevaste con esta usuaria. Cada código se forma con el número del proceso y
+        el expediente, por ejemplo{' '}
+        <span className="font-mono text-gray-700">P1-{ficha.expediente.numero}</span>.
       </p>
       {ficha.procesos.length === 0 ? (
         <EmptyState
@@ -25,9 +26,10 @@ export default function PestanaProcesos() {
       {ficha.procesosDeColegas.length > 0 && (
         <div className="space-y-3 pt-3">
           <div>
-            <h3 className="text-sm font-semibold text-gray-900">Procesos anteriores con otra psicóloga</h3>
+            <h3 className="text-sm font-semibold text-gray-900">Procesos de otras psicólogas</h3>
             <p className="text-sm text-gray-500">
-              Ya están cerrados. Puedes leerlos completos, con sus notas y documentos, pero no modificarlos.
+              Puedes consultar sus datos, notas y documentos, estén activos o cerrados. La responsable
+              conserva la edición.
             </p>
           </div>
           {ficha.procesosDeColegas.map((proceso) => (

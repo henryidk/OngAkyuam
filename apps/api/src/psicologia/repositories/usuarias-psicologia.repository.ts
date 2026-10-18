@@ -90,7 +90,7 @@ function cteLista(params: ListarUsuariasPsicologiaParams) {
           max(ap."updatedAt") AS ultima
         FROM "AtencionPsicologica" ap
         JOIN "Expediente" e ON e.id = ap."expedienteId"
-        WHERE e."usuariaId" = u.id AND ap."psicologaAsignadaId" = ${params.psicologaId}
+        WHERE e."usuariaId" = u.id AND EXISTS (SELECT 1 FROM "ReferidoArea" ra WHERE ra."expedienteId" = e.id AND ra.area = 'PSICOLOGIA')
       ) p
       WHERE ${condicionBusqueda(params.busqueda)}
     )
@@ -184,7 +184,7 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
       return null;
     }
 
-    const [referencias, expedientePropio, sinCerrar] = await Promise.all([
+    const [referencias, expedientePropio] = await Promise.all([
       this.prisma.referidoArea.findMany({
         where: { area: 'PSICOLOGIA', expediente: { usuariaId, ...accesible } },
         select: {
@@ -214,11 +214,6 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
       this.prisma.expediente.findFirst({
         where: { usuariaId, ...expedienteConProcesoDe(psicologaId) },
         select: { id: true },
-      }),
-      // De cualquier psicóloga: la regla "un solo proceso abierto por usuaria" es de toda el
-      // área. Solo se usa para el sí/no del botón, nunca se devuelve de quién es.
-      this.prisma.atencionPsicologica.count({
-        where: { estado: { not: 'CIERRE' }, expediente: { usuariaId } },
       }),
     ]);
 
@@ -259,7 +254,6 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
       referencias: historial,
       puedeAbrirProceso:
         expedientePropio !== null &&
-        sinCerrar === 0 &&
         historial.every((referencia) => referencia.estado !== 'SIN_TOMAR'),
     };
   }

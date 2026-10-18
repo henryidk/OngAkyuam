@@ -1,3 +1,4 @@
+import { validarHorarioPsicologia } from '../compartido/validar-horario';
 import {
   BadRequestException,
   ConflictException,
@@ -162,6 +163,7 @@ export class AperturaProcesoService {
     expedienteId: string,
     psicologaId: string,
   ): Promise<Date> {
+    validarHorarioPsicologia(datos.fechaHora, datos.duracionMinutos);
     const fechaHora = parseLocalGT(datos.fechaHora);
     if (
       datos.ninoId !== null &&
@@ -212,7 +214,10 @@ export class AperturaProcesoService {
 
     const respuesta: ProcesoPsicologiaAbiertoDto = {
       procesoId: abierto.procesoId,
-      codigo: codigoProceso(abierto.consecutivo, expediente.expedienteNumero),
+      codigo: codigoProceso(
+        abierto.consecutivo,
+        abierto.expedienteNumero ?? expediente.expedienteNumero,
+      ),
       citaId: abierto.citaId,
     };
     if (claveRedis) {

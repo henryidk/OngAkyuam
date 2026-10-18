@@ -34,7 +34,10 @@ const versionSchema = z.number().int().min(1)
 export const motivoCierrePsicologiaSchema = z.enum(MOTIVOS_CIERRE_PSICOLOGIA)
 export type MotivoCierrePsicologia = z.infer<typeof motivoCierrePsicologiaSchema>
 
-export const duracionCitaPsicologicaSchema = z.literal(DURACIONES_CITA_PSICOLOGICA_MINUTOS, 'Duración inválida')
+export const duracionCitaPsicologicaSchema = z.literal(
+  DURACIONES_CITA_PSICOLOGICA_MINUTOS,
+  'Duración inválida',
+)
 
 /**
  * Cita del rediseño: la atención es solo presencial en la ONG, así que no se pide modalidad ni
@@ -42,7 +45,16 @@ export const duracionCitaPsicologicaSchema = z.literal(DURACIONES_CITA_PSICOLOGI
  * proceso y de las dos aperturas (`bandeja/:referidoId/atender`, `usuarias/:id/procesos`), donde
  * la cita es la de primera atención.
  */
-export const agendarCitaPsicologicaSchema = z.object({
+export function horarioPsicologiaValido(datos: { fechaHora: string; duracionMinutos: number }): boolean {
+  const hora = datos.fechaHora.slice(11)
+  if (!/^\d{2}:\d{2}$/.test(hora)) return false
+  const [h, m] = hora.split(':').map(Number)
+  const inicio = h * 60 + m
+  return m < 60 && inicio >= 8 * 60 && inicio + datos.duracionMinutos <= 17 * 60
+}
+export const MENSAJE_HORARIO_PSICOLOGIA =
+  'La cita debe comenzar a partir de las 08:00 y terminar antes o a las 17:00 (hora de Guatemala)'
+const datosCitaPsicologicaSchema = z.object({
   fechaHora: fechaHoraLocalSchema,
   duracionMinutos: duracionCitaPsicologicaSchema.default(DURACIONES_CITA_PSICOLOGICA_MINUTOS[0]),
   /** Hijo/a que se atiende dentro del proceso de la madre; null = la usuaria. */
@@ -50,13 +62,19 @@ export const agendarCitaPsicologicaSchema = z.object({
   /** true solo en el reintento tras que la psicóloga confirmó el aviso de traslape. */
   confirmarTraslape: z.boolean().default(false),
 })
+export const agendarCitaPsicologicaSchema = datosCitaPsicologicaSchema.refine(horarioPsicologiaValido, {
+  path: ['fechaHora'],
+  message: MENSAJE_HORARIO_PSICOLOGIA,
+})
 export type AgendarCitaPsicologicaInput = z.infer<typeof agendarCitaPsicologicaSchema>
 
 /**
  * `POST /psicologia/citas/:citaId/reprogramacion` — mueve una cita a otra fecha. La persona
  * atendida no se elige: es la misma de la cita que se mueve.
  */
-export const moverCitaPsicologicaSchema = agendarCitaPsicologicaSchema.omit({ ninoId: true })
+export const moverCitaPsicologicaSchema = datosCitaPsicologicaSchema
+  .omit({ ninoId: true })
+  .refine(horarioPsicologiaValido, { path: ['fechaHora'], message: MENSAJE_HORARIO_PSICOLOGIA })
 export type MoverCitaPsicologicaInput = z.infer<typeof moverCitaPsicologicaSchema>
 
 export const RESUMEN_CIERRE_PSICOLOGIA_MAX = 2000
@@ -94,18 +112,24 @@ export const TIPOS_SIGUIENTE_PASO_SESION = ['PROGRAMAR', 'NINGUNA', 'CERRAR'] as
  * backend nunca cierra un proceso de forma implícita.
  */
 /** En qué puede quedar una cita al registrarla. */
-export const RESULTADOS_SESION_PSICOLOGICA = ['ATENDIDA', 'NO_ASISTIO', 'CANCELADA'] as const satisfies readonly EstadoCitaPsicologica[]
+export const RESULTADOS_SESION_PSICOLOGICA = [
+  'ATENDIDA',
+  'NO_ASISTIO',
+  'CANCELADA',
+] as const satisfies readonly EstadoCitaPsicologica[]
 export type ResultadoSesionPsicologica = (typeof RESULTADOS_SESION_PSICOLOGICA)[number]
 
 export const siguientePasoSesionSchema = z.discriminatedUnion('tipo', [
-  z.object({
-    tipo: z.literal('PROGRAMAR'),
-    fechaHora: fechaHoraLocalSchema,
-    duracionMinutos: duracionCitaPsicologicaSchema,
-    // Opcional y sin `.default()`: un default aquí vuelve distinto el tipo de entrada del de
-    // salida y rompe el `useForm` del registro actual bajo `tsc -b`. Ausente = false.
-    confirmarTraslape: z.boolean().optional(),
-  }),
+  z
+    .object({
+      tipo: z.literal('PROGRAMAR'),
+      fechaHora: fechaHoraLocalSchema,
+      duracionMinutos: duracionCitaPsicologicaSchema,
+      // Opcional y sin `.default()`: un default aquí vuelve distinto el tipo de entrada del de
+      // salida y rompe el `useForm` del registro actual bajo `tsc -b`. Ausente = false.
+      confirmarTraslape: z.boolean().optional(),
+    })
+    .refine(horarioPsicologiaValido, { path: ['fechaHora'], message: MENSAJE_HORARIO_PSICOLOGIA }),
   z.object({ tipo: z.literal('NINGUNA') }),
   z.object({ tipo: z.literal('CERRAR') }),
 ])
@@ -119,6 +143,8 @@ export type SiguientePasoSesion = z.infer<typeof siguientePasoSesionSchema>
 export const registroConsultaSchema = z
   .object({
     estado: estadoCitaPsicologicaSchema,
+    enfoqueTerapeutico: z.string().trim().max(2000).default(''),
+    clinica: z.enum(['', 'Clínica 1', 'Clínica 2']).default(''),
     temas: z.string(),
     intervencion: z.string(),
     recomendaciones: z.string(),
@@ -129,15 +155,17 @@ export const registroConsultaSchema = z
     /** "¿Qué sigue?" — ausente equivale a `NINGUNA` (los formularios anteriores al rediseño no lo envían). */
     siguiente: siguientePasoSesionSchema.optional(),
   })
+  .refine((d) => d.borrador || d.estado !== 'ATENDIDA' || d.clinica !== '', {
+    path: ['clinica'],
+    message: 'Selecciona la clínica donde atendiste la sesión',
+  })
   // Un registro terminado dice en qué quedó la cita; "programada" o "reprogramada" no son resultados.
   .refine(
-    (datos) =>
-      datos.borrador || (RESULTADOS_SESION_PSICOLOGICA as readonly string[]).includes(datos.estado),
+    (datos) => datos.borrador || (RESULTADOS_SESION_PSICOLOGICA as readonly string[]).includes(datos.estado),
     { message: 'Elija el resultado de la sesión', path: ['estado'] },
   )
   .refine(
-    (datos) =>
-      datos.borrador || datos.estado === 'ATENDIDA' || datos.motivoNoAsistencia.trim().length > 0,
+    (datos) => datos.borrador || datos.estado === 'ATENDIDA' || datos.motivoNoAsistencia.trim().length > 0,
     {
       message: 'El motivo es requerido cuando la cita no fue atendida',
       path: ['motivoNoAsistencia'],
@@ -222,6 +250,7 @@ export interface CitaResumen {
   temas: string | null
   intervencion: string | null
   recomendaciones: string | null
+  enfoqueTerapeutico?: string | null
   borrador: boolean
   reprogramadaDesdeId: string | null
   atendidoPor: string
@@ -246,6 +275,7 @@ export interface PaginaConCursor<T> {
 
 /** `GET /psicologia/citas/:id` — permalink de una cita puntual, cada fila del historial enlaza aquí (§5.3 del plan). */
 export interface CitaPsicologicaDetalle extends CitaResumen {
+  soloLectura?: boolean
   expedienteId: string
   numero: string
   usuariaNombreCompleto: string
@@ -271,6 +301,8 @@ export interface ConsultaRegistradaDto {
  * persona con dos tipologías suma en ambas); los dos últimos cuentan **citas**.
  */
 export interface DesglosesIndicadores {
+  rangoEdadMujeres?: ConteoReporte[]
+  rangoEdadHombres?: ConteoReporte[]
   rangoEdad: ConteoReporte[]
   grupoEtnico: ConteoReporte[]
   tipologia: ConteoReporte[]
@@ -310,6 +342,7 @@ export interface IndicadoresPsicologia {
 
 /** A quién se atiende en una cita o se piensa atender en una referencia: la usuaria o uno de sus hijos/as. */
 export interface PersonaAtendidaDto {
+  expedienteNumero?: string
   /** null = la usuaria. */
   ninoId: string | null
   nombreCompleto: string
@@ -458,6 +491,7 @@ export interface CitaProgramadaDto {
 
 /** Fila de `GET /psicologia/procesos`. */
 export interface ProcesoPsicologiaResumen {
+  madreNombreCompleto?: string | null
   id: string
   codigo: string
   usuariaId: string
@@ -483,7 +517,12 @@ export interface ResumenProcesosPsicologia {
   citasSinRegistrar: number
 }
 
-export const ACCIONES_PROCESO_PSICOLOGIA = ['PROGRAMAR_CITA', 'REGISTRAR_SESION', 'CERRAR', 'EDITAR_VISIBILIDAD'] as const
+export const ACCIONES_PROCESO_PSICOLOGIA = [
+  'PROGRAMAR_CITA',
+  'REGISTRAR_SESION',
+  'CERRAR',
+  'EDITAR_VISIBILIDAD',
+] as const
 export type AccionProcesoPsicologia = (typeof ACCIONES_PROCESO_PSICOLOGIA)[number]
 
 /** Proceso ya cerrado que llevó otra psicóloga con una usuaria que quien consulta también atiende. */
@@ -534,6 +573,9 @@ export interface ProcesoPsicologiaDetalle extends ProcesoPsicologiaResumen {
  * La lee su dueña y, con el proceso ya cerrado, la colega que retoma a la misma usuaria.
  */
 export interface SesionProcesoDto {
+  atendidoPor?: string
+  clinica?: string | null
+  enfoqueTerapeutico?: string | null
   citaId: string
   /** Número de sesión dentro del proceso; null en una inasistencia. */
   numero: number | null

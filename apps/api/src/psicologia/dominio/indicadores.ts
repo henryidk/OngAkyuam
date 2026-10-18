@@ -1,11 +1,9 @@
 import {
-  calcularRangoEdad,
   edadEnFecha,
   ESTADOS_CITA_PSICOLOGICA,
   ETIQUETAS_ESTADO_CITA_PSICOLOGICA,
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
-  ETIQUETAS_RANGO_EDAD,
   ETIQUETAS_TIPO_CITA_PSICOLOGICA,
   ETIQUETAS_TIPOLOGIA_DELITO,
   fechaCalendarioGT,
@@ -16,7 +14,6 @@ import {
   TIPOS_CITA_PSICOLOGICA,
   type ConteoReporte,
   type PeriodoIndicadores,
-  type RangoEdad,
 } from '@akyuam/shared';
 import type { CitaParaAgregado } from '../interfaces/citas-psicologicas-repository.interface';
 
@@ -24,7 +21,24 @@ import type { CitaParaAgregado } from '../interfaces/citas-psicologicas-reposito
 export const MUNICIPIO_FUERA = 'FUERA_DE_ALTA_VERAPAZ';
 const ETIQUETA_MUNICIPIO_FUERA = 'Fuera de Alta Verapaz';
 
-const RANGOS_EDAD = Object.keys(ETIQUETAS_RANGO_EDAD) as RangoEdad[];
+export const EDADES_PSICOLOGIA = {
+  '0_15': '0–15',
+  '16_30': '16–30',
+  '31_45': '31–45',
+  '46_MAS': '46 y más',
+};
+export function rangoPsicologia(edad: number): keyof typeof EDADES_PSICOLOGIA {
+  return edad <= 15
+    ? '0_15'
+    : edad <= 30
+      ? '16_30'
+      : edad <= 45
+        ? '31_45'
+        : '46_MAS';
+}
+const RANGOS_EDAD = Object.keys(
+  EDADES_PSICOLOGIA,
+) as (keyof typeof EDADES_PSICOLOGIA)[];
 
 type Tipologia = CitaParaAgregado['tipologias'][number];
 
@@ -36,7 +50,8 @@ export interface PersonaAtendida {
   esHijo: boolean;
   /** Años cumplidos el día de su primera sesión atendida del periodo. */
   edad: number;
-  rangoEdad: RangoEdad;
+  rangoEdad: keyof typeof EDADES_PSICOLOGIA;
+  genero: string;
   grupoEtnico: CitaParaAgregado['grupoEtnico'];
   municipio:
     NonNullable<CitaParaAgregado['municipio']> | typeof MUNICIPIO_FUERA;
@@ -77,7 +92,8 @@ export function personasAtendidas(
       persona = {
         esHijo: cita.ninoId !== null,
         edad,
-        rangoEdad: calcularRangoEdad(edad),
+        rangoEdad: rangoPsicologia(edad),
+        genero: cita.genero ?? 'MUJER',
         grupoEtnico: cita.grupoEtnico,
         municipio: cita.municipio ?? MUNICIPIO_FUERA,
         tipologias: [],
@@ -131,8 +147,18 @@ export function resumirPeriodo(citas: CitaParaAgregado[]): PeriodoIndicadores {
     desgloses: {
       rangoEdad: desglose(
         RANGOS_EDAD,
-        ETIQUETAS_RANGO_EDAD,
+        EDADES_PSICOLOGIA,
         personas.map((p) => p.rangoEdad),
+      ),
+      rangoEdadMujeres: desglose(
+        RANGOS_EDAD,
+        EDADES_PSICOLOGIA,
+        personas.filter((p) => p.genero === 'MUJER').map((p) => p.rangoEdad),
+      ),
+      rangoEdadHombres: desglose(
+        RANGOS_EDAD,
+        EDADES_PSICOLOGIA,
+        personas.filter((p) => p.genero === 'HOMBRE').map((p) => p.rangoEdad),
       ),
       grupoEtnico: desglose(
         GRUPOS_ETNICOS,

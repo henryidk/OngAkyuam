@@ -1,3 +1,4 @@
+import { validarHorarioPsicologia } from '../compartido/validar-horario';
 import {
   BadRequestException,
   ConflictException,
@@ -173,6 +174,11 @@ export class AgendaPsicologiaService {
       throw new BadRequestException(MENSAJE_PERSONA_AJENA);
     }
 
+    validarHorarioPsicologia(datos.fechaHora, datos.duracionMinutos);
+    if (datos.ninoId !== null && datos.ninoId !== (proceso.ninoId ?? null))
+      throw new BadRequestException(
+        'Abre un proceso independiente para atender a este hijo o hija',
+      );
     const fechaHora = parseLocalGT(datos.fechaHora);
     await this.avisarTraslape(datos, fechaHora, contexto.usuarioId);
 
@@ -181,7 +187,7 @@ export class AgendaPsicologiaService {
       psicologaId: contexto.usuarioId,
       fechaHora,
       duracionMinutos: datos.duracionMinutos,
-      ninoId: datos.ninoId,
+      ninoId: proceso.ninoId ?? null,
     });
     if (citaId === null) {
       throw new ConflictException(MENSAJE_PROCESO_CERRADO);
@@ -207,6 +213,7 @@ export class AgendaPsicologiaService {
   ): Promise<CitaProgramadaDto> {
     const cita = await this.acceso.exigirAccesoCita(citaId, contexto.usuarioId);
 
+    validarHorarioPsicologia(datos.fechaHora, datos.duracionMinutos);
     const fechaHora = parseLocalGT(datos.fechaHora);
     await this.avisarTraslape(datos, fechaHora, contexto.usuarioId, citaId);
 

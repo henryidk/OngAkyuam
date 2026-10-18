@@ -1,6 +1,6 @@
 import { ETIQUETAS_AREA_ATENCION, type AreaAtencion, type ColumnaMatrizAccesos, type MatrizAccesos as Matriz } from '@akyuam/shared'
 import Switch from '../../../components/ui/Switch'
-import type { ClaveFilaAcceso } from './matrizAccesos'
+import type { ClaveFilaAcceso } from './estadoMatrizAccesos'
 
 interface MatrizAccesosProps {
   matriz: Matriz

@@ -12,6 +12,7 @@ import type {
   ListarCitasEnRangoParams,
   RegistrarConsultaParams,
 } from '../interfaces/citas-psicologicas-repository.interface';
+import { numeroPersona } from './personas';
 import { codigoProceso } from '../dominio/codigo-proceso';
 import { etapaTrasSesionAtendida } from '../dominio/etapa-proceso';
 import { procesoLegible } from './acceso-expediente';
@@ -138,6 +139,9 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         where: { id: params.citaId, estado: { not: 'REPROGRAMADA' } },
         data: {
           estado: params.estado,
+          enfoqueTerapeutico: params.enfoqueTerapeutico,
+          lugar: params.clinica,
+          atendidoPorId: params.psicologaId,
           temas: params.temas,
           intervencion: params.intervencion,
           recomendaciones: params.recomendaciones,
@@ -204,7 +208,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     const citas = await this.prisma.citaPsicologica.findMany({
       where: {
         fechaHora: { gte: params.desde, lte: params.hasta },
-        atencion: { psicologaAsignadaId: params.psicologaId },
+        atencion: procesoLegible(params.psicologaId),
       },
       orderBy: [{ fechaHora: 'asc' }, { id: 'asc' }],
       select: {
@@ -212,7 +216,9 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         estado: true,
         tipo: true,
         ninoId: true,
-        nino: { select: { fechaNacimiento: true } },
+        nino: {
+          select: { fechaNacimiento: true, genero: true, consecutivo: true },
+        },
         atencion: {
           select: {
             consecutivo: true,
@@ -249,6 +255,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         usuariaId: expediente.usuariaId,
         ninoId: cita.ninoId,
         fechaNacimiento: fechaColumnaISO(persona.fechaNacimiento),
+        genero: cita.nino?.genero ?? 'MUJER',
         grupoEtnico: expediente.usuaria.grupoEtnico,
         municipio: expediente.usuaria.municipio,
         // La tipología es parte de los "datos del caso": si Trabajo Social no los compartió
@@ -258,7 +265,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
           : [],
         procesoCodigo: codigoProceso(
           cita.atencion.consecutivo,
-          expediente.numero,
+          numeroPersona(expediente.numero, cita.nino),
         ),
       };
     });
@@ -269,7 +276,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       where: { id: citaId },
       include: {
         ...INCLUDE_CITA,
-        nino: { select: { nombres: true, apellidos: true } },
+        nino: { select: { nombres: true, apellidos: true, consecutivo: true } },
         atencion: {
           select: {
             expedienteId: true,
@@ -290,11 +297,11 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     return {
       ...mapearCita(cita),
       expedienteId: cita.atencion.expedienteId,
-      numero: cita.atencion.expediente.numero,
+      numero: numeroPersona(cita.atencion.expediente.numero, cita.nino),
       procesoId: cita.atencionId,
       procesoCodigo: codigoProceso(
         cita.atencion.consecutivo,
-        cita.atencion.expediente.numero,
+        numeroPersona(cita.atencion.expediente.numero, cita.nino),
       ),
       procesoEtapa: cita.atencion.estado,
       ninoNombreCompleto: cita.nino

@@ -1,6 +1,8 @@
 import axios from 'axios'
 import { useRef, useState } from 'react'
 import {
+  horarioPsicologiaValido,
+  MENSAJE_HORARIO_PSICOLOGIA,
   CODIGO_TRASLAPE_CITA,
   DURACIONES_CITA_PSICOLOGICA_MINUTOS,
   agendarCitaPsicologicaSchema,
@@ -16,7 +18,12 @@ import {
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import { extraerMensajeError } from '../../../lib/errors'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../../juridico/compartido/campos'
-import { abrirProcesoDesdeFicha, atenderReferencia, moverCita, programarCitaEnProceso } from '../api/psicologia.api'
+import {
+  abrirProcesoDesdeFicha,
+  atenderReferencia,
+  moverCita,
+  programarCitaEnProceso,
+} from '../api/psicologia.api'
 import { etiquetaPersona } from '../compartido/personas'
 
 /** Para qué se abre el modal: cada caso guarda contra un endpoint distinto. */
@@ -24,7 +31,13 @@ export type DestinoCita =
   /** Primera cita de un caso tomado: al guardarla se abre el proceso. */
   | { tipo: 'PRIMERA'; caso: CasoPorAgendarDto }
   /** Usuaria que regresa sin referencia nueva: se abre otro proceso sobre el mismo expediente. */
-  | { tipo: 'NUEVO'; usuariaId: string; usuariaNombreCompleto: string; expedienteNumero: string }
+  | {
+      tipo: 'NUEVO'
+      usuariaId: string
+      usuariaNombreCompleto: string
+      expedienteNumero: string
+      personas?: PersonaAtendidaDto[]
+    }
   /** Cita de seguimiento. Sin `procesoId` la psicóloga elige el proceso en el propio modal. */
   | {
       tipo: 'PROCESO'
@@ -54,12 +67,15 @@ function duracionInicial(destino: DestinoCita): number {
   const [porDefecto] = DURACIONES_CITA_PSICOLOGICA_MINUTOS
   if (destino.tipo !== 'MOVER') return porDefecto
   // Una cita anterior al rediseño puede tener una duración que ya no se ofrece.
-  return DURACIONES_CITA_PSICOLOGICA_MINUTOS.find((minutos) => minutos === destino.cita.duracionMinutos) ?? porDefecto
+  return (
+    DURACIONES_CITA_PSICOLOGICA_MINUTOS.find((minutos) => minutos === destino.cita.duracionMinutos) ??
+    porDefecto
+  )
 }
 
 /**
  * Programar o mover una cita. Se pide solo lo mínimo: a quién se atiende, cuándo y cuánto dura.
- * El horario no se valida: si la psicóloga agenda fuera de lo habitual, se asume que atiende.
+ * El horario se valida de 08:00 a 17:00, incluida la duración.
  */
 export default function ModalProgramarCita({
   destino,
@@ -81,9 +97,11 @@ export default function ModalProgramarCita({
   const idempotencia = useRef<{ firma: string; clave: string } | null>(null)
 
   const eligeProceso = destino.tipo === 'PROCESO' && destino.procesoId === null
-  const proceso = destino.tipo === 'PROCESO' ? destino.procesos.find((uno) => uno.procesoId === procesoId) : undefined
+  const proceso =
+    destino.tipo === 'PROCESO' ? destino.procesos.find((uno) => uno.procesoId === procesoId) : undefined
   let personas: PersonaAtendidaDto[] = []
-  if (destino.tipo === 'PRIMERA') personas = destino.caso.personas
+  if (destino.tipo === 'NUEVO') personas = destino.personas ?? []
+  else if (destino.tipo === 'PRIMERA') personas = destino.caso.personas
   else if (proceso) personas = proceso.personas
 
   let titulo = 'Programar cita'
@@ -103,7 +121,8 @@ export default function ModalProgramarCita({
   const sinCita = destino.tipo === 'PROCESO' && destino.sinCita === true
   if (sinCita) {
     titulo = 'Registrar sesión sin cita'
-    if (proceso) descripcion = `${proceso.usuariaNombreCompleto} · ${proceso.codigo} · indica cuándo fue la sesión`
+    if (proceso)
+      descripcion = `${proceso.usuariaNombreCompleto} · ${proceso.codigo} · indica cuándo fue la sesión`
   }
 
   // El aviso de traslape era sobre la hora anterior: al tocar un dato deja de valer.
@@ -151,7 +170,7 @@ export default function ModalProgramarCita({
     const validacion = agendarCitaPsicologicaSchema.safeParse({
       fechaHora: `${fecha}T${hora}`,
       duracionMinutos: duracion,
-      ninoId,
+      ninoId: destino.tipo === 'PROCESO' ? (proceso?.personas[0]?.ninoId ?? null) : ninoId,
       confirmarTraslape: conflicto !== null,
     })
     if (!fecha || !hora || !validacion.success) {
@@ -159,13 +178,19 @@ export default function ModalProgramarCita({
       return
     }
 
+    if (!horarioPsicologiaValido(validacion.data)) {
+      setError(MENSAJE_HORARIO_PSICOLOGIA)
+      return
+    }
     setError(null)
     setGuardando(true)
     try {
       const { mensaje, citaId } = await enviar(validacion.data)
       onGuardada(fecha, mensaje, citaId)
     } catch (err) {
-      const cuerpo = axios.isAxiosError(err) ? (err.response?.data as Partial<ConflictoTraslapeCita> | undefined) : undefined
+      const cuerpo = axios.isAxiosError(err)
+        ? (err.response?.data as Partial<ConflictoTraslapeCita> | undefined)
+        : undefined
       if (cuerpo?.codigo === CODIGO_TRASLAPE_CITA && cuerpo.detalle) {
         setConflicto(cuerpo.detalle.citas)
       } else {
@@ -178,7 +203,8 @@ export default function ModalProgramarCita({
 
   const sinProcesos = eligeProceso && destino.procesos.length === 0
   let confirmarLabel = destino.tipo === 'MOVER' ? 'Reprogramar' : 'Programar cita'
-  if (conflicto) confirmarLabel = destino.tipo === 'MOVER' ? 'Reprogramar de todos modos' : 'Programar de todos modos'
+  if (conflicto)
+    confirmarLabel = destino.tipo === 'MOVER' ? 'Reprogramar de todos modos' : 'Programar de todos modos'
   if (sinCita) confirmarLabel = conflicto ? 'Continuar de todos modos' : 'Continuar al registro'
 
   return (
@@ -208,7 +234,11 @@ export default function ModalProgramarCita({
       {eligeProceso && !sinProcesos && (
         <label className={CLASE_ETIQUETA}>
           Proceso
-          <select value={procesoId} onChange={(evento) => alElegirProceso(evento.target.value)} className={CLASE_CAMPO}>
+          <select
+            value={procesoId}
+            onChange={(evento) => alElegirProceso(evento.target.value)}
+            className={CLASE_CAMPO}
+          >
             <option value="">Elige un proceso…</option>
             {destino.procesos.map((uno) => (
               <option key={uno.procesoId} value={uno.procesoId}>
@@ -219,7 +249,7 @@ export default function ModalProgramarCita({
         </label>
       )}
 
-      {personas.length > 1 && (
+      {personas.length > 1 && destino.tipo !== 'PROCESO' && (
         <fieldset className="space-y-1">
           <legend className="text-xs font-medium text-gray-600">Persona que se atiende</legend>
           <div className="flex flex-wrap gap-2">
@@ -259,6 +289,8 @@ export default function ModalProgramarCita({
           Hora
           <input
             type="time"
+            min="08:00"
+            max={`${String(Math.floor((17 * 60 - duracion) / 60)).padStart(2, '0')}:${String((17 * 60 - duracion) % 60).padStart(2, '0')}`}
             value={hora}
             onChange={(evento) => alCambiar(setHora)(evento.target.value)}
             className={CLASE_CAMPO}
@@ -282,7 +314,10 @@ export default function ModalProgramarCita({
       </label>
 
       {conflicto && (
-        <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <div
+          role="alert"
+          className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+        >
           <p className="font-medium">Ya tienes una cita a esa hora:</p>
           <ul className="mt-1 list-disc pl-4">
             {conflicto.map((cita) => (

@@ -1,4 +1,4 @@
-import MatrizAccesos from '../../accesos/MatrizAccesos'
+import MatrizAccesos from '../../accesos/MatrizAccesos.tsx'
 import type { useMatrizAccesos } from '../../accesos/useMatrizAccesos'
 
 interface PestanaAccesosProps {

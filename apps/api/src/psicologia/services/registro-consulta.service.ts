@@ -1,3 +1,4 @@
+import { validarHorarioPsicologia } from '../compartido/validar-horario';
 import { randomUUID } from 'node:crypto';
 import {
   BadRequestException,
@@ -72,6 +73,7 @@ export class RegistroConsultaService {
     const siguiente = datos.borrador ? undefined : datos.siguiente;
     let proximaCita: { fechaHora: Date; duracionMinutos: number } | null = null;
     if (siguiente?.tipo === 'PROGRAMAR') {
+      validarHorarioPsicologia(siguiente.fechaHora, siguiente.duracionMinutos);
       proximaCita = {
         fechaHora: parseLocalGT(siguiente.fechaHora),
         duracionMinutos: siguiente.duracionMinutos,
@@ -87,6 +89,8 @@ export class RegistroConsultaService {
       citaId,
       psicologaId: contexto.usuarioId,
       estado: datos.borrador ? undefined : datos.estado,
+      enfoqueTerapeutico: vacioANulo(datos.enfoqueTerapeutico),
+      clinica: vacioANulo(datos.clinica),
       temas: vacioANulo(datos.temas),
       intervencion: vacioANulo(datos.intervencion),
       recomendaciones: vacioANulo(datos.recomendaciones),

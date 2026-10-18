@@ -8,6 +8,8 @@ import {
 } from '@akyuam/shared';
 
 const sesionAtendida = {
+  clinica: 'Clínica 1',
+  enfoqueTerapeutico: 'Terapia cognitivo-conductual',
   estado: 'ATENDIDA',
   temas: 'x',
   intervencion: '',

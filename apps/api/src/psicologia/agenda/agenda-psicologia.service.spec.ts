@@ -264,7 +264,17 @@ describe('AgendaPsicologiaService', () => {
       expect(agendaRepository.programarCita).not.toHaveBeenCalled();
     });
 
-    it('con el traslape confirmado crea la cita para el niño y lo audita solo con ids', async () => {
+    it('agenda al niño únicamente en su proceso independiente y audita solo ids', async () => {
+      procesosRepository.buscarAccesoProceso.mockResolvedValue({
+        id: PROCESO_ID,
+        expedienteId: EXPEDIENTE_ID,
+        expedienteNumero: '05-2026.01',
+        usuariaId: 'usuaria-1',
+        consecutivo: 2,
+        etapa: 'INICIO',
+        version: 1,
+        ninoId: NINO_ID,
+      });
       await expect(
         service.programarCita(
           PROCESO_ID,

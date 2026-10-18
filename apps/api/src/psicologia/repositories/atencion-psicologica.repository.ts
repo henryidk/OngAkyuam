@@ -81,8 +81,9 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
   }
 
   async fechaPrimerProceso(psicologaId: string): Promise<Date | null> {
+    void psicologaId;
     const primero = await this.prisma.atencionPsicologica.findFirst({
-      where: { psicologaAsignadaId: psicologaId },
+      where: { expediente: { referidos: { some: { area: 'PSICOLOGIA' } } } },
       orderBy: { createdAt: 'asc' },
       select: { createdAt: true },
     });
@@ -90,8 +91,12 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
   }
 
   async contarCasosActivos(psicologaId: string): Promise<number> {
+    void psicologaId;
     return this.prisma.atencionPsicologica.count({
-      where: { psicologaAsignadaId: psicologaId, estado: { not: 'CIERRE' } },
+      where: {
+        expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
+        estado: { not: 'CIERRE' },
+      },
     });
   }
 
@@ -102,7 +107,7 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
   ): Promise<number> {
     return this.prisma.atencionPsicologica.count({
       where: {
-        psicologaAsignadaId: psicologaId,
+        expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
         createdAt: { gte: desde, lte: hasta },
       },
     });
@@ -115,7 +120,7 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
   ): Promise<number> {
     return this.prisma.atencionPsicologica.count({
       where: {
-        psicologaAsignadaId: psicologaId,
+        expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
         estado: 'CIERRE',
         fechaCierre: { gte: desde, lte: hasta },
       },

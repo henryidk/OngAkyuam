@@ -1,3 +1,4 @@
+import { numeroPersona } from '../../../psicologia/repositories/personas';
 import { Injectable } from '@nestjs/common';
 import type {
   ProcesoPsicologiaCompartidoDto,
@@ -64,6 +65,7 @@ export class CompartidoRepository implements ICompartidoRepository {
       orderBy: { consecutivo: 'asc' },
       select: {
         consecutivo: true,
+        nino: { select: { consecutivo: true } },
         estado: true,
         fechaInicio: true,
         fechaCierre: true,
@@ -89,7 +91,10 @@ export class CompartidoRepository implements ICompartidoRepository {
         .flatMap((cita) => cita.documentos)
         .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
       return {
-        codigo: codigoProceso(proceso.consecutivo, proceso.expediente.numero),
+        codigo: codigoProceso(
+          proceso.consecutivo,
+          numeroPersona(proceso.expediente.numero, proceso.nino),
+        ),
         etapa: proceso.estado,
         fechaInicio: proceso.fechaInicio?.toISOString() ?? null,
         fechaCierre: proceso.fechaCierre?.toISOString() ?? null,

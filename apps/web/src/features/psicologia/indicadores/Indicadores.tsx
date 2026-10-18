@@ -62,7 +62,10 @@ export default function Indicadores() {
       )}
 
       {error && (
-        <div role="alert" className="flex flex-wrap items-center gap-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div
+          role="alert"
+          className="flex flex-wrap items-center gap-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
           <span>{error.mensaje}</span>
           {!error.sinPermiso && (
             <Button variante="secondary" onClick={() => void recargar()}>
@@ -79,9 +82,29 @@ export default function Indicadores() {
           <TarjetasKpi datos={datos} />
           <BarrasPorMes anio={anio} meses={datos.meses} mesSeleccionado={mes} onElegir={setMes} />
           <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
-            <TablaDesglose titulo="Por rango de edad" filas={datos.anual.desgloses.rangoEdad} />
-            <TablaDesglose titulo="Por grupo étnico" filas={datos.anual.desgloses.grupoEtnico} />
-            <TablaDesglose titulo="Por tipología 22-2008" filas={datos.anual.desgloses.tipologia} />
+            <TablaDesglose
+              titulo="Por rango de edad · Mujeres"
+              filas={
+                (mes ? datos.meses[mes - 1] : datos.anual).desgloses.rangoEdadMujeres ??
+                (mes ? datos.meses[mes - 1] : datos.anual).desgloses.rangoEdad
+              }
+            />
+            <TablaDesglose
+              titulo="Por rango de edad · Hombres"
+              filas={(mes ? datos.meses[mes - 1] : datos.anual).desgloses.rangoEdadHombres ?? []}
+            />
+            <TablaDesglose
+              titulo="Pacientes por municipio"
+              filas={(mes ? datos.meses[mes - 1] : datos.anual).desgloses.municipio}
+            />
+            <TablaDesglose
+              titulo="Por grupo étnico"
+              filas={(mes ? datos.meses[mes - 1] : datos.anual).desgloses.grupoEtnico}
+            />
+            <TablaDesglose
+              titulo="Por tipología 22-2008"
+              filas={(mes ? datos.meses[mes - 1] : datos.anual).desgloses.tipologia}
+            />
           </div>
         </>
       )}

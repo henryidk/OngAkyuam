@@ -79,6 +79,8 @@ export default function RegistroConsulta() {
     resolver: zodResolver(registroConsultaSchema),
     defaultValues: {
       estado: 'ATENDIDA',
+      enfoqueTerapeutico: '',
+      clinica: '',
       temas: '',
       intervencion: '',
       recomendaciones: '',
@@ -105,6 +107,8 @@ export default function RegistroConsulta() {
     if (!cita) return
     reset({
       estado: esResultado(cita.estado) ? cita.estado : 'ATENDIDA',
+      enfoqueTerapeutico: cita.enfoqueTerapeutico ?? '',
+      clinica: cita.lugar === 'Clínica 1' || cita.lugar === 'Clínica 2' ? cita.lugar : '',
       temas: cita.temas ?? '',
       intervencion: cita.intervencion ?? '',
       recomendaciones: cita.recomendaciones ?? '',
@@ -132,6 +136,13 @@ export default function RegistroConsulta() {
 
   const persona = cita.ninoNombreCompleto ?? cita.usuariaNombreCompleto
   const rutaProceso = RUTAS_PSICOLOGIA.proceso(cita.procesoId)
+
+  if (cita.soloLectura)
+    return (
+      <p className="rounded-lg border border-gray-200 bg-white p-5">
+        Esta sesión es de otra psicóloga. Puedes consultarla desde el historial del proceso.
+      </p>
+    )
 
   if (cita.procesoEtapa === 'CIERRE' || cita.estado === 'REPROGRAMADA') {
     return (
@@ -179,7 +190,7 @@ export default function RegistroConsulta() {
     setErrorEnvio(null)
     setGuardando('borrador')
     try {
-      await registrarConsulta(citaId, { ...getValues(), borrador: true })
+      await registrarConsulta(citaId, registroConsultaSchema.parse({ ...getValues(), borrador: true }))
       mostrar('Borrador guardado')
     } catch (err) {
       setErrorEnvio(extraerMensajeError(err))
@@ -208,12 +219,15 @@ export default function RegistroConsulta() {
 
       let mensaje = `Sesión registrada · ${ETIQUETAS_ESTADO_CITA_PSICOLOGICA[registrada.cita.estado]}`
       if (registrada.pasoASeguimiento) mensaje += ' · el proceso pasó a Seguimiento'
-      if (registrada.proximaCita) mensaje += ` · próxima cita ${formatInstanteGT(registrada.proximaCita.fechaHora)}`
+      if (registrada.proximaCita)
+        mensaje += ` · próxima cita ${formatInstanteGT(registrada.proximaCita.fechaHora)}`
       mostrar(mensaje)
       // El cierre nunca es implícito: se abre su modal para que la psicóloga lo confirme.
       navigate(RUTAS_PSICOLOGIA.proceso(registrada.procesoId, citaId, paso?.tipo === 'CERRAR'))
     } catch (err) {
-      const cuerpo = axios.isAxiosError(err) ? (err.response?.data as Partial<ConflictoTraslapeCita> | undefined) : undefined
+      const cuerpo = axios.isAxiosError(err)
+        ? (err.response?.data as Partial<ConflictoTraslapeCita> | undefined)
+        : undefined
       if (cuerpo?.codigo === CODIGO_TRASLAPE_CITA && cuerpo.detalle) {
         setConflicto(cuerpo.detalle.citas)
       } else {
@@ -231,7 +245,9 @@ export default function RegistroConsulta() {
   return (
     <div className="mx-auto max-w-3xl space-y-4">
       <header>
-        <h2 className="text-[22px] font-semibold tracking-tight text-gray-900">Registrar sesión · {persona}</h2>
+        <h2 className="text-[22px] font-semibold tracking-tight text-gray-900">
+          Registrar sesión · {persona}
+        </h2>
         <p className="mt-1 text-sm text-gray-600">
           {cita.ninoNombreCompleto !== null && <>Hija/o de {cita.usuariaNombreCompleto} · </>}
           <Link to={rutaProceso} className="text-brand-700 hover:underline">
@@ -280,11 +296,56 @@ export default function RegistroConsulta() {
         {estado === 'ATENDIDA' ? (
           <>
             <div className="space-y-4">
-              <TextareaInput label="Temas abordados" registro={register('temas')} opcional error={errors.temas?.message} />
-              <TextareaInput label="Intervención" registro={register('intervencion')} opcional error={errors.intervencion?.message} />
-              <TextareaInput label="Recomendaciones" registro={register('recomendaciones')} opcional error={errors.recomendaciones?.message} />
-              <TextareaInput label="Acuerdos" registro={register('acuerdos')} opcional error={errors.acuerdos?.message} />
-              <TextareaInput label="Observaciones" registro={register('observaciones')} opcional error={errors.observaciones?.message} />
+              <label className="block text-sm font-medium text-gray-700">
+                Clínica
+                <select
+                  {...register('clinica')}
+                  className="mt-1 block w-full rounded-md border border-gray-300 p-2"
+                >
+                  <option value="">Selecciona la clínica</option>
+                  <option>Clínica 1</option>
+                  <option>Clínica 2</option>
+                </select>
+                {errors.clinica?.message && (
+                  <span className="text-sm text-red-600">{errors.clinica.message}</span>
+                )}
+              </label>
+              <TextareaInput
+                label="Enfoque terapéutico"
+                registro={register('enfoqueTerapeutico')}
+                opcional
+                error={errors.enfoqueTerapeutico?.message}
+              />
+              <TextareaInput
+                label="Temas abordados"
+                registro={register('temas')}
+                opcional
+                error={errors.temas?.message}
+              />
+              <TextareaInput
+                label="Intervención"
+                registro={register('intervencion')}
+                opcional
+                error={errors.intervencion?.message}
+              />
+              <TextareaInput
+                label="Recomendaciones"
+                registro={register('recomendaciones')}
+                opcional
+                error={errors.recomendaciones?.message}
+              />
+              <TextareaInput
+                label="Acuerdos"
+                registro={register('acuerdos')}
+                opcional
+                error={errors.acuerdos?.message}
+              />
+              <TextareaInput
+                label="Observaciones"
+                registro={register('observaciones')}
+                opcional
+                error={errors.observaciones?.message}
+              />
             </div>
             <FormatoGeneral citaId={cita.id} documento={documento} onSubido={setDocumento} />
           </>
@@ -323,7 +384,12 @@ export default function RegistroConsulta() {
               Guardar borrador
             </Button>
           )}
-          <Button type="submit" tamano="md" cargando={guardando === 'final'} disabled={guardando === 'borrador'}>
+          <Button
+            type="submit"
+            tamano="md"
+            cargando={guardando === 'final'}
+            disabled={guardando === 'borrador'}
+          >
             {etiquetaGuardar}
           </Button>
         </div>

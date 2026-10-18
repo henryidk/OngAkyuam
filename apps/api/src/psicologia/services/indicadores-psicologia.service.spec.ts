@@ -161,8 +161,8 @@ describe('IndicadoresPsicologiaService', () => {
       const { anual } = await consultar();
 
       expect(anual.personasAtendidas).toBe(2);
-      expect(total(anual.desgloses.rangoEdad, '0-13')).toBe(1);
-      expect(total(anual.desgloses.rangoEdad, '31-60')).toBe(1);
+      expect(total(anual.desgloses.rangoEdad, '0_15')).toBe(1);
+      expect(total(anual.desgloses.rangoEdad, '31_45')).toBe(1);
     });
 
     it('no cuenta como atendida a quien solo tuvo inasistencias o citas programadas', async () => {
@@ -325,8 +325,9 @@ describe('IndicadoresPsicologiaService', () => {
           1,
           'Usuaria',
           'P1-01-2026',
+          'Mujer',
           36,
-          '31 a 60 años',
+          '31–45',
           "Maya Q'eqchi'",
           'Cobán',
           'Física',

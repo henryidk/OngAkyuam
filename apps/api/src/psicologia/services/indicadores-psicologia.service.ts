@@ -5,7 +5,6 @@ import {
   aniosEntre,
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
-  ETIQUETAS_RANGO_EDAD,
   ETIQUETAS_TIPOLOGIA_DELITO,
   finMesGT,
   inicioMesGT,
@@ -21,6 +20,7 @@ import type {
 } from '../../common/hoja-calculo/exportador-hoja-calculo.interface';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import {
+  EDADES_PSICOLOGIA,
   MUNICIPIO_FUERA,
   personasAtendidas,
   resumirAnio,
@@ -45,6 +45,7 @@ export const COLUMNAS_PERSONAS_ATENDIDAS: ColumnaHoja[] = [
   { titulo: 'No.', ancho: 6, tipo: 'numero' },
   { titulo: 'Persona', ancho: 10, tipo: 'texto' },
   { titulo: 'Proceso', ancho: 16, tipo: 'texto' },
+  { titulo: 'Sexo', ancho: 12, tipo: 'texto' },
   { titulo: 'Edad', ancho: 6, tipo: 'numero' },
   { titulo: 'Rango de edad', ancho: 16, tipo: 'texto' },
   { titulo: 'Grupo étnico', ancho: 16, tipo: 'texto' },
@@ -64,8 +65,9 @@ export function aFilaHoja(
     indice + 1,
     persona.esHijo ? 'Hija/o' : 'Usuaria',
     persona.procesos.join(', '),
+    persona.genero === 'HOMBRE' ? 'Hombre' : 'Mujer',
     persona.edad,
-    ETIQUETAS_RANGO_EDAD[persona.rangoEdad],
+    EDADES_PSICOLOGIA[persona.rangoEdad],
     ETIQUETAS_GRUPO_ETNICO[persona.grupoEtnico],
     persona.municipio === MUNICIPIO_FUERA
       ? 'Fuera de Alta Verapaz'

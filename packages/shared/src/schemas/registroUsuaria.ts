@@ -29,19 +29,21 @@ export const DEPARTAMENTOS_FUERA_ALTA_VERAPAZ = DEPARTAMENTOS_GUATEMALA.filter(
 const DOCUMENTOS_PENDIENTES_MAX = 10
 
 /** "YYYY-MM-DD" — fecha de calendario pura, nunca envuelta en un objeto Date salvo para calcularla. */
-const fechaCalendarioSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
+const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
 
 // "" solo se acepta para una menor de edad (aún no tiene DPI): lo exige `identidadUsuariaSchema`.
-const dpiSchema = z.string().refine((valor) => valor === '' || /^\d{13}$/.test(valor), 'El DPI debe tener 13 dígitos')
+const dpiSchema = z
+  .string()
+  .refine((valor) => valor === '' || /^\d{13}$/.test(valor), 'El DPI debe tener 13 dígitos')
 
 /**
  * Campos de texto opcionales: "" significa "no se capturó" — se valida así en vez de usar
  * `.optional()`/`.transform()` para que el tipo de entrada y de salida del schema sean
  * exactamente el mismo (`string`), que es lo que espera el resolver de react-hook-form.
  */
-const telefonoSchema = z.string().refine((valor) => valor === '' || /^\d{8}$/.test(valor), 'El teléfono debe tener 8 dígitos')
+const telefonoSchema = z
+  .string()
+  .refine((valor) => valor === '' || /^\d{8}$/.test(valor), 'El teléfono debe tener 8 dígitos')
 
 const textoOpcionalSchema = z.string()
 
@@ -125,7 +127,10 @@ function errorUbicacionFuera(
     return { message: 'Selecciona el municipio, o elige "Otro" y escríbelo', path: ['municipioOtro'] }
   }
   if (municipio !== normalizarEspacios(municipio)) {
-    return { message: 'Quita los espacios de más al inicio, al final o entre palabras', path: ['municipioOtro'] }
+    return {
+      message: 'Quita los espacios de más al inicio, al final o entre palabras',
+      path: ['municipioOtro'],
+    }
   }
   const delCatalogo = municipioDelCatalogo(departamento, municipio)
   if (delCatalogo !== null && delCatalogo !== municipio) {
@@ -178,7 +183,10 @@ export const datosCasoSchema = z
     // "" mientras sea Externa — mismo criterio de strings planos que el resto del archivo.
     fechaIngresoAlbergue: z.string(),
     datosAgresor: datosAgresorSchema,
-    observaciones: z.string().trim().max(OBSERVACIONES_CASO_MAX, `Máximo ${OBSERVACIONES_CASO_MAX} caracteres`),
+    observaciones: z
+      .string()
+      .trim()
+      .max(OBSERVACIONES_CASO_MAX, `Máximo ${OBSERVACIONES_CASO_MAX} caracteres`),
     ninos: z.array(ninoSchema),
   })
   .refine(
@@ -215,7 +223,7 @@ export type BuscarUsuariaQuery = z.infer<typeof buscarUsuariaQuerySchema>
 export type IdentidadUsuaria = z.infer<typeof identidadUsuariaSchema>
 export type DatosCaso = z.infer<typeof datosCasoSchema>
 export type DatosAgresor = z.infer<typeof datosAgresorSchema>
-export type Nino = z.infer<typeof ninoSchema>
+export type Nino = z.infer<typeof ninoSchema> & { id?: string; numero?: string }
 export type TipoRegistro = z.infer<typeof tipoRegistroSchema>
 export type AreaAtencion = z.infer<typeof areaAtencionSchema>
 export type RegistroUsuariaNuevaFormValues = z.infer<typeof registroUsuariaNuevaSchema>

@@ -30,7 +30,22 @@ function kpisDe(datos: IndicadoresPsicologia): Kpi[] {
   const { anual, anio } = datos
   return [
     kpiDeProcesos(datos),
-    { etiqueta: 'Personas atendidas', valor: anual.personasAtendidas, detalle: `en ${anio}`, color: 'text-gray-900' },
+    ...(datos.anio === anioActualGT()
+      ? [
+          {
+            etiqueta: 'Procesos cerrados o concluidos',
+            valor: datos.procesosCerradosEnElAnio,
+            detalle: `en ${anio}`,
+            color: 'text-green-800',
+          },
+        ]
+      : []),
+    {
+      etiqueta: 'Personas atendidas',
+      valor: anual.personasAtendidas,
+      detalle: `en ${anio}`,
+      color: 'text-gray-900',
+    },
     {
       etiqueta: 'Sesiones realizadas',
       valor: anual.sesionesRealizadas,
@@ -51,8 +66,13 @@ export default function TarjetasKpi({ datos }: { datos: IndicadoresPsicologia })
   return (
     <dl className="grid gap-2.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,180px),1fr))]">
       {kpisDe(datos).map((kpi) => (
-        <div key={kpi.etiqueta} className="flex flex-col gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-3.5">
-          <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-gray-500">{kpi.etiqueta}</dt>
+        <div
+          key={kpi.etiqueta}
+          className="flex flex-col gap-1.5 rounded-lg border border-gray-200 bg-white px-4 py-3.5"
+        >
+          <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-gray-500">
+            {kpi.etiqueta}
+          </dt>
           <dd className={`text-[26px] font-semibold leading-none ${kpi.color}`}>{kpi.valor}</dd>
           <dd className="text-[12.5px] text-gray-500">{kpi.detalle}</dd>
         </div>

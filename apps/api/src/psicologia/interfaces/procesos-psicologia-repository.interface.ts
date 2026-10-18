@@ -8,6 +8,7 @@ export const PROCESOS_PSICOLOGIA_REPOSITORY = Symbol(
 );
 
 export interface AccesoProcesoPsicologia {
+  ninoId?: string | null;
   id: string;
   expedienteId: string;
   expedienteNumero: string;
@@ -56,6 +57,7 @@ export interface AbrirProcesoNuevoParams {
 }
 
 export interface ProcesoAbierto {
+  expedienteNumero?: string;
   procesoId: string;
   consecutivo: number;
   citaId: string;

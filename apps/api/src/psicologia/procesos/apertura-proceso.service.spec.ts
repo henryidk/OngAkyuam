@@ -150,19 +150,15 @@ describe('AperturaProcesoService', () => {
   });
 
   describe('validaciones', () => {
-    it('acepta la hora que elija la psicóloga, aunque sea fuera del horario habitual', async () => {
-      // Sábado a las 19:00: si ella la agenda, se atiende.
-      await service.atender(
-        REFERIDO_ID,
-        datos({ fechaHora: '2026-10-10T19:00' }),
-        contexto,
-      );
-
-      expect(procesosRepository.abrir).toHaveBeenCalledWith(
-        expect.objectContaining({
-          fechaHora: new Date('2026-10-11T01:00:00.000Z'),
-        }),
-      );
+    it('rechaza citas fuera del horario aunque se confirme el traslape', async () => {
+      await expect(
+        service.atender(
+          REFERIDO_ID,
+          datos({ fechaHora: '2026-10-10T19:00', confirmarTraslape: true }),
+          contexto,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(procesosRepository.abrir).not.toHaveBeenCalled();
     });
 
     it('rechaza con 400 un niño que no es de este expediente', async () => {

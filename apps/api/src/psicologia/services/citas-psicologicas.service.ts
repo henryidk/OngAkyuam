@@ -17,12 +17,12 @@ export class CitasPsicologicasService {
     citaId: string,
     psicologaId: string,
   ): Promise<CitaPsicologicaDetalle> {
-    await this.acceso.exigirAccesoCita(citaId, psicologaId);
+    const lectura = await this.acceso.exigirLecturaCita(citaId, psicologaId);
 
     const cita = await this.citasRepository.obtenerDetalle(citaId);
     if (!cita) {
       throw new NotFoundException('Cita no encontrada');
     }
-    return cita;
+    return { ...cita, soloLectura: !lectura.propia };
   }
 }
