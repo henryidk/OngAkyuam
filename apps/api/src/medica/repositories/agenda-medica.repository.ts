@@ -4,6 +4,7 @@ import {
   DURACION_CITA_MEDICA_MIN,
   fechaCalendarioGT,
   horaGT,
+  etiquetaAtencion,
 } from '@akyuam/shared';
 import type {
   CitaAgendaMedicaDto,
@@ -19,7 +20,6 @@ import {
   personaAtendida,
   personasDelExpediente,
 } from '../../psicologia/repositories/personas';
-import { etiquetaAtencion } from '@akyuam/shared';
 import { derivarEstadoCita } from '../dominio/estado-cita';
 import { horaFin } from '../dominio/horario';
 import {

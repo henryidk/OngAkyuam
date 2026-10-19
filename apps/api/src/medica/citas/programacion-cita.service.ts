@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import { fechaCalendarioGT, horaGT } from '@akyuam/shared';
+import { fechaCalendarioGT, horaGT, etiquetaAtencion } from '@akyuam/shared';
 import type {
   CitaMedicaProgramadaDto,
   ProgramarCitaMedicaInput,
@@ -13,7 +13,6 @@ import { IdempotenciaMedica } from '../compartido/idempotencia';
 import { MENSAJE_PERSONA_AJENA } from '../compartido/mensajes';
 import { RELOJ, type IReloj } from '../compartido/reloj';
 import { exigirInicioValido } from '../compartido/validar-horario';
-import { etiquetaAtencion } from '@akyuam/shared';
 import {
   CITAS_MEDICAS_REPOSITORY,
   type ICitasMedicasRepository,

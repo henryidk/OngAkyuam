@@ -5,6 +5,7 @@ import {
   fechaCalendarioGT,
   fechaColumnaISO,
   horaGT,
+  etiquetaAtencion,
 } from '@akyuam/shared';
 import type {
   ConsultaMedicaDto,
@@ -19,7 +20,6 @@ import {
   nombreCompleto,
   personaAtendida,
 } from '../../psicologia/repositories/personas';
-import { etiquetaAtencion } from '@akyuam/shared';
 import type {
   ConsultaRegistrada,
   IConsultasMedicasRepository,

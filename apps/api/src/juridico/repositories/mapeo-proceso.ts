@@ -1,7 +1,10 @@
 import type { Prisma } from '@prisma/client';
-import { fechaColumnaISO, type ProcesoResumen } from '@akyuam/shared';
+import {
+  fechaColumnaISO,
+  type ProcesoResumen,
+  etiquetaProceso,
+} from '@akyuam/shared';
 import type { PrismaService } from '../../prisma/prisma.service';
-import { etiquetaProceso } from '@akyuam/shared';
 import { estadoVisible, requiereAtencion } from '../dominio/estado-visible';
 
 export const INCLUDE_RESUMEN = {

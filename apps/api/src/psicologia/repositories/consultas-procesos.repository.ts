@@ -10,9 +10,9 @@ import {
   type ProcesoPsicologiaResumen,
   type ResumenProcesosPsicologia,
   type SesionProcesoDto,
+  etiquetaProceso,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { etiquetaProceso } from '@akyuam/shared';
 import { citaSinRegistrar, estaCerrado } from '../dominio/etapa-proceso';
 import type { PaginaConCursorRepo } from '../interfaces/atencion-psicologica-repository.interface';
 import type {

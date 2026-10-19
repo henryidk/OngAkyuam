@@ -9,6 +9,7 @@ import {
   type ProcesosPaginados,
   type ResumenProcesos,
   type TipoProcesoJuridico,
+  etiquetaProceso,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -21,7 +22,6 @@ import {
   asignadoASql,
   escaparLike,
 } from '../compartido/sql';
-import { etiquetaProceso } from '@akyuam/shared';
 import { limiteInactividad } from '../dominio/estado-visible';
 import type {
   AccesoProceso,

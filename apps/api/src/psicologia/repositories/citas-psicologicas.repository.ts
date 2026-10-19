@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { fechaColumnaISO } from '@akyuam/shared';
+import { fechaColumnaISO, etiquetaProceso } from '@akyuam/shared';
 import type { CitaPsicologicaDetalle, CitaResumen } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
@@ -12,7 +12,6 @@ import type {
   ListarCitasEnRangoParams,
   RegistrarConsultaParams,
 } from '../interfaces/citas-psicologicas-repository.interface';
-import { etiquetaProceso } from '@akyuam/shared';
 import { etapaTrasSesionAtendida } from '../dominio/etapa-proceso';
 import { procesoLegible } from './acceso-expediente';
 import { INCLUDE_CITA, mapearCita } from './citas-psicologicas.mapper';

@@ -1,11 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { etiquetaAtencion } from '@akyuam/shared';
 import type { Prisma, Rol } from '@prisma/client';
 import type {
   VistaMedicaParaJuridico,
   VistaMedicaParaPsicologia,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { etiquetaAtencion } from '@akyuam/shared';
 import type {
   ConstanciaMedicaParaFirmar,
   IVisibilidadMedicaReader,

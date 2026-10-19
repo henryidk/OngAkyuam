@@ -5,7 +5,7 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { parseLocalGT } from '@akyuam/shared';
+import { parseLocalGT, etiquetaProceso } from '@akyuam/shared';
 import type {
   AgendarCitaPsicologicaInput,
   ProcesoPsicologiaAbiertoDto,
@@ -24,7 +24,6 @@ import {
   MENSAJE_SIN_ACCESO_USUARIA,
   MENSAJE_TRASLAPE,
 } from '../compartido/mensajes';
-import { etiquetaProceso } from '@akyuam/shared';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import {

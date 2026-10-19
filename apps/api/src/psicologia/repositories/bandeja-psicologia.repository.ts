@@ -9,9 +9,9 @@ import {
   type CasoPorReasignarDto,
   type ExpedientePreviaTomaDto,
   type ReferenciaBandejaPsicologiaDto,
+  etiquetaProceso,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { etiquetaProceso } from '@akyuam/shared';
 import type {
   IBandejaPsicologiaRepository,
   ProcesoReasignado,

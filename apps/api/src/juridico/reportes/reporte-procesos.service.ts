@@ -17,6 +17,7 @@ import {
   type FilaReporteJuridico,
   type ReporteProcesosJuridico,
   type ReporteProcesosJuridicoQuery,
+  etiquetaProceso,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
@@ -26,7 +27,6 @@ import type {
   IExportadorHojaCalculo,
   ValorCeldaHoja,
 } from '../../common/hoja-calculo/exportador-hoja-calculo.interface';
-import { etiquetaProceso } from '@akyuam/shared';
 import { REPORTE_PROCESOS_REPOSITORY } from '../interfaces/reporte-procesos-repository.interface';
 import type {
   ConteoProcesosRow,

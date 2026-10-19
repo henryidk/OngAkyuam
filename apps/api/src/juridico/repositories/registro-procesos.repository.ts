@@ -7,6 +7,7 @@ import {
   type ProcesoCreadoDto,
   type ProcesoVinculadoDto,
   type TipoProcesoJuridico,
+  etiquetaProceso,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -14,7 +15,6 @@ import {
   PROCESO_ACTIVO,
   REFERENCIA_PENDIENTE,
 } from '../compartido/acceso-juridico';
-import { etiquetaProceso } from '@akyuam/shared';
 import {
   PersonalInexistenteError,
   ReferenciaNoPendienteError,

@@ -6,6 +6,8 @@ import {
   fechaCalendarioGT,
   fechaColumnaISO,
   horaGT,
+  etiquetaProceso,
+  etiquetaAtencion,
 } from '@akyuam/shared';
 import type {
   AtencionMedicaResumenDto,
@@ -16,7 +18,6 @@ import type {
 } from '@akyuam/shared';
 import { condicionBusqueda } from '../../common/busqueda-usuarias';
 import { PrismaService } from '../../prisma/prisma.service';
-import { etiquetaProceso } from '@akyuam/shared';
 import {
   SELECT_PERSONA,
   edad,
@@ -24,7 +25,6 @@ import {
   personaAtendida,
   personasDelExpediente,
 } from '../../psicologia/repositories/personas';
-import { etiquetaAtencion } from '@akyuam/shared';
 import {
   referenciaPendiente,
   situacionPaciente,

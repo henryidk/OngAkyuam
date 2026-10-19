@@ -1,16 +1,15 @@
 import { Injectable } from '@nestjs/common';
+import { etiquetaAtencion, etiquetaProceso } from '@akyuam/shared';
 import type {
   ProcesoPsicologiaCompartidoDto,
   ResumenMedicoParaTs,
 } from '@akyuam/shared';
 import type { Rol } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { etiquetaAtencion } from '@akyuam/shared';
 import {
   SELECT_SIGNOS,
   signosDeFila,
 } from '../../../medica/repositories/mapeo';
-import { etiquetaProceso } from '@akyuam/shared';
 import type {
   ICompartidoRepository,
   ProcesoJuridicoCompartido,
