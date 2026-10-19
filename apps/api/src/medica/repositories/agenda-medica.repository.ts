@@ -19,7 +19,7 @@ import {
   personaAtendida,
   personasDelExpediente,
 } from '../../psicologia/repositories/personas';
-import { codigoAtencion } from '../dominio/codigo-atencion';
+import { etiquetaAtencion } from '@akyuam/shared';
 import { derivarEstadoCita } from '../dominio/estado-cita';
 import { horaFin } from '../dominio/horario';
 import {
@@ -84,7 +84,7 @@ function aCitaAgenda(fila: FilaCitaAgenda, ahora: Date): CitaAgendaMedicaDto {
     id: fila.id,
     version: fila.version,
     atencionId: fila.atencionId,
-    codigoAtencion: codigoAtencion(atencion.consecutivo, expediente.numero),
+    codigoAtencion: etiquetaAtencion(expediente.numero, atencion.consecutivo),
     expedienteId: expediente.id,
     usuariaId: expediente.usuaria.id,
     usuariaNombreCompleto: nombreCompleto(expediente.usuaria),
@@ -237,7 +237,7 @@ export class AgendaMedicaRepository implements IAgendaMedicaRepository {
         usuariaId: a.expediente.usuaria.id,
         expedienteId: a.expediente.id,
         atencionId: a.id,
-        codigoAtencion: codigoAtencion(a.consecutivo, a.expediente.numero),
+        codigoAtencion: etiquetaAtencion(a.expediente.numero, a.consecutivo),
         usuariaNombreCompleto: nombreCompleto(a.expediente.usuaria),
         ultimaConsulta: a.consultas[0]
           ? fechaCalendarioGT(a.consultas[0].fechaHora)
@@ -297,7 +297,7 @@ export class AgendaMedicaRepository implements IAgendaMedicaRepository {
           referidoId: null,
           atencionActiva: {
             id: activa.id,
-            codigo: codigoAtencion(activa.consecutivo, expediente.numero),
+            codigo: etiquetaAtencion(expediente.numero, activa.consecutivo),
           },
           codigoNuevaAtencion: null,
           motivoReferencia: null,
@@ -317,7 +317,7 @@ export class AgendaMedicaRepository implements IAgendaMedicaRepository {
           ...base,
           referidoId: referencia.id,
           atencionActiva: null,
-          codigoNuevaAtencion: codigoAtencion(siguiente, expediente.numero),
+          codigoNuevaAtencion: etiquetaAtencion(expediente.numero, siguiente),
           motivoReferencia: referencia.motivo,
         });
       }

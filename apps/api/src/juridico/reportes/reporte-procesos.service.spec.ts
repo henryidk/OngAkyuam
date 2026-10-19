@@ -43,7 +43,7 @@ describe('aFilaReporte', () => {
   it('arma el código del proceso y las etiquetas de la usuaria', () => {
     expect(aFilaReporte(proceso())).toEqual({
       numero: 1,
-      codigo: 'J2-05-2026',
+      codigo: '05-2026 · Proceso 2',
       numeroJudicial: null,
       fechaInicio: '2026-03-02',
       usuaria: 'Ana Prueba Ficticia',

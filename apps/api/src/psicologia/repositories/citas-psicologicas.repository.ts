@@ -12,7 +12,7 @@ import type {
   ListarCitasEnRangoParams,
   RegistrarConsultaParams,
 } from '../interfaces/citas-psicologicas-repository.interface';
-import { codigoProceso } from '../dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import { etapaTrasSesionAtendida } from '../dominio/etapa-proceso';
 import { procesoLegible } from './acceso-expediente';
 import { INCLUDE_CITA, mapearCita } from './citas-psicologicas.mapper';
@@ -256,9 +256,9 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         tipologias: expediente.referidos[0]?.puedeVerDatosCaso
           ? expediente.tipologiaDelito
           : [],
-        procesoCodigo: codigoProceso(
-          cita.atencion.consecutivo,
+        procesoCodigo: etiquetaProceso(
           expediente.numero,
+          cita.atencion.consecutivo,
         ),
       };
     });
@@ -292,9 +292,9 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       expedienteId: cita.atencion.expedienteId,
       numero: cita.atencion.expediente.numero,
       procesoId: cita.atencionId,
-      procesoCodigo: codigoProceso(
-        cita.atencion.consecutivo,
+      procesoCodigo: etiquetaProceso(
         cita.atencion.expediente.numero,
+        cita.atencion.consecutivo,
       ),
       procesoEtapa: cita.atencion.estado,
       ninoNombreCompleto: cita.nino

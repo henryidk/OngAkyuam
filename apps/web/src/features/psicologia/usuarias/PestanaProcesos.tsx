@@ -9,8 +9,9 @@ export default function PestanaProcesos() {
   return (
     <section className="space-y-3">
       <p className="text-sm text-gray-500">
-        Los procesos que llevas o llevaste con esta usuaria. Cada código se forma con el número del proceso y el
-        expediente, por ejemplo <span className="font-mono text-gray-700">P1-{ficha.expediente.numero}</span>.
+        Los procesos que llevas o llevaste con esta usuaria. Cada proceso lleva el número del expediente;
+        desde el segundo se le agrega su número, por ejemplo{' '}
+        <span className="font-mono text-gray-700">{ficha.expediente.numero} · Proceso 2</span>.
       </p>
       {ficha.procesos.length === 0 ? (
         <EmptyState

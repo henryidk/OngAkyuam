@@ -42,7 +42,7 @@ function proceso(
 ): ProcesoPsicologiaResumen {
   return {
     id: PROCESO_ID,
-    codigo: 'P1-05-2026',
+    codigo: '05-2026',
     usuariaId: USUARIA_ID,
     usuariaNombreCompleto: 'Usuaria De Prueba',
     expedienteNumero: '05-2026',
@@ -189,7 +189,7 @@ describe('UsuariasPsicologiaService', () => {
     it('incluye solo lo que Medicina compartió con Psicología: fechas de consulta', async () => {
       visibilidadMedica.paraPsicologia.mockResolvedValue([
         {
-          codigo: 'M1-05-2026',
+          codigo: '05-2026',
           estado: 'ACTIVA',
           fechasConsulta: ['2026-10-01T15:00:00.000Z'],
         },
@@ -200,7 +200,7 @@ describe('UsuariasPsicologiaService', () => {
       expect(visibilidadMedica.paraPsicologia).toHaveBeenCalledWith(USUARIA_ID);
       expect(ficha.medicina).toEqual([
         {
-          codigo: 'M1-05-2026',
+          codigo: '05-2026',
           estado: 'ACTIVA',
           fechasConsulta: ['2026-10-01T15:00:00.000Z'],
         },

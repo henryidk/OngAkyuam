@@ -3,7 +3,6 @@ import {
   limiteInactividad,
   requiereAtencion,
 } from './estado-visible';
-import { codigoProceso } from './codigo-proceso';
 
 const AHORA = new Date('2026-09-30T12:00:00.000Z');
 const HACE_61_DIAS = new Date('2026-07-31T12:00:00.000Z');
@@ -56,11 +55,5 @@ describe('requiereAtencion', () => {
     expect(limiteInactividad(AHORA).toISOString()).toBe(
       '2026-08-01T12:00:00.000Z',
     );
-  });
-});
-
-describe('codigoProceso', () => {
-  it('une el consecutivo con el número de expediente', () => {
-    expect(codigoProceso(2, '05-2026')).toBe('J2-05-2026');
   });
 });

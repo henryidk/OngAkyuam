@@ -19,7 +19,7 @@ import {
   nombreCompleto,
   personaAtendida,
 } from '../../psicologia/repositories/personas';
-import { codigoAtencion } from '../dominio/codigo-atencion';
+import { etiquetaAtencion } from '@akyuam/shared';
 import type {
   ConsultaRegistrada,
   IConsultasMedicasRepository,
@@ -84,9 +84,9 @@ function aConsultaDto(fila: FilaConsulta): ConsultaMedicaDto {
   return {
     id: fila.id,
     atencionId: fila.atencionId,
-    codigoAtencion: codigoAtencion(
-      fila.atencion.consecutivo,
+    codigoAtencion: etiquetaAtencion(
       fila.atencion.expediente.numero,
+      fila.atencion.consecutivo,
     ),
     citaId: fila.citaId,
     fechaHora: fila.fechaHora.toISOString(),
@@ -232,7 +232,7 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
 
     return {
       atencionId: atencion.id,
-      codigoAtencion: codigoAtencion(atencion.consecutivo, expediente.numero),
+      codigoAtencion: etiquetaAtencion(expediente.numero, atencion.consecutivo),
       expedienteId: expediente.id,
       expedienteNumero: expediente.numero,
       usuariaId: expediente.usuaria.id,

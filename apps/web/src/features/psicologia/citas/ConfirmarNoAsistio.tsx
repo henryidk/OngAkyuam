@@ -6,7 +6,7 @@ import { marcarNoAsistio } from '../api/psicologia.api'
 /** Lo mínimo para marcar una cita: cuál es y cómo nombrarla en la confirmación. */
 export interface CitaPorMarcar {
   id: string
-  /** "Nombre · P1-05-2026" o la fecha de la cita: lo que identifica a la cita en el aviso. */
+  /** "Nombre · 05-2026" o la fecha de la cita: lo que identifica a la cita en el aviso. */
   descripcion: string
 }
 

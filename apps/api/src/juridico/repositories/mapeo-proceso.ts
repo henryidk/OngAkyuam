@@ -1,7 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { fechaColumnaISO, type ProcesoResumen } from '@akyuam/shared';
 import type { PrismaService } from '../../prisma/prisma.service';
-import { codigoProceso } from '../dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import { estadoVisible, requiereAtencion } from '../dominio/estado-visible';
 
 export const INCLUDE_RESUMEN = {
@@ -34,7 +34,7 @@ export function mapearResumen(
   const estado = { fase: proceso.fase, situacion: proceso.situacion };
   return {
     id: proceso.id,
-    codigo: codigoProceso(proceso.consecutivo, proceso.expediente.numero),
+    codigo: etiquetaProceso(proceso.expediente.numero, proceso.consecutivo),
     expedienteId: proceso.expedienteId,
     expedienteNumero: proceso.expediente.numero,
     usuaria: {
@@ -66,7 +66,7 @@ export function mapearResumen(
 
 /**
  * Carga y traduce los procesos de `ids` conservando su orden: las listas filtran y ordenan en
- * SQL crudo (el código "J2-05-2026" no es una columna) y luego piden los datos por id.
+ * SQL crudo (el código "05-2026 · Proceso 2" no es una columna) y luego piden los datos por id.
  */
 export async function cargarResumenes(
   prisma: PrismaService,

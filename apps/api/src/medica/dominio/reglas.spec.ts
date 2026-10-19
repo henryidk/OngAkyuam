@@ -1,4 +1,3 @@
-import { codigoAtencion } from './codigo-atencion';
 import { admiteInasistencia, derivarEstadoCita } from './estado-cita';
 import {
   puedeReprogramar,
@@ -97,9 +96,5 @@ describe('situacionPaciente y reprogramación', () => {
     expect(puedeReprogramar({ ...base, atencionActiva: false })).toBe(false);
     expect(puedeReprogramar({ ...base, tieneCitaFutura: true })).toBe(false);
     expect(puedeReprogramar({ ...base, estado: 'ATENDIDA' })).toBe(false);
-  });
-
-  it('codigoAtencion', () => {
-    expect(codigoAtencion(2, '2026-0014')).toBe('M2-2026-0014');
   });
 });

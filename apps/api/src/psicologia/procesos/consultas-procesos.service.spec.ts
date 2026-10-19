@@ -26,7 +26,7 @@ function detalle(
 ): DetalleProcesoRepo {
   return {
     id: PROCESO_ID,
-    codigo: 'P1-05-2026',
+    codigo: '05-2026',
     usuariaId: USUARIA_ID,
     usuariaNombreCompleto: 'Usuaria De Prueba',
     expedienteNumero: '05-2026',

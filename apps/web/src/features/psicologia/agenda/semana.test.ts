@@ -17,7 +17,7 @@ function cita(parcial: Partial<CitaAgendaDto>): CitaAgendaDto {
   return {
     id: 'cita-1',
     procesoId: 'proceso-1',
-    procesoCodigo: 'P1-05-2026',
+    procesoCodigo: '05-2026',
     usuariaId: 'usuaria-1',
     usuariaNombreCompleto: 'Usuaria Ficticia',
     persona: { ninoId: null, nombreCompleto: 'Usuaria Ficticia', edad: 30 },
@@ -96,7 +96,7 @@ describe('pendientes de la agenda: cada uno en un solo lugar', () => {
   function proceso(parcial: Partial<ProcesoParaAgendarDto>): ProcesoParaAgendarDto {
     return {
       procesoId: 'proceso-1',
-      codigo: 'P1-05-2026',
+      codigo: '05-2026',
       usuariaId: 'usuaria-1',
       usuariaNombreCompleto: 'Usuaria Ficticia',
       personas: [],

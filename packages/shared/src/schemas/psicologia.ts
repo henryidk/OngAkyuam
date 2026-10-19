@@ -380,7 +380,7 @@ export interface CasoPorReasignarDto {
   usuariaNombreCompleto: string
   edad: number
   municipio: string | null
-  /** "P1-05-2026"; `null` si la psicóloga anterior lo tomó pero nunca le agendó la primera cita. */
+  /** "05-2026"; `null` si la psicóloga anterior lo tomó pero nunca le agendó la primera cita. */
   codigo: string | null
   etapa: EstadoAtencionPsicologica
   sesionesAtendidas: number
@@ -405,7 +405,7 @@ export interface CasoReasignadoDto {
 export interface CitaAgendaDto {
   id: string
   procesoId: string
-  /** "P1-05-2026". */
+  /** "05-2026". */
   procesoCodigo: string
   usuariaId: string
   usuariaNombreCompleto: string

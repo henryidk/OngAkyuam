@@ -5,7 +5,7 @@ import type {
   VistaMedicaParaPsicologia,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { codigoAtencion } from '../dominio/codigo-atencion';
+import { etiquetaAtencion } from '@akyuam/shared';
 import type {
   ConstanciaMedicaParaFirmar,
   IVisibilidadMedicaReader,
@@ -61,7 +61,10 @@ export class VisibilidadMedicaReader implements IVisibilidadMedicaReader {
       },
     });
     return atenciones.map((atencion) => ({
-      codigo: codigoAtencion(atencion.consecutivo, atencion.expediente.numero),
+      codigo: etiquetaAtencion(
+        atencion.expediente.numero,
+        atencion.consecutivo,
+      ),
       estado: atencion.estado,
       fechasConsulta: atencion.consultas.map((c) => c.fechaHora.toISOString()),
       constancias: atencion.consultas.flatMap((consulta) =>
@@ -119,7 +122,10 @@ export class VisibilidadMedicaReader implements IVisibilidadMedicaReader {
       },
     });
     return atenciones.map((atencion) => ({
-      codigo: codigoAtencion(atencion.consecutivo, atencion.expediente.numero),
+      codigo: etiquetaAtencion(
+        atencion.expediente.numero,
+        atencion.consecutivo,
+      ),
       estado: atencion.estado,
       fechasConsulta: atencion.consultas.map((c) => c.fechaHora.toISOString()),
     }));

@@ -82,7 +82,7 @@ describe('InasistenciaService', () => {
       expect(respuesta.nuevaCita).toEqual({
         citaId: 'c-nueva',
         atencionId: 'a-1',
-        codigoAtencion: 'M2-2026-0001',
+        codigoAtencion: '2026-0001 · Atención 2',
         atencionAbierta: false,
         fecha: '2026-10-16',
         hora: '10:30',

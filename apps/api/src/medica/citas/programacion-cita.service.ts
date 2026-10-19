@@ -13,7 +13,7 @@ import { IdempotenciaMedica } from '../compartido/idempotencia';
 import { MENSAJE_PERSONA_AJENA } from '../compartido/mensajes';
 import { RELOJ, type IReloj } from '../compartido/reloj';
 import { exigirInicioValido } from '../compartido/validar-horario';
-import { codigoAtencion } from '../dominio/codigo-atencion';
+import { etiquetaAtencion } from '@akyuam/shared';
 import {
   CITAS_MEDICAS_REPOSITORY,
   type ICitasMedicasRepository,
@@ -103,9 +103,9 @@ export class ProgramacionCitaService {
     const respuesta: CitaMedicaProgramadaDto = {
       citaId: programada.citaId,
       atencionId: programada.atencionId,
-      codigoAtencion: codigoAtencion(
-        programada.consecutivo,
+      codigoAtencion: etiquetaAtencion(
         expediente.expedienteNumero,
+        programada.consecutivo,
       ),
       atencionAbierta: programada.atencionAbierta,
       fecha: fechaCalendarioGT(inicio),

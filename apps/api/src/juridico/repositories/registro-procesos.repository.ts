@@ -14,7 +14,7 @@ import {
   PROCESO_ACTIVO,
   REFERENCIA_PENDIENTE,
 } from '../compartido/acceso-juridico';
-import { codigoProceso } from '../dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import {
   PersonalInexistenteError,
   ReferenciaNoPendienteError,
@@ -57,7 +57,7 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
     });
     return procesos.map((proceso) => ({
       tipo: proceso.tipo,
-      codigo: codigoProceso(proceso.consecutivo, proceso.expediente.numero),
+      codigo: etiquetaProceso(proceso.expediente.numero, proceso.consecutivo),
     }));
   }
 
@@ -76,7 +76,7 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
     });
     return procesos.map((proceso) => ({
       id: proceso.id,
-      codigo: codigoProceso(proceso.consecutivo, proceso.expediente.numero),
+      codigo: etiquetaProceso(proceso.expediente.numero, proceso.consecutivo),
       tipo: proceso.tipo,
     }));
   }
@@ -179,7 +179,7 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
 
         return nuevos.map((proceso) => ({
           id: proceso.id,
-          codigo: codigoProceso(proceso.consecutivo, params.numeroExpediente),
+          codigo: etiquetaProceso(params.numeroExpediente, proceso.consecutivo),
         }));
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },

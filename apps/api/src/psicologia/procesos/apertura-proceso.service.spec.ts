@@ -75,7 +75,7 @@ describe('AperturaProcesoService', () => {
       service.atender(REFERIDO_ID, datos(), contexto),
     ).resolves.toEqual({
       procesoId: PROCESO_ID,
-      codigo: 'P1-05-2026',
+      codigo: '05-2026',
       citaId: CITA_ID,
     });
     expect(procesosRepository.abrir).toHaveBeenCalledWith({
@@ -289,7 +289,7 @@ describe('AperturaProcesoService', () => {
         service.abrirDesdeFicha(USUARIA_ID, datos(), contexto),
       ).resolves.toEqual({
         procesoId: PROCESO_ID,
-        codigo: 'P2-05-2026',
+        codigo: '05-2026 · Proceso 2',
         citaId: CITA_ID,
       });
       expect(procesosRepository.abrirNuevo).toHaveBeenCalledWith({

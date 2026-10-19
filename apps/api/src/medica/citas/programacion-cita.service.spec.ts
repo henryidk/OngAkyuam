@@ -69,7 +69,7 @@ describe('ProgramacionCitaService', () => {
     expect(respuesta).toEqual({
       citaId: 'c-1',
       atencionId: 'a-1',
-      codigoAtencion: 'M1-2026-0001',
+      codigoAtencion: '2026-0001',
       atencionAbierta: true,
       fecha: '2026-10-15',
       hora: '09:00',

@@ -5,12 +5,12 @@ import type {
 } from '@akyuam/shared';
 import type { Rol } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { codigoAtencion } from '../../../medica/dominio/codigo-atencion';
+import { etiquetaAtencion } from '@akyuam/shared';
 import {
   SELECT_SIGNOS,
   signosDeFila,
 } from '../../../medica/repositories/mapeo';
-import { codigoProceso } from '../../../psicologia/dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import type {
   ICompartidoRepository,
   ProcesoJuridicoCompartido,
@@ -89,7 +89,7 @@ export class CompartidoRepository implements ICompartidoRepository {
         .flatMap((cita) => cita.documentos)
         .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
       return {
-        codigo: codigoProceso(proceso.consecutivo, proceso.expediente.numero),
+        codigo: etiquetaProceso(proceso.expediente.numero, proceso.consecutivo),
         etapa: proceso.estado,
         fechaInicio: proceso.fechaInicio?.toISOString() ?? null,
         fechaCierre: proceso.fechaCierre?.toISOString() ?? null,
@@ -135,9 +135,9 @@ export class CompartidoRepository implements ICompartidoRepository {
         .filter((consulta) => consulta.ninoId === null)
         .at(-1);
       return {
-        codigo: codigoAtencion(
-          atencion.consecutivo,
+        codigo: etiquetaAtencion(
           atencion.expediente.numero,
+          atencion.consecutivo,
         ),
         estado: atencion.estado,
         fechasConsulta: atencion.consultas.map((consulta) =>

@@ -24,7 +24,7 @@ import {
 } from '../compartido/mensajes';
 import { RELOJ, type IReloj } from '../compartido/reloj';
 import { exigirInicioValido } from '../compartido/validar-horario';
-import { codigoAtencion } from '../dominio/codigo-atencion';
+import { etiquetaAtencion } from '@akyuam/shared';
 import type { AccesoAtencionMedica } from '../interfaces/acceso-medica-repository.interface';
 import {
   CONSULTAS_MEDICAS_REPOSITORY,
@@ -130,9 +130,9 @@ export class RegistroConsultaService {
           ? {
               citaId: registrada.proximaCitaId,
               atencionId: atencion.atencionId,
-              codigoAtencion: codigoAtencion(
-                atencion.consecutivo,
+              codigoAtencion: etiquetaAtencion(
                 atencion.expedienteNumero,
+                atencion.consecutivo,
               ),
               atencionAbierta: false,
               fecha: fechaCalendarioGT(proxima),

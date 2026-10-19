@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import type { CitaAgendaDto, ProcesoParaAgendarDto } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { codigoProceso } from '../dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import {
   citaSinRegistrar,
   estaCerrado,
@@ -81,9 +81,9 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       return {
         id: cita.id,
         procesoId: atencion.id,
-        procesoCodigo: codigoProceso(
-          atencion.consecutivo,
+        procesoCodigo: etiquetaProceso(
           atencion.expediente.numero,
+          atencion.consecutivo,
         ),
         usuariaId: usuaria.id,
         usuariaNombreCompleto: nombreCompleto(usuaria),
@@ -177,7 +177,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       );
       return {
         procesoId: proceso.id,
-        codigo: codigoProceso(proceso.consecutivo, expediente.numero),
+        codigo: etiquetaProceso(expediente.numero, proceso.consecutivo),
         usuariaId: expediente.usuaria.id,
         usuariaNombreCompleto: nombreCompleto(expediente.usuaria),
         personas: personasDelExpediente(expediente),

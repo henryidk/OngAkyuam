@@ -24,7 +24,7 @@ import {
   MENSAJE_SIN_ACCESO_USUARIA,
   MENSAJE_TRASLAPE,
 } from '../compartido/mensajes';
-import { codigoProceso } from '../dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import {
@@ -212,7 +212,7 @@ export class AperturaProcesoService {
 
     const respuesta: ProcesoPsicologiaAbiertoDto = {
       procesoId: abierto.procesoId,
-      codigo: codigoProceso(abierto.consecutivo, expediente.expedienteNumero),
+      codigo: etiquetaProceso(expediente.expedienteNumero, abierto.consecutivo),
       citaId: abierto.citaId,
     };
     if (claveRedis) {

@@ -26,7 +26,7 @@ import type {
   IExportadorHojaCalculo,
   ValorCeldaHoja,
 } from '../../common/hoja-calculo/exportador-hoja-calculo.interface';
-import { codigoProceso } from '../dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import { REPORTE_PROCESOS_REPOSITORY } from '../interfaces/reporte-procesos-repository.interface';
 import type {
   ConteoProcesosRow,
@@ -66,7 +66,7 @@ export function aFilaReporte(row: FilaProcesoRow): FilaReporteJuridico {
   const finalizado = row.estado === 'FINALIZADO';
   return {
     numero: row.numero,
-    codigo: codigoProceso(row.consecutivo, row.expedienteNumero),
+    codigo: etiquetaProceso(row.expedienteNumero, row.consecutivo),
     numeroJudicial: row.numeroJudicial,
     fechaInicio: row.fechaInicio,
     usuaria: `${row.nombres} ${row.apellidos}`,

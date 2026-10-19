@@ -21,7 +21,7 @@ import {
   asignadoASql,
   escaparLike,
 } from '../compartido/sql';
-import { codigoProceso } from '../dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import { limiteInactividad } from '../dominio/estado-visible';
 import type {
   AccesoProceso,
@@ -68,7 +68,7 @@ function condicionesListado(params: ListarProcesosParams): Prisma.Sql {
         ? Prisma.sql`OR p.tipo::text IN (${Prisma.join(tipos)})`
         : Prisma.empty;
     condiciones.push(Prisma.sql`(
-      ('J' || p.consecutivo || '-' || e.numero) ILIKE ${patron}
+      e.numero ILIKE ${patron}
       OR p."numeroJudicial" ILIKE ${patron}
       OR (u.nombres || ' ' || u.apellidos) ILIKE ${patron}
       ${porTipo}
@@ -160,7 +160,7 @@ export class ProcesosRepository implements IProcesosRepository {
       WHERE ${condiciones}
     `;
 
-    // Filtro, orden y paginación en la base (el código "J2-05-2026" no es una columna, así
+    // Filtro, orden y paginación en la base (el código "05-2026 · Proceso 2" no es una columna, así
     // que la búsqueda necesita SQL); los datos de cada fila se cargan después por id.
     const [filas, conteo] = await Promise.all([
       this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
@@ -268,9 +268,9 @@ export class ProcesosRepository implements IProcesosRepository {
       procesoOrigen: proceso.procesoOrigen
         ? {
             id: proceso.procesoOrigen.id,
-            codigo: codigoProceso(
-              proceso.procesoOrigen.consecutivo,
+            codigo: etiquetaProceso(
               proceso.procesoOrigen.expediente.numero,
+              proceso.procesoOrigen.consecutivo,
             ),
             tipo: proceso.procesoOrigen.tipo,
           }

@@ -12,7 +12,7 @@ import {
   type SesionProcesoDto,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { codigoProceso } from '../dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import { citaSinRegistrar, estaCerrado } from '../dominio/etapa-proceso';
 import type { PaginaConCursorRepo } from '../interfaces/atencion-psicologica-repository.interface';
 import type {
@@ -125,7 +125,7 @@ function mapearResumen(
 ): ProcesoPsicologiaResumen {
   return {
     id: fila.id,
-    codigo: codigoProceso(fila.consecutivo, fila.expediente.numero),
+    codigo: etiquetaProceso(fila.expediente.numero, fila.consecutivo),
     usuariaId: fila.expediente.usuaria.id,
     usuariaNombreCompleto: nombreCompleto(fila.expediente.usuaria),
     expedienteNumero: fila.expediente.numero,

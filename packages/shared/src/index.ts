@@ -9,6 +9,7 @@ export type Ping = z.infer<typeof pingSchema>;
 export * from "./timezone.js";
 export * from "./meses.js";
 export * from "./nombres.js";
+export * from "./numeracion.js";
 export * from "./catalogos/registroUsuaria.js";
 export * from "./catalogos/municipiosGuatemala.js";
 export * from "./catalogos/documentos.js";

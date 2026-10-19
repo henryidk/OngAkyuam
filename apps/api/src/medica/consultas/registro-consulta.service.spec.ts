@@ -188,7 +188,7 @@ describe('RegistroConsultaService', () => {
     expect(respuesta.proximaCita).toEqual({
       citaId: 'c-2',
       atencionId: 'a-1',
-      codigoAtencion: 'M1-2026-0001',
+      codigoAtencion: '2026-0001',
       atencionAbierta: false,
       fecha: '2026-10-21',
       hora: '08:30',

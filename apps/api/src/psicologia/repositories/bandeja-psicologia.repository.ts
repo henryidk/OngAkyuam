@@ -11,7 +11,7 @@ import {
   type ReferenciaBandejaPsicologiaDto,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
-import { codigoProceso } from '../dominio/codigo-proceso';
+import { etiquetaProceso } from '@akyuam/shared';
 import type {
   IBandejaPsicologiaRepository,
   ProcesoReasignado,
@@ -186,7 +186,7 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
           expediente.usuaria.municipioOtro,
         ),
         codigo: atencion.fechaInicio
-          ? codigoProceso(atencion.consecutivo, expediente.numero)
+          ? etiquetaProceso(expediente.numero, atencion.consecutivo)
           : null,
         etapa: atencion.estado,
         sesionesAtendidas: atencion._count.citas,

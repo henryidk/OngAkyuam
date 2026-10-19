@@ -18,7 +18,7 @@ import {
 } from '../compartido/mensajes';
 import { RELOJ, type IReloj } from '../compartido/reloj';
 import { exigirInicioValido } from '../compartido/validar-horario';
-import { codigoAtencion } from '../dominio/codigo-atencion';
+import { etiquetaAtencion } from '@akyuam/shared';
 import { admiteInasistencia } from '../dominio/estado-cita';
 import type { AccesoCitaMedica } from '../interfaces/acceso-medica-repository.interface';
 import {
@@ -139,7 +139,7 @@ export class InasistenciaService {
     return {
       citaId: nuevaCitaId,
       atencionId: cita.atencionId,
-      codigoAtencion: codigoAtencion(cita.consecutivo, cita.expedienteNumero),
+      codigoAtencion: etiquetaAtencion(cita.expedienteNumero, cita.consecutivo),
       atencionAbierta: false,
       fecha: fechaCalendarioGT(inicio),
       hora: horaGT(inicio),

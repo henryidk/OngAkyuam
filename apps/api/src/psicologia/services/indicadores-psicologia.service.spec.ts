@@ -20,7 +20,7 @@ function crearCitaAgregado(
     grupoEtnico: 'MAYA_QECHI',
     municipio: 'COBAN',
     tipologias: ['FISICA'],
-    procesoCodigo: 'P1-01-2026',
+    procesoCodigo: '01-2026',
     ...overrides,
   };
 }
@@ -324,7 +324,7 @@ describe('IndicadoresPsicologiaService', () => {
         [
           1,
           'Usuaria',
-          'P1-01-2026',
+          '01-2026',
           36,
           '31 a 60 años',
           "Maya Q'eqchi'",

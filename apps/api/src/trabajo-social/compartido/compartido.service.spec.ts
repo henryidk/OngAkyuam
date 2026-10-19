@@ -111,7 +111,7 @@ describe('CompartidoService', () => {
   );
 
   const procesoPsicologico = {
-    codigo: 'P1-05-2026',
+    codigo: '05-2026',
     etapa: 'SEGUIMIENTO' as const,
     fechaInicio: '2026-10-01T15:00:00.000Z',
     fechaCierre: null,
@@ -134,7 +134,7 @@ describe('CompartidoService', () => {
     repositorio.procesosPsicologicos.mockResolvedValue([procesoPsicologico]);
 
     expect(await lineasPsicologia()).toEqual([
-      'P1-05-2026 · En seguimiento · Inicio: 01/10/2026',
+      '05-2026 · En seguimiento · Inicio: 01/10/2026',
       'Próxima cita: 05/10/2026 10:00',
       'Documento: Formato general de atención psicológica (02/10/2026)',
     ]);
@@ -150,7 +150,7 @@ describe('CompartidoService', () => {
         documentos: [],
       },
       {
-        codigo: 'P2-05-2026',
+        codigo: '05-2026 · Proceso 2',
         etapa: 'INICIO',
         fechaInicio: null,
         fechaCierre: null,
@@ -160,8 +160,8 @@ describe('CompartidoService', () => {
     ]);
 
     expect(await lineasPsicologia()).toEqual([
-      'P1-05-2026 · Cierre · Inicio: 01/10/2026 · Cierre: 20/10/2026',
-      'P2-05-2026 · Inicio · Primera cita por agendar',
+      '05-2026 · Cierre · Inicio: 01/10/2026 · Cierre: 20/10/2026',
+      '05-2026 · Proceso 2 · Inicio · Primera cita por agendar',
     ]);
   });
 
@@ -227,7 +227,7 @@ describe('CompartidoService', () => {
   });
 
   const atencionMedica = {
-    codigo: 'M1-05-2026',
+    codigo: '05-2026',
     estado: 'ACTIVA' as const,
     fechasConsulta: ['2026-10-01T15:00:00.000Z', '2026-10-08T02:00:00.000Z'],
     proximaConsulta: '2026-10-16T16:00:00.000Z',
@@ -256,7 +256,7 @@ describe('CompartidoService', () => {
     repositorio.atencionesMedicas.mockResolvedValue([atencionMedica]);
 
     expect(await lineasMedicina()).toEqual([
-      'M1-05-2026 · En atención',
+      '05-2026 · En atención',
       'Consultas: 01/10/2026, 07/10/2026',
       'Próxima consulta: 16/10/2026 10:00',
       'Signos vitales (07/10/2026): Presión arterial 120/80 mmHg · Frecuencia cardíaca 78 latidos/min · Temperatura 36.5 °C · Oxígeno en sangre 98 % · Peso 60 kg · Talla 1.55 m · Índice de masa corporal 25',
@@ -274,7 +274,7 @@ describe('CompartidoService', () => {
       },
     ]);
 
-    expect(await lineasMedicina()).toEqual(['M1-05-2026 · De alta']);
+    expect(await lineasMedicina()).toEqual(['05-2026 · De alta']);
   });
 
   it('Medicina nunca expone diagnóstico, plan, receta ni documentos aunque el repositorio los trajera', async () => {
