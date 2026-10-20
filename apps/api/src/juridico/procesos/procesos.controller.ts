@@ -14,9 +14,11 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
+  asignarNumeroJudicialSchema,
   crearProcesosEnLoteSchema,
   editarDatosProcesoSchema,
   listarProcesosQuerySchema,
+  type AsignarNumeroJudicialInput,
   type CrearProcesosEnLoteInput,
   type EditarDatosProcesoInput,
   type ListarProcesosQuery,
@@ -29,6 +31,7 @@ import { ContextoAuditoria } from '../../common/decorators/contexto-auditoria.de
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { ContextoAuditoria as IContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { LimitePorUsuarioGuard } from '../compartido/limite-por-usuario.guard';
+import { NumeroJudicialService } from './numero-judicial.service';
 import { ProcesosService } from './procesos.service';
 import { RegistroProcesosService } from './registro-procesos.service';
 
@@ -39,6 +42,7 @@ export class ProcesosController {
   constructor(
     private readonly procesosService: ProcesosService,
     private readonly registroService: RegistroProcesosService,
+    private readonly numeroJudicialService: NumeroJudicialService,
   ) {}
 
   @Get('procesos')
@@ -73,6 +77,19 @@ export class ProcesosController {
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.procesosService.editarDatos(procesoId, datos, contexto);
+  }
+
+  @Patch('procesos/:procesoId/numero-judicial')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  asignarNumeroJudicial(
+    @Param('procesoId', ParseUUIDPipe) procesoId: string,
+    @Body(new ZodValidationPipe(asignarNumeroJudicialSchema))
+    datos: AsignarNumeroJudicialInput,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.numeroJudicialService.asignar(procesoId, datos, contexto);
   }
 
   @Get('expedientes/:expedienteId/registro-contexto')

@@ -8,6 +8,7 @@ import {
   hoyGT,
   type AccionProceso,
   type FinalizarProcesoInput,
+  type OrigenCancelacionAudiencia,
   type RegistrarAbandonoInput,
   type SuspenderProcesoInput,
   type TransicionSimpleInput,
@@ -15,6 +16,7 @@ import {
 import type { Prisma } from '@prisma/client';
 import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
+import { auditarAudiencia } from '../audiencias/auditoria-audiencias';
 import { vacioANulo } from '../compartido/acceso-juridico';
 import { AccesoJuridicoService } from '../compartido/acceso-juridico.service';
 import { eventoAuditoria } from '../compartido/auditoria';
@@ -27,6 +29,7 @@ import type { AccesoProceso } from '../interfaces/procesos-repository.interface'
 import { TRANSICIONES_REPOSITORY } from '../interfaces/transiciones-repository.interface';
 import type {
   ITransicionesRepository,
+  TransicionAplicada,
   TransicionBase,
 } from '../interfaces/transiciones-repository.interface';
 
@@ -37,6 +40,14 @@ const ACCION_AUDITORIA: Record<AccionProceso, string> = {
   REACTIVAR: 'PROCESO_JURIDICO_REACTIVADO',
 };
 
+/** Las acciones que cierran el proceso y, con él, sus audiencias programadas (§8.4). */
+const ORIGEN_CANCELACION: Partial<
+  Record<AccionProceso, OrigenCancelacionAudiencia>
+> = {
+  FINALIZAR: 'PROCESO_FINALIZADO',
+  ABANDONAR: 'PROCESO_ABANDONADO',
+};
+
 interface Transicion {
   procesoId: string;
   accion: AccionProceso;
@@ -44,7 +55,10 @@ interface Transicion {
   contexto: ContextoAuditoria;
   /** Validaciones propias de la acción, ya con el proceso cargado. */
   validar?: (proceso: AccesoProceso) => void;
-  escribir: (base: TransicionBase, proceso: AccesoProceso) => Promise<boolean>;
+  escribir: (
+    base: TransicionBase,
+    proceso: AccesoProceso,
+  ) => Promise<TransicionAplicada | null>;
   detalles?: Prisma.InputJsonObject;
 }
 
@@ -209,5 +223,26 @@ export class TransicionesProcesoService {
         },
       }),
     );
+    await this.auditarCanceladas(transicion, aplicada.audienciasCanceladas);
+  }
+
+  /** Una entrada por audiencia, como si se hubiera cancelado a mano, pero con su origen. */
+  private async auditarCanceladas(
+    transicion: Transicion,
+    audienciaIds: string[],
+  ): Promise<void> {
+    const origen = ORIGEN_CANCELACION[transicion.accion];
+    if (!origen) {
+      return;
+    }
+    for (const audienciaId of audienciaIds) {
+      await auditarAudiencia(
+        this.auditService,
+        transicion.contexto,
+        'AUDIENCIA_CANCELADA',
+        audienciaId,
+        { procesoId: transicion.procesoId, origen },
+      );
+    }
   }
 }

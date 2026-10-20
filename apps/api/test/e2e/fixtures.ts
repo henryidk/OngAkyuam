@@ -171,7 +171,10 @@ export async function crearProceso(
   creadoPorId: string,
   datos: Partial<{
     situacion: 'ACTIVO' | 'SUSPENDIDO' | 'ABANDONADO';
+    fase: 'EN_PROCESO' | 'FINALIZADO';
     numeroJudicial: string;
+    consecutivo: number;
+    fechaInicio: Date;
   }> = {},
 ) {
   return prisma.procesoJuridico.create({

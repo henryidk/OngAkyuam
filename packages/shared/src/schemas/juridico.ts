@@ -13,7 +13,9 @@ import {
   TIPOS_PERSONAL_JURIDICO,
   TIPOS_PROCESO_JURIDICO,
 } from '../catalogos/juridico.js'
+import { CARTERAS_JURIDICO } from '../catalogos/audienciasJuridico.js'
 import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
+import type { AudienciaProgramadaDto, ProximaAudienciaDto } from './audienciasJuridico.js'
 import type { TipoDocumento } from './documentos.js'
 import type { TipoRegistro } from './registroUsuaria.js'
 import { booleanoQuerySchema, fechaReporteSchema } from './query.js'
@@ -188,6 +190,8 @@ export const listarProcesosQuerySchema = z.object({
   q: z.string().trim().max(BUSQUEDA_MAX).optional(),
   /** Solo los procesos donde la cuenta actual es la abogada o la procuradora asignada. */
   mios: booleanoQuerySchema.optional(),
+  /** Iniciados este año, de seguimiento (de un año anterior) o todos (planaudiencias.md §8.2). */
+  cartera: z.enum(CARTERAS_JURIDICO).default('TODOS'),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(PROCESOS_PAGE_SIZE_MAXIMO).default(20),
 })
@@ -246,7 +250,7 @@ export interface UsuariaJuridicoRef {
 
 export interface ProcesoResumen {
   id: string
-  /** "J2-05-2026": consecutivo del proceso dentro del expediente + número de expediente. */
+  /** No. interno (`etiquetaProceso`): "05-2026" o, desde el segundo proceso, "05-2026 · Proceso 2". */
   codigo: string
   expedienteId: string
   expedienteNumero: string
@@ -264,6 +268,10 @@ export interface ProcesoResumen {
   fechaCierre: string | null
   ultimaActuacionEn: string
   requiereAtencion: boolean
+  /** Empezó en un año anterior y sigue abierto (`esDeSeguimiento`): chip "Seguimiento · 2024". */
+  esSeguimiento: boolean
+  /** `null` si no tiene ninguna audiencia programada. */
+  proximaAudiencia: ProximaAudienciaDto | null
   version: number
 }
 
@@ -327,6 +335,8 @@ export interface ProcesoDetalle extends ProcesoResumen {
   bitacora: EntradaBitacoraDto[]
   carpetas: CarpetaDto[]
   otrosProcesosUsuaria: ProcesoResumen[]
+  /** Las que se cancelarían al finalizar o abandonar: el modal las lista antes de confirmar. */
+  audienciasProgramadas: AudienciaProgramadaDto[]
 }
 
 export interface ProcesosPaginados {
@@ -346,6 +356,10 @@ export interface ResumenProcesos {
   finalizadosPorForma: Record<FormaFinalizacionProceso, number>
   abandonados: number
   requierenAtencion: number
+  /** Desglose de `enTramite` (la lista de trabajo) para el filtro Cartera. */
+  enTramitePorCartera: { anio: number; seguimiento: number }
+  /** Audiencias que ya pasaron sin resultado: insignia del menú Audiencias. */
+  audienciasPendientes: number
 }
 
 export interface UsuariaReferidaDto extends UsuariaJuridicoRef {

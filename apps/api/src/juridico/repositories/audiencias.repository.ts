@@ -6,6 +6,7 @@ import {
   PROCESO_ACTIVO,
   PROCESO_CON_ACCESO,
 } from '../compartido/acceso-juridico';
+import { TEXTO_NUMERO_JUDICIAL_REGISTRADO } from '../compartido/textos-bitacora';
 import type {
   AgendarAudienciaParams,
   AudienciaParaEscritura,
@@ -29,8 +30,6 @@ class EscrituraRechazada extends Error {
     super(fallo);
   }
 }
-
-const TEXTO_NUMERO_JUDICIAL = 'Se registró el No. judicial del proceso';
 
 interface OpcionesEscritura {
   procesoId: string;
@@ -229,7 +228,7 @@ export class AudienciasRepository implements IAudienciasRepository {
         );
         await this.anotar(tx, opciones, opciones.textoBitacora);
         if (numeroJudicialAsignado) {
-          await this.anotar(tx, opciones, TEXTO_NUMERO_JUDICIAL);
+          await this.anotar(tx, opciones, TEXTO_NUMERO_JUDICIAL_REGISTRADO);
         }
         return { ok: true, audienciaId, numeroJudicialAsignado };
       });

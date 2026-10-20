@@ -7,6 +7,7 @@ import {
   crearAcceso,
   crearAuditService,
   crearProcesosRepository,
+  relojFijo,
 } from '../pruebas/dobles';
 import { ProcesosService } from './procesos.service';
 
@@ -16,6 +17,18 @@ describe('ProcesosService', () => {
   let procesosRepository: ReturnType<typeof crearProcesosRepository>;
   let service: ProcesosService;
 
+  function crearService(ahora?: Date): ProcesosService {
+    return new ProcesosService(
+      procesosRepository,
+      {} as IBitacoraRepository,
+      {} as ICarpetasRepository,
+      crearAcceso(procesosRepository),
+      {} as AsignacionPersonalService,
+      crearAuditService(),
+      relojFijo(ahora),
+    );
+  }
+
   beforeEach(() => {
     procesosRepository = crearProcesosRepository();
     procesosRepository.listar.mockResolvedValue({
@@ -24,14 +37,7 @@ describe('ProcesosService', () => {
       page: 1,
       pageSize: 20,
     });
-    service = new ProcesosService(
-      procesosRepository,
-      {} as IBitacoraRepository,
-      {} as ICarpetasRepository,
-      crearAcceso(procesosRepository),
-      {} as AsignacionPersonalService,
-      crearAuditService(),
-    );
+    service = crearService();
   });
 
   describe('listar', () => {
@@ -63,6 +69,42 @@ describe('ProcesosService', () => {
       expect(procesosRepository.listar).toHaveBeenCalledWith(
         expect.objectContaining({ asignadosAUsuarioId: undefined }),
       );
+    });
+  });
+
+  describe('cartera', () => {
+    it('sin filtro pide todas, con el año en curso de Guatemala', async () => {
+      await service.listar(listarProcesosQuerySchema.parse({}), CUENTA_ID);
+
+      expect(procesosRepository.listar).toHaveBeenCalledWith(
+        expect.objectContaining({ cartera: 'TODOS', anioActual: 2026 }),
+      );
+    });
+
+    it('pasa la cartera elegida', async () => {
+      await service.listar(
+        listarProcesosQuerySchema.parse({ cartera: 'SEGUIMIENTO' }),
+        CUENTA_ID,
+      );
+
+      expect(procesosRepository.listar).toHaveBeenCalledWith(
+        expect.objectContaining({ cartera: 'SEGUIMIENTO' }),
+      );
+    });
+
+    it('rechaza una cartera que no existe', () => {
+      expect(() =>
+        listarProcesosQuerySchema.parse({ cartera: 'OTRA' }),
+      ).toThrow();
+    });
+
+    it('el 31/12 a las 21:00 de Guatemala sigue siendo el año que termina, aunque en UTC ya es el siguiente', async () => {
+      procesosRepository.resumen.mockResolvedValue(
+        {} as Awaited<ReturnType<typeof procesosRepository.resumen>>,
+      );
+      await crearService(new Date('2027-01-01T03:00:00.000Z')).resumen();
+
+      expect(procesosRepository.resumen).toHaveBeenCalledWith(2026);
     });
   });
 });

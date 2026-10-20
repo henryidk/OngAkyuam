@@ -24,6 +24,11 @@ import {
 import { TransicionesProcesoService } from './transiciones-proceso.service';
 
 const VERSION = 3;
+const SIN_CANCELADAS = { audienciasCanceladas: [] };
+const CANCELADAS = [
+  'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+];
 
 describe('TransicionesProcesoService', () => {
   let procesosRepository: ReturnType<typeof crearProcesosRepository>;
@@ -34,10 +39,10 @@ describe('TransicionesProcesoService', () => {
   beforeEach(() => {
     procesosRepository = crearProcesosRepository();
     transiciones = {
-      finalizar: jest.fn().mockResolvedValue(true),
-      suspender: jest.fn().mockResolvedValue(true),
-      abandonar: jest.fn().mockResolvedValue(true),
-      reactivar: jest.fn().mockResolvedValue(true),
+      finalizar: jest.fn().mockResolvedValue(SIN_CANCELADAS),
+      suspender: jest.fn().mockResolvedValue(SIN_CANCELADAS),
+      abandonar: jest.fn().mockResolvedValue(SIN_CANCELADAS),
+      reactivar: jest.fn().mockResolvedValue(SIN_CANCELADAS),
     };
     auditService = crearAuditService();
     service = new TransicionesProcesoService(
@@ -110,7 +115,7 @@ describe('TransicionesProcesoService', () => {
   });
 
   it('409 si otra persona cambió el proceso entre la lectura y la escritura', async () => {
-    transiciones.suspender.mockResolvedValue(false);
+    transiciones.suspender.mockResolvedValue(null);
 
     await expect(
       service.suspender(PROCESO_ID, suspension(), contexto),
@@ -249,5 +254,54 @@ describe('TransicionesProcesoService', () => {
     expect(transiciones.reactivar).toHaveBeenCalledWith(
       expect.objectContaining({ faseActual: 'INICIADO' }),
     );
+  });
+
+  describe('audiencias programadas al cerrar', () => {
+    function auditoriasDeCancelacion() {
+      return (auditService.registrar as jest.Mock).mock.calls
+        .map(([evento]: [{ accion: string }]) => evento)
+        .filter((evento) => evento.accion === 'AUDIENCIA_CANCELADA');
+    }
+
+    it.each([
+      ['finalizar', 'PROCESO_FINALIZADO'],
+      ['abandonar', 'PROCESO_ABANDONADO'],
+    ] as const)(
+      'al %s audita cada audiencia cancelada con su origen, sin el motivo',
+      async (accion, origen) => {
+        transiciones[accion].mockResolvedValue({
+          audienciasCanceladas: CANCELADAS,
+        });
+
+        await (accion === 'finalizar'
+          ? service.finalizar(PROCESO_ID, finalizacion(), contexto)
+          : service.abandonar(PROCESO_ID, abandono(), contexto));
+
+        expect(auditoriasDeCancelacion()).toEqual(
+          CANCELADAS.map((id): unknown =>
+            expect.objectContaining({
+              entidad: 'AudienciaJuridica',
+              entidadId: id,
+              detalles: { procesoId: PROCESO_ID, origen },
+            }),
+          ),
+        );
+      },
+    );
+
+    it('sin audiencias programadas no audita cancelaciones', async () => {
+      await service.finalizar(PROCESO_ID, finalizacion(), contexto);
+
+      expect(auditoriasDeCancelacion()).toEqual([]);
+    });
+
+    it('si la versión ya no coincide no audita ninguna cancelación', async () => {
+      transiciones.finalizar.mockResolvedValue(null);
+
+      await expect(
+        service.finalizar(PROCESO_ID, finalizacion(), contexto),
+      ).rejects.toThrow(ConflictException);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
   });
 });

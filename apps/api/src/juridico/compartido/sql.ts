@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { separarNumeroInterno, type CarteraJuridico } from '@akyuam/shared';
 
 /** `%` y `_` son comodines de LIKE: lo que escribe la persona se busca literal. */
 export function escaparLike(texto: string): string {
@@ -30,3 +31,40 @@ export const ESTADO_VISIBLE_SQL = Prisma.sql`(CASE
   WHEN p.situacion = 'ABANDONADO' THEN 'ABANDONADO'
   ELSE 'EN_TRAMITE'
 END)`;
+
+/** Ni finalizado ni abandonado, igual que `esProcesoActivo()`. */
+export const PROCESO_ABIERTO_SQL = Prisma.sql`(p.fase <> 'FINALIZADO' AND p.situacion <> 'ABANDONADO')`;
+
+/** 1 de enero de `anio`: `fechaInicio` es una fecha de calendario, se compara como `date`. */
+function inicioDeAnioSql(anio: number): Prisma.Sql {
+  return Prisma.sql`make_date(${anio}::int, 1, 1)`;
+}
+
+/**
+ * Cartera del proceso `p`, la misma regla que `carteraDe()` de shared: del año si empezó en
+ * `anioActual`; de seguimiento si empezó antes y sigue abierto.
+ */
+export function carteraSql(
+  cartera: CarteraJuridico,
+  anioActual: number,
+): Prisma.Sql {
+  switch (cartera) {
+    case 'ANIO':
+      return Prisma.sql`p."fechaInicio" >= ${inicioDeAnioSql(anioActual)}`;
+    case 'SEGUIMIENTO':
+      return Prisma.sql`(${PROCESO_ABIERTO_SQL} AND p."fechaInicio" < ${inicioDeAnioSql(anioActual)})`;
+    case 'TODOS':
+      return Prisma.sql`TRUE`;
+  }
+}
+
+/**
+ * Búsqueda por No. interno completo ("05-2026 · Proceso 2"): el código no es una columna, se
+ * separa en expediente + consecutivo (H1). `null` si el término no tiene esa forma.
+ */
+export function numeroInternoSql(termino: string): Prisma.Sql | null {
+  const numero = separarNumeroInterno(termino);
+  return numero
+    ? Prisma.sql`(e.numero = ${numero.expedienteNumero} AND p.consecutivo = ${numero.consecutivo})`
+    : null;
+}

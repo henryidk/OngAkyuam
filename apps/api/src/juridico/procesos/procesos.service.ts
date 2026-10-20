@@ -5,14 +5,16 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type {
-  EditarDatosProcesoInput,
-  ListarProcesosQuery,
-  ProcesoDetalle,
-  ProcesosPaginados,
-  ResumenProcesos,
+import {
+  anioCalendarioGT,
+  type EditarDatosProcesoInput,
+  type ListarProcesosQuery,
+  type ProcesoDetalle,
+  type ProcesosPaginados,
+  type ResumenProcesos,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { vacioANulo } from '../compartido/acceso-juridico';
 import { AccesoJuridicoService } from '../compartido/acceso-juridico.service';
@@ -42,6 +44,7 @@ export class ProcesosService {
     private readonly acceso: AccesoJuridicoService,
     private readonly asignacion: AsignacionPersonalService,
     private readonly auditService: AuditService,
+    @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
   // Listado y resumen no reciben ids: el filtro de acceso va dentro de la propia consulta.
@@ -52,13 +55,20 @@ export class ProcesosService {
     return this.procesosRepository.listar({
       q: query.q,
       asignadosAUsuarioId: query.mios ? usuarioId : undefined,
+      cartera: query.cartera,
+      anioActual: this.anioActual(),
       page: query.page,
       pageSize: query.pageSize,
     });
   }
 
   resumen(): Promise<ResumenProcesos> {
-    return this.procesosRepository.resumen();
+    return this.procesosRepository.resumen(this.anioActual());
+  }
+
+  /** Año en curso en Guatemala: separa la cartera del año de la de seguimiento. */
+  private anioActual(): number {
+    return anioCalendarioGT(this.reloj.ahora());
   }
 
   async obtenerDetalle(

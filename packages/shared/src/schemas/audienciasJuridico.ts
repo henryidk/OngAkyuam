@@ -261,6 +261,14 @@ export interface ProximaAudienciaDto {
   estadoVisible: Extract<EstadoVisibleAudiencia, 'PROXIMA' | 'HOY' | 'PENDIENTE_RESULTADO'>
 }
 
+/** Audiencia que se cancelaría al cerrar el proceso: "21/10/2026 09:30 · Lcda. X" (§8.4). */
+export interface AudienciaProgramadaDto {
+  id: string
+  fecha: string
+  hora: string
+  responsable: PersonalAsignado
+}
+
 /** Cuerpo del 409 de No. judicial repetido: el modal lo muestra y reenvía con la confirmación. */
 export interface ErrorNumeroJudicialRepetido {
   codigo: 'NUMERO_JUDICIAL_REPETIDO'

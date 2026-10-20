@@ -42,16 +42,21 @@ export interface ReactivarParams extends TransicionBase {
   faseActual: FaseProcesoJuridico;
 }
 
+export interface TransicionAplicada {
+  /** Audiencias PROGRAMADAS que se cancelaron solas al finalizar o abandonar (§8.4). */
+  audienciasCanceladas: string[];
+}
+
 /**
  * Cada método escribe el cambio de estado, su fila de historial y la entrada de bitácora en
- * una sola transacción. Devuelven `false` — sin escribir nada — si la versión ya no coincide.
+ * una sola transacción. Devuelven `null` — sin escribir nada — si la versión ya no coincide.
  * Las reglas de qué transición es válida NO viven aquí: las decide la máquina de estados.
  */
 export interface ITransicionesRepository {
-  finalizar(params: FinalizarParams): Promise<boolean>;
-  suspender(params: SuspenderParams): Promise<boolean>;
-  abandonar(params: AbandonarParams): Promise<boolean>;
-  reactivar(params: ReactivarParams): Promise<boolean>;
+  finalizar(params: FinalizarParams): Promise<TransicionAplicada | null>;
+  suspender(params: SuspenderParams): Promise<TransicionAplicada | null>;
+  abandonar(params: AbandonarParams): Promise<TransicionAplicada | null>;
+  reactivar(params: ReactivarParams): Promise<TransicionAplicada | null>;
 }
 
 export type { TransicionBase };

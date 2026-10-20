@@ -1,4 +1,5 @@
 import type {
+  CarteraJuridico,
   FaseProcesoJuridico,
   ProcesoDetalle,
   ProcesoResumen,
@@ -29,6 +30,7 @@ export interface AccesoProceso {
   situacion: SituacionProcesoJuridico;
   version: number;
   fechaInicio: string;
+  numeroJudicial: string | null;
   abogadaId: string | null;
   procuradoraId: string | null;
 }
@@ -37,6 +39,9 @@ export interface ListarProcesosParams {
   q?: string;
   /** Si viene, solo los procesos donde la ficha de personal de esa cuenta está asignada. */
   asignadosAUsuarioId?: string;
+  cartera: CarteraJuridico;
+  /** Año en curso en Guatemala: separa la cartera del año de la de seguimiento. */
+  anioActual: number;
   page: number;
   pageSize: number;
 }
@@ -73,7 +78,7 @@ export interface IProcesosRepository {
    */
   buscarAccesoProceso(procesoId: string): Promise<AccesoProceso | null>;
   listar(params: ListarProcesosParams): Promise<ProcesosPaginados>;
-  resumen(): Promise<ResumenProcesos>;
+  resumen(anioActual: number): Promise<ResumenProcesos>;
   obtenerDetalleBase(procesoId: string): Promise<ProcesoDetalleBase | null>;
   /** Todos los procesos de la usuaria en expedientes referidos a JURIDICO, recientes primero. */
   listarPorUsuaria(usuariaId: string): Promise<ProcesoResumen[]>;

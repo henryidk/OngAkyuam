@@ -55,6 +55,7 @@ export function procesoConAcceso(
     situacion: 'ACTIVO',
     version: 3,
     fechaInicio: '2026-01-10',
+    numeroJudicial: null,
     abogadaId: null,
     procuradoraId: null,
     ...parcial,

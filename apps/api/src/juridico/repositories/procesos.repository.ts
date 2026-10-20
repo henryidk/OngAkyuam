@@ -3,7 +3,9 @@ import { Prisma } from '@prisma/client';
 import {
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
   FORMAS_FINALIZACION_PROCESO,
+  fechaCalendarioGT,
   fechaColumnaISO,
+  horaGT,
   type FormaFinalizacionProceso,
   type ProcesoResumen,
   type ProcesosPaginados,
@@ -20,7 +22,9 @@ import {
   EN_TRAMITE_SQL,
   PROCESO_CON_ACCESO_SQL,
   asignadoASql,
+  carteraSql,
   escaparLike,
+  numeroInternoSql,
 } from '../compartido/sql';
 import { limiteInactividad } from '../dominio/estado-visible';
 import type {
@@ -55,7 +59,11 @@ function tiposQueCoinciden(texto: string): TipoProcesoJuridico[] {
 
 function condicionesListado(params: ListarProcesosParams): Prisma.Sql {
   // La lista de trabajo solo muestra procesos en trámite.
-  const condiciones: Prisma.Sql[] = [PROCESO_CON_ACCESO_SQL, EN_TRAMITE_SQL];
+  const condiciones: Prisma.Sql[] = [
+    PROCESO_CON_ACCESO_SQL,
+    EN_TRAMITE_SQL,
+    carteraSql(params.cartera, params.anioActual),
+  ];
 
   if (params.asignadosAUsuarioId) {
     condiciones.push(asignadoASql(params.asignadosAUsuarioId));
@@ -67,8 +75,13 @@ function condicionesListado(params: ListarProcesosParams): Prisma.Sql {
       tipos.length > 0
         ? Prisma.sql`OR p.tipo::text IN (${Prisma.join(tipos)})`
         : Prisma.empty;
+    const numeroInterno = numeroInternoSql(params.q);
+    const porNumeroInterno = numeroInterno
+      ? Prisma.sql`OR ${numeroInterno}`
+      : Prisma.empty;
     condiciones.push(Prisma.sql`(
       e.numero ILIKE ${patron}
+      ${porNumeroInterno}
       OR p."numeroJudicial" ILIKE ${patron}
       OR (u.nombres || ' ' || u.apellidos) ILIKE ${patron}
       ${porTipo}
@@ -86,6 +99,9 @@ interface FilaResumen {
   finalizados: bigint;
   abandonados: bigint;
   requierenAtencion: bigint;
+  enTramiteAnio: bigint;
+  enTramiteSeguimiento: bigint;
+  audienciasPendientes: bigint;
   convenio: bigint;
   sentencia: bigint;
   desistimiento: bigint;
@@ -135,6 +151,7 @@ export class ProcesosRepository implements IProcesosRepository {
         situacion: true,
         version: true,
         fechaInicio: true,
+        numeroJudicial: true,
         abogadaId: true,
         procuradoraId: true,
         expediente: { select: { usuariaId: true } },
@@ -184,7 +201,7 @@ export class ProcesosRepository implements IProcesosRepository {
     };
   }
 
-  async resumen(): Promise<ResumenProcesos> {
+  async resumen(anioActual: number): Promise<ResumenProcesos> {
     // Todos los contadores en una sola pasada (count FILTER), nunca una consulta por tarjeta.
     const [fila] = await this.prisma.$queryRaw<FilaResumen[]>(Prisma.sql`
       SELECT
@@ -199,6 +216,16 @@ export class ProcesosRepository implements IProcesosRepository {
         count(*) FILTER (
           WHERE ${EN_TRAMITE_SQL} AND p."ultimaActuacionEn" < ${limiteInactividad()}
         ) AS "requierenAtencion",
+        count(*) FILTER (
+          WHERE ${EN_TRAMITE_SQL} AND ${carteraSql('ANIO', anioActual)}
+        ) AS "enTramiteAnio",
+        count(*) FILTER (
+          WHERE ${EN_TRAMITE_SQL} AND ${carteraSql('SEGUIMIENTO', anioActual)}
+        ) AS "enTramiteSeguimiento",
+        (SELECT count(*) FROM "AudienciaJuridica" a
+          JOIN "ProcesoJuridico" p ON p.id = a."procesoId"
+          WHERE a.estado = 'PROGRAMADA' AND a.inicio <= now() AND ${PROCESO_CON_ACCESO_SQL}
+        ) AS "audienciasPendientes",
         count(*) FILTER (WHERE p."formaFinalizacion" = 'CONVENIO') AS convenio,
         count(*) FILTER (WHERE p."formaFinalizacion" = 'SENTENCIA') AS sentencia,
         count(*) FILTER (WHERE p."formaFinalizacion" = 'DESISTIMIENTO') AS desistimiento,
@@ -228,6 +255,11 @@ export class ProcesosRepository implements IProcesosRepository {
       ) as Record<FormaFinalizacionProceso, number>,
       abandonados: Number(fila.abandonados),
       requierenAtencion: Number(fila.requierenAtencion),
+      enTramitePorCartera: {
+        anio: Number(fila.enTramiteAnio),
+        seguimiento: Number(fila.enTramiteSeguimiento),
+      },
+      audienciasPendientes: Number(fila.audienciasPendientes),
     };
   }
 
@@ -238,6 +270,16 @@ export class ProcesosRepository implements IProcesosRepository {
       where: { id: procesoId, ...PROCESO_CON_ACCESO },
       include: {
         ...INCLUDE_RESUMEN,
+        // Todas las programadas (no solo la próxima): el modal de cierre las lista.
+        audiencias: {
+          where: { estado: 'PROGRAMADA' },
+          orderBy: [{ inicio: 'asc' }, { id: 'asc' }],
+          select: {
+            id: true,
+            inicio: true,
+            responsable: { select: { id: true, nombre: true } },
+          },
+        },
         procesoOrigen: {
           select: {
             id: true,
@@ -290,6 +332,12 @@ export class ProcesosRepository implements IProcesosRepository {
       suspensionVigente: suspension
         ? { motivo: suspension.motivo, desde: suspension.desde.toISOString() }
         : null,
+      audienciasProgramadas: proceso.audiencias.map((audiencia) => ({
+        id: audiencia.id,
+        fecha: fechaCalendarioGT(audiencia.inicio),
+        hora: horaGT(audiencia.inicio),
+        responsable: audiencia.responsable,
+      })),
     };
   }
 

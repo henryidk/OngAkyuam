@@ -35,6 +35,7 @@ import {
   DOCUMENTOS_PROCESO_REPOSITORY,
 } from './interfaces/documentos-proceso-repository.interface';
 import { INICIO_REPOSITORY } from './interfaces/inicio-repository.interface';
+import { NUMERO_JUDICIAL_REPOSITORY } from './interfaces/numero-judicial-repository.interface';
 import { PROCESOS_REPOSITORY } from './interfaces/procesos-repository.interface';
 import { REFERENCIAS_REPOSITORY } from './interfaces/referencias-repository.interface';
 import { REPORTE_PROCESOS_REPOSITORY } from './interfaces/reporte-procesos-repository.interface';
@@ -43,6 +44,7 @@ import { TRANSICIONES_REPOSITORY } from './interfaces/transiciones-repository.in
 import { USUARIAS_JURIDICO_REPOSITORY } from './interfaces/usuarias-repository.interface';
 import { VistaMedicaJuridicoController } from './medicina/vista-medica-juridico.controller';
 import { VistaMedicaJuridicoService } from './medicina/vista-medica-juridico.service';
+import { NumeroJudicialService } from './procesos/numero-judicial.service';
 import { ProcesosController } from './procesos/procesos.controller';
 import { ProcesosService } from './procesos/procesos.service';
 import { RegistroProcesosService } from './procesos/registro-procesos.service';
@@ -52,6 +54,7 @@ import { BitacoraRepository } from './repositories/bitacora.repository';
 import { CarpetasRepository } from './repositories/carpetas.repository';
 import { DocumentosProcesoRepository } from './repositories/documentos-proceso.repository';
 import { InicioRepository } from './repositories/inicio.repository';
+import { NumeroJudicialRepository } from './repositories/numero-judicial.repository';
 import { ProcesosRepository } from './repositories/procesos.repository';
 import { ReferenciasRepository } from './repositories/referencias.repository';
 import { ReporteProcesosRepository } from './repositories/reporte-procesos.repository';
@@ -95,6 +98,7 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     BandejaJuridicoService,
     ProcesosService,
     RegistroProcesosService,
+    NumeroJudicialService,
     TransicionesProcesoService,
     BitacoraService,
     DocumentosProcesoService,
@@ -119,6 +123,10 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     },
     { provide: INICIO_REPOSITORY, useClass: InicioRepository },
     { provide: PROCESOS_REPOSITORY, useClass: ProcesosRepository },
+    {
+      provide: NUMERO_JUDICIAL_REPOSITORY,
+      useClass: NumeroJudicialRepository,
+    },
     {
       provide: REGISTRO_PROCESOS_REPOSITORY,
       useClass: RegistroProcesosRepository,

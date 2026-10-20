@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import {
   etiquetaProceso,
   horaGT,
+  separarNumeroInterno,
   type AudienciaDetalleDto,
   type AudienciaFilaDto,
   type AudienciaOcupadaDto,
@@ -54,6 +55,16 @@ const CON_ACCESO: Where = { proceso: PROCESO_CON_ACCESO };
  * NO escapa `%` ni `_` (comprobado: "%" traía a todas), por eso pasa por `escaparLike`.
  */
 function condicionBusqueda(q: string | undefined): Where {
+  // "05-2026 · Proceso 2" no está en ninguna columna: se separa en expediente + consecutivo (H1).
+  const numeroInterno = q ? separarNumeroInterno(q) : null;
+  if (numeroInterno) {
+    return {
+      proceso: {
+        consecutivo: numeroInterno.consecutivo,
+        expediente: { numero: numeroInterno.expedienteNumero },
+      },
+    };
+  }
   const palabras = q?.split(/\s+/).filter(Boolean) ?? [];
   return {
     AND: palabras.map((palabra) => {
