@@ -155,6 +155,22 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
   });
 
   describe('A · población beneficiada', () => {
+    it.each([
+      ['vacía', []],
+      ['nula', null],
+    ] as const)(
+      'la base rechaza un expediente con la tipología %s',
+      async (_caso, tipologia) => {
+        const { usuaria } = await crearExpediente(prisma, trabajoSocial.id, []);
+        await expect(
+          prisma.$executeRaw`
+            INSERT INTO "Expediente" (id, numero, "usuariaId", fecha, "tipoRegistro", "tipologiaDelito", "creadoPorId", "updatedAt")
+            VALUES (gen_random_uuid(), ${`E2E-SIN-${usuaria.id.slice(0, 8)}`}, ${usuaria.id}, '2026-01-01',
+                    'EXTERNA', ${tipologia}::"TipologiaDelito"[], ${trabajoSocial.id}, now())`,
+        ).rejects.toThrow(/Expediente_tipologia_obligatoria_chk/);
+      },
+    );
+
     it('separa la cartera del año, la de seguimiento y los casos ya cerrados', async () => {
       const anterior = `${anio - 2}-06-10`;
       const seguimiento = await expedienteConProcesos([

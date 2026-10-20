@@ -63,7 +63,7 @@ export class ReportePoblacionJuridicoRepository implements IReportePoblacionJuri
              u."grupoEtnico"::text AS "grupoEtnico",
              u.municipio::text AS municipio,
              u."departamentoOtro", u."municipioOtro", u."ubicacionGeografica",
-             -- La columna admite NULL (lista de Prisma): un expediente sin tipología trae [].
+             -- La base exige al menos una (Expediente_tipologia_obligatoria_chk); por si acaso, [] y no null.
              COALESCE(x."tipologiaDelito"::text[], '{}') AS tipologias
       FROM enCartera x
       JOIN "Usuaria" u ON u.id = x."usuariaId"

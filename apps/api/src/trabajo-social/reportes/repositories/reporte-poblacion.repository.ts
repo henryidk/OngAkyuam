@@ -75,7 +75,8 @@ export class ReportePoblacionRepository implements IReportePoblacionRepository {
              to_char(p.fecha, 'YYYY-MM-DD') AS fecha,
              p.numero AS "numeroCaso",
              p."tipoRegistro"::text AS "tipoRegistro",
-             p."tipologiaDelito"::text[] AS tipologias,
+             -- La base exige al menos una (Expediente_tipologia_obligatoria_chk); por si acaso, [] y no null.
+             COALESCE(p."tipologiaDelito"::text[], '{}') AS tipologias,
              p."esUsuaria", p.nombres, p.apellidos, p.dpi,
              to_char(p."fechaNacimiento", 'YYYY-MM-DD') AS "fechaNacimiento",
              p.edad, p."generoNino",

@@ -68,6 +68,8 @@ export async function crearExpediente(
       usuariaId: usuaria.id,
       fecha: new Date('2026-01-01'),
       tipoRegistro: 'EXTERNA',
+      // Obligatoria, como en la app (Expediente_tipologia_obligatoria_chk).
+      tipologiaDelito: ['PSICOLOGICA'],
       creadoPorId,
       referidos: {
         create: referidoA.map((area) => ({ area, otorgadoPorId: creadoPorId })),
