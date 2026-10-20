@@ -181,3 +181,18 @@ export function horaGT(fecha: Date | string): string {
 export function lunesDeSemanaGT(fechaIso: string): string {
   return DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).startOf('week').toISODate()!
 }
+
+/**
+ * Si un valor "YYYY-MM-DDTHH:mm" es una fecha y hora que existe (rechaza "2026-02-30T09:00" o
+ * "2026-10-21T25:00", que el regex solo de forma dejaría pasar).
+ */
+export function esFechaHoraLocalValidaGT(valorDatetimeLocal: string): boolean {
+  return DateTime.fromISO(valorDatetimeLocal, { zone: GUATEMALA_TZ }).isValid
+}
+
+/** Días de calendario entre dos fechas "YYYY-MM-DD" (`hasta` − `desde`; negativo si `hasta` es anterior). */
+export function diasEntreFechasGT(desdeIso: string, hastaIso: string): number {
+  const desde = DateTime.fromISO(desdeIso, { zone: GUATEMALA_TZ })
+  const hasta = DateTime.fromISO(hastaIso, { zone: GUATEMALA_TZ })
+  return Math.round(hasta.diff(desde, 'days').days)
+}
