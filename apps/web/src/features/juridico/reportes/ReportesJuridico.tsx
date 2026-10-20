@@ -16,10 +16,13 @@ import FiltrosReporteJuridico from './FiltrosReporteJuridico'
 import TablaReporteJuridico from './TablaReporteJuridico'
 import { useReporteProcesos } from './useReporteProcesos'
 
-/** Por defecto, del 1 de enero del año en curso hasta hoy (hora de Guatemala). */
+/**
+ * Por defecto, del 1 de enero del año en curso hasta hoy (hora de Guatemala). El selector de
+ * cartera llega con el rediseño de la pantalla (F10); mientras tanto, "Todos" con rango.
+ */
 function filtrosIniciales(): ReporteProcesosJuridicoQuery {
   const hoy = hoyGT()
-  return { desde: `${hoy.slice(0, 4)}-01-01`, hasta: hoy, estado: 'TODOS' }
+  return { cartera: 'TODOS', desde: `${hoy.slice(0, 4)}-01-01`, hasta: hoy, estado: 'TODOS' }
 }
 
 function plural(cantidad: number, singular: string, varios: string) {

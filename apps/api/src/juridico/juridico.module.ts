@@ -38,6 +38,7 @@ import { INICIO_REPOSITORY } from './interfaces/inicio-repository.interface';
 import { NUMERO_JUDICIAL_REPOSITORY } from './interfaces/numero-judicial-repository.interface';
 import { PROCESOS_REPOSITORY } from './interfaces/procesos-repository.interface';
 import { REFERENCIAS_REPOSITORY } from './interfaces/referencias-repository.interface';
+import { REPORTE_POBLACION_JURIDICO_REPOSITORY } from './interfaces/reporte-poblacion-juridico-repository.interface';
 import { REPORTE_PROCESOS_REPOSITORY } from './interfaces/reporte-procesos-repository.interface';
 import { REGISTRO_PROCESOS_REPOSITORY } from './interfaces/registro-procesos-repository.interface';
 import { TRANSICIONES_REPOSITORY } from './interfaces/transiciones-repository.interface';
@@ -57,10 +58,12 @@ import { InicioRepository } from './repositories/inicio.repository';
 import { NumeroJudicialRepository } from './repositories/numero-judicial.repository';
 import { ProcesosRepository } from './repositories/procesos.repository';
 import { ReferenciasRepository } from './repositories/referencias.repository';
+import { ReportePoblacionJuridicoRepository } from './repositories/reporte-poblacion-juridico.repository';
 import { ReporteProcesosRepository } from './repositories/reporte-procesos.repository';
 import { RegistroProcesosRepository } from './repositories/registro-procesos.repository';
 import { TransicionesRepository } from './repositories/transiciones.repository';
 import { UsuariasJuridicoRepository } from './repositories/usuarias-juridico.repository';
+import { ReportePoblacionJuridicoService } from './reportes/reporte-poblacion-juridico.service';
 import { ReporteProcesosService } from './reportes/reporte-procesos.service';
 import { ReportesJuridicoController } from './reportes/reportes-juridico.controller';
 import { TransicionesController } from './transiciones/transiciones.controller';
@@ -106,6 +109,7 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     InicioJuridicoService,
     AvisosJuridicoListener,
     ReporteProcesosService,
+    ReportePoblacionJuridicoService,
     VistaMedicaJuridicoService,
     AgendaAudienciasService,
     ProgramacionAudienciasService,
@@ -120,6 +124,10 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     {
       provide: REPORTE_PROCESOS_REPOSITORY,
       useClass: ReporteProcesosRepository,
+    },
+    {
+      provide: REPORTE_POBLACION_JURIDICO_REPOSITORY,
+      useClass: ReportePoblacionJuridicoRepository,
     },
     { provide: INICIO_REPOSITORY, useClass: InicioRepository },
     { provide: PROCESOS_REPOSITORY, useClass: ProcesosRepository },

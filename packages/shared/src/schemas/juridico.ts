@@ -544,47 +544,83 @@ export interface InicioJuridicoDto {
 export const FILTROS_ESTADO_REPORTE_JURIDICO = ['TODOS', ...ESTADOS_VISIBLES_PROCESO] as const
 export type FiltroEstadoReporteJuridico = (typeof FILTROS_ESTADO_REPORTE_JURIDICO)[number]
 
-/** `GET /juridico/reportes/procesos` (vista previa y agregados) y su `.xlsx`. */
-export const reporteProcesosJuridicoQuerySchema = z
-  .object({
-    /** Se compara contra la fecha de inicio del proceso, inclusive. */
-    desde: fechaReporteSchema,
-    hasta: fechaReporteSchema,
+/**
+ * Filtro Cartera de los dos reportes (planaudiencias.md §8.6). "Año en curso" y "Seguimiento"
+ * se calculan contra el año de hoy en Guatemala; solo "Todos" usa Desde/Hasta, y ahí son
+ * obligatorios. Se comparan contra la fecha de inicio (del proceso o del expediente), inclusive.
+ */
+const filtroCarteraReporteSchema = z.object({
+  cartera: z.enum(CARTERAS_JURIDICO).default('TODOS'),
+  desde: fechaReporteSchema.optional(),
+  hasta: fechaReporteSchema.optional(),
+})
+
+function validarRangoCartera(
+  query: z.infer<typeof filtroCarteraReporteSchema>,
+  contexto: z.RefinementCtx,
+): void {
+  if (query.cartera !== 'TODOS') return
+  if (!query.desde) contexto.addIssue({ code: 'custom', message: 'Indique la fecha "Desde"', path: ['desde'] })
+  if (!query.hasta) contexto.addIssue({ code: 'custom', message: 'Indique la fecha "Hasta"', path: ['hasta'] })
+  // "YYYY-MM-DD" se ordena igual como texto que como fecha.
+  if (query.desde && query.hasta && query.desde > query.hasta) {
+    contexto.addIssue({
+      code: 'custom',
+      message: 'La fecha "Desde" no puede ser posterior a "Hasta"',
+      path: ['hasta'],
+    })
+  }
+}
+
+/** `GET /juridico/reportes/procesos` (vista previa y agregados) y su `.xlsx` (reporte B). */
+export const reporteProcesosJuridicoQuerySchema = filtroCarteraReporteSchema
+  .extend({
     estado: z.enum(FILTROS_ESTADO_REPORTE_JURIDICO).default('TODOS'),
     /** Sin valor = todas las abogadas, incluidos los procesos sin abogada asignada. */
     abogadaId: z.uuid().optional(),
+    /** Sin valor = todos los tipos de proceso. */
+    tipo: z.enum(TIPOS_PROCESO_JURIDICO).optional(),
   })
-  // "YYYY-MM-DD" se ordena igual como texto que como fecha.
-  .refine((query) => query.desde <= query.hasta, {
-    message: 'La fecha "Desde" no puede ser posterior a "Hasta"',
-    path: ['hasta'],
-  })
+  .superRefine(validarRangoCartera)
 export type ReporteProcesosJuridicoQuery = z.infer<typeof reporteProcesosJuridicoQuerySchema>
 
-/** Una fila del reporte = un proceso. Los datos demográficos son los de la usuaria. */
+/** `GET /juridico/reportes/poblacion-beneficiada` y su `.xlsx` (reporte A). */
+export const reportePoblacionJuridicoQuerySchema = filtroCarteraReporteSchema.superRefine(validarRangoCartera)
+export type ReportePoblacionJuridicoQuery = z.infer<typeof reportePoblacionJuridicoQuerySchema>
+
+/** Fecha de calendario y hora de Guatemala de una audiencia, ya convertidas. */
+export interface FechaHoraAudienciaReporte {
+  fecha: string
+  hora: string
+}
+
+/** Una fila del reporte B = un proceso, para la coordinación del trabajo diario. */
 export interface FilaReporteJuridico {
   /** Correlativo del reporte, no se guarda en la base. */
   numero: number
-  /** "J2-05-2026". */
-  codigo: string
-  numeroJudicial: string | null
-  fechaInicio: string
+  /** No. de caso del expediente: "05-2026". */
+  expedienteNumero: string
+  /** Consecutivo del proceso dentro del expediente: 1, 2… */
+  numeroProceso: number
   usuaria: string
-  /** Años cumplidos a la fecha de inicio del proceso. */
-  edad: number
-  rangoEdad: string
-  grupoEtnico: string
-  municipio: string
   tipo: TipoProcesoJuridico
+  fechaInicio: string
   abogada: string | null
   estado: EstadoVisibleProceso
   formaFinalizacion: FormaFinalizacionProceso | null
   fechaCierre: string | null
+  numeroJudicial: string | null
+  /** "2026", "Seguimiento (2024)" o "" si empezó antes y ya se cerró (`etiquetaCartera`). */
+  cartera: string
+  /** La programada más cercana, aunque ya haya pasado sin resultado. */
+  proximaAudiencia: FechaHoraAudienciaReporte | null
+  ultimaAudienciaRealizada: FechaHoraAudienciaReporte | null
 }
 
 /** `GET /juridico/reportes/procesos`: totales, desgloses y las primeras filas. */
 export interface ReporteProcesosJuridico {
-  totales: { procesos: number; usuarias: number }
+  /** `180 procesos · 62 expedientes · 60 usuarias` (planaudiencias.md §3.3). */
+  totales: { procesos: number; expedientes: number; usuarias: number }
   desgloses: {
     estado: ConteoReporte[]
     /** Solo procesos finalizados. */
@@ -592,4 +628,32 @@ export interface ReporteProcesosJuridico {
     categoria: ConteoReporte[]
   }
   vistaPrevia: FilaReporteJuridico[]
+}
+
+/**
+ * Una fila del reporte A = un expediente atendido por Jurídico, con las 13 columnas del formato
+ * de la ONG en su orden. Los datos son los de la usuaria.
+ */
+export interface FilaPoblacionJuridico {
+  numero: number
+  /** Inicio del primer proceso jurídico del expediente o, si todavía no tiene, la fecha del referido. */
+  dia: string
+  departamento: string
+  municipio: string
+  numeroCaso: string
+  fechaNacimiento: string
+  /** Años cumplidos al "Día": la edad que tenía cuando la atendieron. */
+  edad: number
+  nombreApellido: string
+  dpi: string | null
+  rangoEdad: string
+  grupoEtnico: string
+  ubicacionGeografica: string
+  tipologia: string
+}
+
+/** `GET /juridico/reportes/poblacion-beneficiada`: totales y las primeras filas. */
+export interface ReportePoblacionJuridico {
+  totales: { expedientes: number; usuarias: number }
+  vistaPrevia: FilaPoblacionJuridico[]
 }

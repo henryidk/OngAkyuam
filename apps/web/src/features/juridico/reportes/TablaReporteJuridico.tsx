@@ -3,22 +3,23 @@ import {
   ETIQUETAS_FORMA_FINALIZACION,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
   formatFechaGT,
+  type FechaHoraAudienciaReporte,
   type FilaReporteJuridico,
 } from '@akyuam/shared'
 import EtiquetaEstado from '../compartido/EtiquetaEstado'
 
+function fechaHora(audiencia: FechaHoraAudienciaReporte | null): string {
+  return audiencia ? `${formatFechaGT(audiencia.fecha)} ${audiencia.hora}` : '—'
+}
+
 /** Mismas columnas y orden que el Excel; forma y fecha de cierre van juntas en pantalla. */
 const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNode }[] = [
   { titulo: 'No.', valor: (fila) => fila.numero },
-  { titulo: 'No. interno', valor: (fila) => fila.codigo },
-  { titulo: 'No. judicial', valor: (fila) => fila.numeroJudicial ?? '—' },
-  { titulo: 'Fecha inicio', valor: (fila) => formatFechaGT(fila.fechaInicio) },
+  { titulo: 'No. expediente', valor: (fila) => fila.expedienteNumero },
+  { titulo: 'No. proceso', valor: (fila) => fila.numeroProceso },
   { titulo: 'Usuaria', valor: (fila) => fila.usuaria },
-  { titulo: 'Edad', valor: (fila) => fila.edad },
-  { titulo: 'Rango', valor: (fila) => fila.rangoEdad },
-  { titulo: 'Grupo étnico', valor: (fila) => fila.grupoEtnico },
-  { titulo: 'Municipio', valor: (fila) => fila.municipio || '—' },
   { titulo: 'Tipo de proceso', valor: (fila) => ETIQUETAS_TIPO_PROCESO_JURIDICO[fila.tipo] },
+  { titulo: 'Fecha inicio', valor: (fila) => formatFechaGT(fila.fechaInicio) },
   { titulo: 'Abogada', valor: (fila) => fila.abogada ?? '—' },
   { titulo: 'Estado', valor: (fila) => <EtiquetaEstado estado={fila.estado} /> },
   {
@@ -28,6 +29,10 @@ const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNod
         ? `${ETIQUETAS_FORMA_FINALIZACION[fila.formaFinalizacion]} · ${formatFechaGT(fila.fechaCierre)}`
         : '—',
   },
+  { titulo: 'No. judicial', valor: (fila) => fila.numeroJudicial ?? '—' },
+  { titulo: 'Cartera', valor: (fila) => fila.cartera || '—' },
+  { titulo: 'Próxima audiencia', valor: (fila) => fechaHora(fila.proximaAudiencia) },
+  { titulo: 'Última realizada', valor: (fila) => fechaHora(fila.ultimaAudienciaRealizada) },
 ]
 
 export default function TablaReporteJuridico({ filas }: { filas: FilaReporteJuridico[] }) {

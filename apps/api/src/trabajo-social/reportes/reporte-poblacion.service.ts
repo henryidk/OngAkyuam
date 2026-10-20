@@ -2,11 +2,12 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   calcularRangoEdad,
   ETIQUETAS_GRUPO_ETNICO,
-  ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   ETIQUETAS_RANGO_EDAD,
   ETIQUETAS_TIPOLOGIA_DELITO,
+  etiquetasTipologia,
   FILAS_VISTA_PREVIA_REPORTE,
   GRUPOS_ETNICOS,
+  lugarParaReporte,
   TIPOLOGIAS_DELITO,
   ETIQUETAS_CORTAS_TIPO_REGISTRO,
   type ConteoReporte,
@@ -32,7 +33,6 @@ import type {
   IReportePoblacionRepository,
 } from './interfaces/reporte-poblacion-repository.interface';
 
-const DEPARTAMENTO_ALTA_VERAPAZ = 'Alta Verapaz';
 const RANGOS_EDAD = Object.keys(ETIQUETAS_RANGO_EDAD) as RangoEdad[];
 
 export interface ArchivoReporte {
@@ -68,17 +68,11 @@ function detallesAuditoria(query: ReportePoblacionQuery) {
 export function aFilaPoblacion(
   row: FilaPoblacionRow,
 ): FilaPoblacionBeneficiada {
-  const enAltaVerapaz = row.municipio !== null;
   const esHija = row.generoNino === 'MUJER';
   return {
     numero: row.numero,
     fecha: row.fecha,
-    departamento: enAltaVerapaz
-      ? DEPARTAMENTO_ALTA_VERAPAZ
-      : (row.departamentoOtro ?? ''),
-    municipio: row.municipio
-      ? ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[row.municipio]
-      : (row.municipioOtro ?? ''),
+    ...lugarParaReporte(row),
     numeroCaso: row.numeroCaso,
     fechaNacimiento: row.fechaNacimiento,
     edad: row.edad,
@@ -89,9 +83,7 @@ export function aFilaPoblacion(
     grupoEtnico: ETIQUETAS_GRUPO_ETNICO[row.grupoEtnico],
     ubicacionGeografica: row.ubicacionGeografica ?? '',
     // La tipología describe la violencia que vivió la usuaria: no se repite en sus hijas/hijos.
-    tipologia: row.esUsuaria
-      ? row.tipologias.map((t) => ETIQUETAS_TIPOLOGIA_DELITO[t]).join(', ')
-      : '',
+    tipologia: row.esUsuaria ? etiquetasTipologia(row.tipologias) : '',
     registro: row.tipoRegistro,
     relacion: row.esUsuaria
       ? 'Usuaria'

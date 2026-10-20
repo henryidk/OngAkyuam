@@ -37,7 +37,7 @@ export default function FiltrosReporteJuridico({
         <span className="mb-1 block text-xs font-medium text-gray-600">Desde</span>
         <input
           type="date"
-          value={filtros.desde}
+          value={filtros.desde ?? ''}
           max={filtros.hasta}
           onChange={(event) => onCambiar({ ...filtros, desde: event.target.value })}
           className={CLASES_CAMPO}
@@ -47,7 +47,7 @@ export default function FiltrosReporteJuridico({
         <span className="mb-1 block text-xs font-medium text-gray-600">Hasta</span>
         <input
           type="date"
-          value={filtros.hasta}
+          value={filtros.hasta ?? ''}
           min={filtros.desde}
           onChange={(event) => onCambiar({ ...filtros, hasta: event.target.value })}
           className={CLASES_CAMPO}

@@ -1,23 +1,21 @@
 import type {
   EstadoVisibleProceso,
   FormaFinalizacionProceso,
-  GRUPOS_ETNICOS,
-  MUNICIPIOS_ALTA_VERAPAZ,
   TipoProcesoJuridico,
 } from '@akyuam/shared';
+import type { FiltroCarteraReporte } from '../compartido/sql';
 
 export const REPORTE_PROCESOS_REPOSITORY = Symbol(
   'REPORTE_PROCESOS_REPOSITORY',
 );
 
-export interface FiltroReporteProcesos {
-  /** "YYYY-MM-DD", inclusive — se compara contra la fecha de inicio del proceso. */
-  desde: string;
-  hasta: string;
+export interface FiltroReporteProcesos extends FiltroCarteraReporte {
   /** null = todos los estados. */
   estado: EstadoVisibleProceso | null;
   /** null = todas las abogadas, incluidos los procesos sin abogada. */
   abogadaId: string | null;
+  /** null = todos los tipos. */
+  tipo: TipoProcesoJuridico | null;
 }
 
 export interface FilaProcesoRow {
@@ -30,15 +28,16 @@ export interface FilaProcesoRow {
   fechaCierre: string | null;
   tipo: TipoProcesoJuridico;
   estado: EstadoVisibleProceso;
+  /** Ni finalizado ni abandonado: decide la columna Cartera. */
+  abierto: boolean;
   formaFinalizacion: FormaFinalizacionProceso | null;
   abogada: string | null;
   nombres: string;
   apellidos: string;
-  /** Años cumplidos a la fecha de inicio del proceso. */
-  edad: number;
-  grupoEtnico: (typeof GRUPOS_ETNICOS)[number];
-  municipio: (typeof MUNICIPIOS_ALTA_VERAPAZ)[number] | null;
-  municipioOtro: string | null;
+  /** Inicio de la audiencia programada más cercana. */
+  proximaAudiencia: Date | null;
+  /** Inicio de la última audiencia con resultado "Realizada". */
+  ultimaAudienciaRealizada: Date | null;
 }
 
 /** Cuántos procesos hay por (estado, forma, tipo); el servicio arma cada desglose. */
@@ -49,6 +48,12 @@ export interface ConteoProcesosRow {
   total: number;
 }
 
+/** Expedientes y usuarias distintos entre los procesos del reporte (§3.3). */
+export interface TotalesPersonasRow {
+  expedientes: number;
+  usuarias: number;
+}
+
 export interface IReporteProcesosRepository {
   /** Procesos del reporte en orden; `limite` null = todos (exportación). */
   filas(
@@ -56,6 +61,5 @@ export interface IReporteProcesosRepository {
     limite: number | null,
   ): Promise<FilaProcesoRow[]>;
   conteos(filtro: FiltroReporteProcesos): Promise<ConteoProcesosRow[]>;
-  /** Usuarias distintas entre los procesos del reporte. */
-  usuariasDistintas(filtro: FiltroReporteProcesos): Promise<number>;
+  totalesPersonas(filtro: FiltroReporteProcesos): Promise<TotalesPersonasRow>;
 }

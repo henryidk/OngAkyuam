@@ -1,25 +1,27 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  calcularRangoEdad,
+  anioCalendarioGT,
   CATEGORIA_POR_TIPO_PROCESO,
   CATEGORIAS_PROCESO_JURIDICO,
   ESTADOS_VISIBLES_PROCESO,
   ETIQUETAS_CATEGORIA_PROCESO,
   ETIQUETAS_ESTADO_VISIBLE,
   ETIQUETAS_FORMA_FINALIZACION,
-  ETIQUETAS_GRUPO_ETNICO,
-  ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
-  ETIQUETAS_RANGO_EDAD,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
+  etiquetaCartera,
+  fechaCalendarioGT,
   FILAS_VISTA_PREVIA_REPORTE,
+  formatFechaGT,
   FORMAS_FINALIZACION_PROCESO,
+  horaGT,
   type ConteoReporte,
+  type FechaHoraAudienciaReporte,
   type FilaReporteJuridico,
   type ReporteProcesosJuridico,
   type ReporteProcesosJuridicoQuery,
-  etiquetaProceso,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { EXPORTADOR_HOJA_CALCULO } from '../../common/hoja-calculo/exportador-hoja-calculo.interface';
 import type {
@@ -34,53 +36,68 @@ import type {
   FiltroReporteProcesos,
   IReporteProcesosRepository,
 } from '../interfaces/reporte-procesos-repository.interface';
+import {
+  aFiltroCartera,
+  detallesCartera,
+  sufijoArchivo,
+  type ArchivoReporte,
+} from './cartera-reporte';
 
-export interface ArchivoReporte {
-  contenido: Buffer;
-  nombreArchivo: string;
-  tipoContenido: string;
-}
-
-function aFiltro(query: ReporteProcesosJuridicoQuery): FiltroReporteProcesos {
+function aFiltro(
+  query: ReporteProcesosJuridicoQuery,
+  anioActual: number,
+): FiltroReporteProcesos {
   return {
-    desde: query.desde,
-    hasta: query.hasta,
+    ...aFiltroCartera(query, anioActual),
     estado: query.estado === 'TODOS' ? null : query.estado,
     abogadaId: query.abogadaId ?? null,
+    tipo: query.tipo ?? null,
   };
 }
 
 /** Solo filtros: nunca filas ni datos de personas en `AuditLog.detalles`. */
-function detallesAuditoria(query: ReporteProcesosJuridicoQuery) {
+function detallesAuditoria(filtro: FiltroReporteProcesos) {
   return {
     reporte: 'PROCESOS_JURIDICOS',
-    desde: query.desde,
-    hasta: query.hasta,
-    estado: query.estado,
-    abogadaId: query.abogadaId ?? null,
+    ...detallesCartera(filtro),
+    estado: filtro.estado ?? 'TODOS',
+    abogadaId: filtro.abogadaId,
+    tipo: filtro.tipo,
   };
 }
 
-export function aFilaReporte(row: FilaProcesoRow): FilaReporteJuridico {
+function fechaHoraAudiencia(
+  inicio: Date | null,
+): FechaHoraAudienciaReporte | null {
+  return inicio
+    ? { fecha: fechaCalendarioGT(inicio), hora: horaGT(inicio) }
+    : null;
+}
+
+export function aFilaReporte(
+  row: FilaProcesoRow,
+  anioActual: number,
+): FilaReporteJuridico {
   // La forma y la fecha de cierre solo describen un proceso finalizado.
   const finalizado = row.estado === 'FINALIZADO';
   return {
     numero: row.numero,
-    codigo: etiquetaProceso(row.expedienteNumero, row.consecutivo),
-    numeroJudicial: row.numeroJudicial,
-    fechaInicio: row.fechaInicio,
+    expedienteNumero: row.expedienteNumero,
+    numeroProceso: row.consecutivo,
     usuaria: `${row.nombres} ${row.apellidos}`,
-    edad: row.edad,
-    rangoEdad: ETIQUETAS_RANGO_EDAD[calcularRangoEdad(row.edad)],
-    grupoEtnico: ETIQUETAS_GRUPO_ETNICO[row.grupoEtnico],
-    municipio: row.municipio
-      ? ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[row.municipio]
-      : (row.municipioOtro ?? ''),
     tipo: row.tipo,
+    fechaInicio: row.fechaInicio,
     abogada: row.abogada,
     estado: row.estado,
     formaFinalizacion: finalizado ? row.formaFinalizacion : null,
     fechaCierre: finalizado ? row.fechaCierre : null,
+    numeroJudicial: row.numeroJudicial,
+    cartera: etiquetaCartera(
+      { fechaInicio: row.fechaInicio, abierto: row.abierto },
+      anioActual,
+    ),
+    proximaAudiencia: fechaHoraAudiencia(row.proximaAudiencia),
+    ultimaAudienciaRealizada: fechaHoraAudiencia(row.ultimaAudienciaRealizada),
   };
 }
 
@@ -136,42 +153,47 @@ export function armarDesgloses(
   return { estado, formaFinalizacion, categoria };
 }
 
-/** Columnas del Excel, en el mismo orden que la vista previa. */
+/** Columnas del Excel, en el mismo orden que la vista previa (planaudiencias.md §8.6, B). */
 export const COLUMNAS_PROCESOS: ColumnaHoja[] = [
   { titulo: 'No.', ancho: 6, tipo: 'numero' },
-  { titulo: 'No. interno', ancho: 14, tipo: 'texto' },
-  { titulo: 'No. judicial', ancho: 20, tipo: 'texto' },
-  { titulo: 'Fecha de inicio', ancho: 12, tipo: 'fecha' },
+  { titulo: 'No. expediente', ancho: 14, tipo: 'texto' },
+  { titulo: 'No. proceso', ancho: 10, tipo: 'numero' },
   { titulo: 'Usuaria', ancho: 32, tipo: 'texto' },
-  { titulo: 'Edad', ancho: 6, tipo: 'numero' },
-  { titulo: 'Rango de edad', ancho: 16, tipo: 'texto' },
-  { titulo: 'Grupo étnico', ancho: 16, tipo: 'texto' },
-  { titulo: 'Municipio', ancho: 22, tipo: 'texto' },
   { titulo: 'Tipo de proceso', ancho: 34, tipo: 'texto' },
+  { titulo: 'Fecha de inicio', ancho: 12, tipo: 'fecha' },
   { titulo: 'Abogada', ancho: 26, tipo: 'texto' },
   { titulo: 'Estado', ancho: 12, tipo: 'texto' },
   { titulo: 'Forma de finalización', ancho: 16, tipo: 'texto' },
   { titulo: 'Fecha de cierre', ancho: 12, tipo: 'fecha' },
+  { titulo: 'No. judicial', ancho: 20, tipo: 'texto' },
+  { titulo: 'Cartera', ancho: 18, tipo: 'texto' },
+  { titulo: 'Próxima audiencia', ancho: 17, tipo: 'texto' },
+  { titulo: 'Última audiencia realizada', ancho: 17, tipo: 'texto' },
 ];
+
+/** "21/10/2026 09:30": texto, porque la columna de fecha de Excel no lleva hora. */
+function celdaAudiencia(audiencia: FechaHoraAudienciaReporte | null): string {
+  return audiencia ? `${formatFechaGT(audiencia.fecha)} ${audiencia.hora}` : '';
+}
 
 export function aFilaHoja(fila: FilaReporteJuridico): ValorCeldaHoja[] {
   return [
     fila.numero,
-    fila.codigo,
-    fila.numeroJudicial ?? '',
-    fila.fechaInicio,
+    fila.expedienteNumero,
+    fila.numeroProceso,
     fila.usuaria,
-    fila.edad,
-    fila.rangoEdad,
-    fila.grupoEtnico,
-    fila.municipio,
     ETIQUETAS_TIPO_PROCESO_JURIDICO[fila.tipo],
+    fila.fechaInicio,
     fila.abogada ?? '',
     ETIQUETAS_ESTADO_VISIBLE[fila.estado],
     fila.formaFinalizacion
       ? ETIQUETAS_FORMA_FINALIZACION[fila.formaFinalizacion]
       : '',
     fila.fechaCierre,
+    fila.numeroJudicial ?? '',
+    fila.cartera,
+    celdaAudiencia(fila.proximaAudiencia),
+    celdaAudiencia(fila.ultimaAudienciaRealizada),
   ];
 }
 
@@ -183,17 +205,18 @@ export class ReporteProcesosService {
     @Inject(EXPORTADOR_HOJA_CALCULO)
     private readonly exportador: IExportadorHojaCalculo,
     private readonly auditService: AuditService,
+    @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
   async vistaPrevia(
     query: ReporteProcesosJuridicoQuery,
     contexto: ContextoAuditoria,
   ): Promise<ReporteProcesosJuridico> {
-    const filtro = aFiltro(query);
-    const [filas, conteos, usuarias] = await Promise.all([
+    const filtro = aFiltro(query, this.anioActual());
+    const [filas, conteos, personas] = await Promise.all([
       this.repositorio.filas(filtro, FILAS_VISTA_PREVIA_REPORTE),
       this.repositorio.conteos(filtro),
-      this.repositorio.usuariasDistintas(filtro),
+      this.repositorio.totalesPersonas(filtro),
     ]);
 
     // La vista previa muestra nombres de usuarias: se audita igual que el reporte de TS.
@@ -204,16 +227,16 @@ export class ReporteProcesosService {
       entidad: 'Reporte',
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      detalles: detallesAuditoria(query),
+      detalles: detallesAuditoria(filtro),
     });
 
     return {
       totales: {
         procesos: conteos.reduce((suma, conteo) => suma + conteo.total, 0),
-        usuarias,
+        ...personas,
       },
       desgloses: armarDesgloses(conteos),
-      vistaPrevia: filas.map(aFilaReporte),
+      vistaPrevia: filas.map((fila) => aFilaReporte(fila, filtro.anioActual)),
     };
   }
 
@@ -221,11 +244,14 @@ export class ReporteProcesosService {
     query: ReporteProcesosJuridicoQuery,
     contexto: ContextoAuditoria,
   ): Promise<ArchivoReporte> {
-    const filas = await this.repositorio.filas(aFiltro(query), null);
+    const filtro = aFiltro(query, this.anioActual());
+    const filas = await this.repositorio.filas(filtro, null);
     const contenido = await this.exportador.generar({
       nombreHoja: 'Procesos jurídicos',
       columnas: COLUMNAS_PROCESOS,
-      filas: filas.map((fila) => aFilaHoja(aFilaReporte(fila))),
+      filas: filas.map((fila) =>
+        aFilaHoja(aFilaReporte(fila, filtro.anioActual)),
+      ),
     });
 
     await this.auditService.registrar({
@@ -235,14 +261,18 @@ export class ReporteProcesosService {
       entidad: 'Reporte',
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      detalles: { ...detallesAuditoria(query), filas: filas.length },
+      detalles: { ...detallesAuditoria(filtro), filas: filas.length },
     });
 
     return {
       contenido,
-      // Solo el rango de fechas en el nombre: nunca datos de una persona.
-      nombreArchivo: `procesos-juridicos_${query.desde}_${query.hasta}.${this.exportador.extension}`,
+      nombreArchivo: `procesos-juridicos_${sufijoArchivo(filtro, fechaCalendarioGT(this.reloj.ahora()))}.${this.exportador.extension}`,
       tipoContenido: this.exportador.tipoContenido,
     };
+  }
+
+  /** Año en curso en Guatemala: separa la cartera del año de la de seguimiento. */
+  private anioActual(): number {
+    return anioCalendarioGT(this.reloj.ahora());
   }
 }
