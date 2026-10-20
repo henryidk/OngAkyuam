@@ -1,3 +1,5 @@
+import type { VistaAudiencias } from '@akyuam/shared'
+
 /**
  * Constructor único de las URLs del módulo (mismo criterio que `RUTAS_PSICOLOGIA`): ningún
  * componente arma un path de jurídico con un template string suelto.
@@ -29,6 +31,9 @@ export const RUTAS_JURIDICO = {
     conQuery('/juridico/procesos/registrar', { expediente: expedienteId, referido: referidoId }),
   proceso: (procesoId: string) => `/juridico/procesos/${procesoId}`,
   documentosProceso: (procesoId: string) => `/juridico/procesos/${procesoId}/documentos`,
+  /** Sección Audiencias: `vista` es la pestaña (Próximas, Pendientes de resultado, Historial). */
+  audiencias: ({ vista }: { vista?: VistaAudiencias } = {}) =>
+    conQuery('/juridico/audiencias', { vista: vista === 'proximas' ? undefined : vista }),
   reportes: () => '/juridico/reportes',
   usuarias: () => '/juridico/usuarias',
   /** Pestaña Resumen de la ficha; las demás cuelgan de la misma ruta. */

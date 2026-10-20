@@ -19,6 +19,7 @@ import PestanaDatosCasoJuridico from './features/juridico/usuarias/PestanaDatosC
 import PestanaDocumentosTsJuridico from './features/juridico/usuarias/PestanaDocumentosTs'
 import PestanaReferenciasJuridico from './features/juridico/usuarias/PestanaReferencias'
 import ReportesJuridico from './features/juridico/reportes/ReportesJuridico'
+import ListaAudienciasJuridico from './features/juridico/audiencias/ListaAudiencias'
 import Login from './pages/Login'
 import MedicaLayout from './pages/medica/MedicaLayout'
 import BandejaMedica from './features/medica/bandeja/BandejaMedica'
@@ -110,6 +111,7 @@ function App() {
               <Route path="documentos" element={<PestanaDocumentosJuridico />} />
             </Route>
             {/* La antigua búsqueda de Expedientes ahora es la lista de Usuarias. */}
+            <Route path="audiencias" element={<ListaAudienciasJuridico />} />
             <Route path="expedientes" element={<Navigate to="/juridico/usuarias" replace />} />
             <Route path="usuarias" element={<ListaUsuariasJuridico />} />
             <Route path="usuarias/:usuariaId" element={<FichaUsuariaJuridico />}>

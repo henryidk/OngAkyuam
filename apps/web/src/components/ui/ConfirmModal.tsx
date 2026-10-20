@@ -14,6 +14,8 @@ interface ConfirmModalProps {
   cargando?: boolean
   error?: string | null
   peligro?: boolean
+  /** Para formularios con varios campos (p. ej. agendar una audiencia); por defecto es angosto. */
+  amplio?: boolean
   onConfirmar: () => void
   onCancelar: () => void
   children?: ReactNode
@@ -34,6 +36,7 @@ export default function ConfirmModal({
   cargando = false,
   error,
   peligro = false,
+  amplio = false,
   onConfirmar,
   onCancelar,
   children,
@@ -55,7 +58,9 @@ export default function ConfirmModal({
         aria-modal="true"
         aria-labelledby="titulo-confirm-modal"
         tabIndex={-1}
-        className="relative w-full max-w-sm rounded-xl bg-white p-5 shadow-xl outline-none"
+        className={`relative max-h-[calc(100vh-2rem)] w-full overflow-y-auto rounded-xl bg-white p-5 shadow-xl outline-none ${
+          amplio ? 'max-w-lg' : 'max-w-sm'
+        }`}
       >
         <h2 id="titulo-confirm-modal" className="text-sm font-semibold text-gray-800">{titulo}</h2>
         {descripcion && <p className="mt-1 text-xs text-gray-500">{descripcion}</p>}

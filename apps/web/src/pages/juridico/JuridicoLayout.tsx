@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BarChart3, Home, Inbox, Scale, Users } from 'lucide-react'
+import { BarChart3, CalendarClock, Home, Inbox, Scale, Users } from 'lucide-react'
 import type { ResumenProcesos } from '@akyuam/shared'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { obtenerResumen } from '../../features/juridico/api/juridico.api'
@@ -13,6 +13,7 @@ const ITEMS_NAV: ItemNav[] = [
   { ruta: RUTAS_JURIDICO.inicio(), etiqueta: 'Inicio', fin: true, Icono: Home },
   { ruta: RUTAS_JURIDICO.bandeja(), etiqueta: 'Área de atención', fin: false, Icono: Inbox },
   { ruta: RUTAS_JURIDICO.procesos(), etiqueta: 'Procesos', fin: false, Icono: Scale },
+  { ruta: RUTAS_JURIDICO.audiencias(), etiqueta: 'Audiencias', fin: false, Icono: CalendarClock },
   { ruta: RUTAS_JURIDICO.usuarias(), etiqueta: 'Usuarias', fin: false, Icono: Users },
   { ruta: RUTAS_JURIDICO.reportes(), etiqueta: 'Reportes', fin: false, Icono: BarChart3 },
 ]
@@ -52,6 +53,8 @@ export default function JuridicoLayout() {
   const contadores = resumen && {
     [RUTAS_JURIDICO.bandeja()]: resumen.referenciasPendientes,
     [RUTAS_JURIDICO.procesos()]: resumen.enTramite,
+    // Lo que exige acción: audiencias que ya pasaron y no tienen resultado.
+    [RUTAS_JURIDICO.audiencias()]: resumen.audienciasPendientes,
   }
 
   return <SidebarLayout items={ITEMS_NAV} subtitulo="Jurídica" contadores={contadores ?? undefined} outletContext={contexto} />

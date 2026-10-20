@@ -1,20 +1,18 @@
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, XCircle } from 'lucide-react'
 import {
   CARPETA_DOCUMENTOS_GENERALES,
   NOMBRE_CARPETA_MAX,
-  NOMBRE_DOCUMENTO_MAX,
   normalizarNombreCarpeta,
   type CarpetaDto,
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import { useDialogoModal } from '../../../components/ui/useDialogoModal'
-import { ACCEPT_DOCUMENTOS, formatearTamanio } from '../../../lib/documentos/archivoDocumento'
 import { extraerMensajeError } from '../../../lib/errors'
-import { useColaSubida, type ItemCola } from '../../../lib/documentos/useColaSubida'
+import { useColaSubida } from '../../../lib/documentos/useColaSubida'
 import { crearCarpeta, subirDocumento } from '../api/juridico.api'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../compartido/campos'
+import ColaArchivos from './ColaArchivos'
 
 interface ModalSubidaProps {
   procesoId: string
@@ -39,79 +37,6 @@ function destinoPorDefecto(carpetas: CarpetaDto[], carpetaInicialId?: string): s
   return generales ? PREFIJO_EXISTENTE + generales.id : PREFIJO_SUGERIDA + CARPETA_DOCUMENTOS_GENERALES
 }
 
-function FilaArchivo({
-  item,
-  editable,
-  onRenombrar,
-  onQuitar,
-  onReintentar,
-}: {
-  item: ItemCola
-  editable: boolean
-  onRenombrar: (nombre: string) => void
-  onQuitar: () => void
-  onReintentar: (() => void) | null
-}) {
-  return (
-    <li className="rounded-lg border border-gray-200 p-3">
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1 space-y-1">
-          {editable && !item.invalido ? (
-            <input
-              type="text"
-              aria-label={`Nombre para ${item.archivo.name}`}
-              value={item.nombreVisible}
-              maxLength={NOMBRE_DOCUMENTO_MAX}
-              onChange={(evento) => onRenombrar(evento.target.value)}
-              className={CLASE_CAMPO}
-            />
-          ) : (
-            <p className="truncate text-sm font-medium text-gray-900">{item.nombreVisible || item.archivo.name}</p>
-          )}
-          <p className="truncate text-xs text-gray-500">
-            {item.archivo.name} · {formatearTamanio(item.archivo.size)}
-          </p>
-          {item.estado === 'subiendo' && (
-            <div
-              role="progressbar"
-              aria-label={`Subiendo ${item.archivo.name}`}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={item.progreso}
-              className="h-1.5 overflow-hidden rounded-full bg-gray-200"
-            >
-              <div className="h-full bg-brand-600 transition-[width]" style={{ width: `${item.progreso}%` }} />
-            </div>
-          )}
-          {item.error && <p className="text-xs text-red-700">{item.error}</p>}
-        </div>
-        <div className="flex shrink-0 items-center gap-2 pt-1 text-xs">
-          {item.estado === 'listo' && (
-            <span className="inline-flex items-center gap-1 font-medium text-green-700">
-              <CheckCircle2 size={14} /> Subido
-            </span>
-          )}
-          {item.estado === 'error' && !editable && (
-            <span className="inline-flex items-center gap-1 font-medium text-red-700">
-              <XCircle size={14} /> No se subió
-            </span>
-          )}
-          {onReintentar && (
-            <button type="button" onClick={onReintentar} className="font-medium text-brand-700 hover:underline">
-              Reintentar
-            </button>
-          )}
-          {editable && (
-            <button type="button" onClick={onQuitar} className="font-medium text-gray-500 hover:text-red-700 hover:underline">
-              Quitar
-            </button>
-          )}
-        </div>
-      </div>
-    </li>
-  )
-}
-
 /** Subida en tres momentos: preparar (elegir carpeta y nombres) → subiendo → resultado. */
 export default function ModalSubida({
   procesoId,
@@ -130,7 +55,6 @@ export default function ModalSubida({
   const [error, setError] = useState<string | null>(null)
   const [preparando, setPreparando] = useState(false)
   const carpetaCreada = useRef(false)
-  const selector = useRef<HTMLInputElement>(null)
 
   // Archivos que llegaron arrastrados a la pestaña: entran a la cola una sola vez al abrir.
   const iniciales = useRef(archivosIniciales)
@@ -250,53 +174,7 @@ export default function ModalSubida({
             </p>
           )}
 
-          {cola.items.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-gray-300 px-4 py-6 text-center text-sm text-gray-500">
-              Aún no ha elegido archivos.
-            </p>
-          ) : (
-            <ul className="max-h-[320px] space-y-2 overflow-y-auto">
-              {cola.items.map((item) => (
-                <FilaArchivo
-                  key={item.id}
-                  item={item}
-                  editable={enEdicion}
-                  onRenombrar={(nombre) => cola.renombrar(item.id, nombre)}
-                  onQuitar={() => cola.quitar(item.id)}
-                  onReintentar={
-                    cola.fase === 'resultado' && item.estado === 'error' && !item.invalido
-                      ? () => void cola.reintentar(item.id)
-                      : null
-                  }
-                />
-              ))}
-            </ul>
-          )}
-
-          {enEdicion && (
-            <>
-              <input
-                ref={selector}
-                type="file"
-                multiple
-                accept={ACCEPT_DOCUMENTOS}
-                className="sr-only"
-                tabIndex={-1}
-                aria-hidden="true"
-                onChange={(evento) => {
-                  agregar(Array.from(evento.target.files ?? []))
-                  evento.target.value = ''
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => selector.current?.click()}
-                className="text-sm font-medium text-brand-700 hover:underline"
-              >
-                + Agregar archivos
-              </button>
-            </>
-          )}
+          <ColaArchivos cola={cola} />
 
           {error && (
             <p role="alert" className="text-sm text-red-600">
