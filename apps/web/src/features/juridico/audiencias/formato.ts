@@ -1,7 +1,9 @@
 import {
+  formatFechaGT,
   formatFechaLargaGT,
   sumarDiasGT,
   type AccionAudiencia,
+  type AudienciaEnlazadaDto,
   type AudienciaFilaDto,
   type AudienciaOcupadaDto,
 } from '@akyuam/shared'
@@ -85,4 +87,9 @@ export const ETIQUETAS_ACCION_AUDIENCIA: Record<AccionAudiencia, string> = {
 /** Encabezado de los modales, para no equivocarse de caso. */
 export function textoCaso(audiencia: Pick<AudienciaFilaDto, 'usuaria' | 'codigoProceso'>): string {
   return `${audiencia.usuaria.nombreCompleto} · ${audiencia.codigoProceso}`
+}
+
+/** "04/11/2026 09:00": la otra punta de una reprogramación. */
+export function textoEnlazada(audiencia: AudienciaEnlazadaDto): string {
+  return `${formatFechaGT(audiencia.fecha)} ${audiencia.hora}`
 }

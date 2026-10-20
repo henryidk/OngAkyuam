@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { AudienciaOcupadaDto } from '@akyuam/shared'
-import { agruparPorDia, audienciaEnHora, etiquetaDia, separarAcciones, textoEspera, textoFechaHora } from './formato'
+import { agruparPorDia, audienciaEnHora, etiquetaDia, separarAcciones, textoEnlazada, textoEspera, textoFechaHora } from './formato'
 
 // Datos ficticios. 2026-10-20 es martes.
 const HOY = '2026-10-20'
@@ -92,5 +92,11 @@ describe('separarAcciones', () => {
       principal: null,
       secundarias: ['EDITAR_OBSERVACIONES', 'ADJUNTAR_DOCUMENTO'],
     })
+  })
+})
+
+describe('textoEnlazada', () => {
+  it('fecha corta y hora de la otra audiencia', () => {
+    expect(textoEnlazada({ id: 'a', fecha: '2026-11-04', hora: '09:00' })).toBe('04/11/2026 09:00')
   })
 })

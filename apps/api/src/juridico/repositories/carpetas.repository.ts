@@ -8,7 +8,7 @@ import type {
   RenombrarCarpetaParams,
   ResultadoRenombrarCarpeta,
 } from '../interfaces/documentos-proceso-repository.interface';
-import { INCLUDE_SUBIDO_POR, mapearDocumento } from './mapeo-documento';
+import { INCLUDE_DOCUMENTO, mapearDocumento } from './mapeo-documento';
 
 function esNombreDuplicado(error: unknown): boolean {
   return (
@@ -26,7 +26,7 @@ export class CarpetasRepository implements ICarpetasRepository {
       where: { procesoId },
       include: {
         documentos: {
-          include: INCLUDE_SUBIDO_POR,
+          include: INCLUDE_DOCUMENTO,
           orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         },
       },

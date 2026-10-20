@@ -7,6 +7,7 @@ import {
   type AudienciaAgendadaDto,
   type AudienciaDetalleDto,
   type AudienciasPaginadas,
+  type CarpetaDto,
   type DisponibilidadAudienciasDto,
 } from '@akyuam/shared';
 import request from 'supertest';
@@ -298,6 +299,70 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
         where: { procesoId: proceso.id },
       });
       expect(notas).toBe(1);
+    });
+
+    it('los documentos de una audiencia la traen con fecha y hora en Guatemala', async () => {
+      const { proceso, abogada } = await escenario();
+      const inicio = instanteFuturo();
+      const audiencia = await audienciaEnBase(proceso.id, abogada, { inicio });
+      const carpeta = await prisma.carpetaDocumentoProceso.create({
+        data: {
+          procesoId: proceso.id,
+          nombre: 'Audiencias',
+          nombreNorm: 'audiencias',
+          creadaPorId: juridico.id,
+        },
+      });
+      const comun = {
+        procesoId: proceso.id,
+        carpetaId: carpeta.id,
+        mimeType: 'application/pdf',
+        tamanioBytes: 10,
+        subidoPorId: juridico.id,
+      };
+      const deAudiencia = await prisma.documentoProceso.create({
+        data: {
+          ...comun,
+          nombreVisible: 'acta ficticia',
+          nombreArchivo: 'acta ficticia.pdf',
+          claveR2: `juridico/${proceso.id}/${randomUUID()}`,
+          audienciaId: audiencia.id,
+        },
+      });
+      const suelto = await prisma.documentoProceso.create({
+        data: {
+          ...comun,
+          nombreVisible: 'escrito ficticio',
+          nombreArchivo: 'escrito ficticio.pdf',
+          claveR2: `juridico/${proceso.id}/${randomUUID()}`,
+        },
+      });
+      const esperada = {
+        id: audiencia.id,
+        fecha: fechaCalendarioGT(inicio),
+        hora: horaGT(inicio),
+      };
+
+      const detalle = await pedir(
+        'get',
+        `/api/juridico/procesos/${proceso.id}`,
+      ).expect(200);
+      const documentos = (
+        detalle.body as { carpetas: CarpetaDto[] }
+      ).carpetas.flatMap((c) => c.documentos);
+      expect(
+        documentos.find((d) => d.id === deAudiencia.id)?.audiencia,
+      ).toEqual(esperada);
+      expect(documentos.find((d) => d.id === suelto.id)?.audiencia).toBeNull();
+
+      const audiencias = await pedir(
+        'get',
+        `/api/juridico/procesos/${proceso.id}/audiencias`,
+      ).expect(200);
+      const [conDocumento] = audiencias.body as AudienciaDetalleDto[];
+      expect(conDocumento.documentos).toEqual([
+        expect.objectContaining({ id: deAudiencia.id, audiencia: esperada }),
+      ]);
     });
 
     it('"Mías" solo trae las de la ficha enlazada a la cuenta', async () => {

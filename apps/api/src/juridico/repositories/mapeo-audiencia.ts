@@ -13,7 +13,7 @@ import {
   accionesDisponiblesAudiencia,
   type EstadoAudienciaActual,
 } from '../dominio/maquina-estado-audiencia';
-import { INCLUDE_SUBIDO_POR, mapearDocumento } from './mapeo-documento';
+import { INCLUDE_DOCUMENTO, mapearDocumento } from './mapeo-documento';
 import { nombreCompleto } from './mapeo-proceso';
 
 const SELECT_ENLAZADA = {
@@ -45,7 +45,7 @@ export const INCLUDE_DETALLE_AUDIENCIA = {
   ...INCLUDE_FILA_AUDIENCIA,
   reprogramadaDesde: SELECT_ENLAZADA,
   documentos: {
-    include: INCLUDE_SUBIDO_POR,
+    include: INCLUDE_DOCUMENTO,
     orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
   },
 } satisfies Prisma.AudienciaJuridicaInclude;

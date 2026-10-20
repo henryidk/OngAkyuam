@@ -7,7 +7,7 @@ import type {
   IDocumentosProcesoRepository,
   RenombrarDocumentoParams,
 } from '../interfaces/documentos-proceso-repository.interface';
-import { INCLUDE_SUBIDO_POR, mapearDocumento } from './mapeo-documento';
+import { INCLUDE_DOCUMENTO, mapearDocumento } from './mapeo-documento';
 
 @Injectable()
 export class DocumentosProcesoRepository implements IDocumentosProcesoRepository {
@@ -19,7 +19,7 @@ export class DocumentosProcesoRepository implements IDocumentosProcesoRepository
     const [documento] = await this.prisma.$transaction([
       this.prisma.documentoProceso.create({
         data: params,
-        include: INCLUDE_SUBIDO_POR,
+        include: INCLUDE_DOCUMENTO,
       }),
       this.prisma.procesoJuridico.update({
         where: { id: params.procesoId },
@@ -42,7 +42,7 @@ export class DocumentosProcesoRepository implements IDocumentosProcesoRepository
     }
     const documento = await this.prisma.documentoProceso.findFirst({
       where: { id: params.documentoId, procesoId: params.procesoId },
-      include: INCLUDE_SUBIDO_POR,
+      include: INCLUDE_DOCUMENTO,
     });
     return documento ? mapearDocumento(documento) : null;
   }

@@ -11,6 +11,7 @@ import {
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import { finalizarProceso } from '../api/juridico.api'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../compartido/campos'
+import AvisoAudienciasCierre from './AvisoAudienciasCierre'
 import type { PropsModalProceso } from './contextoDetalle'
 import { useEnvio } from './useEnvio'
 
@@ -19,7 +20,9 @@ export default function ModalFinalizar({ proceso, onCerrar, onHecho, onConflicto
   const [forma, setForma] = useState<FormaFinalizacionProceso | null>(null)
   const [detalle, setDetalle] = useState('')
   const [fechaCierre, setFechaCierre] = useState(hoy)
+  const [cancelacionConfirmada, setCancelacionConfirmada] = useState(false)
   const { enviando, error, setError, enviar } = useEnvio(onConflicto)
+  const conAudiencias = proceso.audienciasProgramadas.length > 0
 
   function confirmar() {
     if (!forma) {
@@ -44,6 +47,7 @@ export default function ModalFinalizar({ proceso, onCerrar, onHecho, onConflicto
       descripcion={`${proceso.codigo} · Un proceso finalizado ya no puede reabrirse.`}
       confirmarLabel="Finalizar proceso"
       cargando={enviando}
+      confirmarDeshabilitado={conAudiencias && !cancelacionConfirmada}
       error={error}
       onConfirmar={confirmar}
       onCancelar={onCerrar}
@@ -95,6 +99,14 @@ export default function ModalFinalizar({ proceso, onCerrar, onHecho, onConflicto
       <p className="text-xs text-gray-500">
         Recuerde adjuntar el convenio, la sentencia o la resolución final en Documentos.
       </p>
+      {conAudiencias && (
+        <AvisoAudienciasCierre
+          audiencias={proceso.audienciasProgramadas}
+          origen="PROCESO_FINALIZADO"
+          confirmado={cancelacionConfirmada}
+          onConfirmado={setCancelacionConfirmada}
+        />
+      )}
     </ConfirmModal>
   )
 }

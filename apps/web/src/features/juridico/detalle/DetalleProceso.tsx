@@ -1,8 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Link, Outlet, useParams } from 'react-router-dom'
 import {
-  CATEGORIA_POR_TIPO_PROCESO,
-  ETIQUETAS_CATEGORIA_PROCESO,
   ETIQUETAS_FORMA_FINALIZACION,
   ETIQUETAS_MOTIVO_ABANDONO,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
@@ -10,18 +8,18 @@ import {
   type ProcesoDetalle,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import Button from '../../../components/ui/Button'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
-import Tabs from '../../../components/ui/Tabs'
 import { useToast } from '../../../components/ui/Toast'
 import { obtenerProceso, reactivarProceso } from '../api/juridico.api'
-import BarraAvance from '../compartido/BarraAvance'
+import { admiteAudiencias, casoDesdeProceso, type ModalAudiencia } from '../audiencias/caso'
+import ModalesAudiencia from '../audiencias/ModalesAudiencia'
 import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista, Esqueleto } from '../compartido/EstadosVista'
 import EtiquetaEstado from '../compartido/EtiquetaEstado'
 import { fechaDeInstante } from '../compartido/formato'
 import { useRecurso } from '../compartido/useRecurso'
 import { RUTAS_JURIDICO } from '../rutas'
+import CabeceraProceso from './CabeceraProceso'
 import type { ContextoDetalle, PropsModalProceso } from './contextoDetalle'
 import ModalAbandono from './ModalAbandono'
 import ModalActuacion from './ModalActuacion'
@@ -101,6 +99,8 @@ export default function DetalleProceso() {
   const cargar = useCallback(() => obtenerProceso(procesoId!), [procesoId])
   const { datos: proceso, error, recargar } = useRecurso(cargar)
   const [modal, setModal] = useState<ModalAbierto | null>(null)
+  const [modalAudiencia, setModalAudiencia] = useState<ModalAudiencia | null>(null)
+  const [versionAudiencias, setVersionAudiencias] = useState(0)
 
   useTituloPagina({
     titulo: proceso?.codigo ?? 'Proceso',
@@ -117,10 +117,19 @@ export default function DetalleProceso() {
     recargarResumen()
   }, [recargar, recargarResumen])
 
+  // Una audiencia cambia la próxima audiencia de la cabecera y, con un documento, sus carpetas.
+  const cambiosAudiencia = useCallback(() => {
+    setVersionAudiencias((version) => version + 1)
+    refrescar()
+  }, [refrescar])
+
   const abrirActuacion = useCallback(() => setModal('actuacion'), [])
   const contexto = useMemo<ContextoDetalle | null>(
-    () => (proceso ? { proceso, refrescar, abrirActuacion } : null),
-    [proceso, refrescar, abrirActuacion],
+    () =>
+      proceso
+        ? { proceso, refrescar, abrirActuacion, abrirAudiencia: setModalAudiencia, versionAudiencias }
+        : null,
+    [proceso, refrescar, abrirActuacion, versionAudiencias],
   )
 
   if (error && !proceso) {
@@ -136,59 +145,20 @@ export default function DetalleProceso() {
     onHecho: (mensaje) => {
       setModal(null)
       mostrar(mensaje)
-      refrescar()
+      // Finalizar o abandonar cancela las audiencias programadas: la pestaña también se refresca.
+      cambiosAudiencia()
     },
     onConflicto: refrescar,
   }
 
   return (
     <div className="mx-auto max-w-6xl space-y-5">
-      <header className={`${CLASE_TARJETA} px-6 pt-5`}>
-        <div className="flex flex-wrap items-start gap-4">
-          <div className="min-w-[260px] flex-1 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm font-medium text-gray-700">{proceso.codigo}</span>
-              <EtiquetaEstado estado={proceso.estadoVisible} />
-              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-600">
-                {ETIQUETAS_CATEGORIA_PROCESO[CATEGORIA_POR_TIPO_PROCESO[proceso.tipo]]}
-              </span>
-            </div>
-            <h2 className="text-[22px] font-semibold tracking-tight text-pretty text-gray-900">
-              {ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.tipo]}
-            </h2>
-            <p className="text-sm text-gray-600">
-              <Link to={RUTAS_JURIDICO.usuaria(proceso.usuaria.id)} className="font-medium text-brand-700 hover:underline">
-                {proceso.usuaria.nombreCompleto}
-              </Link>{' '}
-              · Expediente {proceso.expedienteNumero}
-              {proceso.contraparte && <> · contra {proceso.contraparte}</>}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button variante="secondary" tamano="md" onClick={abrirActuacion}>
-              Registrar actuación
-            </Button>
-            {acciones.includes('REACTIVAR') && (
-              <Button tamano="md" onClick={() => setModal('reactivar')}>
-                Reactivar proceso
-              </Button>
-            )}
-          </div>
-        </div>
-        <div className="mt-5">
-          <BarraAvance fase={proceso.fase} estado={proceso.estadoVisible} />
-        </div>
-        <Tabs
-          className="mt-4"
-          items={[
-            { to: RUTAS_JURIDICO.proceso(proceso.id), etiqueta: `Bitácora (${proceso.bitacora.length})`, fin: true },
-            {
-              to: RUTAS_JURIDICO.documentosProceso(proceso.id),
-              etiqueta: `Documentos (${proceso.carpetas.reduce((total, carpeta) => total + carpeta.documentos.length, 0)})`,
-            },
-          ]}
-        />
-      </header>
+      <CabeceraProceso
+        proceso={proceso}
+        onAgendar={admiteAudiencias(proceso) ? () => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) }) : null}
+        onActuacion={abrirActuacion}
+        onReactivar={() => setModal('reactivar')}
+      />
 
       <Banners proceso={proceso} />
 
@@ -240,6 +210,7 @@ export default function DetalleProceso() {
       {modal === 'suspender' && <ModalSuspender {...propsModal} />}
       {modal === 'abandono' && <ModalAbandono {...propsModal} />}
       {modal === 'reactivar' && <ModalReactivar {...propsModal} />}
+      <ModalesAudiencia modal={modalAudiencia} onCambiar={setModalAudiencia} onCambios={cambiosAudiencia} />
     </div>
   )
 }

@@ -1,10 +1,13 @@
-import { Folder } from 'lucide-react'
-import type { CarpetaDto, DocumentoProcesoDto } from '@akyuam/shared'
+import { CalendarDays, Folder } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { formatFechaGT, type CarpetaDto, type DocumentoProcesoDto } from '@akyuam/shared'
 import { etiquetaFormato, formatearTamanio } from '../../../lib/documentos/archivoDocumento'
 import { fechaDeInstante } from '../compartido/formato'
+import { RUTAS_JURIDICO } from '../rutas'
 
 interface CarpetaProps {
   carpeta: CarpetaDto
+  procesoId: string
   onRenombrar: () => void
   onAgregar: () => void
   onVer: (documento: DocumentoProcesoDto) => void
@@ -16,6 +19,7 @@ const CLASE_ACCION = 'text-xs font-medium text-brand-700 hover:underline'
 
 export default function Carpeta({
   carpeta,
+  procesoId,
   onRenombrar,
   onAgregar,
   onVer,
@@ -48,6 +52,15 @@ export default function Carpeta({
               </span>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-gray-900">{documento.nombreVisible}</p>
+                {documento.audiencia && (
+                  <Link
+                    to={RUTAS_JURIDICO.audienciasProceso(procesoId, { audienciaId: documento.audiencia.id })}
+                    className="my-0.5 inline-flex items-center gap-1 rounded-full bg-[#e2ecf8] px-2 py-0.5 text-[11px] font-semibold text-[#1f4f8a] hover:underline"
+                  >
+                    <CalendarDays size={12} aria-hidden="true" />
+                    Audiencia {formatFechaGT(documento.audiencia.fecha)}
+                  </Link>
+                )}
                 <p className="truncate text-xs text-gray-500 tabular-nums">
                   {formatearTamanio(documento.tamanioBytes)} · {fechaDeInstante(documento.createdAt)} · {documento.subidoPor}
                 </p>

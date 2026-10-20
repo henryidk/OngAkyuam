@@ -1,17 +1,22 @@
 import type { Prisma } from '@prisma/client';
-import type { DocumentoProcesoDto } from '@akyuam/shared';
+import {
+  fechaCalendarioGT,
+  horaGT,
+  type DocumentoProcesoDto,
+} from '@akyuam/shared';
 
-export const INCLUDE_SUBIDO_POR = {
+export const INCLUDE_DOCUMENTO = {
   subidoPor: { select: { nombreCompleto: true } },
+  audiencia: { select: { id: true, inicio: true } },
 } satisfies Prisma.DocumentoProcesoInclude;
 
-type DocumentoConAutor = Prisma.DocumentoProcesoGetPayload<{
-  include: typeof INCLUDE_SUBIDO_POR;
+type DocumentoConRelaciones = Prisma.DocumentoProcesoGetPayload<{
+  include: typeof INCLUDE_DOCUMENTO;
 }>;
 
 // `claveR2` nunca sale del backend: el archivo solo se alcanza con una URL firmada.
 export function mapearDocumento(
-  documento: DocumentoConAutor,
+  documento: DocumentoConRelaciones,
 ): DocumentoProcesoDto {
   return {
     id: documento.id,
@@ -22,5 +27,12 @@ export function mapearDocumento(
     tamanioBytes: documento.tamanioBytes,
     subidoPor: documento.subidoPor.nombreCompleto,
     createdAt: documento.createdAt.toISOString(),
+    audiencia: documento.audiencia
+      ? {
+          id: documento.audiencia.id,
+          fecha: fechaCalendarioGT(documento.audiencia.inicio),
+          hora: horaGT(documento.audiencia.inicio),
+        }
+      : null,
   };
 }

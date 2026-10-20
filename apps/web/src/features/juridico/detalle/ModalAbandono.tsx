@@ -11,6 +11,7 @@ import {
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import { registrarAbandono } from '../api/juridico.api'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../compartido/campos'
+import AvisoAudienciasCierre from './AvisoAudienciasCierre'
 import type { PropsModalProceso } from './contextoDetalle'
 import { useEnvio } from './useEnvio'
 
@@ -20,7 +21,9 @@ export default function ModalAbandono({ proceso, onCerrar, onHecho, onConflicto 
   const [ultimoContacto, setUltimoContacto] = useState('')
   const [intentos, setIntentos] = useState('0')
   const [notificarTs, setNotificarTs] = useState(true)
+  const [cancelacionConfirmada, setCancelacionConfirmada] = useState(false)
   const { enviando, error, setError, enviar } = useEnvio(onConflicto)
+  const conAudiencias = proceso.audienciasProgramadas.length > 0
 
   function confirmar() {
     if (!motivoCatalogo) {
@@ -53,6 +56,7 @@ export default function ModalAbandono({ proceso, onCerrar, onHecho, onConflicto 
       confirmarLabel="Registrar abandono"
       peligro
       cargando={enviando}
+      confirmarDeshabilitado={conAudiencias && !cancelacionConfirmada}
       error={error}
       onConfirmar={confirmar}
       onCancelar={onCerrar}
@@ -115,6 +119,14 @@ export default function ModalAbandono({ proceso, onCerrar, onHecho, onConflicto 
         />
         Notificar a Trabajo Social para seguimiento
       </label>
+      {conAudiencias && (
+        <AvisoAudienciasCierre
+          audiencias={proceso.audienciasProgramadas}
+          origen="PROCESO_ABANDONADO"
+          confirmado={cancelacionConfirmada}
+          onConfirmado={setCancelacionConfirmada}
+        />
+      )}
     </ConfirmModal>
   )
 }

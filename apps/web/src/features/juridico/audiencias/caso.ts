@@ -1,4 +1,4 @@
-import type { AccionAudiencia, AudienciaFilaDto } from '@akyuam/shared'
+import type { AccionAudiencia, AudienciaFilaDto, ProcesoResumen } from '@akyuam/shared'
 
 /**
  * El proceso al que se le agenda una audiencia, con lo justo para el encabezado del modal y los
@@ -21,6 +21,21 @@ export function casoDesdeAudiencia(audiencia: AudienciaFilaDto): CasoAudiencia {
     numeroJudicial: audiencia.numeroJudicial,
     responsableId: audiencia.responsable.id,
   }
+}
+
+export function casoDesdeProceso(proceso: ProcesoResumen): CasoAudiencia {
+  return {
+    procesoId: proceso.id,
+    codigoProceso: proceso.codigo,
+    usuariaNombre: proceso.usuaria.nombreCompleto,
+    numeroJudicial: proceso.numeroJudicial,
+    responsableId: proceso.abogada?.id ?? null,
+  }
+}
+
+/** Se agenda mientras el proceso sigue abierto (en trámite o suspendido), igual que en el backend. */
+export function admiteAudiencias(proceso: Pick<ProcesoResumen, 'estadoVisible'>): boolean {
+  return proceso.estadoVisible === 'EN_TRAMITE' || proceso.estadoVisible === 'SUSPENDIDO'
 }
 
 /** Qué modal de audiencia está abierto: agendar desde un proceso, o una acción sobre una audiencia. */

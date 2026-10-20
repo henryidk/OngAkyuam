@@ -10,13 +10,13 @@ import {
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import { useToast } from '../../../components/ui/Toast'
-import { dispararDescarga } from '../../../lib/documentos/archivoDocumento'
 import { extraerMensajeError } from '../../../lib/errors'
-import { crearCarpeta, obtenerUrlDocumento, renombrarCarpeta, renombrarDocumento } from '../api/juridico.api'
+import { crearCarpeta, renombrarCarpeta, renombrarDocumento } from '../api/juridico.api'
 import { useContextoDetalle } from '../detalle/contextoDetalle'
 import Carpeta from './Carpeta'
 import ModalNombre from './ModalNombre'
 import ModalSubida from './ModalSubida'
+import { useAbrirDocumento } from './useAbrirDocumento'
 
 type Dialogo =
   | { tipo: 'subida'; carpetaId?: string; archivos?: File[] }
@@ -29,6 +29,7 @@ export default function PestanaDocumentos() {
   const { mostrar } = useToast()
   const [dialogo, setDialogo] = useState<Dialogo | null>(null)
   const [arrastrando, setArrastrando] = useState(false)
+  const { ver, descargar } = useAbrirDocumento(proceso.id)
 
   const existentes = new Set(proceso.carpetas.map((carpeta) => normalizarNombreCarpeta(carpeta.nombre)))
   const sugeridas = CARPETAS_SUGERIDAS_POR_TIPO[proceso.tipo].filter(
@@ -52,32 +53,6 @@ export default function PestanaDocumentos() {
     try {
       await crearCarpeta(proceso.id, nombre)
       cerrarYRefrescar('Carpeta creada')
-    } catch (err) {
-      mostrar(extraerMensajeError(err), 'error')
-    }
-  }
-
-  // La ventana se abre dentro del clic (si se abriera después de esperar la URL, el navegador
-  // la bloquearía como ventana emergente) y se le asigna la URL firmada cuando llega.
-  async function ver(documento: DocumentoProcesoDto) {
-    const ventana = window.open('', '_blank')
-    try {
-      const url = await obtenerUrlDocumento(proceso.id, documento.id, 'vista')
-      if (ventana) {
-        ventana.opener = null
-        ventana.location.replace(url)
-      } else {
-        mostrar('El navegador bloqueó la ventana. Permita las ventanas emergentes o use Descargar.', 'error')
-      }
-    } catch (err) {
-      ventana?.close()
-      mostrar(extraerMensajeError(err), 'error')
-    }
-  }
-
-  async function descargar(documento: DocumentoProcesoDto) {
-    try {
-      dispararDescarga(await obtenerUrlDocumento(proceso.id, documento.id, 'descarga'))
     } catch (err) {
       mostrar(extraerMensajeError(err), 'error')
     }
@@ -121,6 +96,7 @@ export default function PestanaDocumentos() {
         <Carpeta
           key={carpeta.id}
           carpeta={carpeta}
+          procesoId={proceso.id}
           onRenombrar={() => setDialogo({ tipo: 'renombrarCarpeta', carpeta })}
           onAgregar={() => setDialogo({ tipo: 'subida', carpetaId: carpeta.id })}
           onVer={(documento) => void ver(documento)}
