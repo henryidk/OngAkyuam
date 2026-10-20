@@ -1,17 +1,31 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Search } from 'lucide-react'
-import { BUSQUEDA_MAX, LARGO_MINIMO_BUSQUEDA_PROCESOS } from '@akyuam/shared'
+import {
+  BUSQUEDA_MAX,
+  LARGO_MINIMO_BUSQUEDA_PROCESOS,
+  anioActualGT,
+  hoyGT,
+  type CarteraJuridico,
+  type ProcesoResumen,
+} from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import Button from '../../../components/ui/Button'
 import Switch from '../../../components/ui/Switch'
+import { useToast } from '../../../components/ui/Toast'
 import { listarProcesos } from '../api/juridico.api'
+import { casoDesdeProceso, type ModalAudiencia } from '../audiencias/caso'
+import ModalesAudiencia from '../audiencias/ModalesAudiencia'
+import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista } from '../compartido/EstadosVista'
 import { useRecurso } from '../compartido/useRecurso'
 import FilaProceso from './FilaProceso'
+import FiltroCartera from './FiltroCartera'
+import { carteraAUrl, carteraDesdeUrl, opcionesCartera } from './formato'
+import ModalNumeroJudicial from './ModalNumeroJudicial'
 
 const ESPERA_BUSQUEDA_MS = 350
-const COLUMNAS = ['No. interno', 'Usuaria', 'Tipo de proceso', 'Avance', 'Seguimiento']
+const COLUMNAS = ['No. interno', 'Usuaria', 'Tipo de proceso', 'No. judicial', 'Próxima audiencia', 'Avance', 'Actividad']
 
 function FilasEsqueleto() {
   return (
@@ -29,14 +43,23 @@ function FilasEsqueleto() {
   )
 }
 
+function textoVacio(conBusqueda: boolean, cartera: CarteraJuridico): string {
+  if (conBusqueda) return 'Ningún proceso en curso coincide con la búsqueda.'
+  if (cartera === 'ANIO') return 'No hay procesos en curso iniciados este año.'
+  if (cartera === 'SEGUIMIENTO') return 'No hay procesos en curso de años anteriores.'
+  return 'No hay procesos en curso.'
+}
+
 /**
- * Lista de trabajo: solo procesos en trámite. "Solo asignados a mí" y la página viven en la URL;
+ * Lista de trabajo: solo procesos en trámite. "Solo asignados a mí", el año de inicio y la página
+ * viven en la URL;
  * el término buscado no, para que el nombre de una usuaria no quede en el historial del navegador.
  */
 export default function ListaProcesos() {
   useTituloPagina({ titulo: 'Procesos' })
   const [params, setParams] = useSearchParams()
   const mios = params.get('mios') === 'true'
+  const cartera = carteraDesdeUrl(params.get('cartera'))
   const pagina = Math.max(1, Number(params.get('page')) || 1)
 
   const [texto, setTexto] = useState('')
@@ -61,18 +84,37 @@ export default function ListaProcesos() {
   }, [siguienteBusqueda, busqueda, setParams])
 
   const cargar = useCallback(
-    () => listarProcesos({ q: busqueda || undefined, mios: mios || undefined, page: pagina }),
-    [busqueda, mios, pagina],
+    () => listarProcesos({ q: busqueda || undefined, mios: mios || undefined, cartera, page: pagina }),
+    [busqueda, mios, cartera, pagina],
   )
   const { datos, error, cargando, recargar } = useRecurso(cargar)
 
-  function actualizarParams(cambios: { mios?: boolean; page?: number }) {
+  const { resumen, recargarResumen } = useContextoJuridico()
+  const { mostrar } = useToast()
+  const [modalAudiencia, setModalAudiencia] = useState<ModalAudiencia | null>(null)
+  const [asignandoNumero, setAsignandoNumero] = useState<ProcesoResumen | null>(null)
+  const trasCambios = useCallback(() => {
+    void recargar()
+    recargarResumen()
+  }, [recargar, recargarResumen])
+
+  // Los totales del resumen cuentan todos los procesos en curso: con la lista acotada no cuadrarían.
+  const opciones = opcionesCartera(anioActualGT(), mios || busqueda ? null : resumen)
+  const hoy = hoyGT()
+
+  function actualizarParams(cambios: { mios?: boolean; cartera?: CarteraJuridico; page?: number }) {
     setParams(
       (actual) => {
         const siguiente = new URLSearchParams(actual)
         if (cambios.mios !== undefined) {
           if (cambios.mios) siguiente.set('mios', 'true')
           else siguiente.delete('mios')
+          siguiente.delete('page')
+        }
+        if (cambios.cartera !== undefined) {
+          const valor = carteraAUrl(cambios.cartera)
+          if (valor) siguiente.set('cartera', valor)
+          else siguiente.delete('cartera')
           siguiente.delete('page')
         }
         if (cambios.page !== undefined) {
@@ -112,6 +154,7 @@ export default function ListaProcesos() {
           <span aria-hidden="true">Solo asignados a mí</span>
         </div>
       </div>
+      <FiltroCartera opciones={opciones} activa={cartera} onCambiar={(valor) => actualizarParams({ cartera: valor })} />
       {textoCorto && (
         <p className="text-xs text-gray-500">Escribe al menos {LARGO_MINIMO_BUSQUEDA_PROCESOS} caracteres.</p>
       )}
@@ -121,11 +164,15 @@ export default function ListaProcesos() {
       ) : (
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[860px] text-left">
+            <table className="w-full min-w-[1080px] text-left">
               <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
                 <tr>
-                  {COLUMNAS.map((columna) => (
-                    <th key={columna} scope="col" className="whitespace-nowrap px-4 py-2.5 font-medium">
+                  {COLUMNAS.map((columna, indice) => (
+                    <th
+                      key={columna}
+                      scope="col"
+                      className={`whitespace-nowrap px-4 py-2.5 font-medium ${indice === 0 ? 'sticky left-0 z-10 bg-gray-50' : ''}`}
+                    >
                       {columna}
                     </th>
                   ))}
@@ -134,14 +181,20 @@ export default function ListaProcesos() {
               <tbody className={cargando && datos ? 'opacity-60' : undefined}>
                 {!datos && <FilasEsqueleto />}
                 {datos?.items.map((proceso) => (
-                  <FilaProceso key={proceso.id} proceso={proceso} />
+                  <FilaProceso
+                    key={proceso.id}
+                    proceso={proceso}
+                    hoy={hoy}
+                    onAsignarNumero={() => setAsignandoNumero(proceso)}
+                    onAgendar={() => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) })}
+                  />
                 ))}
               </tbody>
             </table>
           </div>
           {datos && datos.items.length === 0 && (
             <p className="px-4 py-6 text-center text-sm text-gray-500">
-              {busqueda ? 'Ningún proceso en curso coincide con la búsqueda.' : 'No hay procesos en curso.'}
+              {textoVacio(Boolean(busqueda), cartera)}
             </p>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3.5 text-[13px] text-gray-500">
@@ -167,6 +220,20 @@ export default function ListaProcesos() {
             )}
           </div>
         </section>
+      )}
+
+      <ModalesAudiencia modal={modalAudiencia} onCambiar={setModalAudiencia} onCambios={trasCambios} />
+      {asignandoNumero && (
+        <ModalNumeroJudicial
+          proceso={asignandoNumero}
+          onCerrar={() => setAsignandoNumero(null)}
+          onHecho={(mensaje) => {
+            mostrar(mensaje)
+            setAsignandoNumero(null)
+            trasCambios()
+          }}
+          onConflicto={trasCambios}
+        />
       )}
     </div>
   )
