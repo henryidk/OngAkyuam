@@ -308,6 +308,8 @@ export interface DocumentoProcesoDto {
   tamanioBytes: number
   subidoPor: string
   createdAt: string
+  /** Audiencia a la que pertenece (acta, citación…), con fecha y hora en Guatemala; `null` si no. */
+  audiencia: { id: string; fecha: string; hora: string } | null
 }
 
 export interface CarpetaDto {

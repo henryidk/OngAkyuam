@@ -31,6 +31,9 @@ export const RUTAS_JURIDICO = {
     conQuery('/juridico/procesos/registrar', { expediente: expedienteId, referido: referidoId }),
   proceso: (procesoId: string) => `/juridico/procesos/${procesoId}`,
   documentosProceso: (procesoId: string) => `/juridico/procesos/${procesoId}/documentos`,
+  /** Pestaña Audiencias del proceso; `audienciaId` la resalta (chip de un documento). */
+  audienciasProceso: (procesoId: string, { audienciaId }: { audienciaId?: string } = {}) =>
+    conQuery(`/juridico/procesos/${procesoId}/audiencias`, { audiencia: audienciaId }),
   /** Sección Audiencias: `vista` es la pestaña (Próximas, Pendientes de resultado, Historial). */
   audiencias: ({ vista }: { vista?: VistaAudiencias } = {}) =>
     conQuery('/juridico/audiencias', { vista: vista === 'proximas' ? undefined : vista }),
