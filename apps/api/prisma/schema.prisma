@@ -62,6 +62,7 @@ model Usuario {
   consultasMedicasRegistradas        ConsultaMedica[]
   documentosMedicosSubidos           DocumentoMedico[]
   documentosMedicosPendientes        DocumentoMedicoPendiente[]
+  audienciasJuridicasCreadas         AudienciaJuridica[]
   fichaPersonal                      Personal?
 }
 
@@ -367,9 +368,10 @@ model Personal {
   createdAt DateTime @default(now()) @db.Timestamptz(3)
   updatedAt DateTime @updatedAt @db.Timestamptz(3)
 
-  usuario                 Usuario?          @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
-  procesosComoAbogada     ProcesoJuridico[] @relation("AbogadaDeProceso")
-  procesosComoProcuradora ProcesoJuridico[] @relation("ProcuradoraDeProceso")
+  usuario                   Usuario?            @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
+  procesosComoAbogada       ProcesoJuridico[]   @relation("AbogadaDeProceso")
+  procesosComoProcuradora   ProcesoJuridico[]   @relation("ProcuradoraDeProceso")
+  audienciasComoResponsable AudienciaJuridica[] @relation("ResponsableAudiencia")
 
   @@index([area, tipo, activo])
 }
@@ -431,7 +433,8 @@ model ProcesoJuridico {
   expedienteId        String
   expediente          Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   tipo                TipoProcesoJuridico
-  // El código visible "J{consecutivo}-{numero de expediente}" se deriva, no se guarda.
+  // El No. interno visible ("05-2026" o, desde el segundo, "05-2026 · Proceso 2") se deriva
+  // con `etiquetaProceso`, no se guarda.
   consecutivo         Int
   fase                FaseProcesoJuridico       @default(EN_PROCESO)
   situacion           SituacionProcesoJuridico  @default(ACTIVO)
@@ -466,6 +469,7 @@ model ProcesoJuridico {
   abandonos    AbandonoProceso[]
   suspensiones SuspensionProceso[]
   carpetas     CarpetaDocumentoProceso[]
+  audiencias   AudienciaJuridica[]
 
   @@unique([expedienteId, consecutivo])
   @@index([fase, situacion])
@@ -564,9 +568,73 @@ model DocumentoProceso {
   createdAt     DateTime                @default(now()) @db.Timestamptz(3)
   carpetaId     String
   carpeta       CarpetaDocumentoProceso @relation(fields: [carpetaId], references: [id], onDelete: Restrict)
+  // Documento propio de una audiencia (acta, citación, constancia). Sigue siendo un documento
+  // del proceso: vive en una carpeta y se ve en la pestaña Documentos. Restrict: una audiencia
+  // con documentos nunca se borra.
+  audienciaId   String?
+  audiencia     AudienciaJuridica?      @relation(fields: [audienciaId], references: [id], onDelete: Restrict)
 
   @@index([procesoId])
   @@index([carpetaId])
+  @@index([audienciaId])
+}
+
+enum EstadoAudiencia {
+  PROGRAMADA
+  REALIZADA
+  // El juzgado la suspendió, no se presentó una parte, etc.
+  NO_REALIZADA
+  CANCELADA
+  // Se movió: la fecha nueva es la audiencia que la referencia.
+  REPROGRAMADA
+}
+
+// Por qué se canceló: distingue la cancelación manual de la que provoca cerrar el proceso.
+enum OrigenCancelacionAudiencia {
+  MANUAL
+  PROCESO_FINALIZADO
+  PROCESO_ABANDONADO
+}
+
+// Audiencia judicial de un proceso. `inicio` es un instante (hora de Guatemala al capturar,
+// UTC al guardar), sin duración. "Hoy" y "Pendiente de resultado" no se guardan: se derivan de
+// `inicio` y del reloj. Las restricciones que Prisma no sabe declarar (una sola PROGRAMADA por
+// responsable e instante, minuto exacto, motivo obligatorio, etc.) viven en el SQL de la
+// migración `juridico_audiencias`. Ver planaudiencias.md §5 y §6.
+model AudienciaJuridica {
+  id                  String                      @id @default(uuid())
+  procesoId           String
+  // Restrict y no Cascade: una audiencia es historia judicial de la usuaria y nunca se borra,
+  // así que un proceso con audiencias (y su expediente) tampoco se puede borrar.
+  proceso             ProcesoJuridico             @relation(fields: [procesoId], references: [id], onDelete: Restrict)
+  inicio              DateTime                    @db.Timestamptz(3)
+  responsableId       String
+  responsable         Personal                    @relation("ResponsableAudiencia", fields: [responsableId], references: [id], onDelete: Restrict)
+  estado              EstadoAudiencia             @default(PROGRAMADA)
+  // "Conciliación", "Recepción de pruebas".
+  descripcion         String?                     @db.VarChar(80)
+  // Lo ocurrido; se registra con el resultado y se puede completar después. La app lo limita a
+  // 4000 caracteres.
+  observaciones       String?                     @db.Text
+  // Motivo de cancelación, de no realización o de reprogramación (obligatorio en esos estados).
+  motivo              String?                     @db.VarChar(300)
+  origenCancelacion   OrigenCancelacionAudiencia?
+  reprogramadaDesdeId String?                     @unique
+  reprogramadaDesde   AudienciaJuridica?          @relation("ReprogramacionAudiencia", fields: [reprogramadaDesdeId], references: [id], onDelete: Restrict)
+  reprogramadaA       AudienciaJuridica?          @relation("ReprogramacionAudiencia")
+  resultadoEn         DateTime?                   @db.Timestamptz(3)
+  // Concurrencia optimista: cada escritura exige la versión leída y la incrementa.
+  version             Int                         @default(1)
+  creadoPorId         String
+  creadoPor           Usuario                     @relation(fields: [creadoPorId], references: [id], onDelete: Restrict)
+  createdAt           DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime                    @updatedAt @db.Timestamptz(3)
+
+  documentos DocumentoProceso[]
+
+  @@index([procesoId, inicio])
+  @@index([responsableId, inicio])
+  @@index([inicio])
 }
 
 enum EstadoAtencionPsicologica {
