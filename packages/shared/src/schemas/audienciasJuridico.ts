@@ -45,6 +45,7 @@ export type VistaAudiencias = (typeof VISTAS_AUDIENCIAS)[number]
 
 const motivoObligatorioSchema = z.string().trim().min(1, 'Escriba el motivo').max(MOTIVO_AUDIENCIA_MAX)
 const observacionesSchema = z.string().trim().max(OBSERVACIONES_AUDIENCIA_MAX)
+const MENSAJE_OBSERVACIONES = 'Escriba qué ocurrió en la audiencia'
 
 /** No. judicial ya normalizado (§4). Sin formato forzado: cada juzgado numera distinto. */
 export const numeroJudicialSchema = z
@@ -102,7 +103,10 @@ export const cambiarResponsableAudienciaSchema = z.object({
 })
 export type CambiarResponsableAudienciaInput = z.infer<typeof cambiarResponsableAudienciaSchema>
 
-/** `POST /juridico/audiencias/:id/resultado`. "No se realizó" exige motivo. */
+/**
+ * `POST /juridico/audiencias/:id/resultado`. "Se realizó" exige observaciones (lo ocurrido) y
+ * "No se realizó" exige motivo; la base exige lo mismo (`AudienciaJuridica_realizada_obs_chk`).
+ */
 export const registrarResultadoAudienciaSchema = z
   .object({
     resultado: resultadoAudienciaSchema,
@@ -111,15 +115,22 @@ export const registrarResultadoAudienciaSchema = z
     numeroJudicial: numeroJudicialOpcionalSchema,
     version: versionSchema,
   })
+  .refine((datos) => datos.resultado !== 'REALIZADA' || datos.observaciones.length > 0, {
+    path: ['observaciones'],
+    message: MENSAJE_OBSERVACIONES,
+  })
   .refine((datos) => datos.resultado !== 'NO_REALIZADA' || datos.motivo.length > 0, {
     path: ['motivo'],
     message: 'Escriba por qué no se realizó',
   })
 export type RegistrarResultadoAudienciaInput = z.infer<typeof registrarResultadoAudienciaSchema>
 
-/** `PATCH /juridico/audiencias/:id/observaciones`: completar lo ocurrido después del resultado. */
+/**
+ * `PATCH /juridico/audiencias/:id/observaciones`: completar o corregir lo ocurrido después del
+ * resultado. No se pueden dejar vacías: una realizada siempre las lleva.
+ */
 export const observacionesAudienciaSchema = z.object({
-  observaciones: observacionesSchema,
+  observaciones: observacionesSchema.pipe(z.string().min(1, MENSAJE_OBSERVACIONES)),
   version: versionSchema,
 })
 export type ObservacionesAudienciaInput = z.infer<typeof observacionesAudienciaSchema>

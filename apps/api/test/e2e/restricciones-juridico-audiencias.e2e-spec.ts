@@ -209,7 +209,14 @@ describe('Jurídico · restricciones de audiencias (e2e)', () => {
         'no realizada sin motivo',
         { estado: 'NO_REALIZADA', resultadoEn: new Date() },
       ],
-      ['realizada sin fecha de resultado', { estado: 'REALIZADA' }],
+      [
+        'realizada sin fecha de resultado',
+        { estado: 'REALIZADA', observaciones: 'x' },
+      ],
+      [
+        'realizada sin observaciones',
+        { estado: 'REALIZADA', resultadoEn: new Date(), observaciones: ' ' },
+      ],
       ['programada con origen de cancelación', { origenCancelacion: 'MANUAL' }],
     ] as const)('rechaza una %s', async (_caso, datos) => {
       await expect(audiencia(procesoId, abogada, datos)).rejects.toThrow();

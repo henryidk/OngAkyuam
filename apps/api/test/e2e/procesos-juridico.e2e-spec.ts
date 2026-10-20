@@ -363,6 +363,7 @@ describe('Jurídico · procesos: No. judicial, cartera, búsqueda y cierre (e2e)
             inicio: new Date('2026-01-20T15:00:00.000Z'),
             estado: 'REALIZADA',
             resultadoEn: new Date('2026-01-20T17:00:00.000Z'),
+            observaciones: 'Dato ficticio',
             creadoPorId: juridico.id,
           },
         });

@@ -90,9 +90,20 @@ describe('schemas de audiencias de Jurídico (planaudiencias.md §5 y §7.2)', (
       expect(
         registrarResultadoAudienciaSchema.safeParse({
           resultado: 'REALIZADA',
+          observaciones: 'Se presentaron ambas partes',
           version: 1,
         }).success,
       ).toBe(true);
+    });
+
+    it('"Se realizó" exige observaciones', () => {
+      const resultado = registrarResultadoAudienciaSchema.safeParse({
+        resultado: 'REALIZADA',
+        observaciones: '  ',
+        version: 1,
+      });
+      expect(resultado.success).toBe(false);
+      expect(resultado.error?.issues[0].path).toEqual(['observaciones']);
     });
 
     it('"No se realizó" exige motivo', () => {

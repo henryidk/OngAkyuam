@@ -56,7 +56,7 @@ describe('ResultadoAudienciasService', () => {
 
   const resultado = (parcial = {}) => ({
     resultado: 'REALIZADA' as const,
-    observaciones: '',
+    observaciones: 'Se presentaron ambas partes',
     motivo: '',
     numeroJudicial: null,
     version: 2,
@@ -109,7 +109,7 @@ describe('ResultadoAudienciasService', () => {
       expect(audiencias.registrarResultado).toHaveBeenCalled();
     });
 
-    it('una realizada descarta el motivo y guarda observaciones vacías como null', async () => {
+    it('una realizada descarta el motivo', async () => {
       await service.registrarResultado(
         AUDIENCIA_ID,
         resultado({ motivo: 'no aplica' }),
@@ -122,7 +122,7 @@ describe('ResultadoAudienciasService', () => {
         version: 2,
         usuarioId: contexto.usuarioId,
         resultado: 'REALIZADA',
-        observaciones: null,
+        observaciones: 'Se presentaron ambas partes',
         motivo: null,
         numeroJudicial: null,
         textoBitacora: 'Audiencia del 20/10/2026 08:00: realizada',

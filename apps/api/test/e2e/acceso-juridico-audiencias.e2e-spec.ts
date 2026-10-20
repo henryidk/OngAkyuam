@@ -177,7 +177,7 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
       ],
       ['post', 'cancelacion', { motivo: 'x' }],
       ['patch', 'responsable', {}],
-      ['post', 'resultado', { resultado: 'REALIZADA' }],
+      ['post', 'resultado', { resultado: 'REALIZADA', observaciones: 'x' }],
     ] as const)(
       '%s audiencias/:id/%s responde 403 sin tocarla',
       async (metodo, accion, cuerpo) => {
@@ -287,7 +287,11 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
       });
 
       await pedir('post', `/api/juridico/audiencias/${pasada.id}/resultado`)
-        .send({ resultado: 'REALIZADA', observaciones: '', version: 1 })
+        .send({
+          resultado: 'REALIZADA',
+          observaciones: 'Dato ficticio: se presentaron ambas partes',
+          version: 1,
+        })
         .expect(204);
 
       const notas = await prisma.notaAvanceProceso.count({

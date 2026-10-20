@@ -322,6 +322,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
           inicio: realizada,
           estado: 'REALIZADA',
           resultadoEn: new Date('2025-02-03T17:00:00.000Z'),
+          observaciones: 'Dato ficticio',
           creadoPorId: juridico.id,
         },
       });
