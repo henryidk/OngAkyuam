@@ -58,6 +58,25 @@ export class CarpetasRepository implements ICarpetasRepository {
     }
   }
 
+  async obtenerOCrear(params: CrearCarpetaParams): Promise<string> {
+    const nombreNorm = normalizarNombreCarpeta(params.nombre);
+    // `update: {}`: una carpeta que ya existe se reutiliza tal cual, sin renombrarla.
+    const carpeta = await this.prisma.carpetaDocumentoProceso.upsert({
+      where: {
+        procesoId_nombreNorm: { procesoId: params.procesoId, nombreNorm },
+      },
+      create: {
+        procesoId: params.procesoId,
+        nombre: params.nombre,
+        nombreNorm,
+        creadaPorId: params.creadaPorId,
+      },
+      update: {},
+      select: { id: true },
+    });
+    return carpeta.id;
+  }
+
   async renombrar(
     params: RenombrarCarpetaParams,
   ): Promise<ResultadoRenombrarCarpeta> {

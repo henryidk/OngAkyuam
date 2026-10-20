@@ -33,7 +33,7 @@ import {
   MENSAJE_SIN_ACCESO_DOCUMENTO,
   MENSAJES_ARCHIVO,
 } from '../compartido/mensajes';
-import { RELOJ, type IReloj } from '../compartido/reloj';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import {
   DOCUMENTOS_MEDICOS_REPOSITORY,
   type ArchivoMedicoGuardado,

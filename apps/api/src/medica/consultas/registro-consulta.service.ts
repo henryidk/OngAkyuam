@@ -22,7 +22,7 @@ import {
   MENSAJE_PERSONA_AJENA,
   MENSAJE_SIN_ACCESO_CITA,
 } from '../compartido/mensajes';
-import { RELOJ, type IReloj } from '../compartido/reloj';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import { exigirInicioValido } from '../compartido/validar-horario';
 import type { AccesoAtencionMedica } from '../interfaces/acceso-medica-repository.interface';
 import {

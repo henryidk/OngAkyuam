@@ -16,7 +16,7 @@ import {
   MENSAJE_CITA_NO_REPROGRAMABLE,
   MENSAJE_INASISTENCIA_NO_PERMITIDA,
 } from '../compartido/mensajes';
-import { RELOJ, type IReloj } from '../compartido/reloj';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import { exigirInicioValido } from '../compartido/validar-horario';
 import { admiteInasistencia } from '../dominio/estado-cita';
 import type { AccesoCitaMedica } from '../interfaces/acceso-medica-repository.interface';

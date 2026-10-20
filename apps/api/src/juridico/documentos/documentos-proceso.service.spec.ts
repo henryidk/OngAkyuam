@@ -185,6 +185,34 @@ describe('DocumentosProcesoService', () => {
       );
     });
 
+    it('un documento de audiencia queda enlazado y se audita como tal', async () => {
+      const audienciaId = '77777777-7777-4777-8777-777777777777';
+
+      await subir({ audienciaId });
+
+      expect(documentos.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ audienciaId }),
+      );
+      expect(auditService.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'AUDIENCIA_DOCUMENTO_SUBIDO',
+          detalles: {
+            procesoId: PROCESO_ID,
+            carpetaId: CARPETA_ID,
+            audienciaId,
+          },
+        }),
+      );
+    });
+
+    it('sin audiencia se guarda con audienciaId null', async () => {
+      await subir();
+
+      expect(documentos.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ audienciaId: null }),
+      );
+    });
+
     it('403 si la carpeta es de otro proceso, sin subir nada', async () => {
       carpetas.perteneceAlProceso.mockResolvedValue(false);
 

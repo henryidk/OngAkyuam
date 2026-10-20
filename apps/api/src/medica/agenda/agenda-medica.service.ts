@@ -16,7 +16,7 @@ import type {
   SemanaAgendaMedicaDto,
 } from '@akyuam/shared';
 import { MENSAJE_RANGO_DISPONIBILIDAD } from '../compartido/mensajes';
-import { RELOJ, type IReloj } from '../compartido/reloj';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import { derivarEstadoCita } from '../dominio/estado-cita';
 import { diasHabilesDesde, horasLibres } from '../dominio/horario';
 import {

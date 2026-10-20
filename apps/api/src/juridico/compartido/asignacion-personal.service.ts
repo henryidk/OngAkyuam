@@ -1,5 +1,5 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
-import type { TipoPersonalJuridico } from '@akyuam/shared';
+import type { PersonalAsignado, TipoPersonalJuridico } from '@akyuam/shared';
 import { PERSONAL_REPOSITORY } from '../../personal/interfaces/personal-repository.interface';
 import type { IPersonalRepository } from '../../personal/interfaces/personal-repository.interface';
 
@@ -28,20 +28,32 @@ export class AsignacionPersonalService {
     await this.validarCargo(procuradoraId, 'PROCURADORA');
   }
 
+  /** La responsable de una audiencia: siempre una abogada activa de Jurídico. */
+  exigirAbogada(id: string): Promise<PersonalAsignado> {
+    return this.exigirCargo(id, 'ABOGADA');
+  }
+
   private async validarCargo(
     id: string | null,
     tipo: TipoPersonalJuridico,
   ): Promise<void> {
-    if (!id) {
-      return;
+    if (id) {
+      await this.exigirCargo(id, tipo);
     }
-    const existe = await this.personalRepository.buscarActivo({
+  }
+
+  private async exigirCargo(
+    id: string,
+    tipo: TipoPersonalJuridico,
+  ): Promise<PersonalAsignado> {
+    const personal = await this.personalRepository.buscarActivo({
       id,
       area: 'JURIDICO',
       tipo,
     });
-    if (!existe) {
+    if (!personal) {
       throw new BadRequestException(MENSAJES[tipo]);
     }
+    return personal;
   }
 }

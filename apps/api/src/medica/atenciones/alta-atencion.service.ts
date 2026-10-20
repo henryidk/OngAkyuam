@@ -13,7 +13,7 @@ import {
   MENSAJE_ATENCION_CAMBIO,
   MENSAJE_ATENCION_NO_ACTIVA,
 } from '../compartido/mensajes';
-import { RELOJ, type IReloj } from '../compartido/reloj';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import {
   ATENCIONES_MEDICAS_REPOSITORY,
   type IAtencionesMedicasRepository,

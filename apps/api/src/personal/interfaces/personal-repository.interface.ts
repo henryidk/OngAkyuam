@@ -36,7 +36,10 @@ export interface IPersonalRepository {
   /**
    * Valida que `id` sea un `Personal` existente, del área y tipo esperados, y activo —
    * usado por otras áreas (ej. jurídico) para confirmar una asignación antes de guardarla,
-   * en vez de depender solo de la violación de la FK de Postgres.
+   * en vez de depender solo de la violación de la FK de Postgres. Devuelve el nombre para
+   * que quien asigna lo pueda anotar (ej. la bitácora de una audiencia).
    */
-  buscarActivo(params: BuscarActivoParams): Promise<{ id: string } | null>;
+  buscarActivo(
+    params: BuscarActivoParams,
+  ): Promise<{ id: string; nombre: string } | null>;
 }

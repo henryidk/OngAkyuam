@@ -4,10 +4,15 @@ import { AreasModule } from '../areas/areas.module';
 import { AuthModule } from '../auth/auth.module';
 import { ExcelJsExportador } from '../common/hoja-calculo/exceljs-exportador';
 import { EXPORTADOR_HOJA_CALCULO } from '../common/hoja-calculo/exportador-hoja-calculo.interface';
+import { RELOJ, RelojSistema } from '../common/reloj';
 import { MedicaModule } from '../medica/medica.module';
 import { PersonalModule } from '../personal/personal.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
+import { AgendaAudienciasService } from './audiencias/agenda-audiencias.service';
+import { AudienciasController } from './audiencias/audiencias.controller';
+import { ProgramacionAudienciasService } from './audiencias/programacion-audiencias.service';
+import { ResultadoAudienciasService } from './audiencias/resultado-audiencias.service';
 import { BandejaJuridicoController } from './bandeja/bandeja-juridico.controller';
 import { BandejaJuridicoService } from './bandeja/bandeja-juridico.service';
 import { BitacoraController } from './bitacora/bitacora.controller';
@@ -22,6 +27,8 @@ import { HistorialUsuariaService } from './historial/historial-usuaria.service';
 import { AvisosJuridicoListener } from './inicio/avisos-juridico.listener';
 import { InicioJuridicoController } from './inicio/inicio-juridico.controller';
 import { InicioJuridicoService } from './inicio/inicio-juridico.service';
+import { AGENDA_AUDIENCIAS_REPOSITORY } from './interfaces/agenda-audiencias-repository.interface';
+import { AUDIENCIAS_REPOSITORY } from './interfaces/audiencias-repository.interface';
 import { BITACORA_REPOSITORY } from './interfaces/bitacora-repository.interface';
 import {
   CARPETAS_REPOSITORY,
@@ -39,6 +46,8 @@ import { VistaMedicaJuridicoService } from './medicina/vista-medica-juridico.ser
 import { ProcesosController } from './procesos/procesos.controller';
 import { ProcesosService } from './procesos/procesos.service';
 import { RegistroProcesosService } from './procesos/registro-procesos.service';
+import { AgendaAudienciasRepository } from './repositories/agenda-audiencias.repository';
+import { AudienciasRepository } from './repositories/audiencias.repository';
 import { BitacoraRepository } from './repositories/bitacora.repository';
 import { CarpetasRepository } from './repositories/carpetas.repository';
 import { DocumentosProcesoRepository } from './repositories/documentos-proceso.repository';
@@ -77,6 +86,7 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     HistorialUsuariaController,
     ReportesJuridicoController,
     VistaMedicaJuridicoController,
+    AudienciasController,
   ],
   providers: [
     AccesoJuridicoService,
@@ -93,6 +103,15 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     AvisosJuridicoListener,
     ReporteProcesosService,
     VistaMedicaJuridicoService,
+    AgendaAudienciasService,
+    ProgramacionAudienciasService,
+    ResultadoAudienciasService,
+    { provide: RELOJ, useClass: RelojSistema },
+    { provide: AUDIENCIAS_REPOSITORY, useClass: AudienciasRepository },
+    {
+      provide: AGENDA_AUDIENCIAS_REPOSITORY,
+      useClass: AgendaAudienciasRepository,
+    },
     { provide: EXPORTADOR_HOJA_CALCULO, useClass: ExcelJsExportador },
     {
       provide: REPORTE_PROCESOS_REPOSITORY,

@@ -1,7 +1,15 @@
+import type { PersonalAsignado } from '@akyuam/shared';
 import type { AuditService } from '../../auth/services/audit.service';
+import type { IReloj } from '../../common/reloj';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
+import type { IPersonalRepository } from '../../personal/interfaces/personal-repository.interface';
 import type { RedisService } from '../../redis/redis.service';
 import { AccesoJuridicoService } from '../compartido/acceso-juridico.service';
+import type {
+  AudienciaParaEscritura,
+  IAudienciasRepository,
+  ResultadoEscrituraAudiencia,
+} from '../interfaces/audiencias-repository.interface';
 import type {
   AccesoProceso,
   ExpedienteAccesoJuridico,
@@ -101,4 +109,76 @@ export function accionesAuditadas(auditService: AuditService): string[] {
   return (auditService.registrar as jest.Mock).mock.calls.map(
     ([evento]: [{ accion: string }]) => evento.accion,
   );
+}
+
+// ---- Audiencias ----
+
+export const AUDIENCIA_ID = '77777777-7777-4777-8777-777777777777';
+export const ABOGADA_ID = '88888888-8888-4888-8888-888888888888';
+export const OTRA_ABOGADA_ID = '99999999-9999-4999-8999-999999999999';
+
+/** Lunes 19/10/2026 09:00 en Guatemala (UTC-6). */
+export const AHORA = new Date('2026-10-19T15:00:00.000Z');
+
+export function relojFijo(ahora: Date = AHORA): IReloj {
+  return { ahora: () => ahora };
+}
+
+export function audienciaParaEscritura(
+  parcial: Partial<AudienciaParaEscritura> = {},
+): AudienciaParaEscritura {
+  return {
+    id: AUDIENCIA_ID,
+    procesoId: PROCESO_ID,
+    estado: 'PROGRAMADA',
+    // Miércoles 21/10/2026 09:30 en Guatemala.
+    inicio: new Date('2026-10-21T15:30:00.000Z'),
+    responsable: { id: ABOGADA_ID, nombre: 'Abogada Ficticia' },
+    tieneNuevaFecha: false,
+    procesoAbierto: true,
+    version: 2,
+    ...parcial,
+  };
+}
+
+export function escrituraOk(
+  parcial: Partial<{
+    audienciaId: string;
+    numeroJudicialAsignado: boolean;
+  }> = {},
+): ResultadoEscrituraAudiencia {
+  return {
+    ok: true,
+    audienciaId: AUDIENCIA_ID,
+    numeroJudicialAsignado: false,
+    ...parcial,
+  };
+}
+
+export function crearAudienciasRepository(): jest.Mocked<IAudienciasRepository> {
+  return {
+    buscarParaEscritura: jest.fn().mockResolvedValue(audienciaParaEscritura()),
+    agendar: jest.fn().mockResolvedValue(escrituraOk()),
+    reprogramar: jest.fn().mockResolvedValue(escrituraOk()),
+    cancelar: jest.fn().mockResolvedValue(escrituraOk()),
+    cambiarResponsable: jest.fn().mockResolvedValue(escrituraOk()),
+    registrarResultado: jest.fn().mockResolvedValue(escrituraOk()),
+    editarObservaciones: jest.fn().mockResolvedValue(escrituraOk()),
+  };
+}
+
+/** Personal en memoria: solo las abogadas de la lista están activas. */
+export function crearPersonalRepository(
+  activas: PersonalAsignado[] = [
+    { id: ABOGADA_ID, nombre: 'Abogada Ficticia' },
+    { id: OTRA_ABOGADA_ID, nombre: 'Otra Abogada Ficticia' },
+  ],
+): jest.Mocked<Pick<IPersonalRepository, 'buscarActivo'>> &
+  IPersonalRepository {
+  return {
+    buscarActivo: jest.fn(({ id }: { id: string }) =>
+      Promise.resolve(activas.find((p) => p.id === id) ?? null),
+    ),
+  } as unknown as jest.Mocked<Pick<IPersonalRepository, 'buscarActivo'>> &
+    IPersonalRepository;
 }

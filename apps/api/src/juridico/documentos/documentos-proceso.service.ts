@@ -65,6 +65,8 @@ export interface SubirDocumentoParams {
   nombreVisible?: string;
   /** Identificador de la tanda de subida (header `X-Lote-Subida`). */
   tanda?: string;
+  /** Documento de una audiencia: quien llama ya validó que es de este proceso. */
+  audienciaId?: string;
 }
 
 function textoTanda(cantidad: number): string {
@@ -184,6 +186,7 @@ export class DocumentosProcesoService {
         mimeType: archivo.mimetype,
         tamanioBytes: archivo.size,
         subidoPorId: contexto.usuarioId,
+        audienciaId: params.audienciaId ?? null,
       });
     } catch (error) {
       // Sin fila en la base nadie podría volver a encontrar ese archivo: se quita del
@@ -197,10 +200,18 @@ export class DocumentosProcesoService {
     }
 
     await this.anotarEnBitacora(procesoId, contexto.usuarioId, params.tanda);
-    await this.auditar(contexto, 'DOCUMENTO_PROCESO_SUBIDO', documento.id, {
-      procesoId,
-      carpetaId,
-    });
+    await this.auditar(
+      contexto,
+      params.audienciaId
+        ? 'AUDIENCIA_DOCUMENTO_SUBIDO'
+        : 'DOCUMENTO_PROCESO_SUBIDO',
+      documento.id,
+      {
+        procesoId,
+        carpetaId,
+        ...(params.audienciaId && { audienciaId: params.audienciaId }),
+      },
+    );
     return documento;
   }
 

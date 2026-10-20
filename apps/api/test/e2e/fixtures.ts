@@ -152,3 +152,46 @@ export function instanteUnico(): Date {
   const minutos = Math.floor(Math.random() * 50_000_000);
   return new Date(Date.UTC(2100, 0, 1) + minutos * 60_000);
 }
+
+/** Abogada activa de Jurídico. Cada prueba usa la suya: el índice de horario es por responsable. */
+export async function crearAbogada(prisma: PrismaService) {
+  return prisma.personal.create({
+    data: {
+      area: 'JURIDICO',
+      tipo: 'ABOGADA',
+      nombre: `${MARCA} Abogada ${sufijo()}`,
+    },
+  });
+}
+
+/** Proceso jurídico abierto (salvo que se indique otra situación). */
+export async function crearProceso(
+  prisma: PrismaService,
+  expedienteId: string,
+  creadoPorId: string,
+  datos: Partial<{
+    situacion: 'ACTIVO' | 'SUSPENDIDO' | 'ABANDONADO';
+    numeroJudicial: string;
+  }> = {},
+) {
+  return prisma.procesoJuridico.create({
+    data: {
+      expedienteId,
+      tipo: 'MEDIDAS_SEGURIDAD',
+      consecutivo: 1,
+      fechaInicio: new Date('2026-01-05'),
+      creadoPorId,
+      ...datos,
+    },
+  });
+}
+
+/**
+ * Un minuto exacto entre 2 y 600 días en el futuro: las audiencias solo se agendan a futuro y a
+ * menos de 3 años, así que no sirve `instanteUnico`.
+ */
+export function instanteFuturo(): Date {
+  const minutos = 2 * 24 * 60 + Math.floor(Math.random() * 598 * 24 * 60);
+  const ahora = Math.floor(Date.now() / 60_000) * 60_000;
+  return new Date(ahora + minutos * 60_000);
+}

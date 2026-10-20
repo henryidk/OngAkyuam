@@ -278,7 +278,7 @@ describe('Medicina · acceso (e2e)', () => {
         `/api/trabajo-social/expedientes/${expedienteId}/compartido`,
         sesiones.get('TRABAJO_SOCIAL')!,
       ).expect(200);
-      expect(JSON.stringify(respuesta.body)).toContain('M1-');
+      expect(JSON.stringify(respuesta.body)).toContain('En atención');
       sinDatosClinicos(respuesta.body);
     });
 

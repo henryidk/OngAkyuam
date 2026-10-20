@@ -11,7 +11,7 @@ import { eventoAuditoria } from '../compartido/auditoria';
 import { traducirErrorMedica } from '../compartido/errores-http';
 import { IdempotenciaMedica } from '../compartido/idempotencia';
 import { MENSAJE_PERSONA_AJENA } from '../compartido/mensajes';
-import { RELOJ, type IReloj } from '../compartido/reloj';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import { exigirInicioValido } from '../compartido/validar-horario';
 import {
   CITAS_MEDICAS_REPOSITORY,

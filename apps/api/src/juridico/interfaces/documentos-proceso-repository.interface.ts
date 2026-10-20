@@ -26,6 +26,11 @@ export interface ICarpetasRepository {
   /** `null` si el proceso ya tiene una carpeta con ese nombre (sin distinguir mayúsculas). */
   crear(params: CrearCarpetaParams): Promise<CarpetaDto | null>;
   renombrar(params: RenombrarCarpetaParams): Promise<ResultadoRenombrarCarpeta>;
+  /**
+   * La carpeta del proceso con ese nombre (sin distinguir mayúsculas), creándola si todavía no
+   * existe. Devuelve su id. Si alguien ya creó a mano una carpeta con ese nombre, se reutiliza.
+   */
+  obtenerOCrear(params: CrearCarpetaParams): Promise<string>;
   /** La carpeta existe **y** es de ese proceso: nunca se busca solo por su id. */
   perteneceAlProceso(carpetaId: string, procesoId: string): Promise<boolean>;
 }
@@ -39,6 +44,8 @@ export interface CrearDocumentoProcesoParams {
   mimeType: string;
   tamanioBytes: number;
   subidoPorId: string;
+  /** Documento propio de una audiencia del mismo proceso (acta, citación). */
+  audienciaId: string | null;
 }
 
 export interface RenombrarDocumentoParams {

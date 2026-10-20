@@ -7,7 +7,7 @@ import type {
 } from '@akyuam/shared';
 import { interpretarBusqueda } from '../../common/busqueda-usuarias';
 import { MENSAJE_SIN_ACCESO_USUARIA } from '../compartido/mensajes';
-import { RELOJ, type IReloj } from '../compartido/reloj';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import {
   PACIENTES_MEDICA_REPOSITORY,
   type IPacientesMedicaRepository,

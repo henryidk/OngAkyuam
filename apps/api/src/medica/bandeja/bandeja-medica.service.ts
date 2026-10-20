@@ -4,7 +4,7 @@ import type {
   ContadoresMedicaDto,
   ReferenciaBandejaMedicaDto,
 } from '@akyuam/shared';
-import { RELOJ, type IReloj } from '../compartido/reloj';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import { derivarEstadoCita } from '../dominio/estado-cita';
 import {
   AGENDA_MEDICA_REPOSITORY,

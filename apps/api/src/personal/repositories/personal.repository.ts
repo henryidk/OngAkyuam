@@ -64,7 +64,7 @@ export class PersonalRepository implements IPersonalRepository {
 
   async buscarActivo(
     params: BuscarActivoParams,
-  ): Promise<{ id: string } | null> {
+  ): Promise<{ id: string; nombre: string } | null> {
     return this.prisma.personal.findFirst({
       where: {
         id: params.id,
@@ -72,7 +72,7 @@ export class PersonalRepository implements IPersonalRepository {
         tipo: params.tipo,
         activo: true,
       },
-      select: { id: true },
+      select: { id: true, nombre: true },
     });
   }
 }
