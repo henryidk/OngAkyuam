@@ -1,4 +1,5 @@
 import type { AudienciaOcupadaDto } from '@akyuam/shared'
+import { formatHora12 } from '../compartido/hora12'
 
 interface AgendaDelDiaProps {
   ocupadas: AudienciaOcupadaDto[] | null
@@ -8,7 +9,7 @@ interface AgendaDelDiaProps {
   propiaId?: string
 }
 
-/** Lo que la responsable ya tiene ese día ("09:00 · 03-2026 · Conciliación"), antes de guardar. */
+/** Lo que la responsable ya tiene ese día ("9:00 a. m. · 03-2026 · Conciliación"), antes de guardar. */
 export default function AgendaDelDia({ ocupadas, cargando, error, propiaId }: AgendaDelDiaProps) {
   let contenido
   if (error) {
@@ -22,7 +23,7 @@ export default function AgendaDelDia({ ocupadas, cargando, error, propiaId }: Ag
       <ul className="space-y-0.5 text-gray-700">
         {ocupadas.map((ocupada) => (
           <li key={ocupada.id} className="tabular-nums">
-            {ocupada.hora} · {ocupada.codigoProceso}
+            {formatHora12(ocupada.hora)} · {ocupada.codigoProceso}
             {ocupada.descripcion && ` · ${ocupada.descripcion}`}
             {ocupada.id === propiaId && <span className="text-gray-500"> (la que se reprograma)</span>}
           </li>

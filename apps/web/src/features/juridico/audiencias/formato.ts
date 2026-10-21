@@ -7,6 +7,7 @@ import {
   type AudienciaFilaDto,
   type AudienciaOcupadaDto,
 } from '@akyuam/shared'
+import { formatHora12 } from '../compartido/hora12'
 
 // Reglas de presentación de la sección Audiencias. Funciones puras: `hoy` llega como argumento
 // ("YYYY-MM-DD" de Guatemala) para que las pruebas no dependan del reloj.
@@ -46,9 +47,9 @@ export function textoEspera(diasTranscurridos: number): string {
   return `Hace ${diasTranscurridos} días`
 }
 
-/** Confirmación en vivo del modal: "Martes 21 de octubre, 09:30 (hora de Guatemala)". */
+/** Confirmación en vivo del modal: "Martes 21 de octubre, 9:30 a. m. (hora de Guatemala)". */
 export function textoFechaHora(fecha: string, hora: string): string {
-  return `${formatFechaLargaGT(fecha)}, ${hora} (hora de Guatemala)`
+  return `${formatFechaLargaGT(fecha)}, ${formatHora12(hora)} (hora de Guatemala)`
 }
 
 /**

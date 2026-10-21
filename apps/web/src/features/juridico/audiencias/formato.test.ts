@@ -52,7 +52,7 @@ describe('textoEspera', () => {
 
 describe('textoFechaHora', () => {
   it('dice el día, la hora y la zona', () => {
-    expect(textoFechaHora('2026-10-21', '09:30')).toBe('Miércoles 21 de octubre, 09:30 (hora de Guatemala)')
+    expect(textoFechaHora('2026-10-21', '09:30')).toBe('Miércoles 21 de octubre, 9:30 a. m. (hora de Guatemala)')
   })
 })
 

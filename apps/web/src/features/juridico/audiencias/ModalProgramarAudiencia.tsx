@@ -13,7 +13,9 @@ import {
 } from '@akyuam/shared'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import { agendarAudiencia, reprogramarAudiencia } from '../api/audiencias.api'
+import CampoHora12 from '../compartido/CampoHora12'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../compartido/campos'
+import { formatHora12 } from '../compartido/hora12'
 import { usePersonalJuridico } from '../compartido/usePersonalJuridico'
 import { useEnvio } from '../detalle/useEnvio'
 import AgendaDelDia from './AgendaDelDia'
@@ -112,9 +114,9 @@ export default function ModalProgramarAudiencia({ caso, anterior, onCerrar, onHe
         <p className="text-xs text-gray-600 tabular-nums">
           {modo === 'REPROGRAMAR' ? 'Estaba el ' : 'La anterior era el '}
           <s>
-            {formatFechaGT(anterior.audiencia.fecha)} {anterior.audiencia.hora}
+            {formatFechaGT(anterior.audiencia.fecha)} {formatHora12(anterior.audiencia.hora)}
           </s>
-          {fecha && hora && <span className="font-medium text-gray-900"> → {formatFechaGT(fecha)} {hora}</span>}
+          {fecha && hora && <span className="font-medium text-gray-900"> → {formatFechaGT(fecha)} {formatHora12(hora)}</span>}
         </p>
       )}
 
@@ -140,16 +142,12 @@ export default function ModalProgramarAudiencia({ caso, anterior, onCerrar, onHe
           <span>Fecha</span>
           <input type="date" min={hoyGT()} value={fecha} onChange={(evento) => alCambiar(setFecha)(evento.target.value)} className={CLASE_CAMPO} />
         </label>
-        <label className={CLASE_ETIQUETA}>
-          <span>Hora (Guatemala)</span>
-          <input
-            type="time"
-            step={PASO_MINUTOS_HORA_AUDIENCIA * 60}
-            value={hora}
-            onChange={(evento) => alCambiar(setHora)(evento.target.value)}
-            className={CLASE_CAMPO}
-          />
-        </label>
+        <CampoHora12
+          etiqueta="Hora (Guatemala)"
+          valor={hora}
+          onCambiar={alCambiar(setHora)}
+          pasoMinutos={PASO_MINUTOS_HORA_AUDIENCIA}
+        />
       </div>
 
       {fecha && hora && (
@@ -161,7 +159,7 @@ export default function ModalProgramarAudiencia({ caso, anterior, onCerrar, onHe
       <AgendaDelDia {...disponibilidad} propiaId={propiaId} />
       {choque && (
         <p role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-          La responsable ya tiene una audiencia a las {choque.hora} ({choque.codigoProceso}). Elija otra hora u otra responsable.
+          La responsable ya tiene una audiencia a las {formatHora12(choque.hora)} ({choque.codigoProceso}). Elija otra hora u otra responsable.
         </p>
       )}
 
