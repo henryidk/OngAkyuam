@@ -2,53 +2,72 @@ import { CircleAlert, CircleCheck, FileUp, Loader2, RotateCw } from 'lucide-reac
 import { useRef } from 'react'
 import {
   documentosRequeridos,
+  ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_TIPO_DOCUMENTO,
   TIPOS_DOCUMENTO_ALBERGUE,
+  type AreaAtencion,
   type TipoDocumentoTrabajoSocial,
   type TipoRegistro,
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
-import type { DocumentoRegistro, UseDocumentosStaging } from '../hooks/useDocumentosStaging'
+import Switch from '../../../components/ui/Switch'
+import { ACCEPT_DOCUMENTOS, formatearTamanio } from '../../../lib/documentos/archivoDocumento'
+import type { DocumentoNuevoCaso, UseDocumentosNuevoCaso } from '../hooks/useDocumentosNuevoCaso'
 
 interface PasoDocumentosProps {
-  tipoRegistro: TipoRegistro | ''
-  staging: UseDocumentosStaging
+  tipoRegistro: TipoRegistro
+  documentos: UseDocumentosNuevoCaso
+  /** Las referidas en el paso anterior: solo a ellas se les puede compartir un documento. */
+  areasReferidas: AreaAtencion[]
 }
 
-export default function PasoDocumentos({ tipoRegistro, staging }: PasoDocumentosProps) {
+export default function PasoDocumentos({ tipoRegistro, documentos, areasReferidas }: PasoDocumentosProps) {
   // Al registrar todavía no hay egreso; los requeridos al registrar son siempre formularios de
   // Trabajo Social, por eso el cast al subconjunto que acepta el endpoint de subida.
-  const requeridos = documentosRequeridos(tipoRegistro || 'EXTERNA', false) as TipoDocumentoTrabajoSocial[]
+  const requeridos = documentosRequeridos(tipoRegistro, false) as TipoDocumentoTrabajoSocial[]
+  // Jurídico ve los formularios de Trabajo Social por normativa: no hay nada que elegir.
+  const restringibles = areasReferidas.filter((area) => area !== 'JURIDICO')
 
   return (
     <div className="flex flex-col gap-3">
       <p className="rounded-lg bg-gray-50 px-3.5 py-2.5 text-[13px] text-gray-500">
-        Cada archivo se sube en cuanto lo eliges. Puedes registrar sin adjuntar nada: lo que falte aparecerá en
-        “Documentos por subir” en tu bandeja. Quién puede ver cada documento se define al referir.
+        Cada archivo se sube al expediente en cuanto lo eliges. Puedes terminar sin adjuntar nada: lo que falte
+        aparecerá en “Documentos por subir” en tu bandeja.{' '}
+        {areasReferidas.includes('JURIDICO') && 'El área jurídica los verá por normativa. '}
+        {restringibles.length > 0
+          ? 'Para las demás áreas, cada documento es privado salvo que lo compartas.'
+          : 'Los documentos quedan privados para Trabajo Social.'}
       </p>
       {requeridos.map((tipo) => (
-        <SlotDocumento key={tipo} tipo={tipo} staging={staging} />
+        <SlotDocumento key={tipo} tipo={tipo} documentos={documentos} restringibles={restringibles} />
       ))}
+      {documentos.errorVisibilidad && (
+        <p role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          No se pudo cambiar con quién se comparte: {documentos.errorVisibilidad}
+        </p>
+      )}
     </div>
   )
 }
 
 interface SlotDocumentoProps {
   tipo: TipoDocumentoTrabajoSocial
-  staging: UseDocumentosStaging
+  documentos: UseDocumentosNuevoCaso
+  restringibles: AreaAtencion[]
 }
 
-function SlotDocumento({ tipo, staging }: SlotDocumentoProps) {
+function SlotDocumento({ tipo, documentos, restringibles }: SlotDocumentoProps) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const { documentosPorTipo, seleccionarArchivo, quitarArchivo, reintentar } = staging
-  const documento = documentosPorTipo[tipo]
+  const documento = documentos.documentos[tipo]
+  const visiblePara = documentos.visibilidad[tipo] ?? []
   const esDeAlbergue = (TIPOS_DOCUMENTO_ALBERGUE as readonly string[]).includes(tipo)
   const etiqueta = ETIQUETAS_TIPO_DOCUMENTO[tipo]
+  const subiendo = documento?.estado === 'subiendo'
 
   function onCambiarArchivo(event: React.ChangeEvent<HTMLInputElement>) {
     const archivo = event.target.files?.[0]
     if (archivo) {
-      seleccionarArchivo(tipo, archivo)
+      documentos.seleccionarArchivo(tipo, archivo)
     }
     event.target.value = ''
   }
@@ -77,52 +96,65 @@ function SlotDocumento({ tipo, staging }: SlotDocumentoProps) {
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,image/*"
+          accept={ACCEPT_DOCUMENTOS}
           className="hidden"
           aria-label={`Archivo para ${etiqueta}`}
           onChange={onCambiarArchivo}
         />
         {documento?.estado === 'error' && documento.reintentable && (
-          <Button type="button" variante="acento" onClick={() => reintentar(tipo)}>
+          <Button type="button" variante="acento" onClick={() => documentos.reintentar(tipo)}>
             <RotateCw size={12} aria-hidden="true" className="mr-1 inline" />
             Reintentar
           </Button>
         )}
-        {documento && (
-          <button
-            type="button"
-            onClick={() => quitarArchivo(tipo)}
-            className="text-xs font-medium text-gray-500 hover:underline"
-          >
-            {documento.estado === 'subiendo' ? 'Cancelar' : 'Quitar'}
-          </button>
-        )}
-        {documento?.estado !== 'subiendo' && (
+        {!subiendo && (
           <Button type="button" variante="acento" onClick={() => inputRef.current?.click()}>
-            {documento ? 'Cambiar' : 'Elegir archivo'}
+            {documento?.documentoId ? 'Reemplazar' : documento ? 'Elegir otro' : 'Elegir archivo'}
           </Button>
         )}
       </div>
-      {documento?.estado === 'subiendo' && (
+
+      {subiendo && (
         <div
           role="progressbar"
           aria-label={`Subiendo ${etiqueta}`}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-valuenow={documento.progreso}
+          aria-valuenow={documento.progreso ?? undefined}
           className="h-1 bg-brand-50"
         >
           <div
-            className="h-full bg-brand-600 transition-[width] duration-200 ease-out"
-            style={{ width: `${Math.max(documento.progreso, 3)}%` }}
+            className={`h-full bg-brand-600 transition-[width] duration-200 ease-out ${documento.progreso === null ? 'animate-pulse' : ''}`}
+            style={{ width: `${documento.progreso === null ? 100 : Math.max(documento.progreso, 3)}%` }}
           />
+        </div>
+      )}
+
+      {restringibles.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-gray-100 px-4 py-2.5">
+          <span className="text-xs text-gray-500">Compartir con</span>
+          {restringibles.map((area) => {
+            const nombreArea = ETIQUETAS_AREA_ATENCION[area]
+            return (
+              <span key={area} className="flex items-center gap-2 text-xs font-medium text-gray-700">
+                <Switch
+                  encendido={visiblePara.includes(area)}
+                  onChange={(visible) => void documentos.alternarVisibilidad(tipo, area, visible)}
+                  ariaLabel={`Compartir ${etiqueta} con el área ${nombreArea}`}
+                  // Mientras sube, el archivo ya salió con la visibilidad anterior.
+                  deshabilitado={subiendo}
+                />
+                {nombreArea}
+              </span>
+            )
+          })}
         </div>
       )}
     </div>
   )
 }
 
-function IconoEstado({ documento }: { documento: DocumentoRegistro | undefined }) {
+function IconoEstado({ documento }: { documento: DocumentoNuevoCaso | undefined }) {
   if (!documento) {
     return <FileUp size={18} className="shrink-0 text-gray-400" aria-hidden="true" />
   }
@@ -135,22 +167,21 @@ function IconoEstado({ documento }: { documento: DocumentoRegistro | undefined }
   return <CircleAlert size={18} className="shrink-0 text-red-600" aria-hidden="true" />
 }
 
-function DetalleEstado({ documento }: { documento: DocumentoRegistro | undefined }) {
+function DetalleEstado({ documento }: { documento: DocumentoNuevoCaso | undefined }) {
   if (!documento) {
     return <p className="mt-0.5 text-xs text-gray-500">Pendiente</p>
   }
-  const nombreYTamano = `${documento.archivo.name} · ${formatearTamano(documento.archivo.size)}`
   if (documento.estado === 'subiendo') {
     return (
       <p className="mt-0.5 truncate text-xs text-gray-600" aria-live="polite">
-        Subiendo… {documento.progreso}% · {documento.archivo.name}
+        Subiendo…{documento.progreso !== null && ` ${documento.progreso}%`} · {documento.archivo.name}
       </p>
     )
   }
   if (documento.estado === 'subido') {
     return (
       <p className="mt-0.5 truncate text-xs text-green-700" aria-live="polite">
-        Subido · {nombreYTamano}
+        Guardado en el expediente · {documento.archivo.name} · {formatearTamanio(documento.archivo.size)}
       </p>
     )
   }
@@ -160,8 +191,4 @@ function DetalleEstado({ documento }: { documento: DocumentoRegistro | undefined
       {!documento.reintentable && ' Elige otro archivo.'}
     </p>
   )
-}
-
-function formatearTamano(bytes: number) {
-  return `${(bytes / 1024 / 1024).toFixed(2)} MB`
 }

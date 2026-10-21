@@ -1,10 +1,8 @@
 import {
-  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
   NotFoundException,
-  UnprocessableEntityException,
 } from '@nestjs/common';
 import type {
   CrearCasoInput,
@@ -19,8 +17,6 @@ import type { MunicipioAltaVerapaz } from '@prisma/client';
 import { AuditService } from '../auth/services/audit.service';
 import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import {
-  DocumentoPendienteNoAplicaError,
-  DocumentoPendienteNoDisponibleError,
   DpiUsuariaDuplicadoError,
   EXPEDIENTES_REPOSITORY,
   UsuariaNoEncontradaError,
@@ -49,23 +45,6 @@ function tieneDatosAgresor(agresor: DatosAgresorInput): boolean {
 // el enum GeneroPersona con nombres completos.
 const GENERO_A_ENUM = { M: 'MUJER', H: 'HOMBRE' } as const;
 
-/**
- * Errores de los documentos ya subidos que se adjuntan al registrar. 422 y no 409: el formulario
- * interpreta cualquier 409 al registrar como DPI duplicado.
- */
-function traducirErrorDocumentoPendiente(error: unknown): void {
-  if (error instanceof DocumentoPendienteNoDisponibleError) {
-    throw new UnprocessableEntityException(
-      'Uno de los documentos ya no está disponible. Vuelve a subirlo en el paso Documentos.',
-    );
-  }
-  if (error instanceof DocumentoPendienteNoAplicaError) {
-    throw new BadRequestException(
-      'Uno de los documentos solo aplica a registros internos (solicitud de albergue). Quítalo en el paso Documentos.',
-    );
-  }
-}
-
 @Injectable()
 export class ExpedientesService {
   constructor(
@@ -82,14 +61,9 @@ export class ExpedientesService {
     try {
       resultado = await this.expedientesRepository.crearConUsuariaNueva({
         identidadUsuaria: this.mapearIdentidad(datos.datosUsuaria),
-        datosCaso: this.mapearDatosCaso(
-          datos.datosCaso,
-          datos.documentosPendientesIds ?? [],
-          contexto.usuarioId,
-        ),
+        datosCaso: this.mapearDatosCaso(datos.datosCaso, contexto.usuarioId),
       });
     } catch (error) {
-      traducirErrorDocumentoPendiente(error);
       if (error instanceof DpiUsuariaDuplicadoError) {
         // Mensaje genérico a propósito — no filtra si la usuaria existente coincide en nombre,
         // solo indica que hay que buscarla primero (evita enumeración, ver CLAUDE.md).
@@ -108,19 +82,13 @@ export class ExpedientesService {
     datos: CrearCasoInput,
     contexto: ContextoAuditoria,
   ): Promise<ExpedienteCreado> {
-    const { documentosPendientesIds, ...datosCaso } = datos;
     let resultado: ExpedienteCreadoResultado;
     try {
       resultado = await this.expedientesRepository.crearParaUsuariaExistente(
         usuariaId,
-        this.mapearDatosCaso(
-          datosCaso,
-          documentosPendientesIds ?? [],
-          contexto.usuarioId,
-        ),
+        this.mapearDatosCaso(datos, contexto.usuarioId),
       );
     } catch (error) {
-      traducirErrorDocumentoPendiente(error);
       if (error instanceof UsuariaNoEncontradaError) {
         throw new NotFoundException('Usuaria no encontrada');
       }
@@ -152,12 +120,10 @@ export class ExpedientesService {
     return expediente;
   }
 
-  /** Audita la creación y cada documento adjuntado; devuelve lo que ve el cliente. */
   private async registrarCreacion(
     resultado: ExpedienteCreadoResultado,
     contexto: ContextoAuditoria,
   ): Promise<ExpedienteCreado> {
-    const { documentosAdjuntados, ...expediente } = resultado;
     // Nunca nombres/DPI en `detalles` — solo el número, que no es dato sensible por sí mismo (RNF-02).
     // Referir ya no ocurre aquí: se audita y notifica en ReferidosService.
     await this.auditService.registrar({
@@ -171,22 +137,7 @@ export class ExpedientesService {
       detalles: { numero: resultado.numero },
     });
 
-    // Mismo evento que una subida desde la pestaña Documentos: el historial de un documento no
-    // depende de por dónde entró. Nunca el nombre del archivo en `detalles`.
-    for (const documento of documentosAdjuntados) {
-      await this.auditService.registrar({
-        usuarioId: contexto.usuarioId,
-        username: contexto.username,
-        accion: 'DOCUMENTO_SUBIDO',
-        entidad: 'Documento',
-        entidadId: documento.id,
-        ipAddress: contexto.ipAddress,
-        userAgent: contexto.userAgent,
-        detalles: { expedienteId: resultado.id, tipo: documento.tipo },
-      });
-    }
-
-    return expediente;
+    return resultado;
   }
 
   private mapearIdentidad(
@@ -215,7 +166,6 @@ export class ExpedientesService {
 
   private mapearDatosCaso(
     datosCaso: DatosCaso,
-    documentosPendientesIds: string[],
     creadoPorId: string,
   ): DatosCasoParams {
     return {
@@ -242,7 +192,6 @@ export class ExpedientesService {
         fechaNacimiento: nino.fechaNacimiento,
         genero: GENERO_A_ENUM[nino.genero],
       })),
-      documentosPendientesIds,
     };
   }
 }

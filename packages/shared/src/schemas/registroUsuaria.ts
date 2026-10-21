@@ -25,9 +25,6 @@ export const DEPARTAMENTOS_FUERA_ALTA_VERAPAZ = DEPARTAMENTOS_GUATEMALA.filter(
   (departamento) => departamento !== 'Alta Verapaz',
 )
 
-/** Tope de documentos que se adjuntan al registrar: hay seis tipos de formulario, uno por tipo. */
-const DOCUMENTOS_PENDIENTES_MAX = 10
-
 /** "YYYY-MM-DD" — fecha de calendario pura, nunca envuelta en un objeto Date salvo para calcularla. */
 const fechaCalendarioSchema = z
   .string()
@@ -223,25 +220,16 @@ export type NuevoCasoFormValues = z.infer<typeof nuevoCasoSchema>
 export type EditarIdentidadUsuariaInput = z.infer<typeof editarIdentidadUsuariaSchema>
 
 /**
- * Escaneos ya subidos en el paso "Documentos" (`POST /trabajo-social/documentos-pendientes`) que
- * se adjuntan al expediente en la misma transacción que lo crea. Como mucho uno por tipo.
+ * El mismo schema que valida el formulario en el navegador es el contrato del body de
+ * `POST /trabajo-social/expedientes` — evita que frontend y backend se desincronicen cuando el
+ * formulario cambie (ver CLAUDE.md, "Validación compartida"). Los documentos ya no viajan aquí:
+ * se suben al caso recién creado, en el paso opcional que sigue al registro.
  */
-const documentosPendientesIdsSchema = z.array(z.uuid()).max(DOCUMENTOS_PENDIENTES_MAX).optional()
-
-/**
- * Mismo schema que valida el formulario en el navegador más los documentos ya subidos, como
- * contrato del body de `POST /trabajo-social/expedientes` — evita que frontend y backend se
- * desincronicen cuando el formulario cambie (ver CLAUDE.md, "Validación compartida").
- */
-export const crearExpedienteSchema = registroUsuariaNuevaSchema.extend({
-  documentosPendientesIds: documentosPendientesIdsSchema,
-})
+export const crearExpedienteSchema = registroUsuariaNuevaSchema
 export type CrearExpedienteInput = z.infer<typeof crearExpedienteSchema>
 
-/** Body de `POST /trabajo-social/usuarias/:id/expedientes`: el caso nuevo + sus documentos ya subidos. */
-export const crearCasoSchema = nuevoCasoSchema.safeExtend({
-  documentosPendientesIds: documentosPendientesIdsSchema,
-})
+/** Body de `POST /trabajo-social/usuarias/:id/expedientes`: solo el caso nuevo. */
+export const crearCasoSchema = nuevoCasoSchema
 export type CrearCasoInput = z.infer<typeof crearCasoSchema>
 
 export interface ExpedienteCreado {
