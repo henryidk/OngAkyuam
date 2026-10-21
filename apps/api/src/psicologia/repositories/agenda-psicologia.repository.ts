@@ -33,7 +33,15 @@ function ocupanAgenda(
   params: RangoAgendaParams,
 ): Prisma.CitaPsicologicaWhereInput {
   return {
-    atencion: { psicologaAsignadaId: params.psicologaId },
+    atencion: { expediente: { referidos: { some: { area: 'PSICOLOGIA' } } } },
+    ...(params.psicologaId
+      ? {
+          OR: [
+            { atendidoPorId: params.psicologaId },
+            { atencion: { psicologaAsignadaId: params.psicologaId } },
+          ],
+        }
+      : {}),
     fechaHora: { gte: params.desde, lte: params.hasta },
     estado: { notIn: ['CANCELADA', 'REPROGRAMADA'] },
   };
@@ -56,12 +64,15 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         tipo: true,
         estado: true,
         borrador: true,
+        lugar: true,
+        atendidoPor: { select: { id: true, nombreCompleto: true } },
         nino: { select: { id: true, consecutivo: true, ...SELECT_PERSONA } },
         atencion: {
           select: {
             id: true,
             consecutivo: true,
             estado: true,
+            psicologaAsignada: { select: { id: true, nombreCompleto: true } },
             expediente: {
               select: {
                 numero: true,
@@ -80,6 +91,18 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       const { usuaria } = atencion.expediente;
       return {
         id: cita.id,
+        profesional: {
+          id: cita.atendidoPor.id,
+          nombre: cita.atendidoPor.nombreCompleto,
+        },
+        responsable: atencion.psicologaAsignada
+          ? {
+              id: atencion.psicologaAsignada.id,
+              nombre: atencion.psicologaAsignada.nombreCompleto,
+            }
+          : null,
+        propia: cita.atendidoPor.id === params.psicologaId,
+        clinica: cita.lugar,
         procesoId: atencion.id,
         procesoCodigo: codigoProceso(
           atencion.consecutivo,
@@ -102,18 +125,26 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
 
   listarOcupadas(params: RangoAgendaParams): Promise<CitaOcupada[]> {
     return this.prisma.citaPsicologica.findMany({
-      where: ocupanAgenda(params),
+      where: {
+        ...ocupanAgenda({ ...params, psicologaId: null }),
+        atendidoPorId: params.psicologaId ?? undefined,
+      },
       select: { fechaHora: true, duracionMinutos: true },
       orderBy: { fechaHora: 'asc' },
       take: LIMITE_CITAS,
     });
   }
 
-  async marcarNoAsistio(citaId: string, ahora: Date): Promise<boolean> {
+  async marcarNoAsistio(
+    citaId: string,
+    ahora: Date,
+    psicologaId: string,
+  ): Promise<boolean> {
     // Las condiciones van en el WHERE: si otra pestaña ya registró la cita, no se pisa nada.
     const marcadas = await this.prisma.citaPsicologica.updateMany({
       where: {
         id: citaId,
+        atendidoPorId: psicologaId,
         estado: 'PROGRAMADA',
         fechaHora: { lte: ahora },
         atencion: { estado: { not: 'CIERRE' } },
@@ -224,21 +255,29 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
           modalidad: true,
           lugar: true,
           motivo: true,
+          atendidoPorId: true,
         },
       });
       if (
         !origen ||
-        !(await this.bloquearProcesoAbierto(tx, {
-          procesoId: origen.atencionId,
-          psicologaId: params.psicologaId,
-        }))
+        origen.atendidoPorId !== params.psicologaId ||
+        (
+          await tx.atencionPsicologica.updateMany({
+            where: { id: origen.atencionId, estado: { not: 'CIERRE' } },
+            data: { version: { increment: 0 } },
+          })
+        ).count !== 1
       ) {
         return null;
       }
 
       // La condición va en el WHERE: si otra pestaña ya la movió o la registró, no se duplica.
       const movidas = await tx.citaPsicologica.updateMany({
-        where: { id: params.citaId, estado: 'PROGRAMADA' },
+        where: {
+          id: params.citaId,
+          atendidoPorId: params.psicologaId,
+          estado: 'PROGRAMADA',
+        },
         data: { estado: 'REPROGRAMADA' },
       });
       if (movidas.count !== 1) {

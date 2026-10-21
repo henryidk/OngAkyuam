@@ -170,6 +170,7 @@ describe('AgendaPsicologiaService', () => {
       expect(agendaRepository.marcarNoAsistio).toHaveBeenCalledWith(
         CITA_ID,
         AHORA,
+        contexto.usuarioId,
       );
       expect(eventosAuditados(auditService)).toEqual([
         expect.objectContaining({

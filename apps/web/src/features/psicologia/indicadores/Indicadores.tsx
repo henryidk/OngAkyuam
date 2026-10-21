@@ -81,7 +81,7 @@ export default function Indicadores() {
         <>
           <TarjetasKpi datos={datos} />
           <BarrasPorMes anio={anio} meses={datos.meses} mesSeleccionado={mes} onElegir={setMes} />
-          <div className="grid gap-3.5 [grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))]">
+          <div className="grid items-start gap-3.5 md:grid-cols-2">
             <TablaDesglose
               titulo="Por rango de edad · Mujeres"
               filas={
@@ -94,10 +94,6 @@ export default function Indicadores() {
               filas={(mes ? datos.meses[mes - 1] : datos.anual).desgloses.rangoEdadHombres ?? []}
             />
             <TablaDesglose
-              titulo="Pacientes por municipio"
-              filas={(mes ? datos.meses[mes - 1] : datos.anual).desgloses.municipio}
-            />
-            <TablaDesglose
               titulo="Por grupo étnico"
               filas={(mes ? datos.meses[mes - 1] : datos.anual).desgloses.grupoEtnico}
             />
@@ -106,6 +102,11 @@ export default function Indicadores() {
               filas={(mes ? datos.meses[mes - 1] : datos.anual).desgloses.tipologia}
             />
           </div>
+          <TablaDesglose
+            titulo="Pacientes por municipio"
+            filas={(mes ? datos.meses[mes - 1] : datos.anual).desgloses.municipio}
+            columnas={3}
+          />
         </>
       )}
     </div>

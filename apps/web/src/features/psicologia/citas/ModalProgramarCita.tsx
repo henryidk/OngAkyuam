@@ -173,11 +173,15 @@ export default function ModalProgramarCita({
       ninoId: destino.tipo === 'PROCESO' ? (proceso?.personas[0]?.ninoId ?? null) : ninoId,
       confirmarTraslape: conflicto !== null,
     })
-    if (!fecha || !hora || !validacion.success) {
+    if (!fecha || !hora) {
       setError('Indica la fecha y la hora de la cita.')
       return
     }
 
+    if (!validacion.success) {
+      setError(validacion.error.issues[0]?.message ?? 'Revisa los datos de la cita.')
+      return
+    }
     if (!horarioPsicologiaValido(validacion.data)) {
       setError(MENSAJE_HORARIO_PSICOLOGIA)
       return

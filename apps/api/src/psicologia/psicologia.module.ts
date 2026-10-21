@@ -1,3 +1,6 @@
+import { CitasEquipoController } from './citas-equipo.controller';
+import { CitasEquipoRepository } from './repositories/citas-equipo.repository';
+import { CitasEquipoService } from './services/citas-equipo.service';
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ExcelJsExportador } from '../common/hoja-calculo/exceljs-exportador';
@@ -55,6 +58,7 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
   ],
   controllers: [
+    CitasEquipoController,
     PsicologiaController,
     BandejaPsicologiaController,
     ProcesosPsicologiaController,
@@ -62,6 +66,8 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     AgendaPsicologiaController,
   ],
   providers: [
+    CitasEquipoRepository,
+    CitasEquipoService,
     AccesoPsicologiaService,
     CitasPsicologicasService,
     RegistroConsultaService,

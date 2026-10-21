@@ -74,7 +74,7 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
     repository = new CitasPsicologicasRepository(prisma);
   });
 
-  it('solo escribe si el proceso sigue abierto y es de esa psicóloga', async () => {
+  it('no escribe si el proceso se cerró antes del registro', async () => {
     tx.atencionPsicologica.updateMany.mockResolvedValueOnce({ count: 0 });
 
     await expect(repository.registrarConsulta(params())).resolves.toBeNull();
@@ -83,7 +83,6 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
       expect.objectContaining({
         where: {
           id: 'proceso-1',
-          psicologaAsignadaId: 'psicologa-a',
           estado: { not: 'CIERRE' },
         },
       }),
@@ -92,7 +91,7 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
     expect(tx.citaPsicologica.create).not.toHaveBeenCalled();
   });
 
-  it('no registra una cita que ya se movió a otra fecha', async () => {
+  it('no escribe ni crea próxima cita si cambió la profesional o la cita se reprogramó', async () => {
     tx.citaPsicologica.updateMany.mockResolvedValue({ count: 0 });
 
     await expect(
@@ -105,7 +104,11 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
 
     expect(tx.citaPsicologica.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'cita-1', estado: { not: 'REPROGRAMADA' } },
+        where: {
+          id: 'cita-1',
+          atendidoPorId: 'psicologa-a',
+          estado: { not: 'REPROGRAMADA' },
+        },
       }),
     );
     expect(tx.cambioEstadoAtencion.create).not.toHaveBeenCalled();

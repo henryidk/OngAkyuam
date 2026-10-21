@@ -78,6 +78,10 @@ export default function FilaCita({ cita, esHoy, principal, enCurso, onNoAsistio,
           {cita.persona.ninoId !== null && (
             <p className="truncate text-[12.5px] text-brand-600">Hija/o de {cita.usuariaNombreCompleto}</p>
           )}
+          <p className="text-xs text-gray-600">
+            {cita.estado === 'ATENDIDA' ? 'Atendió' : 'Profesional'}: {cita.profesional?.nombre ?? 'Sin registrar'}
+            {cita.responsable && cita.responsable.id !== cita.profesional?.id && <> · Responsable del proceso: {cita.responsable.nombre}</>}
+          </p>
           <p className="truncate text-[12.5px] text-gray-500">
             <CodigoProceso codigo={cita.procesoCodigo} className="text-gray-600" /> ·{' '}
             {ETIQUETAS_TIPO_CITA_PSICOLOGICA[cita.tipo]}
@@ -91,7 +95,7 @@ export default function FilaCita({ cita, esHoy, principal, enCurso, onNoAsistio,
             {cita.borrador ? 'Continuar registro' : 'Registrar sesión'}
           </Link>
         )}
-        {cita.sinRegistrar && (
+        {cita.sinRegistrar && cita.propia !== false && (
           <button
             type="button"
             onClick={() => onNoAsistio(cita)}
@@ -101,16 +105,14 @@ export default function FilaCita({ cita, esHoy, principal, enCurso, onNoAsistio,
             No asistió
           </button>
         )}
-        {programada ? (
+        {programada && cita.propia !== false ? (
           <button type="button" onClick={() => onReprogramar(cita)} className={`${ENLACE_FILA} text-gray-500 hover:text-gray-800`}>
             Reprogramar
           </button>
         ) : (
           <Link
             to={
-              cita.estado === 'ATENDIDA' || cita.estado === 'NO_ASISTIO'
-                ? RUTAS_PSICOLOGIA.proceso(cita.procesoId, cita.id)
-                : RUTAS_PSICOLOGIA.detalleCita(cita.id)
+              RUTAS_PSICOLOGIA.detalleCita(cita.id)
             }
             className={`${ENLACE_FILA} text-gray-500 hover:text-gray-800`}
           >

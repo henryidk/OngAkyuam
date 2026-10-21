@@ -23,6 +23,22 @@ export class CitasPsicologicasService {
     if (!cita) {
       throw new NotFoundException('Cita no encontrada');
     }
-    return { ...cita, soloLectura: !lectura.propia };
+    const propia = cita.profesional
+      ? cita.profesional.id === psicologaId
+      : lectura.propia;
+    return {
+      ...cita,
+      soloLectura: !propia,
+      ...(cita.profesional
+        ? {
+            puedeAsumirAtencion:
+              !propia &&
+              cita.estado === 'PROGRAMADA' &&
+              !cita.borrador &&
+              cita.documento === null &&
+              cita.procesoEtapa !== 'CIERRE',
+          }
+        : {}),
+    };
   }
 }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BarChart3, CalendarDays, HeartHandshake, Inbox, Users } from 'lucide-react'
+import { BarChart3, CalendarDays, CalendarClock, HeartHandshake, Inbox, Users } from 'lucide-react'
 import type { ResumenProcesosPsicologia } from '@akyuam/shared'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { obtenerResumenProcesos } from '../../features/psicologia/api/psicologia.api'
@@ -7,17 +7,16 @@ import type { ContextoPsicologia } from '../../features/psicologia/compartido/co
 import { RUTAS_PSICOLOGIA } from '../../features/psicologia/rutas'
 import { crearSocketArea } from '../../lib/socket'
 
-// El detalle y el registro de una cita cuelgan de "/psicologia/citas", pero son parte de la
-// agenda: `rutasRelacionadas` mantiene resaltado su ítem ahí.
+// Citas agrupa el listado, el detalle y el registro de sesiones.
 const ITEMS_NAV: ItemNav[] = [
   { ruta: RUTAS_PSICOLOGIA.atencion(), etiqueta: 'Área de atención', fin: false, Icono: Inbox },
   {
     ruta: RUTAS_PSICOLOGIA.agenda(),
     etiqueta: 'Agenda',
     fin: false,
-    rutasRelacionadas: ['/psicologia/citas'],
     Icono: CalendarDays,
   },
+  { ruta: RUTAS_PSICOLOGIA.citas(), etiqueta: 'Citas', fin: false, Icono: CalendarClock },
   { ruta: RUTAS_PSICOLOGIA.procesos(), etiqueta: 'Procesos', fin: false, Icono: HeartHandshake },
   { ruta: RUTAS_PSICOLOGIA.usuarias(), etiqueta: 'Usuarias', fin: false, Icono: Users },
   { ruta: RUTAS_PSICOLOGIA.reportes(), etiqueta: 'Reportes', fin: false, Icono: BarChart3 },

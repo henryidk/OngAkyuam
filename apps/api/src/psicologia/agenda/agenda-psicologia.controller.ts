@@ -14,13 +14,13 @@ import {
   agendarCitaPsicologicaSchema,
   huecosAgendaQuerySchema,
   moverCitaPsicologicaSchema,
-  rangoFechasQuerySchema,
+  agendaPsicologiaQuerySchema,
 } from '@akyuam/shared';
 import type {
   AgendarCitaPsicologicaInput,
   HuecosAgendaQuery,
   MoverCitaPsicologicaInput,
-  RangoFechasQuery,
+  AgendaPsicologiaQuery,
 } from '@akyuam/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -40,8 +40,8 @@ export class AgendaPsicologiaController {
 
   @Get('agenda/citas')
   listarCitas(
-    @Query(new ZodValidationPipe(rangoFechasQuerySchema))
-    query: RangoFechasQuery,
+    @Query(new ZodValidationPipe(agendaPsicologiaQuerySchema))
+    query: AgendaPsicologiaQuery,
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.agendaService.listarCitas(query, usuario.id);

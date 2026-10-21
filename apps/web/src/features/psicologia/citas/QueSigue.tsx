@@ -20,6 +20,7 @@ interface QueSigueProps {
   /** Día (`YYYY-MM-DD`) desde el que se cuentan los atajos de "en 1 / 2 semanas". */
   diaBase: string
   /** Citas con las que choca la fecha elegida, según el servidor. */
+  puedeCerrar?: boolean
   conflicto: CitaResumen[] | null
 }
 
@@ -43,13 +44,13 @@ const ATAJOS = [
 ]
 
 /** Lo que pasa con el proceso después de esta sesión. Nunca cierra nada por sí solo. */
-export default function QueSigue({ valor, onCambio, diaBase, conflicto }: QueSigueProps) {
+export default function QueSigue({ valor, onCambio, diaBase, conflicto, puedeCerrar = true }: QueSigueProps) {
   return (
     <fieldset className="space-y-3">
       <legend className="text-sm font-semibold text-gray-800">¿Qué sigue?</legend>
 
       <div className="grid gap-2 sm:grid-cols-3">
-        {OPCIONES.map((opcion) => {
+        {OPCIONES.filter(opcion => puedeCerrar || opcion.tipo !== 'CERRAR').map((opcion) => {
           const elegida = valor.tipo === opcion.tipo
           return (
             <label

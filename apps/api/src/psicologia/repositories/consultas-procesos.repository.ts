@@ -291,7 +291,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         SELECT count(*)::int AS total
         FROM "CitaPsicologica" c
         JOIN "AtencionPsicologica" a ON a.id = c."atencionId"
-        WHERE a."psicologaAsignadaId" = ${psicologaId}
+        WHERE c."atendidoPorId" = ${psicologaId}
           AND a.estado <> 'CIERRE'
           AND c.estado = 'PROGRAMADA'
           AND c."fechaHora" + c."duracionMinutos" * interval '1 minute' <= ${ahora}

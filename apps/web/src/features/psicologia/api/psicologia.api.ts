@@ -1,5 +1,8 @@
 import type {
   AgendarCitaPsicologicaInput,
+  AsumirCitaPsicologicaInput,
+  CitasPsicologiaQuery,
+  CitasPsicologiaDto,
   CasoPorAgendarDto,
   CasoPorReasignarDto,
   CasoPsicologiaTomadoDto,
@@ -76,7 +79,7 @@ export function atenderReferencia(referidoId: string, datos: AgendarCitaPsicolog
 }
 
 /** Mi agenda en un rango de días de Guatemala (máximo seis semanas). */
-export function listarCitasAgenda(query: RangoFechasQuery) {
+export function listarCitasAgenda(query: RangoFechasQuery & { soloMios?: boolean }) {
   return api.get<CitaAgendaDto[]>('/psicologia/agenda/citas', { params: query }).then((res) => res.data)
 }
 
@@ -188,4 +191,11 @@ export function descargarIndicadores(query: IndicadoresQuery) {
   return api
     .get<Blob>('/psicologia/indicadores.xlsx', { params: query, responseType: 'blob' })
     .then((res) => res.data)
+}
+
+export function listarCitasPsicologia(query: CitasPsicologiaQuery) {
+  return api.get<CitasPsicologiaDto>('/psicologia/citas', { params: query }).then(res => res.data)
+}
+export function asumirAtencionCita(citaId: string, datos: AsumirCitaPsicologicaInput) {
+  return api.post<CitaPsicologicaDetalle>(`/psicologia/citas/${citaId}/asumir-atencion`, datos).then(res => res.data)
 }

@@ -32,9 +32,9 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     const cita = await this.prisma.citaPsicologica.findFirst({
       where: {
         id: citaId,
+        atendidoPorId: psicologaId,
         atencion: {
           expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
-          psicologaAsignadaId: psicologaId,
         },
       },
       select: {
@@ -66,6 +66,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       select: {
         id: true,
         atencionId: true,
+        atendidoPorId: true,
         atencion: { select: { expedienteId: true, psicologaAsignadaId: true } },
       },
     });
@@ -74,7 +75,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       id: cita.id,
       atencionId: cita.atencionId,
       expedienteId: cita.atencion.expedienteId,
-      propia: cita.atencion.psicologaAsignadaId === psicologaId,
+      propia: cita.atendidoPorId === psicologaId,
     };
   }
 
@@ -93,7 +94,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
           lt: finPropuesto,
           gte: new Date(params.fechaHora.getTime() - MARGEN_SOLAPAMIENTO_MS),
         },
-        atencion: { psicologaAsignadaId: params.psicologaId },
+        atendidoPorId: params.psicologaId,
       },
       include: INCLUDE_CITA,
     });
@@ -125,10 +126,9 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       const bloqueados = await tx.atencionPsicologica.updateMany({
         where: {
           id: actual.atencionId,
-          psicologaAsignadaId: params.psicologaId,
           estado: { not: 'CIERRE' },
         },
-        data: { psicologaAsignadaId: params.psicologaId },
+        data: { version: { increment: 0 } },
       });
       if (bloqueados.count !== 1) {
         return null;
@@ -136,7 +136,11 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
 
       // La condición va en el WHERE: una cita que se movió a otra fecha ya no se registra.
       const registradas = await tx.citaPsicologica.updateMany({
-        where: { id: params.citaId, estado: { not: 'REPROGRAMADA' } },
+        where: {
+          id: params.citaId,
+          atendidoPorId: params.psicologaId,
+          estado: { not: 'REPROGRAMADA' },
+        },
         data: {
           estado: params.estado,
           enfoqueTerapeutico: params.enfoqueTerapeutico,
@@ -282,6 +286,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
             expedienteId: true,
             consecutivo: true,
             estado: true,
+            psicologaAsignada: { select: { id: true, nombreCompleto: true } },
             expediente: {
               select: {
                 numero: true,
@@ -296,6 +301,16 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
 
     return {
       ...mapearCita(cita),
+      profesional: {
+        id: cita.atendidoPor.id,
+        nombre: cita.atendidoPor.nombreCompleto,
+      },
+      responsable: cita.atencion.psicologaAsignada
+        ? {
+            id: cita.atencion.psicologaAsignada.id,
+            nombre: cita.atencion.psicologaAsignada.nombreCompleto,
+          }
+        : null,
       expedienteId: cita.atencion.expedienteId,
       numero: numeroPersona(cita.atencion.expediente.numero, cita.nino),
       procesoId: cita.atencionId,

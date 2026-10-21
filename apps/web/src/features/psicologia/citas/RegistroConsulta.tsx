@@ -1,3 +1,4 @@
+import ConfirmarAtencionAjena from './ConfirmarAtencionAjena'
 import axios from 'axios'
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
@@ -12,6 +13,8 @@ import {
   fechaCalendarioGT,
   formatInstanteGT,
   hoyGT,
+  horarioPsicologiaValido,
+  MENSAJE_HORARIO_PSICOLOGIA,
   registroConsultaSchema,
   type CitaPsicologicaDetalle,
   type CitaResumen,
@@ -137,10 +140,14 @@ export default function RegistroConsulta() {
   const persona = cita.ninoNombreCompleto ?? cita.usuariaNombreCompleto
   const rutaProceso = RUTAS_PSICOLOGIA.proceso(cita.procesoId)
 
+  if (cita.soloLectura && cita.puedeAsumirAtencion)
+    return <ConfirmarAtencionAjena key={cita.id} cita={cita} onContinuar={() => void recargar()} />
+
   if (cita.soloLectura)
     return (
       <p className="rounded-lg border border-gray-200 bg-white p-5">
-        Esta sesión es de otra psicóloga. Puedes consultarla desde el historial del proceso.
+        Esta cita ya tiene un registro de otra psicóloga o su proceso está cerrado. Puedes consultarla desde el historial del proceso.
+        <Link to={rutaProceso} className="ml-2 font-medium text-brand-700 hover:underline">Ver proceso</Link>
       </p>
     )
 
@@ -161,6 +168,7 @@ export default function RegistroConsulta() {
   }
 
   // Una sesión ya registrada se puede corregir, pero "¿Qué sigue?" se decidió en su momento.
+  const puedeCerrar = cita.responsable?.id === cita.profesional?.id
   const yaRegistrada = esResultado(cita.estado) && !cita.borrador
   const primeraSesion = cita.procesoEtapa === 'INICIO' && estado === 'ATENDIDA'
   const diaCita = fechaCalendarioGT(new Date(cita.fechaHora))
@@ -206,6 +214,10 @@ export default function RegistroConsulta() {
       const armado = armarSiguiente(siguiente)
       if (!armado) {
         setErrorEnvio('Indica la fecha y la hora de la próxima cita, o elige "Decidir después".')
+        return
+      }
+      if (armado.tipo === 'PROGRAMAR' && !horarioPsicologiaValido(armado)) {
+        setErrorEnvio(MENSAJE_HORARIO_PSICOLOGIA)
         return
       }
       paso = armado
@@ -359,7 +371,7 @@ export default function RegistroConsulta() {
         )}
 
         {!yaRegistrada && (
-          <QueSigue valor={siguiente} onCambio={cambiarSiguiente} diaBase={diaBase} conflicto={conflicto} />
+          <QueSigue valor={siguiente} onCambio={cambiarSiguiente} diaBase={diaBase} conflicto={conflicto} puedeCerrar={puedeCerrar} />
         )}
 
         {errorEnvio && (

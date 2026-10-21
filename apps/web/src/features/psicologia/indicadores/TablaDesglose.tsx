@@ -5,10 +5,11 @@ interface TablaDesgloseProps {
   titulo: string
   filas: ConteoReporte[]
   nota?: string
+  columnas?: 1 | 3
 }
 
 /** Un desglose de personas atendidas: cada renglón con su total y una barra proporcional al renglón más grande. */
-export default function TablaDesglose({ titulo, filas, nota }: TablaDesgloseProps) {
+export default function TablaDesglose({ titulo, filas, nota, columnas = 1 }: TablaDesgloseProps) {
   const maximo = Math.max(0, ...filas.map((fila) => fila.total))
   return (
     <section className="flex flex-col gap-2.5 rounded-lg border border-gray-200 bg-white px-[18px] py-4">
@@ -16,7 +17,7 @@ export default function TablaDesglose({ titulo, filas, nota }: TablaDesgloseProp
       {filas.length === 0 ? (
         <p className="text-[13px] text-gray-500">Sin datos en este periodo.</p>
       ) : (
-        <ul className="flex flex-col gap-2.5">
+        <ul className={`grid gap-x-6 gap-y-2.5 ${columnas === 3 ? 'sm:grid-cols-2 lg:grid-cols-3' : ''}`}>
           {filas.map((fila) => (
             <li key={fila.clave} className="flex flex-col gap-1">
               <div className="flex justify-between gap-3 text-[13px] text-gray-800">

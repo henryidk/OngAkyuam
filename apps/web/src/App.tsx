@@ -34,6 +34,7 @@ import ReportesMedica from './features/medica/reportes/Reportes'
 import { RUTAS_MEDICA } from './features/medica/rutas'
 import Agenda from './features/psicologia/agenda/Agenda'
 import BandejaPsicologia from './features/psicologia/bandeja/BandejaPsicologia'
+import ListaCitasPsicologia from './features/psicologia/citas/ListaCitas'
 import DetalleCita from './features/psicologia/citas/DetalleCita'
 import RegistroConsulta from './features/psicologia/citas/RegistroConsulta'
 import Indicadores from './features/psicologia/indicadores/Indicadores'
@@ -142,6 +143,7 @@ function App() {
               <Route path="documentos" element={<PestanaDocumentosTsPsicologia />} />
               <Route path="referencias" element={<PestanaReferenciasPsicologia />} />
             </Route>
+            <Route path="citas" element={<ListaCitasPsicologia />} />
             <Route path="citas/:citaId" element={<DetalleCita />} />
             <Route path="citas/:citaId/atencion" element={<RegistroConsulta />} />
             <Route path="reportes" element={<Indicadores />} />

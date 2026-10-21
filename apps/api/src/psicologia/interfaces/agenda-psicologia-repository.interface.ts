@@ -5,7 +5,7 @@ export const AGENDA_PSICOLOGIA_REPOSITORY = Symbol(
 );
 
 export interface RangoAgendaParams {
-  psicologaId: string;
+  psicologaId: string | null;
   desde: Date;
   hasta: Date;
 }
@@ -30,7 +30,7 @@ export interface MoverCitaParams {
   duracionMinutos: number;
 }
 
-/** La agenda siempre es la de quien consulta: todas las lecturas filtran por la psicóloga dueña. */
+/** Agenda propia por defecto; psicologaId null permite consultar las citas de todo el equipo. */
 export interface IAgendaPsicologiaRepository {
   /** Citas que ocupan agenda en el rango (ni canceladas ni reprogramadas), en orden cronológico. */
   listarCitas(
@@ -43,7 +43,11 @@ export interface IAgendaPsicologiaRepository {
    * cerrar. `false` si no cumplía eso (ya se registró, aún no ocurre): no se escribió nada.
    * Se usa tras `exigirAccesoCita`.
    */
-  marcarNoAsistio(citaId: string, ahora: Date): Promise<boolean>;
+  marcarNoAsistio(
+    citaId: string,
+    ahora: Date,
+    psicologaId: string,
+  ): Promise<boolean>;
   /**
    * Mis procesos sin cerrar que ya abrieron (tienen primera cita agendada), con las personas a
    * quienes se puede citar, su próxima cita programada (si la tienen) y si alguna cita suya

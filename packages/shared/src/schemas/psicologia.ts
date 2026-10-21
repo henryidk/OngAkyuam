@@ -16,10 +16,10 @@ import type { ConteoReporte } from './trabajoSocial.js'
 import type { VistaMedicaParaPsicologia } from './medica.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
-const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
+const fechaCalendarioSchema = z.iso.date('Fecha inválida')
 
 /** Valor crudo de un `<input type="datetime-local">` — se interpreta como hora de Guatemala vía `parseLocalGT`, nunca como UTC directo. */
-const fechaHoraLocalSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Fecha y hora inválidas')
+const fechaHoraLocalSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Fecha y hora inválidas').refine(valor => fechaCalendarioSchema.safeParse(valor.slice(0, 10)).success, 'Fecha inválida')
 
 export const modalidadCitaSchema = z.enum(MODALIDADES_CITA)
 export const estadoCitaPsicologicaSchema = z.enum(ESTADOS_CITA_PSICOLOGICA)
@@ -53,7 +53,7 @@ export function horarioPsicologiaValido(datos: { fechaHora: string; duracionMinu
   return m < 60 && inicio >= 8 * 60 && inicio + datos.duracionMinutos <= 17 * 60
 }
 export const MENSAJE_HORARIO_PSICOLOGIA =
-  'La cita debe comenzar a partir de las 08:00 y terminar antes o a las 17:00 (hora de Guatemala)'
+  'La cita está fuera del horario laboral. Debe comenzar a partir de las 08:00 y terminar a más tardar a las 17:00 (hora de Guatemala).'
 const datosCitaPsicologicaSchema = z.object({
   fechaHora: fechaHoraLocalSchema,
   duracionMinutos: duracionCitaPsicologicaSchema.default(DURACIONES_CITA_PSICOLOGICA_MINUTOS[0]),
@@ -180,6 +180,36 @@ export const rangoFechasQuerySchema = z.object({
 })
 export type RangoFechasQuery = z.infer<typeof rangoFechasQuerySchema>
 
+// No usar coerce.boolean(): el texto "false" también se convertiría en true.
+const booleanoQuery = z.enum(['true', 'false']).transform((valor) => valor === 'true')
+export const agendaPsicologiaQuerySchema = rangoFechasQuerySchema.extend({
+  soloMios: booleanoQuery.default(true),
+})
+export type AgendaPsicologiaQuery = z.infer<typeof agendaPsicologiaQuerySchema>
+export const citasPsicologiaQuerySchema = rangoFechasQuerySchema.extend({
+  soloMios: booleanoQuery.default(false),
+  estado: estadoCitaPsicologicaSchema.optional(),
+  pagina: z.coerce.number().int().min(1).max(10000).default(1),
+}).refine((d) => d.hasta >= d.desde, { path: ['hasta'], message: 'La fecha final no puede ser anterior a la inicial' })
+export type CitasPsicologiaQuery = z.infer<typeof citasPsicologiaQuerySchema>
+export const asumirCitaPsicologicaSchema = z.object({
+  confirmar: z.literal(true, 'Confirma que atenderás esta cita'),
+  psicologaAsignadaId: z.uuid().nullable(),
+  profesionalCitaId: z.uuid(),
+  confirmarTraslape: z.boolean().default(false),
+})
+export type AsumirCitaPsicologicaInput = z.infer<typeof asumirCitaPsicologicaSchema>
+export interface ProfesionalPsicologiaDto { id: string; nombre: string }
+export interface CitasPsicologiaDto {
+  items: CitaAgendaDto[]
+  pagina: number
+  total: number
+  porPagina: number
+  atendidas: number
+  primerasAtenciones: number
+  ausencias: number
+}
+
 /** `GET /psicologia/indicadores` — siempre "mis" casos del año consultado (§5.5, §7.4 del plan). */
 export const indicadoresQuerySchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
@@ -275,6 +305,9 @@ export interface PaginaConCursor<T> {
 
 /** `GET /psicologia/citas/:id` — permalink de una cita puntual, cada fila del historial enlaza aquí (§5.3 del plan). */
 export interface CitaPsicologicaDetalle extends CitaResumen {
+  profesional?: ProfesionalPsicologiaDto
+  responsable?: ProfesionalPsicologiaDto | null
+  puedeAsumirAtencion?: boolean
   soloLectura?: boolean
   expedienteId: string
   numero: string
@@ -436,6 +469,10 @@ export interface CasoReasignadoDto {
 
 /** Cita tal como la pinta la agenda del rediseño: sin modalidad, lugar ni texto clínico. */
 export interface CitaAgendaDto {
+  profesional?: ProfesionalPsicologiaDto
+  responsable?: ProfesionalPsicologiaDto | null
+  propia?: boolean
+  clinica?: string | null
   id: string
   procesoId: string
   /** "P1-05-2026". */

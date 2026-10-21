@@ -63,7 +63,7 @@ export class AgendaPsicologiaService {
   ) {}
 
   listarCitas(
-    query: RangoFechasQuery,
+    query: RangoFechasQuery & { soloMios?: boolean },
     psicologaId: string,
   ): Promise<CitaAgendaDto[]> {
     // Las fechas son "YYYY-MM-DD": se comparan como texto, sin pasar por `Date`.
@@ -73,12 +73,19 @@ export class AgendaPsicologiaService {
     ) {
       throw new BadRequestException(MENSAJE_RANGO_AGENDA_INVALIDO);
     }
-    return this.agendaRepository.listarCitas({
-      psicologaId,
-      desde: inicioDiaGT(query.desde),
-      hasta: finDiaGT(query.hasta),
-      ahora: new Date(),
-    });
+    return this.agendaRepository
+      .listarCitas({
+        psicologaId: query.soloMios === false ? null : psicologaId,
+        desde: inicioDiaGT(query.desde),
+        hasta: finDiaGT(query.hasta),
+        ahora: new Date(),
+      })
+      .then((citas) =>
+        citas.map((c) => ({
+          ...c,
+          propia: c.profesional ? c.profesional.id === psicologaId : true,
+        })),
+      );
   }
 
   /**
@@ -121,6 +128,7 @@ export class AgendaPsicologiaService {
     const marcada = await this.agendaRepository.marcarNoAsistio(
       citaId,
       new Date(),
+      contexto.usuarioId,
     );
     if (!marcada) {
       throw new ConflictException(MENSAJE_CITA_NO_MARCABLE);

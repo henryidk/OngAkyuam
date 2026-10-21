@@ -6,7 +6,7 @@ import type { CitaResumen, DocumentoCitaDto } from '@akyuam/shared';
  * General escaneado): es el que viaja en `CitaResumen.documento`.
  */
 export const INCLUDE_CITA = {
-  atendidoPor: { select: { nombreCompleto: true } },
+  atendidoPor: { select: { id: true, nombreCompleto: true } },
   documentos: { orderBy: { createdAt: 'desc' }, take: 1 },
 } satisfies Prisma.CitaPsicologicaInclude;
 

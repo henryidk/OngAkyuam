@@ -37,6 +37,7 @@ export const RUTAS_PSICOLOGIA = {
   usuariaDocumentos: (usuariaId: string) => `/psicologia/usuarias/${usuariaId}/documentos`,
   usuariaReferencias: (usuariaId: string) => `/psicologia/usuarias/${usuariaId}/referencias`,
   reportes: () => '/psicologia/reportes',
+  citas: () => '/psicologia/citas',
   detalleCita: (citaId: string) => `/psicologia/citas/${citaId}`,
   registrarConsulta: (citaId: string) => `/psicologia/citas/${citaId}/atencion`,
 }

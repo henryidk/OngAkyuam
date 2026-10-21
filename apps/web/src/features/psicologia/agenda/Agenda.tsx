@@ -76,6 +76,7 @@ export default function Agenda() {
   const { mostrar } = useToast()
   const { resumen, recargarResumen } = useContextoPsicologia()
 
+  const [soloMios, setSoloMios] = useState(true)
   const totalMenu = resumen?.citasSinRegistrar ?? 0
   const hoy = hoyGT()
   const diaPedido = fechaValida(searchParams.get('dia'))
@@ -85,7 +86,7 @@ export default function Agenda() {
   // Sin día en la URL se abre hoy si cae en la semana a la vista; si no, su lunes.
   const dia = diaPedido ?? (hoy >= lunes && hoy <= domingo ? hoy : lunes)
 
-  const semana = useRecurso(useCallback(() => listarCitasAgenda({ desde: lunes, hasta: domingo }), [lunes, domingo]))
+  const semana = useRecurso(useCallback(() => listarCitasAgenda({ desde: lunes, hasta: domingo, soloMios }), [lunes, domingo, soloMios]))
   const huecos = useRecurso(useCallback(() => listarHuecos(dia), [dia]))
   const atrasadas = useRecurso(
     useCallback(() => listarCitasAgenda({ desde: sumarDiasGT(hoy, -DIAS_VENTANA_ATRASADAS), hasta: hoy }), [hoy]),
@@ -131,14 +132,14 @@ export default function Agenda() {
   )
   const renglones = useMemo<Renglon[]>(() => {
     const citas = citasDelDia.map((cita): Renglon => ({ tipo: 'CITA', minuto: minutoDe(horaDeInstante(cita.fechaHora)), cita }))
-    const libres = (huecos.datos ?? []).map((hueco): Renglon => ({ tipo: 'HUECO', minuto: hueco.desdeMin, hueco }))
+    const libres = (soloMios ? huecos.datos ?? [] : []).map((hueco): Renglon => ({ tipo: 'HUECO', minuto: hueco.desdeMin, hueco }))
     return [...citas, ...libres].sort((a, b) => a.minuto - b.minuto)
-  }, [citasDelDia, huecos.datos])
+  }, [citasDelDia, huecos.datos, soloMios])
 
   // Las del día abierto ya están en la lista principal: en el panel van solo las demás, y el
   // total se descuenta igual para que el número coincida con lo que se ve.
-  const sinRegistrar = useMemo(() => citasSinRegistrarFuera(dia, atrasadas.datos ?? []), [atrasadas.datos, dia])
-  const totalSinRegistrar = totalMenu - citasDelDia.filter((cita) => cita.sinRegistrar).length
+  const sinRegistrar = useMemo(() => citasSinRegistrarFuera(dia, (atrasadas.datos ?? []).filter(c => c.propia !== false)), [atrasadas.datos, dia])
+  const totalSinRegistrar = totalMenu - citasDelDia.filter((cita) => cita.sinRegistrar && cita.propia !== false).length
   const sinProxima = useMemo(
     () => (procesos.datos ? procesosSinProximaCita(procesos.datos) : null),
     [procesos.datos],
@@ -217,6 +218,13 @@ export default function Agenda() {
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-white px-4 py-3">
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-gray-800">
+          <input type="checkbox" checked={soloMios} onChange={e => setSoloMios(e.target.checked)} className="h-4 w-4 accent-brand-600" />
+          Solo mis pacientes
+        </label>
+        <p className="text-xs text-gray-500">{soloMios ? 'Pacientes asignados a ti y citas que atenderás.' : 'Citas de todo el equipo de Psicología.'}</p>
+      </div>
       <NavegadorSemana
         dias={dias}
         diaAbierto={dia}
@@ -282,6 +290,7 @@ export default function Agenda() {
         </section>
 
         <aside className="space-y-4 xl:sticky xl:top-6">
+          <h2 className="text-sm font-semibold text-gray-700">Mis pendientes</h2>
           <PanelPorAgendar
             casos={porAgendar.datos}
             error={porAgendar.error?.mensaje ?? null}

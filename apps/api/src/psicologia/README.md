@@ -23,3 +23,15 @@ Con el backend compilado y DATABASE_URL apuntando a la copia local `akyuam_psico
 `pnpm --filter @akyuam/api test:psicologia:integracion`
 
 La integración crea sus datos en una transacción y la revierte. Comprueba procesos independientes, lectura de colegas sin escritura, nuevos campos de sesión, códigos y reportes. Rechaza cualquier otra base de datos.
+
+
+## Agenda del equipo y Citas (21 de octubre de 2026)
+
+- La agenda abre con **Solo mis pacientes** activado. Incluye pacientes de mis procesos y citas que atenderé por cobertura. Al desactivarlo consulta las citas del equipo de Psicología. Cada fila identifica la profesional de la cita y, si difiere, la responsable del proceso.
+- **Citas** permite consultar por fechas y estado, con totales calculados sobre todo el resultado y páginas de 20 registros. Su detalle muestra quién atendió, la responsable del proceso, clínica, enfoque, notas y hoja de evolución, sin inventar datos históricos faltantes.
+- Para atender una cita programada de una colega, se presenta una advertencia con sus nombres. **Continuar y atender** cambia únicamente la profesional de esa cita y registra la acción en auditoría. La responsable del proceso y las sesiones anteriores se conservan. También se avisa si el horario se cruza con otra cita propia.
+- La confirmación lleva los identificadores que se mostraron en pantalla. Si otra pestaña cambia la cita, se pide actualizar antes de continuar. No se toman citas con borradores, notas o documentos de otra profesional, ni procesos cerrados. Solo la profesional de la cita puede registrar o corregir esa sesión; el cierre del proceso sigue correspondiendo a su responsable.
+- Una cuenta de Psicología puede consultar el historial del área aunque la profesional anterior esté desactivada. El acceso de otras áreas conserva sus reglas.
+- Fechas inválidas, rangos invertidos o mayores de un año y páginas inválidas se rechazan en el servidor. El horario laboral se valida de 08:00 a 17:00, incluida la duración, y el formulario muestra la causa correcta.
+
+No requiere una migración adicional. Usa los campos existentes de responsable del proceso y profesional de cada cita. La integración de pruebas crea personas temporales únicamente en la copia de revisión y revierte todos sus registros.
