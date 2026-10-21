@@ -13,9 +13,6 @@ import type { IInicioRepository } from '../interfaces/inicio-repository.interfac
 import { REFERENCIAS_REPOSITORY } from '../interfaces/referencias-repository.interface';
 import type { IReferenciasRepository } from '../interfaces/referencias-repository.interface';
 
-/** Filas de actividad reciente: las mismas que caben junto a las novedades de TS. */
-const FILAS_ACTIVIDAD_RECIENTE = 6;
-
 /** Solo lo que la tarjeta de Inicio muestra: el DPI y el motivo se quedan en el Área de atención. */
 function referenciaInicio(
   referencia: ReferenciaBandejaDto,
@@ -49,23 +46,20 @@ export class InicioJuridicoService {
     const anio = Number(hoyGT().slice(0, 4));
     const [
       pendientes,
-      resumenAnio,
+      indicadores,
+      enTramitePorTipo,
       requierenAtencion,
       tieneFicha,
-      actividadReciente,
       novedadesTs,
     ] = await Promise.all([
       this.referenciasRepository.listar('pendientes'),
-      this.inicioRepository.resumenAnio(anio),
+      this.inicioRepository.indicadores(anio),
+      this.inicioRepository.enTramitePorTipo(),
       this.inicioRepository.colaProcesos(
         { cola: 'ATENCION' },
         FILAS_COLA_INICIO,
       ),
       this.inicioRepository.tieneFichaPersonal(usuarioId),
-      this.inicioRepository.colaProcesos(
-        { cola: 'RECIENTES' },
-        FILAS_ACTIVIDAD_RECIENTE,
-      ),
       this.inicioRepository.novedadesTs(NOVEDADES_TS_INICIO),
     ]);
 
@@ -79,14 +73,15 @@ export class InicioJuridicoService {
 
     return {
       anio,
-      resumenAnio,
+      cargaActual: indicadores.cargaActual,
+      movimientoAnio: indicadores.movimientoAnio,
+      enTramitePorTipo,
       referenciasNuevas: {
         items: pendientes.slice(0, FILAS_COLA_INICIO).map(referenciaInicio),
         total: pendientes.length,
       },
       requierenAtencion,
       misProcesos,
-      actividadReciente: actividadReciente.items,
       novedadesTs,
     };
   }

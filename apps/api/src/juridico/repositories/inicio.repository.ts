@@ -5,6 +5,8 @@ import {
   type ColaInicio,
   type NovedadTsDto,
   type ProcesoResumen,
+  type ProcesosPorTipoDto,
+  type TipoProcesoJuridico,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -16,7 +18,7 @@ import { limiteInactividad } from '../dominio/estado-visible';
 import type {
   ColaProcesosInicio,
   IInicioRepository,
-  ResumenAnioJuridico,
+  IndicadoresInicio,
 } from '../interfaces/inicio-repository.interface';
 import { cargarResumenes, nombreCompleto } from './mapeo-proceso';
 
@@ -35,10 +37,17 @@ interface FilaCola {
   total: bigint;
 }
 
-interface FilaResumenAnio {
-  total: bigint;
+interface FilaIndicadores {
   enTramite: bigint;
+  suspendidos: bigint;
+  abandonados: bigint;
+  abiertos: bigint;
   finalizados: bigint;
+}
+
+interface FilaPorTipo {
+  tipo: TipoProcesoJuridico;
+  total: bigint;
 }
 
 interface FilaNovedad {
@@ -69,11 +78,6 @@ function condicionCola(filtro: ColaProcesosInicio): {
         donde: Prisma.sql`${EN_TRAMITE_SQL} AND ${asignadoASql(filtro.usuarioId)}`,
         orden: Prisma.sql`p."ultimaActuacionEn" DESC`,
       };
-    case 'RECIENTES':
-      return {
-        donde: Prisma.sql`p.fase <> 'FINALIZADO'`,
-        orden: Prisma.sql`p."ultimaActuacionEn" DESC`,
-      };
   }
 }
 
@@ -98,8 +102,6 @@ function mapearNovedad(fila: FilaNovedad): NovedadTsDto | null {
     expedienteNumero: fila.numero,
   };
   switch (fila.tipo) {
-    case 'REFERENCIA':
-      return { ...base, tipo: 'REFERENCIA' };
     case 'DATOS':
       return { ...base, tipo: 'DATOS', campos: camposDe(fila.detalles) };
     case 'DOCUMENTO':
@@ -143,23 +145,55 @@ export class InicioRepository implements IInicioRepository {
     };
   }
 
-  async resumenAnio(anio: number): Promise<ResumenAnioJuridico> {
-    // `fechaInicio` es `@db.Date`: se compara contra días calendario, no contra instantes.
-    const [fila] = await this.prisma.$queryRaw<FilaResumenAnio[]>(Prisma.sql`
+  async indicadores(anio: number): Promise<IndicadoresInicio> {
+    // `fechaInicio` y `fechaCierre` son `@db.Date`: se comparan contra días calendario, no instantes.
+    const enElAnio = (columna: Prisma.Sql) => Prisma.sql`(
+      ${columna} >= make_date(${anio}::int, 1, 1)
+      AND ${columna} < make_date(${anio}::int + 1, 1, 1)
+    )`;
+    const [fila] = await this.prisma.$queryRaw<FilaIndicadores[]>(Prisma.sql`
       SELECT
-        count(*) AS total,
         count(*) FILTER (WHERE ${EN_TRAMITE_SQL}) AS "enTramite",
-        count(*) FILTER (WHERE p.fase = 'FINALIZADO') AS finalizados
+        count(*) FILTER (
+          WHERE p.fase <> 'FINALIZADO' AND p.situacion = 'SUSPENDIDO'
+        ) AS suspendidos,
+        count(*) FILTER (
+          WHERE p.fase <> 'FINALIZADO' AND p.situacion = 'ABANDONADO'
+        ) AS abandonados,
+        count(*) FILTER (
+          WHERE ${enElAnio(Prisma.sql`p."fechaInicio"`)}
+        ) AS abiertos,
+        count(*) FILTER (
+          WHERE p.fase = 'FINALIZADO' AND ${enElAnio(Prisma.sql`p."fechaCierre"`)}
+        ) AS finalizados
       FROM "ProcesoJuridico" p
       WHERE ${PROCESO_CON_ACCESO_SQL}
-        AND p."fechaInicio" >= make_date(${anio}::int, 1, 1)
-        AND p."fechaInicio" < make_date(${anio}::int + 1, 1, 1)
     `);
     return {
-      total: Number(fila?.total ?? 0),
-      enTramite: Number(fila?.enTramite ?? 0),
-      finalizados: Number(fila?.finalizados ?? 0),
+      cargaActual: {
+        enTramite: Number(fila?.enTramite ?? 0),
+        suspendidos: Number(fila?.suspendidos ?? 0),
+        abandonados: Number(fila?.abandonados ?? 0),
+      },
+      movimientoAnio: {
+        abiertos: Number(fila?.abiertos ?? 0),
+        finalizados: Number(fila?.finalizados ?? 0),
+      },
     };
+  }
+
+  async enTramitePorTipo(): Promise<ProcesosPorTipoDto[]> {
+    const filas = await this.prisma.$queryRaw<FilaPorTipo[]>(Prisma.sql`
+      SELECT p.tipo, count(*) AS total
+      FROM "ProcesoJuridico" p
+      WHERE ${PROCESO_CON_ACCESO_SQL} AND ${EN_TRAMITE_SQL}
+      GROUP BY p.tipo
+      ORDER BY total DESC, p.tipo
+    `);
+    return filas.map((fila) => ({
+      tipo: fila.tipo,
+      total: Number(fila.total),
+    }));
   }
 
   async tieneFichaPersonal(usuarioId: string): Promise<boolean> {
@@ -172,7 +206,8 @@ export class InicioRepository implements IInicioRepository {
 
   async novedadesTs(limite: number): Promise<NovedadTsDto[]> {
     // Cada rama parte de un expediente referido a Jurídico y solo toma eventos posteriores a
-    // la referencia, hechos por una cuenta de Trabajo Social. Los documentos además pasan por
+    // la referencia, hechos por una cuenta de Trabajo Social. La referencia misma no es novedad:
+    // ya está en la cola de referencias por atender. Los documentos además pasan por
     // la misma regla de visibilidad que `PoliticaJuridico`: los de Trabajo Social siempre, los
     // de otras áreas solo si se compartieron con Jurídico.
     const deTrabajoSocial = Prisma.sql`EXISTS (
@@ -186,17 +221,8 @@ export class InicioRepository implements IInicioRepository {
         WHERE r.area = 'JURIDICO'
       ),
       eventos AS (
-        SELECT a.id, 'REFERENCIA' AS tipo, a."createdAt", a.detalles,
-          ref."usuariaId", ref.numero,
-          NULL::"TipoDocumento" AS "documentoTipo", NULL::int AS "documentoVersion"
-        FROM referidos ref
-        JOIN "AuditLog" a ON a.entidad = 'Expediente' AND a."entidadId" = ref."expedienteId"
-        WHERE a.accion IN (${Prisma.join(ACCIONES_NOVEDAD_TS.REFERENCIA)})
-          AND a.detalles->>'area' = 'JURIDICO'
-          AND ${deTrabajoSocial}
-        UNION ALL
-        SELECT a.id, 'DOCUMENTO', a."createdAt", a.detalles,
-          ref."usuariaId", ref.numero, d.tipo, d.version
+        SELECT a.id, 'DOCUMENTO' AS tipo, a."createdAt", a.detalles,
+          ref."usuariaId", ref.numero, d.tipo AS "documentoTipo", d.version AS "documentoVersion"
         FROM referidos ref
         JOIN "Documento" d ON d."expedienteId" = ref."expedienteId"
         JOIN "AuditLog" a ON a.entidad = 'Documento' AND a."entidadId" = d.id

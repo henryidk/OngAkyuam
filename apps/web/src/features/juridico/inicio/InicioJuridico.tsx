@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import {
+  DIAS_ALERTA_INACTIVIDAD,
   ETIQUETAS_CAMPO_IDENTIDAD_USUARIA,
   ETIQUETAS_FASE,
   ETIQUETAS_TIPO_DOCUMENTO,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
+  diasDesdeGT,
   formatFechaLargaGT,
   formatInstanteGT,
   horaActualGT,
@@ -12,21 +14,24 @@ import {
   type InicioJuridicoDto,
   type NovedadTsDto,
   type ProcesoResumen,
+  type ProcesosPorTipoDto,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import { useAuthStore } from '../../../store/auth.store'
 import { obtenerInicio } from '../api/juridico.api'
 import { useContextoJuridico } from '../compartido/contexto'
-import EtiquetaEstado from '../compartido/EtiquetaEstado'
 import { ErrorVista, Esqueleto } from '../compartido/EstadosVista'
-import { fechaDeInstante, fechaDeReferencia, textoAlerta } from '../compartido/formato'
+import { textoAlerta } from '../compartido/formato'
 import { useRecurso } from '../compartido/useRecurso'
 import { RUTAS_JURIDICO } from '../rutas'
 
 const CLASE_TARJETA = 'rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]'
 const CLASE_ENLACE = 'text-[13px] font-medium text-brand-700 hover:underline'
-const CLASE_FILA_BOTON =
-  'flex w-full items-center gap-3 border-b border-gray-100 px-4 py-3 text-left last:border-b-0 hover:bg-gray-50'
+const CLASE_FILA = 'flex items-center gap-3 border-t border-gray-100 px-4 py-3'
+const CLASE_AMBAR = 'text-[#8a5a14]'
+
+/** Tipos que se listan con su barra; el resto se suma en "Otros tipos". */
+const TIPOS_VISIBLES = 6
 
 function saludo(): string {
   const hora = horaActualGT()
@@ -39,12 +44,12 @@ function plural(total: number, singular: string, varios: string): string {
   return `${total} ${total === 1 ? singular : varios}`
 }
 
-function textoResumenAnio({ anio, resumenAnio }: InicioJuridicoDto): string {
-  return `${anio}: ${plural(resumenAnio.total, 'proceso', 'procesos')} · ${resumenAnio.enTramite} en trámite · ${plural(
-    resumenAnio.finalizados,
-    'finalizado',
-    'finalizados',
-  )}`
+/** "hoy", "ayer" o "hace N días": lo que lleva esperando una referencia. */
+function textoEspera(instanteIso: string): string {
+  const dias = diasDesdeGT(instanteIso)
+  if (dias === 0) return 'hoy'
+  if (dias === 1) return 'ayer'
+  return `hace ${dias} días`
 }
 
 /** "nombres, DPI y teléfono": solo los campos conocidos, sin repetir ("municipio" sale de dos). */
@@ -66,8 +71,6 @@ function textoCampos(campos: string[]): string {
 function textoNovedad(novedad: NovedadTsDto): string {
   const quien = `${novedad.usuaria.nombreCompleto} (${novedad.expedienteNumero})`
   switch (novedad.tipo) {
-    case 'REFERENCIA':
-      return `Nueva referencia: ${quien}.`
     case 'DATOS':
       return `TS actualizó ${textoCampos(novedad.campos)} de ${quien}.`
     case 'DOCUMENTO': {
@@ -77,44 +80,138 @@ function textoNovedad(novedad: NovedadTsDto): string {
   }
 }
 
-interface ColaProps {
-  titulo: string
-  descripcion: string
-  colorPunto: string
-  claseInsignia: string
-  total: number | null
-  children: ReactNode
-  pie?: ReactNode
+interface IndicadorProps {
+  etiqueta: string
+  valor: number
+  detalle: string
+  destino: string
+  /** Hay algo pendiente detrás del número: se pinta en ámbar. */
+  alerta?: boolean
 }
 
-function Cola({ titulo, descripcion, colorPunto, claseInsignia, total, children, pie }: ColaProps) {
+function Indicador({ etiqueta, valor, detalle, destino, alerta = false }: IndicadorProps) {
   return (
-    <section className={`${CLASE_TARJETA} flex flex-col`}>
-      <div className="border-b border-gray-100 px-4 pb-3 pt-4">
-        <div className="flex items-center gap-2">
-          <span aria-hidden="true" className="h-2 w-2 rounded-full" style={{ background: colorPunto }} />
+    <Link to={destino} className="group bg-white px-5 py-4 hover:bg-gray-50">
+      <p className="text-[13px] text-gray-600">{etiqueta}</p>
+      <p className={`mt-1 text-[30px] font-semibold leading-none tabular-nums ${alerta ? CLASE_AMBAR : 'text-gray-900'}`}>
+        {valor}
+      </p>
+      <p className="mt-2 text-[12.5px] text-gray-500 group-hover:text-gray-700">{detalle}</p>
+    </Link>
+  )
+}
+
+function Indicadores({ inicio }: { inicio: InicioJuridicoDto }) {
+  const { referenciasNuevas, requierenAtencion, misProcesos, cargaActual, movimientoAnio, anio } = inicio
+  const masAntigua = referenciasNuevas.items[0]
+
+  let detalleCarga = 'Todos los procesos activos del área'
+  if (misProcesos) detalleCarga = misProcesos.total === 0 ? 'Ninguno a tu cargo' : `${misProcesos.total} a tu cargo`
+
+  return (
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 lg:grid-cols-4">
+      <Indicador
+        etiqueta="Referencias por atender"
+        valor={referenciasNuevas.total}
+        detalle={masAntigua ? `La más antigua llegó ${textoEspera(masAntigua.referidoEn)}` : 'Nada en espera'}
+        destino={RUTAS_JURIDICO.bandeja()}
+        alerta={referenciasNuevas.total > 0}
+      />
+      <Indicador
+        etiqueta="Procesos en trámite"
+        valor={cargaActual.enTramite}
+        detalle={detalleCarga}
+        destino={RUTAS_JURIDICO.procesos()}
+      />
+      <Indicador
+        etiqueta={`Sin actuación en ${DIAS_ALERTA_INACTIVIDAD} días`}
+        valor={requierenAtencion.total}
+        detalle={requierenAtencion.total === 0 ? 'Todos tienen movimiento reciente' : 'En trámite, sin movimiento'}
+        destino={RUTAS_JURIDICO.procesos()}
+        alerta={requierenAtencion.total > 0}
+      />
+      <Indicador
+        etiqueta={`Finalizados en ${anio}`}
+        valor={movimientoAnio.finalizados}
+        detalle={`${plural(movimientoAnio.abiertos, 'abierto', 'abiertos')} en el año`}
+        destino={RUTAS_JURIDICO.reportes()}
+      />
+    </div>
+  )
+}
+
+interface SeccionProps {
+  titulo: string
+  ayuda?: string
+  enlace?: { texto: string; destino: string }
+  children: ReactNode
+}
+
+function Seccion({ titulo, ayuda, enlace, children }: SeccionProps) {
+  return (
+    <section className={`${CLASE_TARJETA} overflow-hidden`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-3.5">
+        <div>
           <h2 className="text-sm font-semibold text-gray-900">{titulo}</h2>
-          {total !== null && (
-            <span className={`ml-auto rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums ${claseInsignia}`}>{total}</span>
-          )}
+          {ayuda && <p className="mt-0.5 text-xs text-gray-500">{ayuda}</p>}
         </div>
-        <p className="ml-4 mt-1 text-xs text-gray-500">{descripcion}</p>
+        {enlace && (
+          <Link to={enlace.destino} className={CLASE_ENLACE}>
+            {enlace.texto}
+          </Link>
+        )}
       </div>
-      <div className="flex-1">{children}</div>
-      {pie && <div className="border-t border-gray-100 px-4 py-2.5">{pie}</div>}
+      {children}
     </section>
   )
 }
 
 function Vacio({ children }: { children: ReactNode }) {
-  return <p className="p-4 text-[13px] text-gray-400">{children}</p>
+  return <p className="border-t border-gray-100 px-4 py-3.5 text-[13px] text-gray-500">{children}</p>
 }
 
-function FilaColaProceso({ proceso, detalle }: { proceso: ProcesoResumen; detalle: ReactNode }) {
+function ReferenciasPorAtender({ referencias }: { referencias: InicioJuridicoDto['referenciasNuevas'] }) {
+  const restantes = referencias.total - referencias.items.length
   return (
-    <Link to={RUTAS_JURIDICO.proceso(proceso.id)} className={CLASE_FILA_BOTON}>
+    <Seccion
+      titulo="Referencias por atender"
+      ayuda="Las envió Trabajo Social y todavía no tienen proceso. La que más lleva esperando va primero."
+      enlace={
+        restantes > 0 ? { texto: `Ver las ${referencias.total}`, destino: RUTAS_JURIDICO.bandeja() } : undefined
+      }
+    >
+      {referencias.items.length === 0 && <Vacio>No hay referencias en espera.</Vacio>}
+      {referencias.items.map((referencia) => (
+        <div key={referencia.referidoId} className={CLASE_FILA}>
+          <div className="min-w-0 flex-1">
+            <Link
+              to={RUTAS_JURIDICO.usuaria(referencia.usuaria.id)}
+              className="block truncate text-sm font-medium text-gray-900 hover:underline"
+            >
+              {referencia.usuaria.nombreCompleto}
+            </Link>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Exp. <span className="tabular-nums">{referencia.expedienteNumero}</span> · llegó{' '}
+              {textoEspera(referencia.referidoEn)}
+            </p>
+          </div>
+          <Link
+            to={RUTAS_JURIDICO.registrar({ expedienteId: referencia.expedienteId, referidoId: referencia.referidoId })}
+            className="whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-1.5 text-[13px] font-medium text-brand-700 hover:bg-brand-50"
+          >
+            Atender caso
+          </Link>
+        </div>
+      ))}
+    </Seccion>
+  )
+}
+
+function FilaProcesoInicio({ proceso, detalle }: { proceso: ProcesoResumen; detalle: ReactNode }) {
+  return (
+    <Link to={RUTAS_JURIDICO.proceso(proceso.id)} className={`${CLASE_FILA} hover:bg-gray-50`}>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-gray-800">{proceso.usuaria.nombreCompleto}</p>
+        <p className="truncate text-sm font-medium text-gray-900">{proceso.usuaria.nombreCompleto}</p>
         <p className="mt-0.5 truncate text-xs text-gray-500">
           <span className="font-mono">{proceso.codigo}</span> · {ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.tipo]}
         </p>
@@ -124,192 +221,136 @@ function FilaColaProceso({ proceso, detalle }: { proceso: ProcesoResumen; detall
   )
 }
 
-function Colas({ inicio }: { inicio: InicioJuridicoDto }) {
-  const { referenciasNuevas, requierenAtencion, misProcesos } = inicio
+function SinMovimiento({ cola }: { cola: InicioJuridicoDto['requierenAtencion'] }) {
+  const restantes = cola.total - cola.items.length
   return (
-    <div className="grid grid-cols-[repeat(auto-fit,minmax(300px,1fr))] gap-4">
-      <Cola
-        titulo="Referencias nuevas"
-        descripcion="Referidas por Trabajo Social, sin procesos abiertos."
-        colorPunto="#d97706"
-        claseInsignia="bg-[#fef3c7] text-[#b45309]"
-        total={referenciasNuevas.total}
-        pie={
-          referenciasNuevas.total > referenciasNuevas.items.length && (
-            <Link to={RUTAS_JURIDICO.bandeja()} className={CLASE_ENLACE}>
-              Ver todas las referencias
-            </Link>
-          )
-        }
-      >
-        {referenciasNuevas.items.length === 0 && <Vacio>No hay referencias nuevas.</Vacio>}
-        {referenciasNuevas.items.map((referencia) => (
-          <div key={referencia.referidoId} className="flex items-center gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
-            <Link to={RUTAS_JURIDICO.bandeja()} className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-gray-800 hover:underline">{referencia.usuaria.nombreCompleto}</p>
-              <p className="mt-0.5 text-xs text-gray-500">
-                Exp. {referencia.expedienteNumero} · {fechaDeInstante(referencia.referidoEn)}
-              </p>
-            </Link>
-            <Link
-              to={RUTAS_JURIDICO.registrar({ expedienteId: referencia.expedienteId, referidoId: referencia.referidoId })}
-              className="rounded-md border border-[#c7a8e5] bg-white px-2.5 py-1.5 text-xs font-medium text-[#5b3985] hover:bg-[#f7f3fc]"
-            >
-              Atender
-            </Link>
-          </div>
-        ))}
-      </Cola>
-
-      <Cola
-        titulo="Requieren atención"
-        descripcion="En trámite y sin actuación en 60 días o más."
-        colorPunto="#8a5a14"
-        claseInsignia="bg-[#f6ecdc] text-[#8a5a14]"
-        total={requierenAtencion.total}
-        pie={
-          requierenAtencion.total > requierenAtencion.items.length && (
-            <Link to={RUTAS_JURIDICO.procesos()} className={CLASE_ENLACE}>
-              Ver todos los procesos
-            </Link>
-          )
-        }
-      >
-        {requierenAtencion.items.length === 0 && <Vacio>Todos los procesos tienen actuaciones recientes.</Vacio>}
-        {requierenAtencion.items.map((proceso) => (
-          <FilaColaProceso
-            key={proceso.id}
-            proceso={proceso}
-            detalle={<span className="whitespace-nowrap text-xs font-medium text-[#8a5a14]">{textoAlerta(proceso)}</span>}
-          />
-        ))}
-      </Cola>
-
-      <Cola
-        titulo="Mis procesos en trámite"
-        descripcion="Asignados a ti como abogada o procuradora."
-        colorPunto="#7346a5"
-        claseInsignia="bg-[#eee4f8] text-[#5b3985]"
-        total={misProcesos?.total ?? null}
-        pie={
-          misProcesos && (
-            <Link to={RUTAS_JURIDICO.procesos({ mios: true })} className={CLASE_ENLACE}>
-              Ver todos mis procesos
-            </Link>
-          )
-        }
-      >
-        {!misProcesos ? (
-          <Vacio>
-            Tu cuenta no está vinculada a una ficha de personal de Jurídico. Pide a Administración que la enlace para ver
-            aquí tus procesos.
-          </Vacio>
-        ) : misProcesos.items.length === 0 ? (
-          <Vacio>No tienes procesos en trámite asignados.</Vacio>
-        ) : (
-          misProcesos.items.map((proceso) => (
-            <FilaColaProceso
-              key={proceso.id}
-              proceso={proceso}
-              detalle={<span className="whitespace-nowrap text-xs text-gray-500">{ETIQUETAS_FASE[proceso.fase]}</span>}
-            />
-          ))
-        )}
-      </Cola>
-    </div>
+    <Seccion
+      titulo="Procesos sin movimiento"
+      ayuda={`En trámite y sin ninguna actuación en ${DIAS_ALERTA_INACTIVIDAD} días o más. El más olvidado va primero.`}
+    >
+      {cola.items.map((proceso) => (
+        <FilaProcesoInicio
+          key={proceso.id}
+          proceso={proceso}
+          detalle={<span className={`whitespace-nowrap text-xs font-medium ${CLASE_AMBAR}`}>{textoAlerta(proceso)}</span>}
+        />
+      ))}
+      {restantes > 0 && <Vacio>Y {plural(restantes, 'proceso más', 'procesos más')} en la misma situación.</Vacio>}
+    </Seccion>
   )
 }
 
-const COLUMNAS_ACTIVIDAD = ['No. interno', 'Usuaria', 'Última actuación', 'Estado']
-
-function ActividadReciente({ procesos }: { procesos: ProcesoResumen[] }) {
-  const navigate = useNavigate()
+function MisProcesos({ cola }: { cola: NonNullable<InicioJuridicoDto['misProcesos']> }) {
   return (
-    <section className={`${CLASE_TARJETA} overflow-hidden`}>
-      <div className="flex items-center justify-between p-4">
-        <h2 className="text-sm font-semibold text-gray-900">Actividad reciente en procesos</h2>
-        <Link to={RUTAS_JURIDICO.procesos()} className={CLASE_ENLACE}>
-          Ver todos los procesos
-        </Link>
-      </div>
-      {procesos.length === 0 ? (
-        <Vacio>Todavía no hay procesos abiertos.</Vacio>
+    <Seccion
+      titulo="Mis procesos en trámite"
+      ayuda="Donde figuras como abogada o procuradora. El de actuación más reciente va primero."
+      enlace={
+        cola.total > cola.items.length
+          ? { texto: `Ver los ${cola.total}`, destino: RUTAS_JURIDICO.procesos({ mios: true }) }
+          : undefined
+      }
+    >
+      {cola.items.length === 0 && <Vacio>No tienes procesos en trámite asignados.</Vacio>}
+      {cola.items.map((proceso) => (
+        <FilaProcesoInicio
+          key={proceso.id}
+          proceso={proceso}
+          detalle={<span className="whitespace-nowrap text-xs text-gray-500">{ETIQUETAS_FASE[proceso.fase]}</span>}
+        />
+      ))}
+    </Seccion>
+  )
+}
+
+interface FilaTipo {
+  clave: string
+  etiqueta: string
+  total: number
+}
+
+/** Los tipos más cargados con su barra; la cola larga del catálogo se suma en una sola fila. */
+function filasPorTipo(porTipo: ProcesosPorTipoDto[]): FilaTipo[] {
+  const filas: FilaTipo[] = porTipo.slice(0, TIPOS_VISIBLES).map(({ tipo, total }) => ({
+    clave: tipo,
+    etiqueta: ETIQUETAS_TIPO_PROCESO_JURIDICO[tipo],
+    total,
+  }))
+  const otros = porTipo.slice(TIPOS_VISIBLES)
+  if (otros.length > 0) {
+    filas.push({
+      clave: 'OTROS',
+      etiqueta: `Otros ${otros.length} tipos`,
+      total: otros.reduce((suma, { total }) => suma + total, 0),
+    })
+  }
+  return filas
+}
+
+function CargaPorTipo({ inicio }: { inicio: InicioJuridicoDto }) {
+  const { cargaActual, enTramitePorTipo } = inicio
+  const filas = filasPorTipo(enTramitePorTipo)
+  const maximo = Math.max(0, ...filas.map((fila) => fila.total))
+  const detenidos = [
+    cargaActual.suspendidos > 0 && plural(cargaActual.suspendidos, 'suspendido', 'suspendidos'),
+    cargaActual.abandonados > 0 && plural(cargaActual.abandonados, 'abandonado', 'abandonados'),
+  ].filter(Boolean)
+
+  return (
+    <Seccion titulo="En qué se está trabajando" ayuda="Procesos en trámite según su tipo.">
+      {filas.length === 0 ? (
+        <Vacio>No hay procesos en trámite.</Vacio>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
-              <tr>
-                {COLUMNAS_ACTIVIDAD.map((columna) => (
-                  <th key={columna} scope="col" className="px-4 py-2.5 font-medium">
-                    {columna}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {procesos.map((proceso) => {
-                const destino = RUTAS_JURIDICO.proceso(proceso.id)
-                return (
-                  // Toda la fila abre el detalle; el enlace del código es el que recibe el foco del teclado.
-                  <tr key={proceso.id} onClick={() => navigate(destino)} className="cursor-pointer border-t border-gray-100 hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <Link
-                        to={destino}
-                        onClick={(evento) => evento.stopPropagation()}
-                        className="font-mono text-[13px] font-medium text-brand-700 hover:underline"
-                      >
-                        {proceso.codigo}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3">
-                      <p className="text-gray-800">{proceso.usuaria.nombreCompleto}</p>
-                      <p className="mt-0.5 text-xs text-gray-500">{ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.tipo]}</p>
-                    </td>
-                    <td className="px-4 py-3 text-[13px] text-gray-600 tabular-nums">{fechaDeReferencia(proceso)}</td>
-                    <td className="px-4 py-3">
-                      <EtiquetaEstado estado={proceso.estadoVisible} />
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <ul className="space-y-3 border-t border-gray-100 px-4 py-4">
+          {filas.map((fila) => (
+            <li key={fila.clave}>
+              <div className="flex items-baseline justify-between gap-3 text-[13px]">
+                <span className="truncate text-gray-700" title={fila.etiqueta}>
+                  {fila.etiqueta}
+                </span>
+                <span className="font-medium tabular-nums text-gray-900">{fila.total}</span>
+              </div>
+              <span className="mt-1.5 block h-1.5 rounded-full bg-gray-100" aria-hidden="true">
+                <span
+                  className="block h-1.5 rounded-full bg-brand-500"
+                  style={{ width: `${(fila.total / maximo) * 100}%` }}
+                />
+              </span>
+            </li>
+          ))}
+        </ul>
       )}
-    </section>
+      {detenidos.length > 0 && (
+        <p className="border-t border-gray-100 px-4 py-3 text-xs text-gray-500">
+          Además, sin finalizar: {detenidos.join(' y ')}.
+        </p>
+      )}
+    </Seccion>
   )
 }
 
 function NovedadesTs({ novedades }: { novedades: NovedadTsDto[] }) {
   return (
-    <section className={`${CLASE_TARJETA} p-4`}>
-      <h2 className="text-sm font-semibold text-gray-900">Novedades de Trabajo Social</h2>
-      <p className="mb-3 mt-1 text-xs text-gray-500">Cambios en expedientes de usuarias que atiendes.</p>
+    <Seccion titulo="Novedades de Trabajo Social" ayuda="Datos o documentos que cambiaron en expedientes que ya atiendes.">
       {novedades.length === 0 ? (
-        <p className="text-[13px] text-gray-400">Sin novedades por ahora.</p>
+        <Vacio>Sin cambios recientes.</Vacio>
       ) : (
-        <ul className="space-y-3.5">
+        <ul>
           {novedades.map((novedad) => (
-            <li key={novedad.id} className="flex gap-2.5">
-              <span
-                aria-hidden="true"
-                className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#f7f3fc] text-[11px] font-semibold text-[#5b3985]"
-              >
-                TS
-              </span>
-              <div className="min-w-0">
+            <li key={novedad.id}>
+              <Link to={RUTAS_JURIDICO.usuaria(novedad.usuaria.id)} className="block border-t border-gray-100 px-4 py-3 hover:bg-gray-50">
                 <p className="text-[13px] text-gray-800 [text-wrap:pretty]">{textoNovedad(novedad)}</p>
-                <p className="mt-0.5 text-xs text-gray-400 tabular-nums">{formatInstanteGT(novedad.createdAt)}</p>
-              </div>
+                <p className="mt-0.5 text-xs text-gray-500 tabular-nums">{formatInstanteGT(novedad.createdAt)}</p>
+              </Link>
             </li>
           ))}
         </ul>
       )}
-    </section>
+    </Seccion>
   )
 }
 
-/** Pantalla de entrada de Jurídico: lo que pide atención hoy, sin tener que recorrer las listas. */
+/** Pantalla de entrada de Jurídico: cuánto hay pendiente y por dónde empezar, sin recorrer las listas. */
 export default function InicioJuridico() {
   useTituloPagina({ titulo: 'Inicio' })
   const nombre = useAuthStore((estado) => estado.usuario?.nombreCompleto.split(/\s+/)[0] ?? '')
@@ -327,18 +368,13 @@ export default function InicioJuridico() {
   }, [versionNovedades, recargar])
 
   return (
-    <div className="mx-auto max-w-[1240px] space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[22px] font-semibold tracking-tight text-gray-900">
-            {saludo()}
-            {nombre && `, ${nombre}`}
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            {formatFechaLargaGT(hoyGT())} · esto es lo que requiere tu atención hoy.
-          </p>
-        </div>
-        {inicio && <p className="text-[13px] text-gray-500 tabular-nums">{textoResumenAnio(inicio)}</p>}
+    <div className="mx-auto max-w-[1240px] space-y-5">
+      <div>
+        <p className="text-[22px] font-semibold tracking-tight text-gray-900">
+          {saludo()}
+          {nombre && `, ${nombre}`}
+        </p>
+        <p className="mt-1 text-sm text-gray-500">{formatFechaLargaGT(hoyGT())}</p>
       </div>
 
       {error && !inicio ? (
@@ -347,11 +383,24 @@ export default function InicioJuridico() {
         <Esqueleto />
       ) : (
         <>
-          <Colas inicio={inicio} />
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-            <ActividadReciente procesos={inicio.actividadReciente} />
-            <NovedadesTs novedades={inicio.novedadesTs} />
+          <Indicadores inicio={inicio} />
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <div className="space-y-5">
+              <ReferenciasPorAtender referencias={inicio.referenciasNuevas} />
+              {inicio.requierenAtencion.total > 0 && <SinMovimiento cola={inicio.requierenAtencion} />}
+              {inicio.misProcesos && <MisProcesos cola={inicio.misProcesos} />}
+            </div>
+            <div className="space-y-5">
+              <CargaPorTipo inicio={inicio} />
+              <NovedadesTs novedades={inicio.novedadesTs} />
+            </div>
           </div>
+          {!inicio.misProcesos && (
+            <p className="text-[13px] text-gray-500">
+              Tu cuenta no está vinculada a una ficha de personal de Jurídico, por eso no aparece la lista de tus
+              procesos. Administración puede enlazarla.
+            </p>
+          )}
         </>
       )}
     </div>

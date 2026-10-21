@@ -21,7 +21,7 @@ interface OpcionesRegistro {
 }
 
 export const RUTAS_JURIDICO = {
-  /** Pantalla de entrada del módulo: las tres colas de trabajo y las novedades de TS. */
+  /** Pantalla de entrada del módulo: indicadores, colas de trabajo y novedades de TS. */
   inicio: () => '/juridico',
   /** Área de atención: la bandeja de referencias de Trabajo Social. */
   bandeja: () => '/juridico/atencion',

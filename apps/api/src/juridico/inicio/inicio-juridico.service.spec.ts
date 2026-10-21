@@ -40,9 +40,11 @@ describe('InicioJuridicoService', () => {
   beforeEach(() => {
     inicioRepository = {
       colaProcesos: jest.fn().mockResolvedValue({ items: [], total: 0 }),
-      resumenAnio: jest
-        .fn()
-        .mockResolvedValue({ total: 0, enTramite: 0, finalizados: 0 }),
+      indicadores: jest.fn().mockResolvedValue({
+        cargaActual: { enTramite: 0, suspendidos: 0, abandonados: 0 },
+        movimientoAnio: { abiertos: 0, finalizados: 0 },
+      }),
+      enTramitePorTipo: jest.fn().mockResolvedValue([]),
       tieneFichaPersonal: jest.fn().mockResolvedValue(true),
       novedadesTs: jest.fn().mockResolvedValue([]),
     };

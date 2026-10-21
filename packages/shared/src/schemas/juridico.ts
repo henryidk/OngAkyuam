@@ -493,7 +493,7 @@ export interface FichaUsuariaJuridicoDto {
 
 /** Filas visibles de las colas del Inicio; el contador de cada una muestra el total real. */
 export const FILAS_COLA_INICIO = 5
-export const FILAS_MIS_PROCESOS_INICIO = 3
+export const FILAS_MIS_PROCESOS_INICIO = 4
 export const NOVEDADES_TS_INICIO = 6
 
 export interface ColaInicio<TFila> {
@@ -520,24 +520,42 @@ export type NovedadTsDto = {
   usuaria: UsuariaJuridicoRef
   expedienteNumero: string
 } & (
-  | { tipo: 'REFERENCIA' }
   | { tipo: 'DATOS'; campos: string[] }
   | { tipo: 'DOCUMENTO'; documento: { tipo: TipoDocumento; version: number } }
 )
 
+/** Procesos sin finalizar hoy, sin importar el año en que empezaron. */
+export interface CargaActualJuridico {
+  enTramite: number
+  suspendidos: number
+  abandonados: number
+}
+
+/** Movimiento del año calendario: abiertos por fecha de inicio, finalizados por fecha de cierre. */
+export interface MovimientoAnioJuridico {
+  abiertos: number
+  finalizados: number
+}
+
+export interface ProcesosPorTipoDto {
+  tipo: TipoProcesoJuridico
+  total: number
+}
+
 /** `GET /juridico/inicio` */
 export interface InicioJuridicoDto {
-  /** Año en curso en Guatemala: el resumen cuenta los procesos iniciados en él. */
+  /** Año en curso en Guatemala. */
   anio: number
-  resumenAnio: { total: number; enTramite: number; finalizados: number }
+  cargaActual: CargaActualJuridico
+  movimientoAnio: MovimientoAnioJuridico
+  /** Solo los tipos con algún proceso en trámite; el más cargado primero. */
+  enTramitePorTipo: ProcesosPorTipoDto[]
   /** Las más antiguas primero. */
   referenciasNuevas: ColaInicio<ReferenciaInicioDto>
   /** En trámite y sin actuación en `DIAS_ALERTA_INACTIVIDAD` días o más; la más olvidada primero. */
   requierenAtencion: ColaInicio<ProcesoResumen>
   /** En trámite como abogada o procuradora. `null`: la cuenta no está vinculada a una ficha de personal. */
   misProcesos: ColaInicio<ProcesoResumen> | null
-  /** Procesos sin finalizar con la actuación más reciente primero. */
-  actividadReciente: ProcesoResumen[]
   novedadesTs: NovedadTsDto[]
 }
 
