@@ -51,13 +51,10 @@ export type AccionProceso = (typeof ACCIONES_PROCESO)[number]
 
 // ---- Registro en lote (asistente de 2 pasos) ----
 
-export const CONTRAPARTE_MAX = 160
-
 export const procesoEnLoteSchema = z.object({
   tipo: tipoProcesoJuridicoSchema,
   abogadaId: idPersonalOpcionalSchema,
   procuradoraId: idPersonalOpcionalSchema,
-  // Sin contraparte: al registrar no se pide; se completa después en "Datos del proceso".
   fechaInicio: fechaCalendarioSchema,
   procesoOrigenId: z.uuid().nullable().default(null),
 })
@@ -81,11 +78,11 @@ export type CrearProcesosEnLoteInput = z.infer<typeof crearProcesosEnLoteSchema>
 
 // ---- Datos y transiciones de un proceso ----
 
-/** `PATCH /juridico/procesos/:id/datos`. */
+/**
+ * `PATCH /juridico/procesos/:id/datos`: solo la asignación. El No. judicial tiene su propia ruta
+ * (`/numero-judicial`), que avisa si está repetido y lo deja en la bitácora.
+ */
 export const editarDatosProcesoSchema = z.object({
-  numeroJudicial: z.string().trim().max(60),
-  organoJudicial: z.string().trim().max(160),
-  contraparte: z.string().trim().max(CONTRAPARTE_MAX),
   abogadaId: idPersonalOpcionalSchema,
   procuradoraId: idPersonalOpcionalSchema,
   version: versionSchema,
@@ -326,8 +323,6 @@ export interface ProcesoVinculadoDto {
 
 /** Detalle de `GET /juridico/procesos/:id`. */
 export interface ProcesoDetalle extends ProcesoResumen {
-  organoJudicial: string | null
-  contraparte: string | null
   procesoOrigen: ProcesoVinculadoDto | null
   abandonoVigente: AbandonoDto | null
   suspensionVigente: SuspensionDto | null

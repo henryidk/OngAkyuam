@@ -8,7 +8,7 @@ type EventoJuridico = Required<
 
 /**
  * Une "quién y desde dónde" con "qué pasó". En `detalles` solo van ids y valores de catálogo:
- * nunca nombres, DPI, contraparte, motivos, texto de la bitácora ni nombres de archivo.
+ * nunca nombres, DPI, No. judicial, motivos, texto de la bitácora ni nombres de archivo.
  */
 export function eventoAuditoria(
   contexto: ContextoAuditoria,

@@ -22,7 +22,7 @@ import { useRecurso } from '../compartido/useRecurso'
 import FilaProceso from './FilaProceso'
 import FiltroCartera from './FiltroCartera'
 import { carteraAUrl, carteraDesdeUrl, opcionesCartera } from './formato'
-import ModalNumeroJudicial from './ModalNumeroJudicial'
+import ModalNumeroJudicial from '../compartido/ModalNumeroJudicial'
 
 const ESPERA_BUSQUEDA_MS = 350
 const COLUMNAS = ['No. interno', 'Usuaria', 'Tipo de proceso', 'No. judicial', 'Próxima audiencia', 'Avance', 'Actividad']

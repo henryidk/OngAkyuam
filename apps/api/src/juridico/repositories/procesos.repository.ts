@@ -305,8 +305,6 @@ export class ProcesosRepository implements IProcesosRepository {
 
     return {
       ...mapearResumen(proceso),
-      organoJudicial: proceso.organoJudicial,
-      contraparte: proceso.contraparte,
       procesoOrigen: proceso.procesoOrigen
         ? {
             id: proceso.procesoOrigen.id,
@@ -362,9 +360,6 @@ export class ProcesosRepository implements IProcesosRepository {
       const { count } = await this.prisma.procesoJuridico.updateMany({
         where: { id: params.procesoId, version: params.version },
         data: {
-          numeroJudicial: params.numeroJudicial,
-          organoJudicial: params.organoJudicial,
-          contraparte: params.contraparte,
           abogadaId: params.abogadaId,
           procuradoraId: params.procuradoraId,
           version: { increment: 1 },

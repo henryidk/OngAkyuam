@@ -109,7 +109,7 @@ export default function FilaProceso({ proceso, hoy, onAsignarNumero, onAgendar }
         ) : (
           <>
             <p className="text-xs text-gray-400">Sin asignar</p>
-            <BotonFila onClick={onAsignarNumero}>Asignar</BotonFila>
+            <BotonFila onClick={onAsignarNumero}>Agregar</BotonFila>
           </>
         )}
       </td>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { Pencil, Plus } from 'lucide-react'
 import {
   CATEGORIA_POR_TIPO_PROCESO,
   ETIQUETAS_CATEGORIA_PROCESO,
@@ -20,6 +21,42 @@ interface CabeceraProcesoProps {
   onAgendar: (() => void) | null
   onActuacion: () => void
   onReactivar: () => void
+  /** Abre el modal para agregar o corregir el No. judicial. */
+  onNumeroJudicial: () => void
+}
+
+/** El No. judicial va junto al No. interno: sin él, el botón para agregarlo es lo primero que se ve. */
+function NumeroJudicial({ numero, onEditar }: { numero: string | null; onEditar: () => void }) {
+  if (!numero) {
+    return (
+      <button
+        type="button"
+        onClick={onEditar}
+        className="inline-flex items-center gap-1 rounded-full border border-dashed border-brand-600 px-2.5 py-0.5 text-[11px] font-medium text-brand-700 hover:bg-brand-50"
+      >
+        <Plus size={12} aria-hidden="true" />
+        Agregar No. judicial
+      </button>
+    )
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm text-gray-700">
+      <span className="text-gray-400" aria-hidden="true">
+        ·
+      </span>
+      <span className="text-xs text-gray-500">No. judicial</span>
+      <span className="break-all font-mono font-medium">{numero}</span>
+      <button
+        type="button"
+        onClick={onEditar}
+        aria-label="Corregir No. judicial"
+        title="Corregir No. judicial"
+        className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-brand-700"
+      >
+        <Pencil size={13} aria-hidden="true" />
+      </button>
+    </span>
+  )
 }
 
 function ProximaAudiencia({ proceso }: { proceso: ProcesoDetalle }) {
@@ -39,7 +76,13 @@ function ProximaAudiencia({ proceso }: { proceso: ProcesoDetalle }) {
   )
 }
 
-export default function CabeceraProceso({ proceso, onAgendar, onActuacion, onReactivar }: CabeceraProcesoProps) {
+export default function CabeceraProceso({
+  proceso,
+  onAgendar,
+  onActuacion,
+  onReactivar,
+  onNumeroJudicial,
+}: CabeceraProcesoProps) {
   const documentos = proceso.carpetas.reduce((total, carpeta) => total + carpeta.documentos.length, 0)
   return (
     <header className="rounded-xl border border-gray-200 bg-white px-6 pt-5 shadow-[0_1px_2px_rgba(16,24,40,.04)]">
@@ -47,6 +90,7 @@ export default function CabeceraProceso({ proceso, onAgendar, onActuacion, onRea
         <div className="min-w-[260px] flex-1 space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-sm font-medium text-gray-700">{proceso.codigo}</span>
+            <NumeroJudicial numero={proceso.numeroJudicial} onEditar={onNumeroJudicial} />
             <EtiquetaEstado estado={proceso.estadoVisible} />
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[11px] font-medium text-gray-600">
               {ETIQUETAS_CATEGORIA_PROCESO[CATEGORIA_POR_TIPO_PROCESO[proceso.tipo]]}
@@ -61,7 +105,6 @@ export default function CabeceraProceso({ proceso, onAgendar, onActuacion, onRea
               {proceso.usuaria.nombreCompleto}
             </Link>{' '}
             · Expediente {proceso.expedienteNumero}
-            {proceso.contraparte && <> · contra {proceso.contraparte}</>}
           </p>
           {onAgendar && <ProximaAudiencia proceso={proceso} />}
         </div>

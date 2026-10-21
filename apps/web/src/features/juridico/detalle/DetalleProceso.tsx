@@ -13,6 +13,7 @@ import { useToast } from '../../../components/ui/Toast'
 import { obtenerProceso, reactivarProceso } from '../api/juridico.api'
 import { admiteAudiencias, casoDesdeProceso, type ModalAudiencia } from '../audiencias/caso'
 import ModalesAudiencia from '../audiencias/ModalesAudiencia'
+import ModalNumeroJudicial from '../compartido/ModalNumeroJudicial'
 import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista, Esqueleto } from '../compartido/EstadosVista'
 import EtiquetaEstado from '../compartido/EtiquetaEstado'
@@ -29,7 +30,7 @@ import PanelCierre from './PanelCierre'
 import PanelDatos from './PanelDatos'
 import { useEnvio } from './useEnvio'
 
-type ModalAbierto = 'actuacion' | 'finalizar' | 'suspender' | 'abandono' | 'reactivar'
+type ModalAbierto = 'actuacion' | 'finalizar' | 'suspender' | 'abandono' | 'reactivar' | 'numeroJudicial'
 
 const CLASE_BANNER = 'rounded-xl border px-5 py-3.5 text-sm'
 const CLASE_TARJETA = 'rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]'
@@ -124,6 +125,7 @@ export default function DetalleProceso() {
   }, [refrescar])
 
   const abrirActuacion = useCallback(() => setModal('actuacion'), [])
+  const abrirNumeroJudicial = useCallback(() => setModal('numeroJudicial'), [])
   const contexto = useMemo<ContextoDetalle | null>(
     () =>
       proceso
@@ -158,6 +160,7 @@ export default function DetalleProceso() {
         onAgendar={admiteAudiencias(proceso) ? () => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) }) : null}
         onActuacion={abrirActuacion}
         onReactivar={() => setModal('reactivar')}
+        onNumeroJudicial={abrirNumeroJudicial}
       />
 
       <Banners proceso={proceso} />
@@ -170,6 +173,7 @@ export default function DetalleProceso() {
         <aside className="space-y-4">
           <PanelDatos
             proceso={proceso}
+            onNumeroJudicial={abrirNumeroJudicial}
             onGuardado={(mensaje) => {
               mostrar(mensaje)
               refrescar()
@@ -210,6 +214,19 @@ export default function DetalleProceso() {
       {modal === 'suspender' && <ModalSuspender {...propsModal} />}
       {modal === 'abandono' && <ModalAbandono {...propsModal} />}
       {modal === 'reactivar' && <ModalReactivar {...propsModal} />}
+      {modal === 'numeroJudicial' && (
+        <ModalNumeroJudicial
+          proceso={proceso}
+          onCerrar={propsModal.onCerrar}
+          onHecho={(mensaje) => {
+            setModal(null)
+            mostrar(mensaje)
+            // La bitácora del proceso gana una entrada: se vuelve a pedir el detalle.
+            refrescar()
+          }}
+          onConflicto={refrescar}
+        />
+      )}
       <ModalesAudiencia modal={modalAudiencia} onCambiar={setModalAudiencia} onCambios={cambiosAudiencia} />
     </div>
   )

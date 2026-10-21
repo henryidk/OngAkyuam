@@ -49,9 +49,6 @@ export interface ListarProcesosParams {
 export interface ActualizarDatosParams {
   procesoId: string;
   version: number;
-  numeroJudicial: string | null;
-  organoJudicial: string | null;
-  contraparte: string | null;
   abogadaId: string | null;
   procuradoraId: string | null;
 }

@@ -117,7 +117,7 @@ export class ProcesosService {
     const abogadaId = vacioANulo(datos.abogadaId);
     const procuradoraId = vacioANulo(datos.procuradoraId);
     // Solo se valida lo que cambia: un proceso conserva a su abogada aunque después la
-    // desactiven en Administración, y eso no debe impedir corregir el número judicial.
+    // desactiven en Administración, y eso no debe impedir cambiar a la procuradora.
     await this.asignacion.validar(
       abogadaId === acceso.abogadaId ? null : abogadaId,
       procuradoraId === acceso.procuradoraId ? null : procuradoraId,
@@ -126,9 +126,6 @@ export class ProcesosService {
     const resultado = await this.procesosRepository.actualizarDatos({
       procesoId,
       version: datos.version,
-      numeroJudicial: vacioANulo(datos.numeroJudicial),
-      organoJudicial: vacioANulo(datos.organoJudicial),
-      contraparte: vacioANulo(datos.contraparte),
       abogadaId,
       procuradoraId,
     });
