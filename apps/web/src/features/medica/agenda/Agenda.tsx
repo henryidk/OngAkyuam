@@ -19,8 +19,8 @@ import EncabezadoPagina from '../compartido/EncabezadoPagina'
 import { diaHabil, diaSemanaCorto, fechaLarga, fechaLargaEnFrase, numeroDia, textoSemana } from '../compartido/fechas'
 import { useRecargaNovedades } from '../compartido/useRecargaNovedades'
 import FilaCita from './FilaCita'
-import ModalInasistencia, { type ResultadoInasistencia } from './ModalInasistencia'
-import ModalProgramar from './ModalProgramar'
+import ModalInasistencia, { type ResultadoInasistencia } from '../compartido/ModalInasistencia'
+import ModalProgramar from '../compartido/ModalProgramar'
 import PanelesAgenda from './PanelesAgenda'
 
 const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/

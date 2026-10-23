@@ -8,7 +8,6 @@ import {
   etiquetaAtencion,
 } from '@akyuam/shared';
 import type {
-  ConsultaMedicaDto,
   ConsultasMedicasPaginaDto,
   ContextoConsultaMedicaDto,
   PersonaConsultaMedicaDto,
@@ -18,7 +17,6 @@ import {
   SELECT_PERSONA,
   edad,
   nombreCompleto,
-  personaAtendida,
 } from '../../psicologia/repositories/personas';
 import type {
   ConsultaRegistrada,
@@ -31,82 +29,10 @@ import {
   LoteVencidoError,
 } from '../interfaces/errores-medica';
 import { EXPEDIENTE_REFERIDO_A_MEDICA } from './acceso-medica.repository';
+import { SELECT_CONSULTA, aConsultaDto } from './consulta-completa';
 import { crearCitaEnTx } from './crear-cita';
-import {
-  SELECT_SIGNOS,
-  codificarCursor,
-  decodificarCursor,
-  procedencia,
-  signosDeFila,
-} from './mapeo';
+import { codificarCursor, decodificarCursor, procedencia } from './mapeo';
 import { SERIALIZABLE, conReintentos } from './transaccion';
-
-const SELECT_CONSULTA = {
-  id: true,
-  atencionId: true,
-  citaId: true,
-  fechaHora: true,
-  motivoConsulta: true,
-  diagnostico: true,
-  planTratamiento: true,
-  recetaLaboratorios: true,
-  ...SELECT_SIGNOS,
-  nino: { select: { id: true, ...SELECT_PERSONA } },
-  atencion: {
-    select: {
-      consecutivo: true,
-      expediente: {
-        select: { numero: true, usuaria: { select: SELECT_PERSONA } },
-      },
-    },
-  },
-  documentos: {
-    select: {
-      id: true,
-      tipo: true,
-      nombreVisible: true,
-      nombreArchivo: true,
-      mimeType: true,
-      tamanioBytes: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: 'asc' },
-  },
-} satisfies Prisma.ConsultaMedicaSelect;
-
-type FilaConsulta = Prisma.ConsultaMedicaGetPayload<{
-  select: typeof SELECT_CONSULTA;
-}>;
-
-function aConsultaDto(fila: FilaConsulta): ConsultaMedicaDto {
-  const persona = personaAtendida(fila.atencion.expediente.usuaria, fila.nino);
-  const fecha = fechaCalendarioGT(fila.fechaHora);
-  return {
-    id: fila.id,
-    atencionId: fila.atencionId,
-    codigoAtencion: etiquetaAtencion(
-      fila.atencion.expediente.numero,
-      fila.atencion.consecutivo,
-    ),
-    citaId: fila.citaId,
-    fechaHora: fila.fechaHora.toISOString(),
-    fecha,
-    hora: horaGT(fila.fechaHora),
-    persona,
-    motivoConsulta: fila.motivoConsulta,
-    diagnostico: fila.diagnostico,
-    planTratamiento: fila.planTratamiento,
-    recetaLaboratorios: fila.recetaLaboratorios,
-    signos: signosDeFila(fila),
-    documentos: fila.documentos.map((documento) => ({
-      ...documento,
-      consultaId: fila.id,
-      createdAt: documento.createdAt.toISOString(),
-      fechaConsulta: fecha,
-      personaNombre: persona.nombreCompleto,
-    })),
-  };
-}
 
 @Injectable()
 export class ConsultasMedicasRepository implements IConsultasMedicasRepository {

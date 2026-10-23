@@ -7,8 +7,10 @@ import type {
 import { RELOJ, type IReloj } from '../../common/reloj';
 import { derivarEstadoCita } from '../dominio/estado-cita';
 import {
-  AGENDA_MEDICA_REPOSITORY,
-  type IAgendaMedicaRepository,
+  LECTOR_CITAS_MEDICAS,
+  LECTOR_PENDIENTES_MEDICA,
+  type ILectorCitasMedicas,
+  type ILectorPendientesMedica,
 } from '../interfaces/agenda-medica-repository.interface';
 
 /** Estados que todavía piden algo de la médica hoy. */
@@ -18,21 +20,23 @@ const POR_ATENDER = new Set(['PROGRAMADA', 'EN_CURSO', 'SIN_REGISTRAR']);
 @Injectable()
 export class BandejaMedicaService {
   constructor(
-    @Inject(AGENDA_MEDICA_REPOSITORY)
-    private readonly agendaRepository: IAgendaMedicaRepository,
+    @Inject(LECTOR_PENDIENTES_MEDICA)
+    private readonly lectorPendientes: ILectorPendientesMedica,
+    @Inject(LECTOR_CITAS_MEDICAS)
+    private readonly lectorCitas: ILectorCitasMedicas,
     @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
   pendientes(): Promise<ReferenciaBandejaMedicaDto[]> {
-    return this.agendaRepository.referenciasPendientes();
+    return this.lectorPendientes.referenciasPendientes();
   }
 
   async contadores(): Promise<ContadoresMedicaDto> {
     const ahora = this.reloj.ahora();
     const hoy = fechaCalendarioGT(ahora);
     const [referencias, citasHoy] = await Promise.all([
-      this.agendaRepository.referenciasPendientes(),
-      this.agendaRepository.resumenEntre(
+      this.lectorPendientes.referenciasPendientes(),
+      this.lectorCitas.resumenEntre(
         inicioDiaGT(hoy),
         inicioDiaGT(sumarDiasGT(hoy, 1)),
       ),
