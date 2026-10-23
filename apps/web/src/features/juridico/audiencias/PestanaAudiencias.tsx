@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import type { AccionAudiencia, AudienciaDetalleDto } from '@akyuam/shared'
+import type { AccionAudiencia, AudienciaDetalleDto, DocumentoProcesoDto } from '@akyuam/shared'
+import { useToast } from '../../../components/ui/Toast'
 import { listarAudienciasProceso } from '../api/audiencias.api'
 import { ErrorVista } from '../compartido/EstadosVista'
 import { useRecurso } from '../compartido/useRecurso'
 import { useContextoDetalle } from '../detalle/contextoDetalle'
+import ModalActualizarDocumento from '../documentos/ModalActualizarDocumento'
 import { useAbrirDocumento } from '../documentos/useAbrirDocumento'
 import { admiteAudiencias } from './caso'
 import TarjetaAudiencia from './TarjetaAudiencia'
@@ -14,10 +16,12 @@ import TarjetaAudiencia from './TarjetaAudiencia'
  * desde la cabecera; los modales los pinta el detalle, así ambos comparten el mismo flujo.
  */
 export default function PestanaAudiencias() {
-  const { proceso, abrirAudiencia, versionAudiencias } = useContextoDetalle()
+  const { proceso, abrirAudiencia, versionAudiencias, refrescar } = useContextoDetalle()
+  const { mostrar } = useToast()
+  const [actualizar, setActualizar] = useState<DocumentoProcesoDto | null>(null)
   const [params] = useSearchParams()
   const resaltadaId = params.get('audiencia')
-  const { ver, descargar } = useAbrirDocumento(proceso.id)
+  const { ver } = useAbrirDocumento(proceso.id)
 
   const cargar = useCallback(() => listarAudienciasProceso(proceso.id), [proceso.id])
   const { datos, error, cargando, recargar } = useRecurso(cargar)
@@ -70,10 +74,24 @@ export default function PestanaAudiencias() {
               resaltada={audiencia.id === resaltadaId}
               onAccion={onAccion}
               onVerDocumento={(documento) => void ver(documento)}
-              onDescargarDocumento={(documento) => void descargar(documento)}
+              onActualizarDocumento={setActualizar}
             />
           ))}
         </ol>
+      )}
+
+      {actualizar && (
+        <ModalActualizarDocumento
+          procesoId={proceso.id}
+          documento={actualizar}
+          onCerrar={() => setActualizar(null)}
+          onHecho={() => {
+            setActualizar(null)
+            mostrar('Documento actualizado')
+            void recargar()
+            refrescar()
+          }}
+        />
       )}
     </div>
   )

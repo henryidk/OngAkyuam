@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, NotebookPen, Plus } from 'lucide-react'
-import { hoyGT, type EntradaBitacoraDto } from '@akyuam/shared'
+import { hoyGT, type DocumentoProcesoDto, type EntradaBitacoraDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import EmptyState from '../../../components/ui/EmptyState'
 import { useToast } from '../../../components/ui/Toast'
 import DocumentosAdjuntos from '../documentos/DocumentosAdjuntos'
+import ModalActualizarDocumento from '../documentos/ModalActualizarDocumento'
 import { useAbrirDocumento } from '../documentos/useAbrirDocumento'
 import { useContextoDetalle } from './contextoDetalle'
 import { agruparBitacora, hora12DeInstante, inicialTipo, type DiaBitacora } from './formatoBitacora'
@@ -17,12 +18,12 @@ function Actuacion({
   entrada,
   onAdjuntar,
   onVer,
-  onDescargar,
+  onActualizar,
 }: {
   entrada: EntradaBitacoraDto
   onAdjuntar: () => void
-  onVer: Parameters<typeof DocumentosAdjuntos>[0]['onVer']
-  onDescargar: Parameters<typeof DocumentosAdjuntos>[0]['onDescargar']
+  onVer: (documento: DocumentoProcesoDto) => void
+  onActualizar: (documento: DocumentoProcesoDto) => void
 }) {
   return (
     <li className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 py-2.5">
@@ -41,7 +42,7 @@ function Actuacion({
         </div>
         <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-pretty text-gray-800">{entrada.contenido}</p>
         {entrada.documentos.length > 0 && (
-          <DocumentosAdjuntos documentos={entrada.documentos} onVer={onVer} onDescargar={onDescargar} />
+          <DocumentosAdjuntos documentos={entrada.documentos} onVer={onVer} onActualizar={onActualizar} />
         )}
         <button
           type="button"
@@ -90,7 +91,8 @@ function CambiosSistema({ entradas }: { entradas: EntradaBitacoraDto[] }) {
 export default function PestanaBitacora() {
   const { proceso, abrirActuacion, abrirAudiencia, refrescar } = useContextoDetalle()
   const [adjuntarA, setAdjuntarA] = useState<EntradaBitacoraDto | null>(null)
-  const { ver, descargar } = useAbrirDocumento(proceso.id)
+  const [actualizar, setActualizar] = useState<DocumentoProcesoDto | null>(null)
+  const { ver } = useAbrirDocumento(proceso.id)
   const { mostrar } = useToast()
 
   const dias: DiaBitacora[] = agruparBitacora(proceso.bitacora, hoyGT())
@@ -133,7 +135,7 @@ export default function PestanaBitacora() {
                         entrada={entrada}
                         onAdjuntar={() => setAdjuntarA(entrada)}
                         onVer={(documento) => void ver(documento)}
-                        onDescargar={(documento) => void descargar(documento)}
+                        onActualizar={setActualizar}
                       />
                     ))}
                   </ol>
@@ -153,6 +155,18 @@ export default function PestanaBitacora() {
           onHecho={(mensaje) => {
             setAdjuntarA(null)
             mostrar(mensaje)
+            refrescar()
+          }}
+        />
+      )}
+      {actualizar && (
+        <ModalActualizarDocumento
+          procesoId={proceso.id}
+          documento={actualizar}
+          onCerrar={() => setActualizar(null)}
+          onHecho={() => {
+            setActualizar(null)
+            mostrar('Documento actualizado')
             refrescar()
           }}
         />

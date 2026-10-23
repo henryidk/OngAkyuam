@@ -6,11 +6,12 @@ const CLASE_ENLACE = 'text-xs font-medium text-brand-700 hover:underline'
 interface DocumentosAdjuntosProps {
   documentos: DocumentoProcesoDto[]
   onVer: (documento: DocumentoProcesoDto) => void
-  onDescargar: (documento: DocumentoProcesoDto) => void
+  /** Abre el modal para subir un archivo nuevo en lugar de este. */
+  onActualizar: (documento: DocumentoProcesoDto) => void
 }
 
-/** Los documentos propios de una audiencia o una actuación, con Ver y Descargar a mano. */
-export default function DocumentosAdjuntos({ documentos, onVer, onDescargar }: DocumentosAdjuntosProps) {
+/** Los documentos propios de una audiencia o una actuación, con Ver y Actualizar a mano. */
+export default function DocumentosAdjuntos({ documentos, onVer, onActualizar }: DocumentosAdjuntosProps) {
   if (documentos.length === 0) return null
   return (
     <ul className="divide-y divide-gray-100 rounded-lg border border-gray-100">
@@ -20,12 +21,15 @@ export default function DocumentosAdjuntos({ documentos, onVer, onDescargar }: D
             {etiquetaFormato(documento.mimeType)}
           </span>
           <span className="min-w-0 flex-1 truncate text-[13px] text-gray-900">{documento.nombreVisible}</span>
-          <button type="button" onClick={() => onVer(documento)} className={CLASE_ENLACE}>
-            Ver
-          </button>
-          <button type="button" onClick={() => onDescargar(documento)} className={CLASE_ENLACE}>
-            Descargar
-          </button>
+          <div className="flex gap-3">
+            <button type="button" onClick={() => onVer(documento)} className={CLASE_ENLACE}>
+              Ver
+            </button>
+            <button type="button" onClick={() => onActualizar(documento)} className={CLASE_ENLACE}>
+              Actualizar
+              <span className="sr-only"> el archivo de «{documento.nombreVisible}»</span>
+            </button>
+          </div>
         </li>
       ))}
     </ul>

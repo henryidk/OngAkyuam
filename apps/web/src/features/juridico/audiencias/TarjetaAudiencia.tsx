@@ -20,7 +20,7 @@ interface TarjetaAudienciaProps {
   resaltada: boolean
   onAccion: (accion: AccionAudiencia, audiencia: AudienciaDetalleDto) => void
   onVerDocumento: (documento: DocumentoProcesoDto) => void
-  onDescargarDocumento: (documento: DocumentoProcesoDto) => void
+  onActualizarDocumento: (documento: DocumentoProcesoDto) => void
 }
 
 /** Un punto de la línea de tiempo: estado, reprogramaciones enlazadas, observaciones y documentos. */
@@ -29,7 +29,7 @@ export default function TarjetaAudiencia({
   resaltada,
   onAccion,
   onVerDocumento,
-  onDescargarDocumento,
+  onActualizarDocumento,
 }: TarjetaAudienciaProps) {
   const ref = useRef<HTMLLIElement>(null)
   useEffect(() => {
@@ -103,7 +103,11 @@ export default function TarjetaAudiencia({
 
         {audiencia.documentos.length > 0 && (
           <div className="mt-3">
-            <DocumentosAdjuntos documentos={audiencia.documentos} onVer={onVerDocumento} onDescargar={onDescargarDocumento} />
+            <DocumentosAdjuntos
+              documentos={audiencia.documentos}
+              onVer={onVerDocumento}
+              onActualizar={onActualizarDocumento}
+            />
           </div>
         )}
 

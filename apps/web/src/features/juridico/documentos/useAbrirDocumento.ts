@@ -1,10 +1,12 @@
 import type { DocumentoProcesoDto } from '@akyuam/shared'
 import { useToast } from '../../../components/ui/Toast'
-import { dispararDescarga } from '../../../lib/documentos/archivoDocumento'
 import { extraerMensajeError } from '../../../lib/errors'
 import { obtenerUrlDocumento } from '../api/juridico.api'
 
-/** Ver y descargar un documento del proceso con una URL firmada de corta duración. */
+/**
+ * Ver un documento del proceso con una URL firmada de corta duración. En Jurídico los documentos
+ * solo se ven: no se ofrece descargarlos.
+ */
 export function useAbrirDocumento(procesoId: string) {
   const { mostrar } = useToast()
 
@@ -18,7 +20,7 @@ export function useAbrirDocumento(procesoId: string) {
         ventana.opener = null
         ventana.location.replace(url)
       } else {
-        mostrar('El navegador bloqueó la ventana. Permita las ventanas emergentes o use Descargar.', 'error')
+        mostrar('El navegador bloqueó la ventana. Permita las ventanas emergentes para este sitio.', 'error')
       }
     } catch (err) {
       ventana?.close()
@@ -26,13 +28,5 @@ export function useAbrirDocumento(procesoId: string) {
     }
   }
 
-  async function descargar(documento: DocumentoProcesoDto) {
-    try {
-      dispararDescarga(await obtenerUrlDocumento(procesoId, documento.id, 'descarga'))
-    } catch (err) {
-      mostrar(extraerMensajeError(err), 'error')
-    }
-  }
-
-  return { ver, descargar }
+  return { ver }
 }

@@ -15,10 +15,13 @@ export function DrawerDocumentoTs({
   expedienteId,
   documento,
   onCerrar,
+  conDescarga = true,
 }: {
   expedienteId: string
   documento: DocumentoVisibleArea
   onCerrar: () => void
+  /** Jurídico solo ve los documentos; las demás áreas todavía pueden descargarlos. */
+  conDescarga?: boolean
 }) {
   const [url, setUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -57,9 +60,11 @@ export function DrawerDocumentoTs({
       subtitulo={`${formatInstanteGT(documento.createdAt)} · ${formatearTamanio(documento.tamanioBytes)}`}
       onCerrar={onCerrar}
       pie={
-        <Button tamano="md" className="ml-auto" onClick={() => void descargar()} cargando={descargando}>
-          Descargar
-        </Button>
+        conDescarga ? (
+          <Button tamano="md" className="ml-auto" onClick={() => void descargar()} cargando={descargando}>
+            Descargar
+          </Button>
+        ) : undefined
       }
     >
       {error && <p className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
@@ -121,7 +126,12 @@ export default function PestanaDocumentosTs() {
         </ul>
       )}
       {abierto && (
-        <DrawerDocumentoTs expedienteId={expedienteTs.id} documento={abierto} onCerrar={() => setAbierto(null)} />
+        <DrawerDocumentoTs
+          expedienteId={expedienteTs.id}
+          documento={abierto}
+          onCerrar={() => setAbierto(null)}
+          conDescarga={false}
+        />
       )}
     </section>
   )
