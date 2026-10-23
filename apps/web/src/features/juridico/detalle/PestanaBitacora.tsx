@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, ChevronRight, NotebookPen, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, NotebookPen, Paperclip, PenLine } from 'lucide-react'
 import { hoyGT, type DocumentoProcesoDto, type EntradaBitacoraDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import EmptyState from '../../../components/ui/EmptyState'
@@ -8,11 +8,23 @@ import DocumentosAdjuntos from '../documentos/DocumentosAdjuntos'
 import ModalActualizarDocumento from '../documentos/ModalActualizarDocumento'
 import { useAbrirDocumento } from '../documentos/useAbrirDocumento'
 import { useContextoDetalle } from './contextoDetalle'
-import { agruparBitacora, hora12DeInstante, inicialTipo, type DiaBitacora } from './formatoBitacora'
+import { agruparBitacora, hora12DeInstante, type DiaBitacora } from './formatoBitacora'
 import ModalDocumentosActuacion from './ModalDocumentosActuacion'
 import TarjetaProximaAudiencia from './TarjetaProximaAudiencia'
 
 const CLASE_TARJETA = 'rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]'
+
+/** Punto sobre el riel del día: sólido para lo que hizo el equipo, hueco y pequeño para el sistema. */
+function PuntoRiel({ sistema = false }: { sistema?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`absolute rounded-full ring-4 ring-white ${
+        sistema ? 'top-[9px] -left-[4px] h-[7px] w-[7px] border border-gray-400 bg-white' : 'top-[7px] -left-[5px] h-[9px] w-[9px] bg-brand-600'
+      }`}
+    />
+  )
+}
 
 function Actuacion({
   entrada,
@@ -26,34 +38,30 @@ function Actuacion({
   onActualizar: (documento: DocumentoProcesoDto) => void
 }) {
   return (
-    <li className="grid grid-cols-[34px_minmax(0,1fr)] gap-3 py-2.5">
-      <span
-        aria-hidden="true"
-        className="grid h-[34px] w-[34px] place-items-center rounded-[9px] bg-[#f7f3fc] text-[13px] font-bold text-[#5b3985]"
-      >
-        {inicialTipo(entrada.tipo)}
-      </span>
-      <div className="min-w-0 space-y-1.5">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5">
-          <h4 className="text-[15px] font-semibold break-words text-gray-900">{entrada.tipo}</h4>
-          <span className="text-xs text-gray-500 tabular-nums">
-            {entrada.registradoPor} · {hora12DeInstante(entrada.createdAt)}
-          </span>
-        </div>
-        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words text-pretty text-gray-800">{entrada.contenido}</p>
-        {entrada.documentos.length > 0 && (
+    <li className="relative pb-6 pl-5 last:pb-1">
+      <PuntoRiel />
+      {/* Qué se hizo, y justo debajo cuándo y quién: se lee de corrido, sin cruzar la tarjeta. */}
+      <h4 className="text-[15px] leading-6 font-semibold break-words text-gray-900">{entrada.tipo}</h4>
+      <p className="text-xs text-gray-500 tabular-nums">
+        {hora12DeInstante(entrada.createdAt)} · {entrada.registradoPor}
+      </p>
+      <p className="mt-2 max-w-[68ch] text-sm leading-relaxed whitespace-pre-wrap break-words text-pretty text-gray-800">
+        {entrada.contenido}
+      </p>
+      {entrada.documentos.length > 0 && (
+        <div className="mt-3">
           <DocumentosAdjuntos documentos={entrada.documentos} onVer={onVer} onActualizar={onActualizar} />
-        )}
-        <button
-          type="button"
-          onClick={onAdjuntar}
-          className="inline-flex items-center gap-1 rounded py-0.5 text-xs font-medium text-gray-500 hover:text-brand-700"
-        >
-          <Plus size={13} aria-hidden="true" />
-          Adjuntar
-          <span className="sr-only"> un documento a la actuación «{entrada.tipo}»</span>
-        </button>
-      </div>
+        </div>
+      )}
+      <button
+        type="button"
+        onClick={onAdjuntar}
+        className="mt-2 inline-flex items-center gap-1 rounded py-0.5 text-xs font-medium text-gray-500 hover:text-brand-700"
+      >
+        <Paperclip size={13} aria-hidden="true" />
+        Adjuntar documento
+        <span className="sr-only"> a la actuación «{entrada.tipo}»</span>
+      </button>
     </li>
   )
 }
@@ -64,27 +72,30 @@ function CambiosSistema({ entradas }: { entradas: EntradaBitacoraDto[] }) {
   const Chevron = abierto ? ChevronDown : ChevronRight
   const cantidad = `${entradas.length} ${entradas.length === 1 ? 'cambio' : 'cambios'} del sistema`
   return (
-    <div className="mt-1 ml-[46px]">
+    <li className="relative pb-1 pl-5">
+      <PuntoRiel sistema />
       <button
         type="button"
         aria-expanded={abierto}
         onClick={() => setAbierto(!abierto)}
-        className="inline-flex items-center gap-1.5 rounded-md bg-gray-100 px-2.5 py-1 text-xs text-gray-600 hover:bg-gray-200 hover:text-gray-800"
+        className="inline-flex items-center gap-1 rounded py-0.5 text-xs font-medium text-gray-500 hover:text-gray-900"
       >
         <Chevron size={13} aria-hidden="true" />
         {abierto ? `Ocultar ${cantidad}` : cantidad}
       </button>
       {abierto && (
-        <ul className="mt-1">
+        <ul className="mt-1 space-y-1 border-l border-gray-200 pl-3">
           {entradas.map((entrada) => (
-            <li key={entrada.id} className="flex justify-between gap-3 px-2.5 py-1.5 text-[13px] text-gray-600">
+            <li key={entrada.id} className="flex gap-3 text-[13px] text-gray-600">
+              <span className="w-[68px] shrink-0 text-xs leading-5 text-gray-500 tabular-nums">
+                {hora12DeInstante(entrada.createdAt)}
+              </span>
               <span className="min-w-0 break-words">{entrada.contenido}</span>
-              <span className="shrink-0 text-gray-500 tabular-nums">{hora12DeInstante(entrada.createdAt)}</span>
             </li>
           ))}
         </ul>
       )}
-    </div>
+    </li>
   )
 }
 
@@ -114,33 +125,30 @@ export default function PestanaBitacora() {
             <button
               type="button"
               onClick={abrirActuacion}
-              className="block w-full cursor-text truncate rounded-lg border border-gray-300 bg-gray-50 px-3.5 py-2.5 text-left text-sm text-gray-500 hover:border-gray-400 hover:bg-white"
+              className="flex w-full cursor-text items-center gap-2.5 rounded-lg border border-gray-300 bg-gray-50 px-3.5 py-2.5 text-left text-sm text-gray-500 hover:border-gray-400 hover:bg-white"
             >
-              ¿Qué se hizo en el proceso? Registrar una actuación…
+              <PenLine size={16} aria-hidden="true" className="shrink-0" />
+              <span className="truncate">¿Qué se hizo en el proceso? Registrar una actuación…</span>
             </button>
           </div>
 
-          <div className="px-4 pt-1 pb-4 sm:px-5">
+          <div className="space-y-6 px-4 pt-5 pb-5 sm:px-6">
             {dias.map((dia) => (
               <section key={dia.fecha} aria-label={dia.titulo}>
-                <div className="flex items-center gap-2.5 pt-4 pb-1.5">
-                  <h3 className="text-[13px] font-semibold text-gray-900">{dia.titulo}</h3>
-                  <span aria-hidden="true" className="h-px flex-1 bg-gray-100" />
-                </div>
-                {dia.actuaciones.length > 0 && (
-                  <ol>
-                    {dia.actuaciones.map((entrada) => (
-                      <Actuacion
-                        key={entrada.id}
-                        entrada={entrada}
-                        onAdjuntar={() => setAdjuntarA(entrada)}
-                        onVer={(documento) => void ver(documento)}
-                        onActualizar={setActualizar}
-                      />
-                    ))}
-                  </ol>
-                )}
-                {dia.sistema.length > 0 && <CambiosSistema entradas={dia.sistema} />}
+                <h3 className="mb-3 text-[13px] font-semibold text-gray-900">{dia.titulo}</h3>
+                {/* El riel une las entradas del mismo día; cada día empieza uno nuevo. */}
+                <ol className="ml-1 border-l border-gray-200">
+                  {dia.actuaciones.map((entrada) => (
+                    <Actuacion
+                      key={entrada.id}
+                      entrada={entrada}
+                      onAdjuntar={() => setAdjuntarA(entrada)}
+                      onVer={(documento) => void ver(documento)}
+                      onActualizar={setActualizar}
+                    />
+                  ))}
+                  {dia.sistema.length > 0 && <CambiosSistema entradas={dia.sistema} />}
+                </ol>
               </section>
             ))}
           </div>

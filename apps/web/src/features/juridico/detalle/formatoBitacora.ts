@@ -58,11 +58,6 @@ export function hora12DeInstante(instanteIso: string): string {
   return formatHora12(horaGT(instanteIso))
 }
 
-/** Letra del cuadro de cada actuación: la inicial de su tipo. */
-export function inicialTipo(tipo: string): string {
-  return (tipo.trim()[0] ?? '·').toUpperCase()
-}
-
 const MESES_CORTOS = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC']
 const DIAS_CORTOS = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
 
