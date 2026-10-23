@@ -1,9 +1,8 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
-import { Link, Outlet, useParams } from 'react-router-dom'
+import { Outlet, useParams } from 'react-router-dom'
 import {
   ETIQUETAS_FORMA_FINALIZACION,
   ETIQUETAS_MOTIVO_ABANDONO,
-  ETIQUETAS_TIPO_PROCESO_JURIDICO,
   formatFechaGT,
   type ProcesoDetalle,
 } from '@akyuam/shared'
@@ -17,7 +16,6 @@ import ModalesAudiencia from '../audiencias/ModalesAudiencia'
 import ModalNumeroJudicial from '../compartido/ModalNumeroJudicial'
 import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista, Esqueleto } from '../compartido/EstadosVista'
-import EtiquetaEstado from '../compartido/EtiquetaEstado'
 import { fechaDeInstante } from '../compartido/formato'
 import { useRecurso } from '../compartido/useRecurso'
 import { RUTAS_JURIDICO } from '../rutas'
@@ -27,12 +25,11 @@ import ModalAbandono from './ModalAbandono'
 import ModalActuacion from './ModalActuacion'
 import ModalFinalizar from './ModalFinalizar'
 import ModalSuspender from './ModalSuspender'
+import OtrosProcesos from './OtrosProcesos'
 import PanelDatos from './PanelDatos'
 import { useEnvio } from './useEnvio'
 
 type ModalAbierto = 'actuacion' | 'finalizar' | 'suspender' | 'abandono' | 'reactivar' | 'numeroJudicial'
-
-const CLASE_TARJETA = 'rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]'
 
 /** Colores del aviso de estado (los del mockup): gris en pausa, ámbar si se abandonó, verde al cerrar. */
 const TONOS_AVISO = {
@@ -179,7 +176,6 @@ export default function DetalleProceso() {
   }
   if (!proceso || !contexto) return <Esqueleto />
 
-  const otros = proceso.otrosProcesosUsuaria
   const propsModal: PropsModalProceso = {
     proceso,
     onCerrar: () => setModal(null),
@@ -221,27 +217,7 @@ export default function DetalleProceso() {
             }}
             onConflicto={refrescar}
           />
-          {otros.length > 0 && (
-            <section className={`${CLASE_TARJETA} px-[18px] py-4`}>
-              <h3 className="mb-1.5 text-sm font-semibold text-gray-900">Otros procesos de la usuaria</h3>
-              <ul className="-mx-2">
-                {otros.map((otro) => (
-                  <li key={otro.id}>
-                    <Link
-                      to={RUTAS_JURIDICO.proceso(otro.id)}
-                      className="group flex flex-col items-start gap-1 rounded-lg px-2 py-2 hover:bg-gray-50"
-                    >
-                      <span className="font-mono text-xs text-gray-500">{otro.codigo}</span>
-                      <span className="text-[13px] text-gray-900 group-hover:underline">
-                        {ETIQUETAS_TIPO_PROCESO_JURIDICO[otro.tipo]}
-                      </span>
-                      <EtiquetaEstado estado={otro.estadoVisible} />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
+          <OtrosProcesos key={proceso.id} procesos={proceso.otrosProcesosUsuaria} usuariaId={proceso.usuaria.id} />
         </aside>
       </div>
 
