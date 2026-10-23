@@ -48,21 +48,19 @@ function Actuacion({
       <p className="mt-2 max-w-[68ch] text-sm leading-relaxed whitespace-pre-wrap break-words text-pretty text-gray-800">
         {entrada.contenido}
       </p>
-      {entrada.documentos.length > 0 && (
-        // Acotado: "Ver" y "Actualizar" quedan cerca del nombre del archivo aunque la columna sea ancha.
-        <div className="mt-3 max-w-2xl">
-          <DocumentosAdjuntos documentos={entrada.documentos} onVer={onVer} onActualizar={onActualizar} />
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={onAdjuntar}
-        className="mt-2 inline-flex items-center gap-1 rounded py-0.5 text-xs font-medium text-gray-500 hover:text-brand-700"
-      >
-        <Paperclip size={13} aria-hidden="true" />
-        Adjuntar documento
-        <span className="sr-only"> a la actuación «{entrada.tipo}»</span>
-      </button>
+      {/* Los documentos y "Adjuntar" en la misma fila: todo lo de archivos de la actuación junto. */}
+      <div className={`flex flex-wrap items-center gap-x-3 gap-y-2 ${entrada.documentos.length > 0 ? 'mt-3' : 'mt-2'}`}>
+        <DocumentosAdjuntos documentos={entrada.documentos} onVer={onVer} onActualizar={onActualizar} />
+        <button
+          type="button"
+          onClick={onAdjuntar}
+          className="relative inline-flex items-center gap-1 rounded py-0.5 text-xs font-medium text-gray-500 hover:text-brand-700"
+        >
+          <Paperclip size={13} aria-hidden="true" />
+          Adjuntar documento
+          <span className="sr-only"> a la actuación «{entrada.tipo}»</span>
+        </button>
+      </div>
     </li>
   )
 }
