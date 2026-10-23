@@ -11,8 +11,8 @@ interface CarpetaProps {
   onRenombrar: () => void
   onAgregar: () => void
   onVer: (documento: DocumentoProcesoDto) => void
-  onDescargar: (documento: DocumentoProcesoDto) => void
   onRenombrarDocumento: (documento: DocumentoProcesoDto) => void
+  onActualizarDocumento: (documento: DocumentoProcesoDto) => void
 }
 
 const CLASE_ACCION = 'text-xs font-medium text-brand-700 hover:underline'
@@ -23,8 +23,8 @@ export default function Carpeta({
   onRenombrar,
   onAgregar,
   onVer,
-  onDescargar,
   onRenombrarDocumento,
+  onActualizarDocumento,
 }: CarpetaProps) {
   return (
     <section className="rounded-xl border border-gray-200 bg-white">
@@ -69,11 +69,12 @@ export default function Carpeta({
                 <button type="button" onClick={() => onVer(documento)} className={CLASE_ACCION}>
                   Ver
                 </button>
-                <button type="button" onClick={() => onDescargar(documento)} className={CLASE_ACCION}>
-                  Descargar
-                </button>
                 <button type="button" onClick={() => onRenombrarDocumento(documento)} className={CLASE_ACCION}>
                   Renombrar
+                </button>
+                <button type="button" onClick={() => onActualizarDocumento(documento)} className={CLASE_ACCION}>
+                  Actualizar
+                  <span className="sr-only"> el archivo de «{documento.nombreVisible}»</span>
                 </button>
               </div>
             </li>

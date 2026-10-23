@@ -63,6 +63,25 @@ export interface DocumentoParaUrl {
   carpetaId: string;
 }
 
+export interface DocumentoParaReemplazo {
+  claveR2: string;
+  carpetaId: string;
+  audienciaId: string | null;
+  actuacionId: string | null;
+}
+
+export interface ReemplazarArchivoParams {
+  documentoId: string;
+  procesoId: string;
+  /** Clave que tenía al leerlo: si ya cambió, otra persona lo reemplazó mientras tanto. */
+  claveAnterior: string;
+  claveR2: string;
+  nombreArchivo: string;
+  mimeType: string;
+  tamanioBytes: number;
+  subidoPorId: string;
+}
+
 export interface IDocumentosProcesoRepository {
   /** Guarda el documento y marca el proceso como recién trabajado (`ultimaActuacionEn`). */
   crear(params: CrearDocumentoProcesoParams): Promise<DocumentoProcesoDto>;
@@ -75,4 +94,16 @@ export interface IDocumentosProcesoRepository {
     documentoId: string,
     procesoId: string,
   ): Promise<DocumentoParaUrl | null>;
+  /** `null` si el documento no existe o no es de ese proceso. */
+  buscarParaReemplazo(
+    documentoId: string,
+    procesoId: string,
+  ): Promise<DocumentoParaReemplazo | null>;
+  /**
+   * Cambia el archivo del documento conservando su id, nombre visible, carpeta y enlaces
+   * (audiencia o actuación). `null` si el documento ya no tiene `claveAnterior`.
+   */
+  reemplazarArchivo(
+    params: ReemplazarArchivoParams,
+  ): Promise<DocumentoProcesoDto | null>;
 }

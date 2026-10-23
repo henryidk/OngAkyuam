@@ -24,6 +24,7 @@ import { AccesoJuridicoService } from '../compartido/acceso-juridico.service';
 import { eventoAuditoria } from '../compartido/auditoria';
 import {
   MENSAJE_CARPETA_DUPLICADA,
+  MENSAJE_DOCUMENTO_CAMBIO,
   MENSAJE_SIN_ACCESO_CARPETA,
   MENSAJE_SIN_ACCESO_DOCUMENTO,
 } from '../compartido/mensajes';
@@ -52,6 +53,8 @@ const MENSAJES_ARCHIVO: Record<MotivoArchivoInvalido, string> = {
 /** Ventana en la que archivos de una misma tanda comparten una sola entrada de bitácora. */
 const TTL_TANDA_SEGUNDOS = 120;
 const FORMATO_TANDA = /^[A-Za-z0-9-]{8,64}$/;
+const INTENTOS_BORRADO = 2;
+const TEXTO_REEMPLAZO = 'Se actualizó 1 documento';
 
 interface EstadoTanda {
   entradaId: string;
@@ -69,6 +72,26 @@ export interface SubirDocumentoParams {
   audienciaId?: string;
   /** Documento de una actuación: quien llama ya validó que es de este proceso. */
   actuacionId?: string;
+}
+
+function exigirArchivoValido(
+  archivo: Express.Multer.File | undefined,
+): asserts archivo is Express.Multer.File {
+  if (!archivo) {
+    throw new BadRequestException('Archivo requerido');
+  }
+  const motivo = validarArchivo({
+    mimeType: archivo.mimetype,
+    contenido: archivo.buffer,
+  });
+  if (motivo) {
+    throw new BadRequestException(MENSAJES_ARCHIVO[motivo]);
+  }
+}
+
+/** La clave no lleva nada escrito por la persona (ni nombre ni extensión): solo ids. */
+function claveNueva(expedienteId: string, procesoId: string): string {
+  return `procesos-juridicos/${expedienteId}/${procesoId}/${randomUUID()}`;
 }
 
 function textoTanda(cantidad: number): string {
@@ -162,22 +185,12 @@ export class DocumentosProcesoService {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_CARPETA);
     }
 
-    if (!archivo) {
-      throw new BadRequestException('Archivo requerido');
-    }
-    const motivo = validarArchivo({
-      mimeType: archivo.mimetype,
-      contenido: archivo.buffer,
-    });
-    if (motivo) {
-      throw new BadRequestException(MENSAJES_ARCHIVO[motivo]);
-    }
+    exigirArchivoValido(archivo);
     if (params.tanda !== undefined && !FORMATO_TANDA.test(params.tanda)) {
       throw new BadRequestException('X-Lote-Subida inválido');
     }
 
-    // La clave no lleva nada escrito por la persona (ni nombre ni extensión): solo ids.
-    const claveR2 = `procesos-juridicos/${proceso.expedienteId}/${procesoId}/${randomUUID()}`;
+    const claveR2 = claveNueva(proceso.expedienteId, procesoId);
     await this.storage.subirObjeto(claveR2, archivo.buffer, archivo.mimetype);
 
     let documento: DocumentoProcesoDto;
@@ -245,6 +258,67 @@ export class DocumentosProcesoService {
     return documento;
   }
 
+  /**
+   * Cambia el archivo de un documento por otro y borra el anterior. El orden protege lo que
+   * ya estaba: primero se sube el nuevo, luego se cambia la fila (solo si nadie la cambió
+   * mientras tanto) y recién entonces se borra el archivo viejo. Si algo falla antes del
+   * cambio en la base, el documento sigue apuntando al archivo anterior, intacto.
+   */
+  async reemplazarArchivo(
+    procesoId: string,
+    documentoId: string,
+    archivo: Express.Multer.File | undefined,
+    contexto: ContextoAuditoria,
+  ): Promise<DocumentoProcesoDto> {
+    const proceso = await this.acceso.exigirProceso(procesoId);
+    const actual = await this.documentosRepository.buscarParaReemplazo(
+      documentoId,
+      procesoId,
+    );
+    if (!actual) {
+      throw new ForbiddenException(MENSAJE_SIN_ACCESO_DOCUMENTO);
+    }
+    exigirArchivoValido(archivo);
+
+    const claveR2 = claveNueva(proceso.expedienteId, procesoId);
+    await this.storage.subirObjeto(claveR2, archivo.buffer, archivo.mimetype);
+
+    let documento: DocumentoProcesoDto | null;
+    try {
+      documento = await this.documentosRepository.reemplazarArchivo({
+        documentoId,
+        procesoId,
+        claveAnterior: actual.claveR2,
+        claveR2,
+        nombreArchivo: archivo.originalname,
+        mimeType: archivo.mimetype,
+        tamanioBytes: archivo.size,
+        subidoPorId: contexto.usuarioId,
+      });
+    } catch (error) {
+      await this.eliminarSinFallar(claveR2, documentoId);
+      throw error;
+    }
+    if (!documento) {
+      await this.eliminarSinFallar(claveR2, documentoId);
+      throw new ConflictException(MENSAJE_DOCUMENTO_CAMBIO);
+    }
+
+    // Ya nada apunta al archivo anterior: se borra para que no quede una copia olvidada.
+    await this.eliminarSinFallar(actual.claveR2, documentoId);
+
+    if (!actual.actuacionId) {
+      await this.nuevaEntrada(procesoId, contexto.usuarioId, TEXTO_REEMPLAZO);
+    }
+    await this.auditar(contexto, 'DOCUMENTO_PROCESO_REEMPLAZADO', documentoId, {
+      procesoId,
+      carpetaId: actual.carpetaId,
+      ...(actual.audienciaId && { audienciaId: actual.audienciaId }),
+      ...(actual.actuacionId && { actuacionId: actual.actuacionId }),
+    });
+    return documento;
+  }
+
   async generarUrl(
     procesoId: string,
     documentoId: string,
@@ -281,6 +355,28 @@ export class DocumentosProcesoService {
       { procesoId, carpetaId: documento.carpetaId },
     );
     return { url };
+  }
+
+  /**
+   * Borra un objeto del almacenamiento sin tumbar la operación: si falla se reintenta una vez
+   * y, si vuelve a fallar, queda en el log con el id del documento (nunca la clave ni nombres)
+   * para limpiarlo a mano.
+   */
+  private async eliminarSinFallar(
+    clave: string,
+    documentoId: string,
+  ): Promise<void> {
+    for (let intento = 1; intento <= INTENTOS_BORRADO; intento++) {
+      try {
+        await this.storage.eliminarObjeto(clave);
+        return;
+      } catch {
+        // Se reintenta abajo o se deja registrado.
+      }
+    }
+    this.logger.error(
+      `No se pudo borrar un archivo del almacenamiento (documento ${documentoId})`,
+    );
   }
 
   private auditar(
@@ -339,12 +435,13 @@ export class DocumentosProcesoService {
   private async nuevaEntrada(
     procesoId: string,
     usuarioId: string,
+    contenido = textoTanda(1),
   ): Promise<string> {
     const entrada = await this.bitacoraRepository.registrar({
       procesoId,
       tipo: TIPO_ENTRADA_SISTEMA,
       esSistema: true,
-      contenido: textoTanda(1),
+      contenido,
       registradoPorId: usuarioId,
     });
     return entrada.id;

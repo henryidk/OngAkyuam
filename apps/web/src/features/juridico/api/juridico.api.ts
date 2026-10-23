@@ -203,6 +203,22 @@ export function renombrarDocumento(procesoId: string, documentoId: string, nombr
     .then((res) => res.data)
 }
 
+/** Cambia el archivo del documento por otro: el anterior se borra y el resto se conserva. */
+export function reemplazarArchivoDocumento(
+  procesoId: string,
+  documentoId: string,
+  archivo: File,
+  onProgreso: (porcentaje: number) => void,
+) {
+  const form = new FormData()
+  form.append('archivo', archivo)
+  return api
+    .put<DocumentoProcesoDto>(`/juridico/procesos/${procesoId}/documentos/${documentoId}/archivo`, form, {
+      onUploadProgress: (evento) => onProgreso(evento.total ? Math.round((evento.loaded / evento.total) * 100) : 0),
+    })
+    .then((res) => res.data)
+}
+
 /** URL firmada de corta duración: se usa al momento y nunca se guarda en estado global. */
 export function obtenerUrlDocumento(procesoId: string, documentoId: string, modo: UrlDocumentoProcesoQuery['modo']) {
   return api

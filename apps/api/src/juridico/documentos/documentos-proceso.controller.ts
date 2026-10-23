@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
   Query,
   UploadedFile,
   UseGuards,
@@ -109,6 +110,28 @@ export class DocumentosProcesoController {
       procesoId,
       documentoId,
       datos.nombreVisible,
+      contexto,
+    );
+  }
+
+  @Put('documentos/:documentoId/archivo')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  @UseInterceptors(
+    FileInterceptor('archivo', {
+      limits: { fileSize: DOCUMENTO_TAMANIO_MAXIMO_BYTES },
+    }),
+  )
+  reemplazarArchivo(
+    @Param('procesoId', ParseUUIDPipe) procesoId: string,
+    @Param('documentoId', ParseUUIDPipe) documentoId: string,
+    @UploadedFile() archivo: Express.Multer.File | undefined,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.documentosService.reemplazarArchivo(
+      procesoId,
+      documentoId,
+      archivo,
       contexto,
     );
   }

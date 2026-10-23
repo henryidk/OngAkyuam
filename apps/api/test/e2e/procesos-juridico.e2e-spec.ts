@@ -11,6 +11,10 @@ import {
 } from '@akyuam/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types';
+import {
+  DOCUMENTOS_PROCESO_REPOSITORY,
+  type IDocumentosProcesoRepository,
+} from '../../src/juridico/interfaces/documentos-proceso-repository.interface';
 import { PrismaService } from '../../src/prisma/prisma.service';
 import {
   MARCA,
@@ -24,7 +28,7 @@ import {
   type Sesion,
 } from './fixtures';
 
-type Metodo = 'get' | 'patch' | 'post';
+type Metodo = 'get' | 'patch' | 'post' | 'put';
 
 const OTROS_ROLES: Rol[] = [
   'TRABAJO_SOCIAL',
@@ -526,6 +530,125 @@ describe('Jurídico · procesos: No. judicial, cartera, búsqueda y cierre (e2e)
 
       await subir(proceso.id, sistema.id).expect(403);
       await sinDocumentos(proceso.id);
+    });
+  });
+
+  describe('reemplazar el archivo de un documento', () => {
+    const pdf = Buffer.from('%PDF-1.4 ficticio');
+
+    function reemplazar(
+      procesoId: string,
+      documentoId: string,
+      sesion?: Sesion,
+    ) {
+      return pedir(
+        'put',
+        `/api/juridico/procesos/${procesoId}/documentos/${documentoId}/archivo`,
+        sesion,
+      ).attach('archivo', pdf, {
+        filename: 'ficticio.pdf',
+        contentType: 'application/pdf',
+      });
+    }
+
+    async function documentoEn(procesoId: string) {
+      const carpeta = await prisma.carpetaDocumentoProceso.create({
+        data: {
+          procesoId,
+          nombre: 'Pruebas',
+          nombreNorm: 'pruebas',
+          creadaPorId: juridico.id,
+        },
+      });
+      return prisma.documentoProceso.create({
+        data: {
+          procesoId,
+          carpetaId: carpeta.id,
+          nombreVisible: `${MARCA} documento`,
+          nombreArchivo: 'ficticio.pdf',
+          claveR2: `e2e/${randomUUID()}`,
+          mimeType: 'application/pdf',
+          tamanioBytes: pdf.length,
+          subidoPorId: juridico.id,
+        },
+      });
+    }
+
+    async function sinCambios(documento: { id: string; claveR2: string }) {
+      const actual = await prisma.documentoProceso.findUniqueOrThrow({
+        where: { id: documento.id },
+      });
+      expect(actual.claveR2).toBe(documento.claveR2);
+    }
+
+    it.each(OTROS_ROLES)('%s → 403', async (rol) => {
+      const sesionRol = sesiones.get(rol);
+      if (!sesionRol) throw new Error(`Sin sesión para ${rol}`);
+      const { expediente } = await expedienteReferido();
+      const proceso = await crearProceso(prisma, expediente.id, juridico.id);
+      const documento = await documentoEn(proceso.id);
+
+      await reemplazar(proceso.id, documento.id, sesionRol).expect(403);
+      await sinCambios(documento);
+    });
+
+    it('expediente no referido a Jurídico → 403 sin tocar el documento', async () => {
+      const { expediente } = await expedienteReferido(['PSICOLOGIA']);
+      const proceso = await crearProceso(prisma, expediente.id, juridico.id);
+      const documento = await documentoEn(proceso.id);
+
+      await reemplazar(proceso.id, documento.id).expect(403);
+      await sinCambios(documento);
+    });
+
+    it('un documento de otro proceso → 403 (sin IDOR)', async () => {
+      const { expediente } = await expedienteReferido();
+      const proceso = await crearProceso(prisma, expediente.id, juridico.id);
+      const otro = await crearProceso(prisma, expediente.id, juridico.id, {
+        consecutivo: 2,
+      });
+      const ajeno = await documentoEn(otro.id);
+
+      await reemplazar(proceso.id, ajeno.id).expect(403);
+      await reemplazar(proceso.id, randomUUID()).expect(403);
+      await sinCambios(ajeno);
+    });
+
+    it('el candado de la base: con una clave anterior vieja no cambia nada', async () => {
+      const { expediente } = await expedienteReferido();
+      const proceso = await crearProceso(prisma, expediente.id, juridico.id);
+      const documento = await documentoEn(proceso.id);
+      const repositorio = app.get<IDocumentosProcesoRepository>(
+        DOCUMENTOS_PROCESO_REPOSITORY,
+      );
+      const datos = {
+        documentoId: documento.id,
+        procesoId: proceso.id,
+        nombreArchivo: 'nuevo.pdf',
+        mimeType: 'application/pdf',
+        tamanioBytes: pdf.length,
+        subidoPorId: juridico.id,
+      };
+
+      const primero = await repositorio.reemplazarArchivo({
+        ...datos,
+        claveAnterior: documento.claveR2,
+        claveR2: 'e2e/primera',
+      });
+      const segundo = await repositorio.reemplazarArchivo({
+        ...datos,
+        claveAnterior: documento.claveR2,
+        claveR2: 'e2e/segunda',
+      });
+
+      expect(primero).toMatchObject({
+        id: documento.id,
+        carpetaId: documento.carpetaId,
+        nombreVisible: documento.nombreVisible,
+        nombreArchivo: 'nuevo.pdf',
+      });
+      expect(segundo).toBeNull();
+      await sinCambios({ id: documento.id, claveR2: 'e2e/primera' });
     });
   });
 });

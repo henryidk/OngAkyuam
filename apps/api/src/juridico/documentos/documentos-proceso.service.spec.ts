@@ -8,6 +8,7 @@ import type { DocumentoProcesoDto } from '@akyuam/shared';
 import type { IObjectStorage } from '../../storage/interfaces/object-storage.interface';
 import {
   MENSAJE_CARPETA_DUPLICADA,
+  MENSAJE_DOCUMENTO_CAMBIO,
   MENSAJE_SIN_ACCESO_CARPETA,
   MENSAJE_SIN_ACCESO_DOCUMENTO,
   MENSAJE_SIN_ACCESO_PROCESO,
@@ -92,6 +93,13 @@ describe('DocumentosProcesoService', () => {
         mimeType: 'application/pdf',
         carpetaId: CARPETA_ID,
       }),
+      buscarParaReemplazo: jest.fn().mockResolvedValue({
+        claveR2: 'clave-anterior',
+        carpetaId: CARPETA_ID,
+        audienciaId: null,
+        actuacionId: null,
+      }),
+      reemplazarArchivo: jest.fn().mockResolvedValue(documento),
     };
     bitacora = {
       registrar: jest.fn().mockResolvedValue({ id: 'entrada-1' }),
@@ -146,6 +154,16 @@ describe('DocumentosProcesoService', () => {
           service.renombrarDocumento(PROCESO_ID, DOCUMENTO_ID, 'X', contexto),
       ],
       [
+        'reemplazar el archivo',
+        () =>
+          service.reemplazarArchivo(
+            PROCESO_ID,
+            DOCUMENTO_ID,
+            archivo(),
+            contexto,
+          ),
+      ],
+      [
         'pedir la URL',
         () =>
           service.generarUrl(PROCESO_ID, DOCUMENTO_ID, 'descarga', contexto),
@@ -155,6 +173,7 @@ describe('DocumentosProcesoService', () => {
         new ForbiddenException(MENSAJE_SIN_ACCESO_PROCESO),
       );
       expect(storage.subirObjeto).not.toHaveBeenCalled();
+      expect(storage.eliminarObjeto).not.toHaveBeenCalled();
       expect(storage.generarUrlDescarga).not.toHaveBeenCalled();
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
@@ -375,6 +394,158 @@ describe('DocumentosProcesoService', () => {
       expect(storage.generarUrlVistaPrevia).not.toHaveBeenCalled();
       expect(accionesAuditadas(auditService)).toEqual([
         'DOCUMENTO_PROCESO_DESCARGADO',
+      ]);
+    });
+  });
+
+  describe('reemplazar archivo', () => {
+    // Sin argumento usa un archivo válido; `undefined` explícito simula la petición sin archivo.
+    const reemplazar = (...nuevo: [Express.Multer.File | undefined] | []) =>
+      service.reemplazarArchivo(
+        PROCESO_ID,
+        DOCUMENTO_ID,
+        nuevo.length ? nuevo[0] : archivo(),
+        contexto,
+      );
+
+    it('sube el nuevo, cambia la fila y recién entonces borra el anterior', async () => {
+      const orden: string[] = [];
+      storage.subirObjeto.mockImplementation(() => {
+        orden.push('subir');
+        return Promise.resolve();
+      });
+      documentos.reemplazarArchivo.mockImplementation(() => {
+        orden.push('base');
+        return Promise.resolve(documento);
+      });
+      storage.eliminarObjeto.mockImplementation((clave) => {
+        orden.push(`borrar ${clave}`);
+        return Promise.resolve();
+      });
+
+      await expect(reemplazar()).resolves.toEqual(documento);
+
+      expect(orden).toEqual(['subir', 'base', 'borrar clave-anterior']);
+      const [claveNueva] = storage.subirObjeto.mock.calls[0];
+      expect(claveNueva).toMatch(
+        new RegExp(
+          `^procesos-juridicos/${EXPEDIENTE_ID}/${PROCESO_ID}/[0-9a-f-]{36}$`,
+        ),
+      );
+      expect(documentos.reemplazarArchivo).toHaveBeenCalledWith(
+        expect.objectContaining({
+          documentoId: DOCUMENTO_ID,
+          procesoId: PROCESO_ID,
+          claveAnterior: 'clave-anterior',
+          claveR2: claveNueva,
+          subidoPorId: contexto.usuarioId,
+        }),
+      );
+    });
+
+    it('audita solo ids y deja "Se actualizó 1 documento" en la bitácora', async () => {
+      await reemplazar();
+
+      expect(accionesAuditadas(auditService)).toEqual([
+        'DOCUMENTO_PROCESO_REEMPLAZADO',
+      ]);
+      const [evento] = auditService.registrar.mock.calls[0];
+      expect(evento.detalles).toEqual({
+        procesoId: PROCESO_ID,
+        carpetaId: CARPETA_ID,
+      });
+      expect(JSON.stringify(evento)).not.toContain('archivo de prueba');
+      expect(bitacora.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          esSistema: true,
+          contenido: 'Se actualizó 1 documento',
+        }),
+      );
+    });
+
+    it('en un documento de actuación no anota nada aparte en la bitácora', async () => {
+      documentos.buscarParaReemplazo.mockResolvedValue({
+        claveR2: 'clave-anterior',
+        carpetaId: CARPETA_ID,
+        audienciaId: null,
+        actuacionId: 'actuacion-1',
+      });
+
+      await reemplazar();
+
+      expect(bitacora.registrar).not.toHaveBeenCalled();
+      const [evento] = auditService.registrar.mock.calls[0];
+      expect(evento.detalles).toMatchObject({ actuacionId: 'actuacion-1' });
+    });
+
+    it('403 si el documento es de otro proceso, sin subir ni borrar nada', async () => {
+      documentos.buscarParaReemplazo.mockResolvedValue(null);
+
+      await expect(reemplazar()).rejects.toThrow(
+        new ForbiddenException(MENSAJE_SIN_ACCESO_DOCUMENTO),
+      );
+      expect(documentos.buscarParaReemplazo).toHaveBeenCalledWith(
+        DOCUMENTO_ID,
+        PROCESO_ID,
+      );
+      expect(storage.subirObjeto).not.toHaveBeenCalled();
+      expect(storage.eliminarObjeto).not.toHaveBeenCalled();
+      expect(documentos.reemplazarArchivo).not.toHaveBeenCalled();
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['un archivo vacío', archivo({ buffer: Buffer.alloc(0), size: 0 })],
+      ['un tipo no permitido', archivo({ mimetype: 'text/html' })],
+      ['una petición sin archivo', undefined],
+    ])(
+      '400 con %s, sin tocar el archivo anterior',
+      async (_nombre, invalido) => {
+        await expect(reemplazar(invalido)).rejects.toThrow(BadRequestException);
+        expect(storage.subirObjeto).not.toHaveBeenCalled();
+        expect(storage.eliminarObjeto).not.toHaveBeenCalled();
+        expect(documentos.reemplazarArchivo).not.toHaveBeenCalled();
+      },
+    );
+
+    it('si otra persona lo reemplazó mientras tanto: 409, borra solo el nuevo y conserva el vigente', async () => {
+      documentos.reemplazarArchivo.mockResolvedValue(null);
+
+      await expect(reemplazar()).rejects.toThrow(
+        new ConflictException(MENSAJE_DOCUMENTO_CAMBIO),
+      );
+      const [claveNueva] = storage.subirObjeto.mock.calls[0];
+      expect(storage.eliminarObjeto.mock.calls).toEqual([[claveNueva]]);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('si falla la base, borra solo el nuevo y el anterior queda intacto', async () => {
+      documentos.reemplazarArchivo.mockRejectedValue(
+        new Error('fallo de base'),
+      );
+
+      await expect(reemplazar()).rejects.toThrow('fallo de base');
+      const [claveNueva] = storage.subirObjeto.mock.calls[0];
+      expect(storage.eliminarObjeto.mock.calls).toEqual([[claveNueva]]);
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('si falla la subida del nuevo, no toca la base ni el anterior', async () => {
+      storage.subirObjeto.mockRejectedValue(new Error('fallo de R2'));
+
+      await expect(reemplazar()).rejects.toThrow('fallo de R2');
+      expect(documentos.reemplazarArchivo).not.toHaveBeenCalled();
+      expect(storage.eliminarObjeto).not.toHaveBeenCalled();
+    });
+
+    it('si borrar el anterior falla, reintenta y el reemplazo igual queda hecho y auditado', async () => {
+      storage.eliminarObjeto.mockRejectedValue(new Error('fallo de R2'));
+
+      await expect(reemplazar()).resolves.toEqual(documento);
+      expect(storage.eliminarObjeto).toHaveBeenCalledTimes(2);
+      expect(storage.eliminarObjeto).toHaveBeenCalledWith('clave-anterior');
+      expect(accionesAuditadas(auditService)).toEqual([
+        'DOCUMENTO_PROCESO_REEMPLAZADO',
       ]);
     });
   });

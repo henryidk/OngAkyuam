@@ -3,6 +3,8 @@ export const MENSAJE_SIN_ACCESO_EXPEDIENTE =
   'No tiene acceso a este expediente';
 export const MENSAJE_SIN_ACCESO_PROCESO = 'No tiene acceso a este proceso';
 export const MENSAJE_SIN_ACCESO_DOCUMENTO = 'No tiene acceso a este documento';
+export const MENSAJE_DOCUMENTO_CAMBIO =
+  'Otra persona actualizó este documento mientras tanto. Recargue y vuelva a intentarlo';
 export const MENSAJE_SIN_ACCESO_CARPETA = 'No tiene acceso a esta carpeta';
 export const MENSAJE_SIN_ACCESO_REFERENCIA =
   'No tiene acceso a esta referencia';

@@ -14,6 +14,7 @@ import { extraerMensajeError } from '../../../lib/errors'
 import { crearCarpeta, renombrarCarpeta, renombrarDocumento } from '../api/juridico.api'
 import { useContextoDetalle } from '../detalle/contextoDetalle'
 import Carpeta from './Carpeta'
+import ModalActualizarDocumento from './ModalActualizarDocumento'
 import ModalNombre from './ModalNombre'
 import ModalSubida from './ModalSubida'
 import { useAbrirDocumento } from './useAbrirDocumento'
@@ -23,13 +24,14 @@ type Dialogo =
   | { tipo: 'nuevaCarpeta' }
   | { tipo: 'renombrarCarpeta'; carpeta: CarpetaDto }
   | { tipo: 'renombrarDocumento'; documento: DocumentoProcesoDto }
+  | { tipo: 'actualizarDocumento'; documento: DocumentoProcesoDto }
 
 export default function PestanaDocumentos() {
   const { proceso, refrescar } = useContextoDetalle()
   const { mostrar } = useToast()
   const [dialogo, setDialogo] = useState<Dialogo | null>(null)
   const [arrastrando, setArrastrando] = useState(false)
-  const { ver, descargar } = useAbrirDocumento(proceso.id)
+  const { ver } = useAbrirDocumento(proceso.id)
 
   const existentes = new Set(proceso.carpetas.map((carpeta) => normalizarNombreCarpeta(carpeta.nombre)))
   const sugeridas = CARPETAS_SUGERIDAS_POR_TIPO[proceso.tipo].filter(
@@ -100,8 +102,8 @@ export default function PestanaDocumentos() {
           onRenombrar={() => setDialogo({ tipo: 'renombrarCarpeta', carpeta })}
           onAgregar={() => setDialogo({ tipo: 'subida', carpetaId: carpeta.id })}
           onVer={(documento) => void ver(documento)}
-          onDescargar={(documento) => void descargar(documento)}
           onRenombrarDocumento={(documento) => setDialogo({ tipo: 'renombrarDocumento', documento })}
+          onActualizarDocumento={(documento) => setDialogo({ tipo: 'actualizarDocumento', documento })}
         />
       ))}
 
@@ -177,6 +179,14 @@ export default function PestanaDocumentos() {
             await renombrarDocumento(proceso.id, dialogo.documento.id, nombre)
             cerrarYRefrescar('Documento renombrado')
           }}
+        />
+      )}
+      {dialogo?.tipo === 'actualizarDocumento' && (
+        <ModalActualizarDocumento
+          procesoId={proceso.id}
+          documento={dialogo.documento}
+          onCerrar={() => setDialogo(null)}
+          onHecho={() => cerrarYRefrescar('Documento actualizado')}
         />
       )}
     </div>
