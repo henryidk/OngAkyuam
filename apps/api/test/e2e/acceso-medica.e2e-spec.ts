@@ -1,6 +1,10 @@
-import { randomUUID } from 'node:crypto';
+import { randomInt, randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import type { Rol, Usuario } from '@prisma/client';
+import type {
+  ConsultaMedicaDto,
+  HistorialConsultasMedicaPaginaDto,
+} from '@akyuam/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { PrismaService } from '../../src/prisma/prisma.service';
@@ -33,6 +37,9 @@ const ENDPOINTS: [Metodo, string][] = [
   ['get', '/api/medica/reportes'],
   ['get', '/api/medica/reportes/excel'],
   ['get', '/api/medica/consultas/contexto'],
+  ['get', '/api/medica/consultas/por-atender'],
+  ['post', '/api/medica/consultas/historial/busqueda'],
+  ['get', `/api/medica/consultas/${ID}`],
   ['get', `/api/medica/documentos/${ID}/url`],
   ['post', '/api/medica/citas'],
   ['post', `/api/medica/citas/${ID}/inasistencia`],
@@ -227,6 +234,175 @@ describe('Medicina · acceso (e2e)', () => {
         `/api/juridico/usuarias/${usuaria.id}/medicina/documentos/${documento.id}/url`,
         sesiones.get('JURIDICO')!,
       ).expect(403);
+    });
+  });
+
+  describe('Consultas: historial y detalle', () => {
+    // El día de las consultas de `crearAtencionConConsulta`.
+    const RANGO = { desde: '2026-01-02', hasta: '2026-01-02' };
+
+    /** DPI único: deja buscar exactamente a una usuaria entre las de todas las pruebas. */
+    async function conDpi(usuariaId: string): Promise<string> {
+      const dpi = `9${randomInt(10 ** 11, 10 ** 12)}`;
+      await prisma.usuaria.update({ where: { id: usuariaId }, data: { dpi } });
+      return dpi;
+    }
+
+    function buscar(datos: object, sesion: Sesion = sesionMedica) {
+      return pedir(
+        'post',
+        '/api/medica/consultas/historial/busqueda',
+        sesion,
+      ).send(datos);
+    }
+
+    it('la lista solo trae metadatos; el contenido clínico sale al abrir la consulta', async () => {
+      const { usuaria, expediente } = await crearExpediente(prisma, medica.id, [
+        'MEDICA',
+      ]);
+      const { consulta } = await crearAtencionConConsulta(
+        prisma,
+        expediente.id,
+        medica.id,
+      );
+      const dpi = await conDpi(usuaria.id);
+
+      const lista = await buscar({ ...RANGO, q: dpi }).expect(200);
+      const pagina = lista.body as HistorialConsultasMedicaPaginaDto;
+      expect(lista.headers['cache-control']).toBe('no-store');
+      expect(pagina.items).toHaveLength(1);
+      expect(pagina.items[0]).toMatchObject({
+        id: consulta.id,
+        usuariaId: usuaria.id,
+        totalDocumentos: 1,
+      });
+      for (const clave of [...DATOS_CLINICOS, 'signos']) {
+        expect(JSON.stringify(lista.body)).not.toContain(clave);
+      }
+
+      const detalle = await pedir(
+        'get',
+        `/api/medica/consultas/${consulta.id}`,
+        sesionMedica,
+      ).expect(200);
+      expect(detalle.headers['cache-control']).toBe('no-store');
+      expect((detalle.body as ConsultaMedicaDto).diagnostico).toBe(
+        `${MARCA} diagnóstico clínico`,
+      );
+      expect(
+        await prisma.auditLog.count({
+          where: {
+            usuarioId: medica.id,
+            accion: 'CONSULTA_MEDICA_VISTA',
+            entidadId: consulta.id,
+          },
+        }),
+      ).toBe(1);
+    });
+
+    it('una consulta de un expediente no referido no aparece y abrirla da el mismo 403 que un id inexistente', async () => {
+      const { usuaria, expediente } = await crearExpediente(prisma, medica.id, [
+        'JURIDICO',
+      ]);
+      const { consulta } = await crearAtencionConConsulta(
+        prisma,
+        expediente.id,
+        medica.id,
+      );
+      const dpi = await conDpi(usuaria.id);
+
+      const lista = await buscar({ ...RANGO, q: dpi }).expect(200);
+      expect((lista.body as HistorialConsultasMedicaPaginaDto).items).toEqual(
+        [],
+      );
+
+      const ajena = await pedir(
+        'get',
+        `/api/medica/consultas/${consulta.id}`,
+        sesionMedica,
+      ).expect(403);
+      const inexistente = await pedir(
+        'get',
+        `/api/medica/consultas/${randomUUID()}`,
+        sesionMedica,
+      ).expect(403);
+      // Mismo mensaje y código: la respuesta no revela si la consulta existe.
+      const sinHora = ({ statusCode, message }: Record<string, unknown>) => ({
+        statusCode,
+        message,
+      });
+      expect(sinHora(ajena.body as Record<string, unknown>)).toEqual(
+        sinHora(inexistente.body as Record<string, unknown>),
+      );
+      expect(
+        await prisma.auditLog.count({
+          where: { accion: 'CONSULTA_MEDICA_VISTA', entidadId: consulta.id },
+        }),
+      ).toBe(0);
+    });
+
+    it('el texto buscado nunca queda en la auditoría', async () => {
+      const buscadora = await crearUsuario(prisma, 'MEDICA');
+      const termino = `${MARCA} Nombre Buscado`;
+      await buscar({ ...RANGO, q: termino }, sesionDe(app, buscadora)).expect(
+        200,
+      );
+      const filas = await prisma.auditLog.findMany({
+        where: { usuarioId: buscadora.id },
+      });
+      expect(filas.map((f) => f.accion)).toEqual([
+        'HISTORIAL_CONSULTAS_MEDICAS_CONSULTADO',
+      ]);
+      expect(filas[0].detalles).toMatchObject({ conBusqueda: true });
+      expect(JSON.stringify(filas)).not.toContain('Buscado');
+    });
+
+    it('la búsqueda no existe por GET con el texto en la URL', async () => {
+      await pedir(
+        'get',
+        '/api/medica/consultas/historial/busqueda?q=Maria',
+        sesionMedica,
+      ).expect(404);
+    });
+
+    it('rechaza un rango de más de un año', async () => {
+      await buscar({ desde: '2025-01-01', hasta: '2026-01-02' }).expect(400);
+    });
+
+    it('limita las búsquedas por usuario a 60 por minuto', async () => {
+      const sesion = sesionDe(app, await crearUsuario(prisma, 'MEDICA'));
+      for (let i = 0; i < 60; i++) {
+        await buscar(RANGO, sesion).expect(200);
+      }
+      await buscar(RANGO, sesion).expect(429);
+    });
+
+    it('la historia clínica de la ficha deja constancia de cada página leída', async () => {
+      const lectora = await crearUsuario(prisma, 'MEDICA');
+      const { usuaria, expediente } = await crearExpediente(prisma, medica.id, [
+        'MEDICA',
+      ]);
+      await crearAtencionConConsulta(prisma, expediente.id, medica.id);
+      await pedir(
+        'get',
+        `/api/medica/pacientes/${usuaria.id}/consultas`,
+        sesionDe(app, lectora),
+      ).expect(200);
+      const filas = await prisma.auditLog.findMany({
+        where: {
+          usuarioId: lectora.id,
+          accion: 'HISTORIA_CLINICA_MEDICA_CONSULTADA',
+        },
+      });
+      expect(filas).toHaveLength(1);
+      expect(filas[0]).toMatchObject({
+        entidad: 'Usuaria',
+        entidadId: usuaria.id,
+        detalles: { persona: 'todas', pagina: 'primera', resultados: 1 },
+      });
+      for (const dato of DATOS_CLINICOS) {
+        expect(JSON.stringify(filas)).not.toContain(dato);
+      }
     });
   });
 

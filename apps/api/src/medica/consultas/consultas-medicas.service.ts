@@ -10,7 +10,10 @@ import type {
   ContextoConsultaMedicaDto,
   ContextoConsultaMedicaQuery,
 } from '@akyuam/shared';
+import { AuditService } from '../../auth/services/audit.service';
+import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { AccesoMedicaService } from '../compartido/acceso-medica.service';
+import { eventoAuditoria } from '../compartido/auditoria';
 import {
   MENSAJE_CITA_NO_REGISTRABLE,
   MENSAJE_SIN_ACCESO_ATENCION,
@@ -28,6 +31,7 @@ export class ConsultasMedicasService {
     @Inject(CONSULTAS_MEDICAS_REPOSITORY)
     private readonly consultasRepository: IConsultasMedicasRepository,
     private readonly acceso: AccesoMedicaService,
+    private readonly auditService: AuditService,
   ) {}
 
   async contexto(
@@ -59,9 +63,11 @@ export class ConsultasMedicasService {
     );
   }
 
+  /** Cada página trae contenido clínico completo: se audita antes de devolverla. */
   async historia(
     usuariaId: string,
     query: ConsultasPacienteMedicaQuery,
+    contexto: ContextoAuditoria,
   ): Promise<ConsultasMedicasPaginaDto> {
     await this.acceso.exigirUsuaria(usuariaId);
     const persona =
@@ -70,11 +76,24 @@ export class ConsultasMedicasService {
         : query.persona === 'usuaria'
           ? null
           : query.persona;
-    return this.consultasRepository.listarPorUsuaria(
+    const pagina = await this.consultasRepository.listarPorUsuaria(
       usuariaId,
       persona,
       query.cursor,
     );
+    await this.auditService.registrar(
+      eventoAuditoria(contexto, {
+        accion: 'HISTORIA_CLINICA_MEDICA_CONSULTADA',
+        entidad: 'Usuaria',
+        entidadId: usuariaId,
+        detalles: {
+          persona: query.persona ?? 'todas',
+          pagina: query.cursor ? 'siguiente' : 'primera',
+          resultados: pagina.items.length,
+        },
+      }),
+    );
+    return pagina;
   }
 
   private async exigirContexto(
