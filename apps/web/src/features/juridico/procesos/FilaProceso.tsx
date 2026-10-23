@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Plus } from 'lucide-react'
 import {
   CATEGORIA_POR_TIPO_PROCESO,
   ETIQUETAS_CATEGORIA_PROCESO,
@@ -9,7 +10,7 @@ import {
 } from '@akyuam/shared'
 import { BarraAvanceCompacta } from '../compartido/BarraAvance'
 import ChipSeguimiento from '../compartido/ChipSeguimiento'
-import { fechaDeReferencia, textoAlerta } from '../compartido/formato'
+import { fechaDeInstante, textoAlerta } from '../compartido/formato'
 import { RUTAS_JURIDICO } from '../rutas'
 import { textoProximaAudiencia } from './formato'
 
@@ -24,8 +25,10 @@ function BotonFila({ onClick, children }: { onClick: () => void; children: React
         sinPropagar(evento)
         onClick()
       }}
-      className="mt-0.5 text-xs font-medium text-brand-700 hover:underline"
+      // `relative`: el texto sr-only (absoluto) queda dentro del scroll de la tabla y no ensancha la página.
+      className="relative inline-flex items-center gap-1 whitespace-nowrap rounded text-[13px] font-medium text-brand-700 hover:underline"
     >
+      <Plus size={14} aria-hidden="true" />
       {children}
     </button>
   )
@@ -35,10 +38,9 @@ function CeldaProximaAudiencia({ proceso, hoy, onAgendar }: { proceso: ProcesoRe
   const proxima = proceso.proximaAudiencia
   if (!proxima) {
     return (
-      <>
-        <p className="text-xs text-gray-400">Sin agendar</p>
-        <BotonFila onClick={onAgendar}>Agendar</BotonFila>
-      </>
+      <BotonFila onClick={onAgendar}>
+        Agendar<span className="sr-only"> audiencia</span>
+      </BotonFila>
     )
   }
   const { aviso, pendiente } = textoProximaAudiencia(proxima, hoy)
@@ -54,7 +56,7 @@ function CeldaProximaAudiencia({ proceso, hoy, onAgendar }: { proceso: ProcesoRe
       >
         {formatFechaGT(proxima.fecha)} · {proxima.hora}
       </Link>
-      <p className={`text-xs font-medium ${claseAviso}`}>
+      <p className={`whitespace-nowrap text-xs font-medium ${claseAviso}`}>
         {pendiente && '● '}
         {aviso}
       </p>
@@ -94,7 +96,6 @@ export default function FilaProceso({ proceso, hoy, onAsignarNumero, onAgendar }
       </td>
       <td className="px-4 py-3 align-top">
         <p className="text-sm font-medium text-gray-900">{proceso.usuaria.nombreCompleto}</p>
-        <p className="text-xs text-gray-500 tabular-nums">Exp. {proceso.expedienteNumero}</p>
       </td>
       <td className="px-4 py-3 align-top">
         <p className="text-sm text-gray-900">{ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.tipo]}</p>
@@ -105,12 +106,11 @@ export default function FilaProceso({ proceso, hoy, onAsignarNumero, onAgendar }
       </td>
       <td className="px-4 py-3 align-top">
         {proceso.numeroJudicial ? (
-          <p className="break-all font-mono text-[13px] text-gray-900">{proceso.numeroJudicial}</p>
+          <p className="whitespace-nowrap font-mono text-[13px] text-gray-900">{proceso.numeroJudicial}</p>
         ) : (
-          <>
-            <p className="text-xs text-gray-400">Sin asignar</p>
-            <BotonFila onClick={onAsignarNumero}>Agregar</BotonFila>
-          </>
+          <BotonFila onClick={onAsignarNumero}>
+            Agregar<span className="sr-only"> número judicial</span>
+          </BotonFila>
         )}
       </td>
       <td className="px-4 py-3 align-top">
@@ -120,7 +120,8 @@ export default function FilaProceso({ proceso, hoy, onAsignarNumero, onAgendar }
         <BarraAvanceCompacta fase={proceso.fase} estado={proceso.estadoVisible} />
       </td>
       <td className="space-y-1 px-4 py-3 align-top">
-        <p className="text-xs text-gray-500 tabular-nums">{fechaDeReferencia(proceso)}</p>
+        {/* La cabecera ya dice "Última actuación": aquí solo la fecha. */}
+        <p className="whitespace-nowrap text-[13px] text-gray-700 tabular-nums">{fechaDeInstante(proceso.ultimaActuacionEn)}</p>
         {alerta && <p className="text-xs font-medium text-[#8a5a14]">● {alerta}</p>}
       </td>
     </tr>

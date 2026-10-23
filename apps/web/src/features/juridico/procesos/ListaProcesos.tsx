@@ -25,7 +25,7 @@ import { carteraAUrl, carteraDesdeUrl, opcionesCartera } from './formato'
 import ModalNumeroJudicial from '../compartido/ModalNumeroJudicial'
 
 const ESPERA_BUSQUEDA_MS = 350
-const COLUMNAS = ['No. interno', 'Usuaria', 'Tipo de proceso', 'No. judicial', 'Próxima audiencia', 'Avance', 'Actividad']
+const COLUMNAS = ['No. interno', 'Usuaria', 'Tipo de proceso', 'No. judicial', 'Próxima audiencia', 'Avance', 'Última actuación']
 
 function FilasEsqueleto() {
   return (
@@ -131,11 +131,12 @@ export default function ListaProcesos() {
   const textoCorto = texto.trim().length > 0 && texto.trim().length < LARGO_MINIMO_BUSQUEDA_PROCESOS
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-        <label className="relative block w-full sm:w-[360px]">
+    // Tabla de trabajo: usa el ancho disponible (las fichas y el detalle siguen en max-w-6xl para leerse).
+    <div className="mx-auto max-w-[1440px] space-y-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <label className="relative block w-full sm:w-[400px]">
           <span className="sr-only">Buscar por usuaria, No. interno o No. judicial</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" aria-hidden="true" />
           <input
             type="search"
             value={texto}
@@ -146,18 +147,17 @@ export default function ListaProcesos() {
             className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </label>
-        <p className="min-w-[240px] flex-1 text-[13px] text-gray-500">
-          Procesos en curso. Los finalizados, suspendidos y abandonados se consultan en el expediente de cada usuaria.
-        </p>
-        <div className="flex items-center gap-2 text-[13px] text-gray-700">
+        <FiltroCartera opciones={opciones} activa={cartera} onCambiar={(valor) => actualizarParams({ cartera: valor })} />
+        <div className="flex items-center gap-2 text-[13px] text-gray-700 sm:ml-auto">
           <Switch encendido={mios} onChange={(valor) => actualizarParams({ mios: valor })} ariaLabel="Solo asignados a mí" />
           <span aria-hidden="true">Solo asignados a mí</span>
         </div>
       </div>
-      <FiltroCartera opciones={opciones} activa={cartera} onCambiar={(valor) => actualizarParams({ cartera: valor })} />
-      {textoCorto && (
-        <p className="text-xs text-gray-500">Escribe al menos {LARGO_MINIMO_BUSQUEDA_PROCESOS} caracteres.</p>
-      )}
+      <p className="text-[13px] text-gray-500">
+        {textoCorto
+          ? `Escribe al menos ${LARGO_MINIMO_BUSQUEDA_PROCESOS} caracteres.`
+          : 'Procesos en curso. Los finalizados, suspendidos y abandonados se consultan en el expediente de cada usuaria.'}
+      </p>
 
       {error && !datos ? (
         <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="los procesos" onReintentar={() => void recargar()} />
