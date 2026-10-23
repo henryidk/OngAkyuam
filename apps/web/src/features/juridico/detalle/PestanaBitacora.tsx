@@ -49,7 +49,8 @@ function Actuacion({
         {entrada.contenido}
       </p>
       {entrada.documentos.length > 0 && (
-        <div className="mt-3">
+        // Acotado: "Ver" y "Actualizar" quedan cerca del nombre del archivo aunque la columna sea ancha.
+        <div className="mt-3 max-w-2xl">
           <DocumentosAdjuntos documentos={entrada.documentos} onVer={onVer} onActualizar={onActualizar} />
         </div>
       )}

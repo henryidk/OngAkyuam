@@ -23,8 +23,6 @@ interface PanelDatosProps {
   onGuardado: (mensaje: string) => void
   /** 409: otra persona cambió el proceso; refrescar para leer la versión nueva. */
   onConflicto: () => void
-  /** Abre el modal para agregar o corregir el No. judicial. */
-  onNumeroJudicial: () => void
 }
 
 /** Las activas más la asignada actual, aunque ya esté inactiva: editar otro campo no debe quitarla. */
@@ -134,10 +132,10 @@ function Fila({ etiqueta, children }: { etiqueta: string; children: ReactNode })
 const SIN_ASIGNAR = <span className="text-gray-500">Sin asignar</span>
 
 /**
- * Datos del proceso. Cada dato que se cambia tiene su acción junto a él: el No. judicial abre su
- * modal (avisa si está repetido) y la asignación se cambia dentro de la misma tarjeta.
+ * Datos del proceso. El No. interno y el No. judicial (con su acción) ya están en la cabecera: aquí
+ * no se repiten. La asignación se cambia dentro de la misma tarjeta.
  */
-export default function PanelDatos({ proceso, onGuardado, onConflicto, onNumeroJudicial }: PanelDatosProps) {
+export default function PanelDatos({ proceso, onGuardado, onConflicto }: PanelDatosProps) {
   const [editando, setEditando] = useState(false)
 
   if (editando) {
@@ -158,23 +156,6 @@ export default function PanelDatos({ proceso, onGuardado, onConflicto, onNumeroJ
     <section className={`${CLASE_TARJETA} border border-gray-200 px-[18px] py-4`}>
       <h3 className="mb-3 text-sm font-semibold text-gray-900">Datos del proceso</h3>
       <dl className="space-y-2.5">
-        <Fila etiqueta="No. interno">
-          <span className="font-mono">{proceso.codigo}</span>
-        </Fila>
-        <Fila etiqueta="No. judicial">
-          {proceso.numeroJudicial ? (
-            <span className="inline-flex flex-col items-end gap-0.5">
-              <span className="font-mono break-all">{proceso.numeroJudicial}</span>
-              <button type="button" onClick={onNumeroJudicial} className={CLASE_ACCION}>
-                Corregir
-              </button>
-            </span>
-          ) : (
-            <button type="button" onClick={onNumeroJudicial} className={CLASE_ACCION}>
-              + Agregar
-            </button>
-          )}
-        </Fila>
         <Fila etiqueta="Abogada">{proceso.abogada?.nombre ?? SIN_ASIGNAR}</Fila>
         <Fila etiqueta="Procuradora">{proceso.procuradora?.nombre ?? SIN_ASIGNAR}</Fila>
         <Fila etiqueta="Inicio">

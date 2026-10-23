@@ -189,7 +189,8 @@ export default function DetalleProceso() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
+    // Mismo ancho que la lista de procesos: al entrar a uno el contenido no salta de lugar.
+    <div className="mx-auto max-w-[1440px] space-y-5">
       <CabeceraProceso
         proceso={proceso}
         onAgendar={admiteAudiencias(proceso) ? () => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) }) : null}
@@ -202,7 +203,7 @@ export default function DetalleProceso() {
 
       <Banners proceso={proceso} onReactivar={() => setModal('reactivar')} />
 
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-4">
           <Outlet context={contexto} />
         </div>
@@ -210,7 +211,6 @@ export default function DetalleProceso() {
         <aside className="space-y-4">
           <PanelDatos
             proceso={proceso}
-            onNumeroJudicial={abrirNumeroJudicial}
             onGuardado={(mensaje) => {
               mostrar(mensaje)
               refrescar()
