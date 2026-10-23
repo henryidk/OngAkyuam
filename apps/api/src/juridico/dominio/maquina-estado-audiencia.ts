@@ -12,6 +12,9 @@ export interface EstadoAudienciaActual {
 type Regla = (audiencia: EstadoAudienciaActual, ahora: Date) => boolean;
 
 const esProgramada: Regla = (a) => a.estado === 'PROGRAMADA';
+/** Programada y su hora todavía no llega: la única que se puede mover. */
+const esFutura: Regla = (a, ahora) =>
+  esProgramada(a, ahora) && a.inicio > ahora;
 const yaTieneResultado: Regla = (a) =>
   a.estado === 'REALIZADA' || a.estado === 'NO_REALIZADA';
 
@@ -19,14 +22,17 @@ const yaTieneResultado: Regla = (a) =>
  * Qué se le puede hacer a una audiencia. Es la única copia de estas reglas: el frontend recibe
  * `accionesDisponibles` ya calculado y nunca las reimplementa. Sin Nest ni Prisma a propósito.
  *
+ * Antes de la hora se reprograma o se cambia la responsable; desde la hora solo se registra el
+ * resultado, y si no se realizó, de ahí sale la nueva fecha. Así hay un solo camino para cada
+ * momento. No hay cancelación manual: una audiencia solo se cancela sola al cerrar el proceso.
+ *
  * Lo que mueve la agenda hacia adelante (reprogramar, cambiar responsable, agendar nueva fecha)
- * exige el proceso abierto. Lo que solo deja constancia de lo que ya pasó (cancelar, resultado,
+ * exige el proceso abierto. Lo que solo deja constancia de lo que ya pasó (resultado,
  * observaciones, documentos) no: es historia de la usuaria aunque el proceso ya se cerró.
  */
 const REGLAS: Record<AccionAudiencia, Regla> = {
-  REPROGRAMAR: (a, ahora) => esProgramada(a, ahora) && a.procesoAbierto,
-  CAMBIAR_RESPONSABLE: (a, ahora) => esProgramada(a, ahora) && a.procesoAbierto,
-  CANCELAR: esProgramada,
+  REPROGRAMAR: (a, ahora) => esFutura(a, ahora) && a.procesoAbierto,
+  CAMBIAR_RESPONSABLE: (a, ahora) => esFutura(a, ahora) && a.procesoAbierto,
   // El resultado se registra cuando la audiencia ya empezó, nunca antes.
   REGISTRAR_RESULTADO: (a, ahora) =>
     esProgramada(a, ahora) && a.inicio <= ahora,

@@ -1,7 +1,6 @@
 import {
   agendarAudienciaSchema,
   asignarNumeroJudicialSchema,
-  cancelarAudienciaSchema,
   fechaHoraLocalSchema,
   listarAudienciasQuerySchema,
   registrarResultadoAudienciaSchema,
@@ -79,9 +78,6 @@ describe('schemas de audiencias de Jurídico (planaudiencias.md §5 y §7.2)', (
         motivo: '   ',
         version: 1,
       }).success,
-    ).toBe(false);
-    expect(
-      cancelarAudienciaSchema.safeParse({ motivo: '', version: 1 }).success,
     ).toBe(false);
   });
 

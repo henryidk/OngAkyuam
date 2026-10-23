@@ -45,10 +45,6 @@ export interface ReprogramarAudienciaParams extends EscrituraSobreAudiencia {
   motivo: string;
 }
 
-export interface CancelarAudienciaParams extends EscrituraSobreAudiencia {
-  motivo: string;
-}
-
 export interface CambiarResponsableAudienciaParams extends EscrituraSobreAudiencia {
   responsableId: string;
 }
@@ -98,9 +94,6 @@ export interface IAudienciasRepository {
   /** Marca la actual REPROGRAMADA y crea la nueva enlazada a ella. */
   reprogramar(
     params: ReprogramarAudienciaParams,
-  ): Promise<ResultadoEscrituraAudiencia>;
-  cancelar(
-    params: CancelarAudienciaParams,
   ): Promise<ResultadoEscrituraAudiencia>;
   cambiarResponsable(
     params: CambiarResponsableAudienciaParams,

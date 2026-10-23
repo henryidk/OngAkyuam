@@ -89,13 +89,6 @@ export const reprogramarAudienciaSchema = z.object({
 })
 export type ReprogramarAudienciaInput = z.infer<typeof reprogramarAudienciaSchema>
 
-/** `POST /juridico/audiencias/:id/cancelacion` (origen MANUAL). */
-export const cancelarAudienciaSchema = z.object({
-  motivo: motivoObligatorioSchema,
-  version: versionSchema,
-})
-export type CancelarAudienciaInput = z.infer<typeof cancelarAudienciaSchema>
-
 /** `PATCH /juridico/audiencias/:id/responsable`. */
 export const cambiarResponsableAudienciaSchema = z.object({
   responsableId: z.uuid('Seleccione la responsable'),

@@ -36,7 +36,6 @@ const ENDPOINTS: [Metodo, string][] = [
   ['get', `/api/juridico/procesos/${ID}/audiencias`],
   ['post', `/api/juridico/procesos/${ID}/audiencias`],
   ['post', `/api/juridico/audiencias/${ID}/reprogramacion`],
-  ['post', `/api/juridico/audiencias/${ID}/cancelacion`],
   ['patch', `/api/juridico/audiencias/${ID}/responsable`],
   ['post', `/api/juridico/audiencias/${ID}/resultado`],
   ['patch', `/api/juridico/audiencias/${ID}/observaciones`],
@@ -176,7 +175,6 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
         'reprogramacion',
         { fechaHora: '2030-01-07T10:00', motivo: 'x' },
       ],
-      ['post', 'cancelacion', { motivo: 'x' }],
       ['patch', 'responsable', {}],
       ['post', 'resultado', { resultado: 'REALIZADA', observaciones: 'x' }],
     ] as const)(
@@ -223,6 +221,26 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
   });
 
   describe('controles: con el acceso correcto sí responde', () => {
+    it('ya no existe la cancelación manual: la audiencia sigue programada', async () => {
+      const { proceso, abogada } = await escenario();
+      const agendada = (
+        await pedir('post', `/api/juridico/procesos/${proceso.id}/audiencias`)
+          .send({
+            fechaHora: fechaHoraGT(instanteFuturo()),
+            responsableId: abogada.id,
+          })
+          .expect(201)
+      ).body as AudienciaAgendadaDto;
+
+      await pedir('post', `/api/juridico/audiencias/${agendada.id}/cancelacion`)
+        .send({ motivo: `${MARCA} motivo`, version: 1 })
+        .expect(404);
+      const audiencia = await prisma.audienciaJuridica.findUniqueOrThrow({
+        where: { id: agendada.id },
+      });
+      expect(audiencia).toMatchObject({ estado: 'PROGRAMADA', version: 1 });
+    });
+
     it('agenda, lista, reprograma y la vieja queda enlazada', async () => {
       const { expediente, proceso, abogada } = await escenario();
       const inicio = instanteFuturo();
@@ -254,7 +272,6 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
         estado: 'PROGRAMADA',
       });
       expect(lista.items[0].accionesDisponibles).toContain('REPROGRAMAR');
-      expect(lista.items[0].accionesDisponibles).toContain('CANCELAR');
 
       const reprogramada = await pedir(
         'post',

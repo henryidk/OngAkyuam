@@ -1,6 +1,5 @@
 import { useToast } from '../../../components/ui/Toast'
 import { casoDesdeAudiencia, type ModalAudiencia, type PropsModalAudiencia } from './caso'
-import ModalCancelarAudiencia from './ModalCancelarAudiencia'
 import ModalDocumentosAudiencia from './ModalDocumentosAudiencia'
 import ModalObservacionesAudiencia from './ModalObservacionesAudiencia'
 import ModalProgramarAudiencia from './ModalProgramarAudiencia'
@@ -42,7 +41,7 @@ export default function ModalesAudiencia({ modal, onCambiar, onCambios }: Modale
   if (modal.tipo === 'REPROGRAMAR' || modal.tipo === 'AGENDAR_NUEVA_FECHA') {
     return (
       <ModalProgramarAudiencia
-        // La clave separa "Cancelar → Agendar nueva fecha" del modal anterior: estado limpio.
+        // La clave separa "Resultado → Agendar nueva fecha" del modal anterior: estado limpio.
         key={`${modal.tipo}-${audiencia.id}`}
         caso={casoDesdeAudiencia(audiencia)}
         anterior={{ modo: modal.tipo === 'REPROGRAMAR' ? 'REPROGRAMAR' : 'NUEVA_FECHA', audiencia }}
@@ -55,8 +54,6 @@ export default function ModalesAudiencia({ modal, onCambiar, onCambios }: Modale
 
   const props: PropsModalAudiencia = { audiencia, onCerrar: cerrar, onHecho, onConflicto }
   switch (modal.tipo) {
-    case 'CANCELAR':
-      return <ModalCancelarAudiencia {...props} />
     case 'CAMBIAR_RESPONSABLE':
       return <ModalResponsableAudiencia {...props} />
     case 'REGISTRAR_RESULTADO':

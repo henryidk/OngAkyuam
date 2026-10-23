@@ -9,7 +9,6 @@ import {
   type AgendarAudienciaInput,
   type AudienciaAgendadaDto,
   type CambiarResponsableAudienciaInput,
-  type CancelarAudienciaInput,
   type PersonalAsignado,
   type ReprogramarAudienciaInput,
 } from '@akyuam/shared';
@@ -42,7 +41,8 @@ import {
 } from './auditoria-audiencias';
 
 /**
- * Mueve la agenda: agendar, reprogramar, cancelar y cambiar la responsable. El choque de
+ * Mueve la agenda: agendar, reprogramar y cambiar la responsable. No hay cancelación manual: las
+ * programadas solo se cancelan solas al finalizar o abandonar el proceso. El choque de
  * horario y la versión los decide la base dentro de la transacción (ver el repositorio).
  */
 @Injectable()
@@ -150,40 +150,6 @@ export class ProgramacionAudienciasService {
       },
     );
     return audienciaAgendada(guardado.audienciaId, inicio);
-  }
-
-  async cancelar(
-    audienciaId: string,
-    datos: CancelarAudienciaInput,
-    contexto: ContextoAuditoria,
-  ): Promise<void> {
-    const audiencia = await exigirAudiencia(
-      this.audienciasRepository,
-      audienciaId,
-    );
-    exigirAccion('CANCELAR', audiencia, this.reloj.ahora());
-
-    exigirGuardado(
-      await this.audienciasRepository.cancelar({
-        procesoId: audiencia.procesoId,
-        audienciaId,
-        version: datos.version,
-        usuarioId: contexto.usuarioId,
-        motivo: datos.motivo,
-        textoBitacora: `Audiencia del ${momento(audiencia.inicio)} cancelada`,
-      }),
-    );
-
-    await auditarAudiencia(
-      this.auditService,
-      contexto,
-      'AUDIENCIA_CANCELADA',
-      audienciaId,
-      {
-        procesoId: audiencia.procesoId,
-        origen: 'MANUAL',
-      },
-    );
   }
 
   async cambiarResponsable(

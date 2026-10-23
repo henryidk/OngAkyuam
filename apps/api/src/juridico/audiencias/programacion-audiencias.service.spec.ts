@@ -70,7 +70,6 @@ describe('ProgramacionAudienciasService', () => {
   function sinEscrituras() {
     expect(audiencias.agendar).not.toHaveBeenCalled();
     expect(audiencias.reprogramar).not.toHaveBeenCalled();
-    expect(audiencias.cancelar).not.toHaveBeenCalled();
     expect(audiencias.cambiarResponsable).not.toHaveBeenCalled();
     expect(auditService.registrar).not.toHaveBeenCalled();
   }
@@ -410,67 +409,6 @@ describe('ProgramacionAudienciasService', () => {
         new ConflictException(MENSAJE_CONFLICTO_VERSION_AUDIENCIA),
       );
       expect(auditService.registrar).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('cancelar', () => {
-    const cancelacion = { motivo: 'Lo pidió la usuaria', version: 2 };
-
-    it('cancela a mano y audita sin el motivo', async () => {
-      await service.cancelar(AUDIENCIA_ID, cancelacion, contexto);
-
-      expect(audiencias.cancelar).toHaveBeenCalledWith({
-        procesoId: PROCESO_ID,
-        audienciaId: AUDIENCIA_ID,
-        version: 2,
-        usuarioId: contexto.usuarioId,
-        motivo: 'Lo pidió la usuaria',
-        textoBitacora: 'Audiencia del 21/10/2026 09:30 cancelada',
-      });
-      expect(auditService.registrar).toHaveBeenCalledWith(
-        expect.objectContaining({
-          accion: 'AUDIENCIA_CANCELADA',
-          detalles: { procesoId: PROCESO_ID, origen: 'MANUAL' },
-        }),
-      );
-      expect(JSON.stringify(auditService.registrar.mock.calls)).not.toContain(
-        'usuaria',
-      );
-    });
-
-    it('se puede cancelar aunque el proceso ya esté cerrado', async () => {
-      audiencias.buscarParaEscritura.mockResolvedValue(
-        audienciaParaEscritura({ procesoAbierto: false }),
-      );
-
-      await service.cancelar(AUDIENCIA_ID, cancelacion, contexto);
-
-      expect(audiencias.cancelar).toHaveBeenCalled();
-    });
-
-    it.each(['REALIZADA', 'CANCELADA', 'REPROGRAMADA'] as const)(
-      '409 si ya está %s',
-      async (estado) => {
-        audiencias.buscarParaEscritura.mockResolvedValue(
-          audienciaParaEscritura({ estado }),
-        );
-
-        await expect(
-          service.cancelar(AUDIENCIA_ID, cancelacion, contexto),
-        ).rejects.toThrow(
-          new ConflictException(MENSAJE_ACCION_AUDIENCIA_NO_DISPONIBLE),
-        );
-        sinEscrituras();
-      },
-    );
-
-    it('403 si la audiencia no es de Jurídico', async () => {
-      audiencias.buscarParaEscritura.mockResolvedValue(null);
-
-      await expect(
-        service.cancelar(AUDIENCIA_ID, cancelacion, contexto),
-      ).rejects.toThrow(ForbiddenException);
-      sinEscrituras();
     });
   });
 

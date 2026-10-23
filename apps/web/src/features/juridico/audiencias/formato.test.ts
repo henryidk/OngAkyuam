@@ -82,24 +82,17 @@ describe('audienciaEnHora', () => {
 })
 
 describe('separarAcciones', () => {
-  it('registrar resultado va primero aunque haya otras', () => {
-    expect(separarAcciones(['CANCELAR', 'REGISTRAR_RESULTADO'])).toEqual({
+  it('una vencida destaca registrar resultado', () => {
+    expect(separarAcciones(['ADJUNTAR_DOCUMENTO', 'REGISTRAR_RESULTADO'])).toEqual({
       principal: 'REGISTRAR_RESULTADO',
-      secundarias: ['CANCELAR'],
+      secundarias: ['ADJUNTAR_DOCUMENTO'],
     })
   })
 
-  it('una programada destaca reprogramar', () => {
-    expect(separarAcciones(['REPROGRAMAR', 'CAMBIAR_RESPONSABLE', 'CANCELAR'])).toEqual({
+  it('una programada destaca reprogramar, sin importar el orden en que llegan', () => {
+    expect(separarAcciones(['CAMBIAR_RESPONSABLE', 'ADJUNTAR_DOCUMENTO', 'REPROGRAMAR'])).toEqual({
       principal: 'REPROGRAMAR',
-      secundarias: ['CAMBIAR_RESPONSABLE', 'CANCELAR'],
-    })
-  })
-
-  it('cancelar queda siempre al final, sin importar el orden en que llegan', () => {
-    expect(separarAcciones(['CANCELAR', 'CAMBIAR_RESPONSABLE', 'ADJUNTAR_DOCUMENTO', 'REGISTRAR_RESULTADO'])).toEqual({
-      principal: 'REGISTRAR_RESULTADO',
-      secundarias: ['ADJUNTAR_DOCUMENTO', 'CAMBIAR_RESPONSABLE', 'CANCELAR'],
+      secundarias: ['ADJUNTAR_DOCUMENTO', 'CAMBIAR_RESPONSABLE'],
     })
   })
 

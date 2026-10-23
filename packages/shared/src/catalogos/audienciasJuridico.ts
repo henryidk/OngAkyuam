@@ -39,7 +39,11 @@ export const ETIQUETAS_ESTADO_VISIBLE_AUDIENCIA: Record<(typeof ESTADOS_VISIBLES
   REPROGRAMADA: 'Reprogramada',
 }
 
-/** Por qué se canceló. Espeja el enum `OrigenCancelacionAudiencia` de `schema.prisma`. */
+/**
+ * Por qué se canceló. Espeja el enum `OrigenCancelacionAudiencia` de `schema.prisma`. Ya no hay
+ * cancelación manual (antes de la fecha se reprograma; después, se registra el resultado): MANUAL
+ * queda solo para mostrar las que se cancelaron así antes de quitar esa acción.
+ */
 export const ORIGENES_CANCELACION_AUDIENCIA = ['MANUAL', 'PROCESO_FINALIZADO', 'PROCESO_ABANDONADO'] as const
 
 export const ETIQUETAS_ORIGEN_CANCELACION: Record<(typeof ORIGENES_CANCELACION_AUDIENCIA)[number], string> = {
@@ -55,7 +59,6 @@ export const RESULTADOS_AUDIENCIA = ['REALIZADA', 'NO_REALIZADA'] as const satis
 export const ACCIONES_AUDIENCIA = [
   'REPROGRAMAR',
   'CAMBIAR_RESPONSABLE',
-  'CANCELAR',
   'REGISTRAR_RESULTADO',
   'EDITAR_OBSERVACIONES',
   'ADJUNTAR_DOCUMENTO',

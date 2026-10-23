@@ -6,8 +6,6 @@ export interface OpcionMenu {
   clave: string
   etiqueta: string
   Icono?: LucideIcon
-  /** Acción destructiva (cancelar): se pinta en rojo. */
-  peligro?: boolean
   onElegir: () => void
 }
 
@@ -105,13 +103,9 @@ export default function MenuAcciones({ opciones, etiqueta }: { opciones: OpcionM
                   setPosicion(null)
                   opcion.onElegir()
                 }}
-                className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none ${
-                  opcion.peligro ? 'text-red-700' : 'text-gray-700'
-                }`}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
               >
-                {opcion.Icono && (
-                  <opcion.Icono size={15} aria-hidden="true" className={opcion.peligro ? undefined : 'text-gray-500'} />
-                )}
+                {opcion.Icono && <opcion.Icono size={15} aria-hidden="true" className="text-gray-500" />}
                 {opcion.etiqueta}
               </button>
             ))}

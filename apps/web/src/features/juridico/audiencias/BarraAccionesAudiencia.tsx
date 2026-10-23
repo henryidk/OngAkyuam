@@ -10,7 +10,7 @@ interface BarraAccionesAudienciaProps {
 
 /**
  * Todas las acciones de la audiencia a la vista, cada una con su icono y su nombre: antes vivían
- * en un menú "⋯" que costaba descubrir. La principal va destacada; cancelar, al final y en rojo.
+ * en un menú "⋯" que costaba descubrir. La principal va destacada.
  */
 export default function BarraAccionesAudiencia({ audiencia, onAccion }: BarraAccionesAudienciaProps) {
   const { principal, secundarias } = separarAcciones(audiencia.accionesDisponibles)
@@ -48,16 +48,13 @@ function BotonAccion({
     )
   }
 
-  const peligro = accion === 'CANCELAR'
   return (
     <button
       type="button"
       onClick={() => onAccion(accion, audiencia)}
-      className={`inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
-        peligro ? 'text-red-700 hover:bg-red-50 sm:ml-auto' : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
-      }`}
+      className="inline-flex items-center gap-1.5 rounded px-2.5 py-1.5 text-[13px] font-medium text-gray-700 transition-colors hover:bg-gray-100 hover:text-gray-900"
     >
-      <Icono size={15} aria-hidden="true" className={peligro ? undefined : 'text-gray-500'} />
+      <Icono size={15} aria-hidden="true" className="text-gray-500" />
       {etiqueta}
     </button>
   )

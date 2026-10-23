@@ -11,7 +11,6 @@ import type {
   AgendarAudienciaParams,
   AudienciaParaEscritura,
   CambiarResponsableAudienciaParams,
-  CancelarAudienciaParams,
   EscrituraSobreAudiencia,
   FalloEscrituraAudiencia,
   IAudienciasRepository,
@@ -147,16 +146,6 @@ export class AudienciasRepository implements IAudienciasRepository {
         return nueva.id;
       },
     );
-  }
-
-  cancelar(
-    params: CancelarAudienciaParams,
-  ): Promise<ResultadoEscrituraAudiencia> {
-    return this.escribirSobre(params, {
-      estado: 'CANCELADA',
-      origenCancelacion: 'MANUAL',
-      motivo: params.motivo,
-    });
   }
 
   cambiarResponsable(

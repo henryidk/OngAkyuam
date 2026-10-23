@@ -22,14 +22,25 @@ function audiencia(
 }
 
 describe('máquina de estados de la audiencia', () => {
-  it('una programada futura se reprograma, cambia de responsable, se cancela y recibe documentos', () => {
+  it('una programada futura se reprograma, cambia de responsable y recibe documentos', () => {
     expect(accionesDisponiblesAudiencia(audiencia(), ahora)).toEqual([
       'REPROGRAMAR',
       'CAMBIAR_RESPONSABLE',
-      'CANCELAR',
       'ADJUNTAR_DOCUMENTO',
     ]);
   });
+
+  it.each([
+    ['ya pasó', PASADA],
+    ['empieza justo ahora', ahora],
+  ])(
+    'una programada cuya hora %s solo admite registrar el resultado y documentos',
+    (_caso, inicio) => {
+      expect(
+        accionesDisponiblesAudiencia(audiencia({ inicio }), ahora),
+      ).toEqual(['REGISTRAR_RESULTADO', 'ADJUNTAR_DOCUMENTO']);
+    },
+  );
 
   it('el resultado solo se registra cuando la audiencia ya empezó', () => {
     expect(
@@ -54,7 +65,6 @@ describe('máquina de estados de la audiencia', () => {
   it('con el proceso cerrado ya no se mueve la agenda, pero sí se deja constancia', () => {
     const cerrado = audiencia({ inicio: PASADA, procesoAbierto: false });
     expect(accionesDisponiblesAudiencia(cerrado, ahora)).toEqual([
-      'CANCELAR',
       'REGISTRAR_RESULTADO',
       'ADJUNTAR_DOCUMENTO',
     ]);

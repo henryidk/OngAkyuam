@@ -34,7 +34,6 @@ export default function FilaAudiencia({ audiencia, vista, onAccion }: FilaAudien
       clave: accion,
       etiqueta: ETIQUETAS_ACCION_AUDIENCIA[accion],
       Icono: ICONOS_ACCION_AUDIENCIA[accion],
-      peligro: accion === 'CANCELAR',
       onElegir: () => onAccion(accion, audiencia),
     })),
     { clave: 'VER_PROCESO', etiqueta: 'Ver proceso', Icono: FolderOpen, onElegir: () => navigate(RUTAS_JURIDICO.proceso(audiencia.procesoId)) },

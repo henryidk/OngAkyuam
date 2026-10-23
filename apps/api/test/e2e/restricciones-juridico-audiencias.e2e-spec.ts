@@ -131,19 +131,20 @@ describe('Jurídico · restricciones de audiencias (e2e)', () => {
       expect(estados(respuestas)).toEqual([201, 409]);
     });
 
-    it('dos cancelaciones con la misma versión: la segunda es conflicto', async () => {
+    it('dos cambios de responsable con la misma versión: el segundo es conflicto', async () => {
       const proceso = await procesoAbierto();
       const programada = await audiencia(
         proceso.id,
         await crearAbogada(prisma),
       );
+      const nuevas = [await crearAbogada(prisma), await crearAbogada(prisma)];
 
       const respuestas = await Promise.all(
-        [1, 2].map(() =>
+        nuevas.map((nueva) =>
           pedir(
-            'post',
-            `/api/juridico/audiencias/${programada.id}/cancelacion`,
-          ).send({ motivo: `${MARCA} motivo`, version: 1 }),
+            'patch',
+            `/api/juridico/audiencias/${programada.id}/responsable`,
+          ).send({ responsableId: nueva.id, version: 1 }),
         ),
       );
 

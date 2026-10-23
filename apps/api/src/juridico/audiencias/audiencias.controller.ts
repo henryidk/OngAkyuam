@@ -19,7 +19,6 @@ import { Throttle } from '@nestjs/throttler';
 import {
   agendarAudienciaSchema,
   cambiarResponsableAudienciaSchema,
-  cancelarAudienciaSchema,
   disponibilidadAudienciasQuerySchema,
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
   listarAudienciasQuerySchema,
@@ -28,7 +27,6 @@ import {
   reprogramarAudienciaSchema,
   type AgendarAudienciaInput,
   type CambiarResponsableAudienciaInput,
-  type CancelarAudienciaInput,
   type DisponibilidadAudienciasQuery,
   type ListarAudienciasQuery,
   type ObservacionesAudienciaInput,
@@ -107,19 +105,6 @@ export class AudienciasController {
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.programacionService.reprogramar(id, datos, contexto);
-  }
-
-  @Post('audiencias/:id/cancelacion')
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @UseGuards(LimitePorUsuarioGuard)
-  @Throttle(LIMITE_ESCRITURAS)
-  cancelar(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(cancelarAudienciaSchema))
-    datos: CancelarAudienciaInput,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
-  ) {
-    return this.programacionService.cancelar(id, datos, contexto);
   }
 
   @Patch('audiencias/:id/responsable')

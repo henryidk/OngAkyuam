@@ -67,7 +67,7 @@ export function audienciaEnHora(
 /** La acción que se muestra destacada; el resto la acompaña. Orden = prioridad. */
 const ACCIONES_PRINCIPALES: AccionAudiencia[] = ['REGISTRAR_RESULTADO', 'AGENDAR_NUEVA_FECHA', 'REPROGRAMAR']
 
-/** Orden de las demás: primero lo del día a día, cancelar siempre al final. */
+/** Orden de las demás: primero lo del día a día. */
 const ORDEN_SECUNDARIAS: AccionAudiencia[] = [
   'EDITAR_OBSERVACIONES',
   'ADJUNTAR_DOCUMENTO',
@@ -75,7 +75,6 @@ const ORDEN_SECUNDARIAS: AccionAudiencia[] = [
   'AGENDAR_NUEVA_FECHA',
   'CAMBIAR_RESPONSABLE',
   'REGISTRAR_RESULTADO',
-  'CANCELAR',
 ]
 
 export function separarAcciones(acciones: AccionAudiencia[]): {
@@ -89,7 +88,6 @@ export function separarAcciones(acciones: AccionAudiencia[]): {
 export const ETIQUETAS_ACCION_AUDIENCIA: Record<AccionAudiencia, string> = {
   REPROGRAMAR: 'Reprogramar',
   CAMBIAR_RESPONSABLE: 'Cambiar responsable',
-  CANCELAR: 'Cancelar audiencia',
   REGISTRAR_RESULTADO: 'Registrar resultado',
   EDITAR_OBSERVACIONES: 'Observaciones',
   ADJUNTAR_DOCUMENTO: 'Adjuntar documento',

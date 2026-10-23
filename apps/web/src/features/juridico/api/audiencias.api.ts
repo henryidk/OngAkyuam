@@ -5,7 +5,6 @@ import type {
   AudienciaDetalleDto,
   AudienciasPaginadas,
   CambiarResponsableAudienciaInput,
-  CancelarAudienciaInput,
   DisponibilidadAudienciasDto,
   DisponibilidadAudienciasQuery,
   DocumentoProcesoDto,
@@ -47,10 +46,6 @@ export function reprogramarAudiencia(audienciaId: string, datos: ReprogramarAudi
   return api
     .post<AudienciaAgendadaDto>(`/juridico/audiencias/${audienciaId}/reprogramacion`, datos)
     .then((res) => res.data)
-}
-
-export function cancelarAudiencia(audienciaId: string, datos: CancelarAudienciaInput) {
-  return api.post<void>(`/juridico/audiencias/${audienciaId}/cancelacion`, datos).then(() => undefined)
 }
 
 export function cambiarResponsableAudiencia(audienciaId: string, datos: CambiarResponsableAudienciaInput) {

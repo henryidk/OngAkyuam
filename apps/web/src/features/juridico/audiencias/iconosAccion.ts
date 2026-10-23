@@ -5,7 +5,6 @@ import {
   MessageSquareText,
   Paperclip,
   UserRound,
-  XCircle,
   type LucideIcon,
 } from 'lucide-react'
 import type { AccionAudiencia } from '@akyuam/shared'
@@ -18,5 +17,4 @@ export const ICONOS_ACCION_AUDIENCIA: Record<AccionAudiencia, LucideIcon> = {
   CAMBIAR_RESPONSABLE: UserRound,
   EDITAR_OBSERVACIONES: MessageSquareText,
   ADJUNTAR_DOCUMENTO: Paperclip,
-  CANCELAR: XCircle,
 }

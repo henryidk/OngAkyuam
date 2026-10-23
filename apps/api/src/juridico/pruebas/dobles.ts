@@ -161,7 +161,6 @@ export function crearAudienciasRepository(): jest.Mocked<IAudienciasRepository> 
     buscarParaEscritura: jest.fn().mockResolvedValue(audienciaParaEscritura()),
     agendar: jest.fn().mockResolvedValue(escrituraOk()),
     reprogramar: jest.fn().mockResolvedValue(escrituraOk()),
-    cancelar: jest.fn().mockResolvedValue(escrituraOk()),
     cambiarResponsable: jest.fn().mockResolvedValue(escrituraOk()),
     registrarResultado: jest.fn().mockResolvedValue(escrituraOk()),
     editarObservaciones: jest.fn().mockResolvedValue(escrituraOk()),
