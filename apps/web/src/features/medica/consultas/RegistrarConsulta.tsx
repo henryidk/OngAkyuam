@@ -44,7 +44,7 @@ export default function RegistrarConsulta() {
   const [params] = useSearchParams()
   const cita = params.get('cita') ?? undefined
   const usuaria = params.get('usuaria') ?? undefined
-  const origen: OrigenConsulta = params.get('origen') === 'ficha' ? 'ficha' : 'agenda'
+  const origen: OrigenConsulta = params.get('origen') === 'ficha' ? 'ficha' : 'consultas'
 
   const cargar = useCallback(() => {
     if (!cita && !usuaria) return Promise.reject(new Error('Falta indicar la cita o la paciente.'))
@@ -57,7 +57,7 @@ export default function RegistrarConsulta() {
     migas:
       origen === 'ficha' && contexto
         ? [{ etiqueta: contexto.usuariaNombreCompleto, ruta: RUTAS_MEDICA.paciente(contexto.usuariaId) }]
-        : [{ etiqueta: 'Agenda', ruta: RUTAS_MEDICA.agenda(contexto?.cita?.fecha) }],
+        : [{ etiqueta: 'Consultas', ruta: RUTAS_MEDICA.consultas() }],
   })
 
   if (error) {
@@ -117,7 +117,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
     }
   }, [hayCambios])
 
-  const rutaVolver = origen === 'ficha' ? RUTAS_MEDICA.paciente(contexto.usuariaId) : RUTAS_MEDICA.agenda(contexto.cita?.fecha)
+  const rutaVolver = origen === 'ficha' ? RUTAS_MEDICA.paciente(contexto.usuariaId) : RUTAS_MEDICA.consultas()
 
   function elegirPersona(nuevo: string | null) {
     const anterior = persona
@@ -163,8 +163,8 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
       }`
       const rutaHistoria = RUTAS_MEDICA.historia(registrada.usuariaId, undefined, registrada.consultaId)
       recargarContadores()
-      if (origen === 'agenda') {
-        navigate(RUTAS_MEDICA.agenda(contexto.cita?.fecha ?? hoy))
+      if (origen === 'consultas') {
+        navigate(RUTAS_MEDICA.consultas())
         mostrar(mensaje, 'success', { etiqueta: 'Ver en historia clínica', onClick: () => navigate(rutaHistoria) })
       } else {
         navigate(rutaHistoria)

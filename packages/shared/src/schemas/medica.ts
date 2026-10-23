@@ -442,15 +442,6 @@ export interface SemanaAgendaMedicaDto {
   dias: DiaSemanaAgendaMedicaDto[]
 }
 
-export interface PendientePrimeraConsultaDto {
-  referidoId: string
-  expedienteId: string
-  expedienteNumero: string
-  usuariaId: string
-  usuariaNombreCompleto: string
-  referidoEn: string
-}
-
 export interface SinProximaConsultaDto {
   usuariaId: string
   expedienteId: string
@@ -465,9 +456,6 @@ export interface SinProximaConsultaDto {
 export interface DiaAgendaMedicaDto {
   fecha: string
   citas: CitaAgendaMedicaDto[]
-  pendientes: PendientePrimeraConsultaDto[]
-  /** Solo de otros días: las del día abierto ya están en la lista. */
-  sinRegistrar: CitaAgendaMedicaDto[]
   sinProxima: SinProximaConsultaDto[]
 }
 
@@ -484,8 +472,8 @@ export interface PorAtenderMedicaDto {
 export interface ContadoresMedicaDto {
   /** Referencias pendientes de primera consulta. */
   areaAtencion: number
-  /** Citas de hoy por atender (programadas, en curso o sin registrar). */
-  agendaHoy: number
+  /** Lo de "Por atender" en Consultas: citas de hoy pendientes más las atrasadas sin registrar. */
+  consultasPorAtender: number
 }
 
 /**

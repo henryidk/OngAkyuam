@@ -31,6 +31,7 @@ import PestanaResumenMedica from './features/medica/pacientes/PestanaResumen'
 import PestanaHistoriaMedica from './features/medica/pacientes/PestanaHistoria'
 import PestanaDocumentosMedica from './features/medica/pacientes/PestanaDocumentos'
 import PestanaDatosMedica from './features/medica/pacientes/PestanaDatos'
+import PaginaConsultasMedica from './features/medica/consultas/PaginaConsultas'
 import RegistrarConsultaMedica from './features/medica/consultas/RegistrarConsulta'
 import ReportesMedica from './features/medica/reportes/Reportes'
 import { RUTAS_MEDICA } from './features/medica/rutas'
@@ -169,6 +170,7 @@ function App() {
               <Route path="documentos" element={<PestanaDocumentosMedica />} />
               <Route path="datos" element={<PestanaDatosMedica />} />
             </Route>
+            <Route path="consultas" element={<PaginaConsultasMedica />} />
             <Route path="consultas/nueva" element={<RegistrarConsultaMedica />} />
             <Route path="reportes" element={<ReportesMedica />} />
             {/* Ruta vieja del detalle por expediente: lleva al área de atención. */}

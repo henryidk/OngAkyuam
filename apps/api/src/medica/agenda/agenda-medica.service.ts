@@ -33,8 +33,8 @@ import {
 const DIAS_SEMANA_LABORAL = 5;
 
 /**
- * La Agenda de la médica: tira de la semana, día abierto con sus paneles y horas libres para los
- * modales de programar. Solo lectura; nunca devuelve datos clínicos.
+ * La Agenda de la médica: tira de la semana, día abierto con "Sin próxima consulta" y horas libres
+ * para los modales de programar. Registrar e inasistencias viven en Consultas › Por atender. Solo lectura; nunca devuelve datos clínicos.
  */
 @Injectable()
 export class AgendaMedicaService {
@@ -73,28 +73,15 @@ export class AgendaMedicaService {
 
   async dia(fecha: string): Promise<DiaAgendaMedicaDto> {
     const ahora = this.reloj.ahora();
-    const desde = inicioDiaGT(fecha);
-    const hasta = inicioDiaGT(sumarDiasGT(fecha, 1));
-    const [citas, sinRegistrar, referencias, sinProxima] = await Promise.all([
-      this.lectorCitas.citasEntre(desde, hasta, ahora),
-      this.lectorCitas.citasSinRegistrar(ahora, desde, hasta),
-      this.lectorPendientes.referenciasPendientes(),
+    const [citas, sinProxima] = await Promise.all([
+      this.lectorCitas.citasEntre(
+        inicioDiaGT(fecha),
+        inicioDiaGT(sumarDiasGT(fecha, 1)),
+        ahora,
+      ),
       this.lectorPendientes.sinProxima(),
     ]);
-    return {
-      fecha,
-      citas,
-      pendientes: referencias.map((r) => ({
-        referidoId: r.referidoId,
-        expedienteId: r.expedienteId,
-        expedienteNumero: r.expedienteNumero,
-        usuariaId: r.usuariaId,
-        usuariaNombreCompleto: r.usuariaNombreCompleto,
-        referidoEn: r.referidoEn,
-      })),
-      sinRegistrar,
-      sinProxima,
-    };
+    return { fecha, citas, sinProxima };
   }
 
   /** Horas libres de los próximos días hábiles. Nunca dice quién ocupa cada hora. */

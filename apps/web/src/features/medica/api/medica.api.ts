@@ -1,7 +1,9 @@
 import type {
   AltaAtencionMedicaInput,
   AltaAtencionMedicaRegistradaDto,
+  BuscarHistorialConsultasMedicaInput,
   CitaMedicaProgramadaDto,
+  ConsultaMedicaDto,
   ConsultaMedicaRegistradaDto,
   ConsultasMedicasPaginaDto,
   ConsultasPacienteMedicaQuery,
@@ -14,12 +16,14 @@ import type {
   DocumentoMedicoSubidoDto,
   ExpedienteDetalleArea,
   FichaPacienteMedicaDto,
+  HistorialConsultasMedicaPaginaDto,
   IndicadoresMedica,
   InasistenciaCitaMedicaInput,
   InasistenciaRegistradaDto,
   ListarPacientesMedicaQuery,
   PacienteProgramableDto,
   PacientesMedicaPaginaDto,
+  PorAtenderMedicaDto,
   ProgramablesMedicaQuery,
   ProgramarCitaMedicaInput,
   ReferenciaBandejaMedicaDto,
@@ -93,6 +97,26 @@ export function reprogramarCita(citaId: string, datos: ReprogramarCitaMedicaInpu
 
 export function obtenerContextoConsulta(query: ContextoConsultaMedicaQuery) {
   return api.get<ContextoConsultaMedicaDto>('/medica/consultas/contexto', { params: query }).then((res) => res.data)
+}
+
+/** Citas de hoy pendientes y las atrasadas sin registrar. */
+export function listarPorAtender() {
+  return api.get<PorAtenderMedicaDto>('/medica/consultas/por-atender').then((res) => res.data)
+}
+
+/**
+ * Historial de consultas: solo metadatos. Es POST porque `q` puede ser el nombre de una
+ * sobreviviente y en el cuerpo no queda en logs ni en el historial del navegador.
+ */
+export function buscarHistorialConsultas(datos: BuscarHistorialConsultasMedicaInput) {
+  return api
+    .post<HistorialConsultasMedicaPaginaDto>('/medica/consultas/historial/busqueda', datos)
+    .then((res) => res.data)
+}
+
+/** Contenido clínico completo de una consulta; el backend deja constancia de la lectura. */
+export function obtenerConsulta(consultaId: string) {
+  return api.get<ConsultaMedicaDto>(`/medica/consultas/${consultaId}`).then((res) => res.data)
 }
 
 export function registrarConsulta(datos: RegistrarConsultaMedicaInput, claveIdempotencia: string) {
