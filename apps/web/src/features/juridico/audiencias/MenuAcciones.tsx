@@ -6,12 +6,17 @@ export interface OpcionMenu {
   clave: string
   etiqueta: string
   Icono?: LucideIcon
+  /** Segunda línea en gris que explica qué pasa al elegirla. */
+  detalle?: string
+  /** `aviso`: ámbar, para lo que cambia el estado del caso de forma delicada (abandono). */
+  tono?: 'aviso'
   onElegir: () => void
 }
 
 const SEPARACION_PX = 4
 /** Alto aproximado de cada opción y del relleno del menú, para decidir si abre hacia arriba. */
 const ALTO_OPCION_PX = 36
+const ALTO_OPCION_CON_DETALLE_PX = 54
 const RELLENO_MENU_PX = 8
 
 interface Posicion {
@@ -20,12 +25,27 @@ interface Posicion {
   right: number
 }
 
+const CLASES_BOTON = {
+  fila: 'rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-800',
+  borde:
+    'flex h-[38px] w-[38px] items-center justify-center rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 aria-expanded:bg-gray-50',
+}
+
 /**
- * Menú "⋯" de la fila. Va en un portal con posición fija porque la tabla recorta lo que se sale
+ * Menú "⋯" de una fila o de una cabecera. Va en un portal con posición fija porque la tabla recorta lo que se sale
  * de su scroll horizontal. Se cierra con Esc, al elegir, al tocar fuera o al desplazar la página,
  * y Esc devuelve el foco al botón.
  */
-export default function MenuAcciones({ opciones, etiqueta }: { opciones: OpcionMenu[]; etiqueta: string }) {
+export default function MenuAcciones({
+  opciones,
+  etiqueta,
+  boton: estiloBoton = 'fila',
+}: {
+  opciones: OpcionMenu[]
+  etiqueta: string
+  /** `fila`: discreto, dentro de una tabla. `borde`: junto a los botones de una cabecera. */
+  boton?: keyof typeof CLASES_BOTON
+}) {
   const [posicion, setPosicion] = useState<Posicion | null>(null)
   const boton = useRef<HTMLButtonElement>(null)
   const menu = useRef<HTMLDivElement>(null)
@@ -36,7 +56,9 @@ export default function MenuAcciones({ opciones, etiqueta }: { opciones: OpcionM
     const rect = boton.current?.getBoundingClientRect()
     if (abierto || !rect) return setPosicion(null)
     const right = window.innerWidth - rect.right
-    const alto = opciones.length * ALTO_OPCION_PX + RELLENO_MENU_PX
+    const alto =
+      opciones.reduce((total, opcion) => total + (opcion.detalle ? ALTO_OPCION_CON_DETALLE_PX : ALTO_OPCION_PX), 0) +
+      RELLENO_MENU_PX
     // En las últimas filas no cabe hacia abajo: se abre hacia arriba del botón.
     const cabeAbajo = rect.bottom + SEPARACION_PX + alto <= window.innerHeight
     setPosicion(
@@ -81,9 +103,9 @@ export default function MenuAcciones({ opciones, etiqueta }: { opciones: OpcionM
         aria-expanded={abierto}
         aria-controls={abierto ? idMenu : undefined}
         onClick={alternar}
-        className="rounded p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+        className={CLASES_BOTON[estiloBoton]}
       >
-        <MoreHorizontal size={16} aria-hidden="true" />
+        <MoreHorizontal size={estiloBoton === 'borde' ? 18 : 16} aria-hidden="true" />
       </button>
       {posicion &&
         createPortal(
@@ -92,7 +114,9 @@ export default function MenuAcciones({ opciones, etiqueta }: { opciones: OpcionM
             id={idMenu}
             role="menu"
             style={posicion}
-            className="fixed z-40 min-w-[220px] rounded-lg border border-gray-200 bg-white py-1 shadow-lg"
+            className={`fixed z-40 rounded-lg border border-gray-200 bg-white shadow-lg ${
+              opciones.some((opcion) => opcion.detalle) ? 'w-[280px] max-w-[calc(100vw-32px)] p-1.5' : 'min-w-[220px] py-1'
+            }`}
           >
             {opciones.map((opcion) => (
               <button
@@ -103,10 +127,19 @@ export default function MenuAcciones({ opciones, etiqueta }: { opciones: OpcionM
                   setPosicion(null)
                   opcion.onElegir()
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 focus:bg-gray-50 focus:outline-none"
+                className={`flex w-full items-center gap-2 px-3 text-left text-sm hover:bg-gray-50 focus:bg-gray-50 focus:outline-none ${
+                  opcion.detalle ? 'rounded-md py-2' : 'py-2'
+                } ${opcion.tono === 'aviso' ? 'text-[#8a5a14]' : 'text-gray-700'}`}
               >
-                {opcion.Icono && <opcion.Icono size={15} aria-hidden="true" className="text-gray-500" />}
-                {opcion.etiqueta}
+                {opcion.Icono && <opcion.Icono size={15} aria-hidden="true" className="shrink-0 text-gray-500" />}
+                {opcion.detalle ? (
+                  <span className="min-w-0">
+                    <span className="block font-medium">{opcion.etiqueta}</span>
+                    <span className="block text-xs text-gray-500">{opcion.detalle}</span>
+                  </span>
+                ) : (
+                  opcion.etiqueta
+                )}
               </button>
             ))}
           </div>,

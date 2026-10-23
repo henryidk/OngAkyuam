@@ -265,11 +265,15 @@ export interface ProximaAudienciaDto {
   estadoVisible: Extract<EstadoVisibleAudiencia, 'PROXIMA' | 'HOY' | 'PENDIENTE_RESULTADO'>
 }
 
-/** Audiencia que se cancelaría al cerrar el proceso: "21/10/2026 09:30 · Lcda. X" (§8.4). */
+/**
+ * Audiencia programada del proceso: el modal de cierre lista las que se cancelarían
+ * ("21/10/2026 09:30 · Lcda. X", §8.4) y la ficha muestra la próxima con su descripción.
+ */
 export interface AudienciaProgramadaDto {
   id: string
   fecha: string
   hora: string
+  descripcion: string | null
   responsable: PersonalAsignado
 }
 

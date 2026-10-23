@@ -277,6 +277,7 @@ export class ProcesosRepository implements IProcesosRepository {
           select: {
             id: true,
             inicio: true,
+            descripcion: true,
             responsable: { select: { id: true, nombre: true } },
           },
         },
@@ -334,6 +335,7 @@ export class ProcesosRepository implements IProcesosRepository {
         id: audiencia.id,
         fecha: fechaCalendarioGT(audiencia.inicio),
         hora: horaGT(audiencia.inicio),
+        descripcion: audiencia.descripcion,
         responsable: audiencia.responsable,
       })),
     };

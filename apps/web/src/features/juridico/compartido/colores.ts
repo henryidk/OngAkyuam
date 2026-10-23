@@ -26,6 +26,14 @@ export const CLASES_BARRA: Record<EstadoVisibleProceso, string> = {
   SUSPENDIDO: 'bg-[#4a5360]',
 }
 
+/** Borde del punto alcanzado en los pasos del detalle: el mismo tono que su relleno. */
+export const CLASES_BORDE_PASO: Record<EstadoVisibleProceso, string> = {
+  EN_TRAMITE: 'border-[#7346a5]',
+  FINALIZADO: 'border-[#2f6b3f]',
+  ABANDONADO: 'border-[#8a5a14]',
+  SUSPENDIDO: 'border-[#4a5360]',
+}
+
 /** Relleno de las barras del reporte por forma de finalización. */
 export const CLASES_BARRA_FORMA: Record<FormaFinalizacionProceso, string> = {
   CONVENIO: 'bg-[#1f4f8a]',

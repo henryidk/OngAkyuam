@@ -4,7 +4,7 @@ import {
   type EstadoVisibleProceso,
   type FaseProcesoJuridico,
 } from '@akyuam/shared'
-import { CLASES_BARRA } from './colores'
+import { CLASES_BARRA, CLASES_BORDE_PASO } from './colores'
 
 interface BarraAvanceProps {
   fase: FaseProcesoJuridico
@@ -35,28 +35,25 @@ export function BarraAvanceCompacta({ fase, estado }: BarraAvanceProps) {
   )
 }
 
-/** Los tres pasos del proceso, numerados, dentro de la tarjeta de encabezado del detalle. */
+/** Los tres pasos del proceso en una línea (punto, tramo, punto) dentro de la cabecera del detalle. */
 export default function BarraAvance({ fase, estado }: BarraAvanceProps) {
   const actual = FASES_PROCESO_JURIDICO.indexOf(fase)
   return (
-    <ol className="flex max-w-[620px] items-start">
+    <ol className="flex flex-wrap items-center gap-2 text-[13px]" aria-label="Avance del proceso">
       {FASES_PROCESO_JURIDICO.map((paso, indice) => {
         const alcanzado = indice <= actual
         return (
-          <li key={paso} className="flex flex-1 flex-col gap-1.5" aria-current={indice === actual ? 'step' : undefined}>
-            <div className="flex items-center">
-              <span
-                className={`flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                  alcanzado ? `${CLASES_BARRA[estado]} text-white` : 'bg-gray-100 text-gray-500'
-                }`}
-              >
-                {indice + 1}
-              </span>
-              {indice < FASES_PROCESO_JURIDICO.length - 1 && (
-                <span className={`mx-2 h-0.5 flex-1 ${indice < actual ? CLASES_BARRA[estado] : 'bg-gray-200'}`} />
-              )}
-            </div>
-            <span className={`text-xs ${alcanzado ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
+          <li key={paso} className="flex items-center gap-2" aria-current={indice === actual ? 'step' : undefined}>
+            {indice > 0 && (
+              <span aria-hidden="true" className={`h-0.5 w-6 sm:w-10 ${alcanzado ? CLASES_BARRA[estado] : 'bg-gray-200'}`} />
+            )}
+            <span
+              aria-hidden="true"
+              className={`h-2.5 w-2.5 shrink-0 rounded-full border-2 ${
+                alcanzado ? `${CLASES_BARRA[estado]} ${CLASES_BORDE_PASO[estado]}` : 'border-gray-300 bg-white'
+              }`}
+            />
+            <span className={`whitespace-nowrap ${alcanzado ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
               {ETIQUETAS_FASE[paso]}
             </span>
           </li>

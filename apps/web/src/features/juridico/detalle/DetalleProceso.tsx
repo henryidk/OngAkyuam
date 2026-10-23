@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Link, Outlet, useParams } from 'react-router-dom'
 import {
   ETIQUETAS_FORMA_FINALIZACION,
@@ -8,6 +8,7 @@ import {
   type ProcesoDetalle,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
+import Button from '../../../components/ui/Button'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import { useToast } from '../../../components/ui/Toast'
 import { obtenerProceso, reactivarProceso } from '../api/juridico.api'
@@ -26,49 +27,88 @@ import ModalAbandono from './ModalAbandono'
 import ModalActuacion from './ModalActuacion'
 import ModalFinalizar from './ModalFinalizar'
 import ModalSuspender from './ModalSuspender'
-import PanelCierre from './PanelCierre'
 import PanelDatos from './PanelDatos'
 import { useEnvio } from './useEnvio'
 
 type ModalAbierto = 'actuacion' | 'finalizar' | 'suspender' | 'abandono' | 'reactivar' | 'numeroJudicial'
 
-const CLASE_BANNER = 'rounded-xl border px-5 py-3.5 text-sm'
 const CLASE_TARJETA = 'rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]'
 
-function Banners({ proceso }: { proceso: ProcesoDetalle }) {
-  const { abandonoVigente: abandono, suspensionVigente: suspension } = proceso
+/** Colores del aviso de estado (los del mockup): gris en pausa, ámbar si se abandonó, verde al cerrar. */
+const TONOS_AVISO = {
+  suspendido: 'border-[#d9dce1] bg-[#f3f4f6] [--tono:#4a5360]',
+  abandonado: 'border-[#ecd9b8] bg-[#fbf1de] [--tono:#8a5a14]',
+  finalizado: 'border-[#c7e0cd] bg-[#e7f1ea] [--tono:#2f6b3f]',
+}
+
+function Aviso({
+  tono,
+  titulo,
+  children,
+  onReactivar,
+}: {
+  tono: keyof typeof TONOS_AVISO
+  titulo: string
+  children?: ReactNode
+  onReactivar: (() => void) | null
+}) {
   return (
-    <>
-      {abandono && (
-        <div className={`${CLASE_BANNER} border-red-200 bg-red-50 text-gray-800`}>
-          <p className="font-semibold text-red-800">
-            Caso abandonado · {formatFechaGT(abandono.fecha)} · {ETIQUETAS_MOTIVO_ABANDONO[abandono.motivoCatalogo]}
-          </p>
-          {abandono.observaciones && <p className="mt-1">{abandono.observaciones}</p>}
-          <p className="mt-1 text-xs text-gray-600">
-            Último contacto: {abandono.ultimoContacto ? formatFechaGT(abandono.ultimoContacto) : 'no registrado'} ·{' '}
-            {abandono.intentosContacto} intentos de contacto ·{' '}
-            {abandono.notificadoATs ? 'Notificado a Trabajo Social' : 'Sin notificar a Trabajo Social'}
-          </p>
-        </div>
+    <div role="status" className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-5 py-3.5 ${TONOS_AVISO[tono]}`}>
+      <div className="min-w-0 flex-1 basis-[320px] space-y-0.5">
+        <p className="text-[15px] font-semibold text-(--tono)">{titulo}</p>
+        {children}
+      </div>
+      {onReactivar && (
+        <Button variante="secondary" tamano="md" onClick={onReactivar}>
+          Reactivar proceso
+        </Button>
       )}
-      {suspension && (
-        <div className={`${CLASE_BANNER} border-amber-200 bg-amber-50 text-gray-800`}>
-          <p className="font-semibold text-[#8a5a14]">Suspendido desde {fechaDeInstante(suspension.desde)}</p>
-          <p className="mt-1">{suspension.motivo}</p>
-        </div>
-      )}
-      {proceso.formaFinalizacion && (
-        <div className={`${CLASE_BANNER} border-green-200 bg-green-50 text-gray-800`}>
-          <p className="font-semibold text-green-800">
-            Finalizado por {ETIQUETAS_FORMA_FINALIZACION[proceso.formaFinalizacion]}
-            {proceso.fechaCierre && ` · ${formatFechaGT(proceso.fechaCierre)}`}
-          </p>
-          {proceso.detalleFinalizacion && <p className="mt-1">{proceso.detalleFinalizacion}</p>}
-        </div>
-      )}
-    </>
+    </div>
   )
+}
+
+/** Por qué el proceso no está en trámite, y la salida para volver a abrirlo cuando se puede. */
+function Banners({ proceso, onReactivar }: { proceso: ProcesoDetalle; onReactivar: () => void }) {
+  const { abandonoVigente: abandono, suspensionVigente: suspension } = proceso
+  const reactivar = proceso.accionesDisponibles.includes('REACTIVAR') ? onReactivar : null
+  const CLASE_TEXTO = 'text-sm text-pretty text-gray-700'
+  if (abandono) {
+    return (
+      <Aviso
+        tono="abandonado"
+        titulo={`Caso abandonado · ${formatFechaGT(abandono.fecha)} · ${ETIQUETAS_MOTIVO_ABANDONO[abandono.motivoCatalogo]}`}
+        onReactivar={reactivar}
+      >
+        {abandono.observaciones && <p className={CLASE_TEXTO}>{abandono.observaciones}</p>}
+        <p className="text-xs text-gray-600 tabular-nums">
+          Último contacto: {abandono.ultimoContacto ? formatFechaGT(abandono.ultimoContacto) : 'no registrado'} ·{' '}
+          {abandono.intentosContacto} {abandono.intentosContacto === 1 ? 'intento' : 'intentos'} de contacto ·{' '}
+          {abandono.notificadoATs ? 'Notificado a Trabajo Social' : 'Sin notificar a Trabajo Social'}
+        </p>
+      </Aviso>
+    )
+  }
+  if (suspension) {
+    return (
+      <Aviso tono="suspendido" titulo={`Proceso suspendido desde el ${fechaDeInstante(suspension.desde)}`} onReactivar={reactivar}>
+        <p className={CLASE_TEXTO}>{suspension.motivo}</p>
+      </Aviso>
+    )
+  }
+  if (proceso.formaFinalizacion) {
+    return (
+      <Aviso
+        tono="finalizado"
+        titulo={`Finalizado por ${ETIQUETAS_FORMA_FINALIZACION[proceso.formaFinalizacion]}${
+          proceso.fechaCierre ? ` · ${formatFechaGT(proceso.fechaCierre)}` : ''
+        }`}
+        onReactivar={reactivar}
+      >
+        {proceso.detalleFinalizacion && <p className={CLASE_TEXTO}>{proceso.detalleFinalizacion}</p>}
+      </Aviso>
+    )
+  }
+  return null
 }
 
 /** Reactivar no pide datos: una confirmación corta basta. */
@@ -139,7 +179,6 @@ export default function DetalleProceso() {
   }
   if (!proceso || !contexto) return <Esqueleto />
 
-  const acciones = proceso.accionesDisponibles
   const otros = proceso.otrosProcesosUsuaria
   const propsModal: PropsModalProceso = {
     proceso,
@@ -159,11 +198,13 @@ export default function DetalleProceso() {
         proceso={proceso}
         onAgendar={admiteAudiencias(proceso) ? () => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) }) : null}
         onActuacion={abrirActuacion}
-        onReactivar={() => setModal('reactivar')}
         onNumeroJudicial={abrirNumeroJudicial}
+        onFinalizar={() => setModal('finalizar')}
+        onSuspender={() => setModal('suspender')}
+        onAbandonar={() => setModal('abandono')}
       />
 
-      <Banners proceso={proceso} />
+      <Banners proceso={proceso} onReactivar={() => setModal('reactivar')} />
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
@@ -180,27 +221,22 @@ export default function DetalleProceso() {
             }}
             onConflicto={refrescar}
           />
-          <PanelCierre
-            acciones={acciones}
-            onFinalizar={() => setModal('finalizar')}
-            onSuspender={() => setModal('suspender')}
-            onAbandonar={() => setModal('abandono')}
-          />
           {otros.length > 0 && (
-            <section className={`${CLASE_TARJETA} p-4`}>
-              <h3 className="mb-2.5 text-sm font-semibold text-gray-900">Otros procesos de la usuaria</h3>
-              <ul>
+            <section className={`${CLASE_TARJETA} px-[18px] py-4`}>
+              <h3 className="mb-1.5 text-sm font-semibold text-gray-900">Otros procesos de la usuaria</h3>
+              <ul className="-mx-2">
                 {otros.map((otro) => (
-                  <li key={otro.id} className="py-1.5">
-                    <Link to={RUTAS_JURIDICO.proceso(otro.id)} className="group block">
+                  <li key={otro.id}>
+                    <Link
+                      to={RUTAS_JURIDICO.proceso(otro.id)}
+                      className="group flex flex-col items-start gap-1 rounded-lg px-2 py-2 hover:bg-gray-50"
+                    >
                       <span className="font-mono text-xs text-gray-500">{otro.codigo}</span>
-                      <span className="block text-[13px] text-gray-900 group-hover:underline">
+                      <span className="text-[13px] text-gray-900 group-hover:underline">
                         {ETIQUETAS_TIPO_PROCESO_JURIDICO[otro.tipo]}
                       </span>
-                    </Link>
-                    <div className="mt-1">
                       <EtiquetaEstado estado={otro.estadoVisible} />
-                    </div>
+                    </Link>
                   </li>
                 ))}
               </ul>

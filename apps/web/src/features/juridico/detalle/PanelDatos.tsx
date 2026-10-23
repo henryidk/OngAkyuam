@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
@@ -119,17 +119,19 @@ function FormularioAsignacion({
   )
 }
 
-const CLASE_DT = 'text-[11px] uppercase tracking-wide text-gray-500'
-const CLASE_ACCION = 'text-xs font-medium text-brand-700 hover:underline'
+const CLASE_ACCION = 'rounded text-[13px] font-medium text-brand-700 hover:underline'
 
-function Fila({ etiqueta, valor, vacio = false }: { etiqueta: string; valor: string; vacio?: boolean }) {
+/** Etiqueta en gris a la izquierda y el valor a la derecha, como una ficha. */
+function Fila({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
-    <div>
-      <dt className={CLASE_DT}>{etiqueta}</dt>
-      <dd className={`mt-0.5 text-sm ${vacio ? 'text-gray-400' : 'text-gray-900'}`}>{valor}</dd>
+    <div className="flex justify-between gap-3 text-[13px]">
+      <dt className="whitespace-nowrap text-gray-500">{etiqueta}</dt>
+      <dd className="min-w-0 text-right break-words text-gray-900">{children}</dd>
     </div>
   )
 }
+
+const SIN_ASIGNAR = <span className="text-gray-500">Sin asignar</span>
 
 /**
  * Datos del proceso. Cada dato que se cambia tiene su acción junto a él: el No. judicial abre su
@@ -153,60 +155,50 @@ export default function PanelDatos({ proceso, onGuardado, onConflicto, onNumeroJ
   }
 
   return (
-    <section className={`${CLASE_TARJETA} border border-gray-200 p-4`}>
+    <section className={`${CLASE_TARJETA} border border-gray-200 px-[18px] py-4`}>
       <h3 className="mb-3 text-sm font-semibold text-gray-900">Datos del proceso</h3>
       <dl className="space-y-2.5">
-        <Fila etiqueta="No. interno" valor={proceso.codigo} />
-        <div>
-          <div className="flex items-center justify-between gap-2">
-            <dt className={CLASE_DT}>No. judicial</dt>
-            {proceso.numeroJudicial && (
+        <Fila etiqueta="No. interno">
+          <span className="font-mono">{proceso.codigo}</span>
+        </Fila>
+        <Fila etiqueta="No. judicial">
+          {proceso.numeroJudicial ? (
+            <span className="inline-flex flex-col items-end gap-0.5">
+              <span className="font-mono break-all">{proceso.numeroJudicial}</span>
               <button type="button" onClick={onNumeroJudicial} className={CLASE_ACCION}>
                 Corregir
               </button>
-            )}
-          </div>
-          <dd className="mt-0.5 text-sm">
-            {proceso.numeroJudicial ? (
-              <span className="break-all font-mono text-gray-900">{proceso.numeroJudicial}</span>
-            ) : (
-              <button
-                type="button"
-                onClick={onNumeroJudicial}
-                className="mt-0.5 w-full rounded-lg border border-dashed border-gray-300 px-3 py-2 text-left text-[13px] font-medium text-brand-700 hover:border-brand-600 hover:bg-brand-50"
-              >
-                + Agregar No. judicial
-              </button>
-            )}
-          </dd>
-        </div>
-
-        <div className="space-y-2.5 border-t border-gray-100 pt-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-semibold text-gray-700">Asignación</p>
-            <button type="button" onClick={() => setEditando(true)} className={CLASE_ACCION}>
-              Cambiar
+            </span>
+          ) : (
+            <button type="button" onClick={onNumeroJudicial} className={CLASE_ACCION}>
+              + Agregar
             </button>
-          </div>
-          <Fila etiqueta="Abogada" valor={proceso.abogada?.nombre ?? 'Sin asignar'} vacio={!proceso.abogada} />
-          <Fila etiqueta="Procuradora" valor={proceso.procuradora?.nombre ?? 'Sin asignar'} vacio={!proceso.procuradora} />
-        </div>
-
-        <div className="space-y-2.5 border-t border-gray-100 pt-2.5">
-          <Fila etiqueta="Fecha de inicio" valor={formatFechaGT(proceso.fechaInicio)} />
-          {proceso.fechaCierre && <Fila etiqueta="Fecha de cierre" valor={formatFechaGT(proceso.fechaCierre)} />}
-          {proceso.procesoOrigen && (
-            <div>
-              <dt className={CLASE_DT}>Proceso de origen</dt>
-              <dd className="mt-0.5 text-sm">
-                <Link to={RUTAS_JURIDICO.proceso(proceso.procesoOrigen.id)} className="text-brand-700 hover:underline">
-                  {proceso.procesoOrigen.codigo} · {ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.procesoOrigen.tipo]}
-                </Link>
-              </dd>
-            </div>
           )}
-        </div>
+        </Fila>
+        <Fila etiqueta="Abogada">{proceso.abogada?.nombre ?? SIN_ASIGNAR}</Fila>
+        <Fila etiqueta="Procuradora">{proceso.procuradora?.nombre ?? SIN_ASIGNAR}</Fila>
+        <Fila etiqueta="Inicio">
+          <span className="tabular-nums">{formatFechaGT(proceso.fechaInicio)}</span>
+        </Fila>
+        {proceso.fechaCierre && (
+          <Fila etiqueta="Cierre">
+            <span className="tabular-nums">{formatFechaGT(proceso.fechaCierre)}</span>
+          </Fila>
+        )}
+        {proceso.procesoOrigen && (
+          <Fila etiqueta="Origen">
+            <Link to={RUTAS_JURIDICO.proceso(proceso.procesoOrigen.id)} className="group block">
+              <span className="font-mono text-brand-700 group-hover:underline">{proceso.procesoOrigen.codigo}</span>
+              <span className="block text-xs text-gray-500">
+                {ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.procesoOrigen.tipo]}
+              </span>
+            </Link>
+          </Fila>
+        )}
       </dl>
+      <button type="button" onClick={() => setEditando(true)} className={`${CLASE_ACCION} mt-3`}>
+        Cambiar asignación
+      </button>
     </section>
   )
 }

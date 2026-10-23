@@ -6,6 +6,8 @@ export interface TabItem {
   etiqueta: string
   /** Coincidencia exacta de ruta (para la pestaña índice) — mismo significado que `end` de `NavLink`. */
   fin?: boolean
+  /** Cantidad que acompaña a la etiqueta, en gris (ej. "Documentos 4"). */
+  conteo?: number
 }
 
 interface TabsProps {
@@ -33,6 +35,9 @@ export default function Tabs({ items, className }: TabsProps) {
           }
         >
           {item.etiqueta}
+          {item.conteo !== undefined && (
+            <span className="ml-1.5 font-medium text-gray-500 tabular-nums">{item.conteo}</span>
+          )}
         </NavLink>
       ))}
     </nav>
