@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import type { AudienciaOcupadaDto } from '@akyuam/shared'
-import { agruparPorDia, audienciaEnHora, etiquetaDia, separarAcciones, textoEnlazada, textoEspera, textoFechaHora } from './formato'
+import {
+  agruparPorDia,
+  audienciaEnHora,
+  etiquetaAccionAudiencia,
+  etiquetaDia,
+  separarAcciones,
+  textoEnlazada,
+  textoEspera,
+  textoFechaHora,
+} from './formato'
 
 // Datos ficticios. 2026-10-20 es martes.
 const HOY = '2026-10-20'
@@ -87,11 +96,26 @@ describe('separarAcciones', () => {
     })
   })
 
-  it('sin acción principal todo queda en el menú', () => {
+  it('cancelar queda siempre al final, sin importar el orden en que llegan', () => {
+    expect(separarAcciones(['CANCELAR', 'CAMBIAR_RESPONSABLE', 'ADJUNTAR_DOCUMENTO', 'REGISTRAR_RESULTADO'])).toEqual({
+      principal: 'REGISTRAR_RESULTADO',
+      secundarias: ['ADJUNTAR_DOCUMENTO', 'CAMBIAR_RESPONSABLE', 'CANCELAR'],
+    })
+  })
+
+  it('sin acción principal todas quedan como secundarias', () => {
     expect(separarAcciones(['EDITAR_OBSERVACIONES', 'ADJUNTAR_DOCUMENTO'])).toEqual({
       principal: null,
       secundarias: ['EDITAR_OBSERVACIONES', 'ADJUNTAR_DOCUMENTO'],
     })
+  })
+})
+
+describe('etiquetaAccionAudiencia', () => {
+  it('observaciones dice si ya hay algo escrito', () => {
+    expect(etiquetaAccionAudiencia('EDITAR_OBSERVACIONES', { observaciones: null })).toBe('Agregar observaciones')
+    expect(etiquetaAccionAudiencia('EDITAR_OBSERVACIONES', { observaciones: 'Texto ficticio' })).toBe('Editar observaciones')
+    expect(etiquetaAccionAudiencia('ADJUNTAR_DOCUMENTO', { observaciones: null })).toBe('Adjuntar documento')
   })
 })
 

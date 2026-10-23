@@ -100,9 +100,30 @@ export function registrarActuacion(procesoId: string, datos: RegistrarActuacionI
   return api.post<EntradaBitacoraDto>(`/juridico/procesos/${procesoId}/bitacora`, datos).then((res) => res.data)
 }
 
-/** Tipos de actuación ya escritos: primero los de este proceso, luego los más usados en su tipo. */
-export function obtenerTiposActuacion(procesoId: string) {
-  return api.get<string[]>(`/juridico/procesos/${procesoId}/tipos-actuacion`).then((res) => res.data)
+interface OpcionesSubidaActuacion {
+  tanda: string
+  signal: AbortSignal
+  onProgreso: (porcentaje: number) => void
+}
+
+/** El documento queda en la carpeta "Actuaciones" del proceso y enlazado a la actuación. */
+export function subirDocumentoActuacion(
+  procesoId: string,
+  actuacionId: string,
+  archivo: File,
+  nombreVisible: string,
+  { tanda, signal, onProgreso }: OpcionesSubidaActuacion,
+) {
+  const form = new FormData()
+  form.append('archivo', archivo)
+  if (nombreVisible) form.append('nombreVisible', nombreVisible)
+  return api
+    .post<DocumentoProcesoDto>(`/juridico/procesos/${procesoId}/bitacora/${actuacionId}/documentos`, form, {
+      headers: { 'X-Lote-Subida': tanda },
+      signal,
+      onUploadProgress: (evento) => onProgreso(evento.total ? Math.round((evento.loaded / evento.total) * 100) : 0),
+    })
+    .then((res) => res.data)
 }
 
 // ---- Área de atención ----

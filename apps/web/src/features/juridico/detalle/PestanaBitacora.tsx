@@ -1,9 +1,13 @@
 import { useState } from 'react'
-import { NotebookPen } from 'lucide-react'
+import { NotebookPen, Paperclip } from 'lucide-react'
 import { formatInstanteGT, type EntradaBitacoraDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import EmptyState from '../../../components/ui/EmptyState'
+import { useToast } from '../../../components/ui/Toast'
+import DocumentosAdjuntos from '../documentos/DocumentosAdjuntos'
+import { useAbrirDocumento } from '../documentos/useAbrirDocumento'
 import { useContextoDetalle } from './contextoDetalle'
+import ModalDocumentosActuacion from './ModalDocumentosActuacion'
 
 type Filtro = 'todo' | 'actuaciones' | 'sistema'
 
@@ -14,8 +18,11 @@ const FILTROS: { id: Filtro; etiqueta: string; incluye: (entrada: EntradaBitacor
 ]
 
 export default function PestanaBitacora() {
-  const { proceso, abrirActuacion } = useContextoDetalle()
+  const { proceso, abrirActuacion, refrescar } = useContextoDetalle()
   const [filtro, setFiltro] = useState<Filtro>('todo')
+  const [adjuntarA, setAdjuntarA] = useState<EntradaBitacoraDto | null>(null)
+  const { ver, descargar } = useAbrirDocumento(proceso.id)
+  const { mostrar } = useToast()
 
   if (proceso.bitacora.length === 0) {
     return (
@@ -80,10 +87,43 @@ export default function PestanaBitacora() {
                   <span className="text-xs text-gray-400">{entrada.registradoPor}</span>
                 </div>
                 <p className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-800">{entrada.contenido}</p>
+                {entrada.documentos.length > 0 && (
+                  <div className="mt-2">
+                    <DocumentosAdjuntos
+                      documentos={entrada.documentos}
+                      onVer={(documento) => void ver(documento)}
+                      onDescargar={(documento) => void descargar(documento)}
+                    />
+                  </div>
+                )}
+                {!entrada.esSistema && (
+                  <button
+                    type="button"
+                    onClick={() => setAdjuntarA(entrada)}
+                    className="mt-1.5 inline-flex items-center gap-1 rounded text-xs font-medium text-brand-700 hover:underline"
+                  >
+                    <Paperclip size={13} aria-hidden="true" />
+                    Adjuntar documento
+                    <span className="sr-only"> a la actuación «{entrada.tipo}»</span>
+                  </button>
+                )}
               </div>
             </li>
           ))}
         </ol>
+      )}
+
+      {adjuntarA && (
+        <ModalDocumentosActuacion
+          procesoId={proceso.id}
+          actuacion={adjuntarA}
+          onCerrar={() => setAdjuntarA(null)}
+          onHecho={(mensaje) => {
+            setAdjuntarA(null)
+            mostrar(mensaje)
+            refrescar()
+          }}
+        />
       )}
     </section>
   )

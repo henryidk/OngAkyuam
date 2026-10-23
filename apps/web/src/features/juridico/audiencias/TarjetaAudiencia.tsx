@@ -6,12 +6,11 @@ import {
   type AudienciaDetalleDto,
   type DocumentoProcesoDto,
 } from '@akyuam/shared'
-import Button from '../../../components/ui/Button'
-import { etiquetaFormato } from '../../../lib/documentos/archivoDocumento'
+import DocumentosAdjuntos from '../documentos/DocumentosAdjuntos'
 import { RUTAS_JURIDICO } from '../rutas'
 import EtiquetaEstadoAudiencia from './EtiquetaEstadoAudiencia'
-import { ETIQUETAS_ACCION_AUDIENCIA, separarAcciones, textoEnlazada } from './formato'
-import MenuAcciones from './MenuAcciones'
+import BarraAccionesAudiencia from './BarraAccionesAudiencia'
+import { textoEnlazada } from './formato'
 
 const CLASE_ENLACE = 'font-medium text-brand-700 hover:underline'
 
@@ -38,7 +37,6 @@ export default function TarjetaAudiencia({
     if (resaltada) ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }, [resaltada])
 
-  const { principal, secundarias } = separarAcciones(audiencia.accionesDisponibles)
   const origen =
     audiencia.origenCancelacion && audiencia.origenCancelacion !== 'MANUAL'
       ? ETIQUETAS_ORIGEN_CANCELACION[audiencia.origenCancelacion]
@@ -69,27 +67,6 @@ export default function TarjetaAudiencia({
               {audiencia.descripcion && <>{audiencia.descripcion} · </>}
               {audiencia.responsable.nombre}
             </p>
-          </div>
-          <div className="flex items-center gap-1.5 whitespace-nowrap">
-            {principal && (
-              <Button
-                tamano="sm"
-                variante={principal === 'REGISTRAR_RESULTADO' ? 'primary' : 'secondary'}
-                onClick={() => onAccion(principal, audiencia)}
-              >
-                {ETIQUETAS_ACCION_AUDIENCIA[principal]}
-              </Button>
-            )}
-            {secundarias.length > 0 && (
-              <MenuAcciones
-                etiqueta={`Más acciones de la audiencia del ${textoEnlazada(audiencia)}`}
-                opciones={secundarias.map((accion) => ({
-                  clave: accion,
-                  etiqueta: ETIQUETAS_ACCION_AUDIENCIA[accion],
-                  onElegir: () => onAccion(accion, audiencia),
-                }))}
-              />
-            )}
           </div>
         </header>
 
@@ -125,23 +102,12 @@ export default function TarjetaAudiencia({
         </div>
 
         {audiencia.documentos.length > 0 && (
-          <ul className="mt-3 divide-y divide-gray-100 rounded-lg border border-gray-100">
-            {audiencia.documentos.map((documento) => (
-              <li key={documento.id} className="flex flex-wrap items-center gap-2.5 px-3 py-2">
-                <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
-                  {etiquetaFormato(documento.mimeType)}
-                </span>
-                <span className="min-w-0 flex-1 truncate text-[13px] text-gray-900">{documento.nombreVisible}</span>
-                <button type="button" onClick={() => onVerDocumento(documento)} className={`${CLASE_ENLACE} text-xs`}>
-                  Ver
-                </button>
-                <button type="button" onClick={() => onDescargarDocumento(documento)} className={`${CLASE_ENLACE} text-xs`}>
-                  Descargar
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="mt-3">
+            <DocumentosAdjuntos documentos={audiencia.documentos} onVer={onVerDocumento} onDescargar={onDescargarDocumento} />
+          </div>
         )}
+
+        <BarraAccionesAudiencia audiencia={audiencia} onAccion={onAccion} />
       </article>
     </li>
   )

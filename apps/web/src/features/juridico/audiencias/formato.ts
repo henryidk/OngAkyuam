@@ -64,15 +64,26 @@ export function audienciaEnHora(
   return ocupadas.find((ocupada) => ocupada.hora === hora && ocupada.id !== excluirId)
 }
 
-/** La acción que se muestra como botón en la fila; el resto va al menú. Orden = prioridad. */
+/** La acción que se muestra destacada; el resto la acompaña. Orden = prioridad. */
 const ACCIONES_PRINCIPALES: AccionAudiencia[] = ['REGISTRAR_RESULTADO', 'AGENDAR_NUEVA_FECHA', 'REPROGRAMAR']
+
+/** Orden de las demás: primero lo del día a día, cancelar siempre al final. */
+const ORDEN_SECUNDARIAS: AccionAudiencia[] = [
+  'EDITAR_OBSERVACIONES',
+  'ADJUNTAR_DOCUMENTO',
+  'REPROGRAMAR',
+  'AGENDAR_NUEVA_FECHA',
+  'CAMBIAR_RESPONSABLE',
+  'REGISTRAR_RESULTADO',
+  'CANCELAR',
+]
 
 export function separarAcciones(acciones: AccionAudiencia[]): {
   principal: AccionAudiencia | null
   secundarias: AccionAudiencia[]
 } {
   const principal = ACCIONES_PRINCIPALES.find((accion) => acciones.includes(accion)) ?? null
-  return { principal, secundarias: acciones.filter((accion) => accion !== principal) }
+  return { principal, secundarias: ORDEN_SECUNDARIAS.filter((accion) => accion !== principal && acciones.includes(accion)) }
 }
 
 export const ETIQUETAS_ACCION_AUDIENCIA: Record<AccionAudiencia, string> = {
@@ -80,9 +91,15 @@ export const ETIQUETAS_ACCION_AUDIENCIA: Record<AccionAudiencia, string> = {
   CAMBIAR_RESPONSABLE: 'Cambiar responsable',
   CANCELAR: 'Cancelar audiencia',
   REGISTRAR_RESULTADO: 'Registrar resultado',
-  EDITAR_OBSERVACIONES: 'Ver / completar observaciones',
+  EDITAR_OBSERVACIONES: 'Observaciones',
   ADJUNTAR_DOCUMENTO: 'Adjuntar documento',
   AGENDAR_NUEVA_FECHA: 'Agendar nueva fecha',
+}
+
+/** En la tarjeta, observaciones dice si ya hay algo escrito: "Agregar" o "Editar". */
+export function etiquetaAccionAudiencia(accion: AccionAudiencia, audiencia: { observaciones: string | null }): string {
+  if (accion === 'EDITAR_OBSERVACIONES') return audiencia.observaciones ? 'Editar observaciones' : 'Agregar observaciones'
+  return ETIQUETAS_ACCION_AUDIENCIA[accion]
 }
 
 /** Encabezado de los modales, para no equivocarse de caso. */

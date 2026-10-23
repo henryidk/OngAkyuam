@@ -1,6 +1,7 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
-  MAX_SUGERENCIAS_TIPO_ACTUACION,
+  CARPETA_ACTUACIONES,
+  type DocumentoProcesoDto,
   type EntradaBitacoraDto,
   type RegistrarActuacionInput,
 } from '@akyuam/shared';
@@ -8,15 +9,27 @@ import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { AccesoJuridicoService } from '../compartido/acceso-juridico.service';
 import { eventoAuditoria } from '../compartido/auditoria';
+import { MENSAJE_SIN_ACCESO_ACTUACION } from '../compartido/mensajes';
+import { DocumentosProcesoService } from '../documentos/documentos-proceso.service';
 import { BITACORA_REPOSITORY } from '../interfaces/bitacora-repository.interface';
 import type { IBitacoraRepository } from '../interfaces/bitacora-repository.interface';
-import { combinarSugerencias } from './sugerencias-tipo-actuacion';
+import { CARPETAS_REPOSITORY } from '../interfaces/documentos-proceso-repository.interface';
+import type { ICarpetasRepository } from '../interfaces/documentos-proceso-repository.interface';
+
+export interface SubirDocumentoActuacionParams {
+  archivo: Express.Multer.File | undefined;
+  nombreVisible?: string;
+  tanda?: string;
+}
 
 @Injectable()
 export class BitacoraService {
   constructor(
     @Inject(BITACORA_REPOSITORY)
     private readonly bitacoraRepository: IBitacoraRepository,
+    @Inject(CARPETAS_REPOSITORY)
+    private readonly carpetasRepository: ICarpetasRepository,
+    private readonly documentosService: DocumentosProcesoService,
     private readonly acceso: AccesoJuridicoService,
     private readonly auditService: AuditService,
   ) {}
@@ -49,19 +62,34 @@ export class BitacoraService {
     return entrada;
   }
 
-  /** Sugerencias para el campo Tipo: primero lo usado en este proceso, luego lo usual en su tipo. */
-  async sugerirTipos(procesoId: string): Promise<string[]> {
-    const acceso = await this.acceso.exigirProceso(procesoId);
-    const [delProceso, delTipoDeProceso] = await Promise.all([
-      this.bitacoraRepository.tiposUsadosEnProceso(
-        procesoId,
-        MAX_SUGERENCIAS_TIPO_ACTUACION,
-      ),
-      this.bitacoraRepository.tiposMasUsadosPorTipoProceso(
-        acceso.tipo,
-        MAX_SUGERENCIAS_TIPO_ACTUACION,
-      ),
-    ]);
-    return combinarSugerencias(delProceso, delTipoDeProceso);
+  /**
+   * El documento queda en la carpeta "Actuaciones" del proceso (se crea la primera vez) y
+   * enlazado a la actuación. Las entradas de sistema no reciben documentos: no las escribió nadie.
+   */
+  async subirDocumento(
+    procesoId: string,
+    actuacionId: string,
+    params: SubirDocumentoActuacionParams,
+    contexto: ContextoAuditoria,
+  ): Promise<DocumentoProcesoDto> {
+    await this.acceso.exigirProceso(procesoId);
+
+    const entrada = await this.bitacoraRepository.buscarEnProceso(
+      actuacionId,
+      procesoId,
+    );
+    if (!entrada || entrada.esSistema) {
+      throw new ForbiddenException(MENSAJE_SIN_ACCESO_ACTUACION);
+    }
+
+    const carpetaId = await this.carpetasRepository.obtenerOCrear({
+      procesoId,
+      nombre: CARPETA_ACTUACIONES,
+      creadaPorId: contexto.usuarioId,
+    });
+    return this.documentosService.subir(
+      { ...params, procesoId, carpetaId, actuacionId },
+      contexto,
+    );
   }
 }

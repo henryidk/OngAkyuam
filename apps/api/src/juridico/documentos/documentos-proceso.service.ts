@@ -67,12 +67,20 @@ export interface SubirDocumentoParams {
   tanda?: string;
   /** Documento de una audiencia: quien llama ya validó que es de este proceso. */
   audienciaId?: string;
+  /** Documento de una actuación: quien llama ya validó que es de este proceso. */
+  actuacionId?: string;
 }
 
 function textoTanda(cantidad: number): string {
   return cantidad === 1
     ? 'Se subió 1 documento'
     : `Se subieron ${cantidad} documentos`;
+}
+
+function accionSubida(params: SubirDocumentoParams): string {
+  if (params.audienciaId) return 'AUDIENCIA_DOCUMENTO_SUBIDO';
+  if (params.actuacionId) return 'ACTUACION_DOCUMENTO_SUBIDO';
+  return 'DOCUMENTO_PROCESO_SUBIDO';
 }
 
 @Injectable()
@@ -187,6 +195,7 @@ export class DocumentosProcesoService {
         tamanioBytes: archivo.size,
         subidoPorId: contexto.usuarioId,
         audienciaId: params.audienciaId ?? null,
+        actuacionId: params.actuacionId ?? null,
       });
     } catch (error) {
       // Sin fila en la base nadie podría volver a encontrar ese archivo: se quita del
@@ -199,19 +208,16 @@ export class DocumentosProcesoService {
       throw error;
     }
 
-    await this.anotarEnBitacora(procesoId, contexto.usuarioId, params.tanda);
-    await this.auditar(
-      contexto,
-      params.audienciaId
-        ? 'AUDIENCIA_DOCUMENTO_SUBIDO'
-        : 'DOCUMENTO_PROCESO_SUBIDO',
-      documento.id,
-      {
-        procesoId,
-        carpetaId,
-        ...(params.audienciaId && { audienciaId: params.audienciaId }),
-      },
-    );
+    // Adjunto a una actuación ya se ve dentro de ella: una línea "Se subió…" aparte sería ruido.
+    if (!params.actuacionId) {
+      await this.anotarEnBitacora(procesoId, contexto.usuarioId, params.tanda);
+    }
+    await this.auditar(contexto, accionSubida(params), documento.id, {
+      procesoId,
+      carpetaId,
+      ...(params.audienciaId && { audienciaId: params.audienciaId }),
+      ...(params.actuacionId && { actuacionId: params.actuacionId }),
+    });
     return documento;
   }
 

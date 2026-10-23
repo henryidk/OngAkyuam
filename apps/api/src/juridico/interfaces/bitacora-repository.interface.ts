@@ -1,4 +1,4 @@
-import type { EntradaBitacoraDto, TipoProcesoJuridico } from '@akyuam/shared';
+import type { EntradaBitacoraDto } from '@akyuam/shared';
 
 export const BITACORA_REPOSITORY = Symbol('BITACORA_REPOSITORY');
 
@@ -19,11 +19,12 @@ export interface IBitacoraRepository {
   actualizarContenido(entradaId: string, contenido: string): Promise<void>;
   /** Las más recientes primero, con tope. */
   listarPorProceso(procesoId: string): Promise<EntradaBitacoraDto[]>;
-  /** Tipos de actuación ya usados en el proceso, el más reciente primero (sin entradas de sistema). */
-  tiposUsadosEnProceso(procesoId: string, limite: number): Promise<string[]>;
-  /** Tipos de actuación más usados en procesos de ese tipo (sin entradas de sistema). */
-  tiposMasUsadosPorTipoProceso(
-    tipoProceso: TipoProcesoJuridico,
-    limite: number,
-  ): Promise<string[]>;
+  /**
+   * `esSistema` de la entrada si existe **y** es de ese proceso; `null` si no. Nunca se busca
+   * solo por su id.
+   */
+  buscarEnProceso(
+    entradaId: string,
+    procesoId: string,
+  ): Promise<{ esSistema: boolean } | null>;
 }

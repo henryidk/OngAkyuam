@@ -59,6 +59,7 @@ const documento: DocumentoProcesoDto = {
   subidoPor: 'Persona Ficticia',
   createdAt: '2026-01-15T12:00:00.000Z',
   audiencia: null,
+  actuacionId: null,
 };
 
 describe('DocumentosProcesoService', () => {
@@ -96,6 +97,7 @@ describe('DocumentosProcesoService', () => {
       registrar: jest.fn().mockResolvedValue({ id: 'entrada-1' }),
       actualizarContenido: jest.fn().mockResolvedValue(undefined),
       listarPorProceso: jest.fn(),
+      buscarEnProceso: jest.fn(),
     };
     storage = {
       subirObjeto: jest.fn().mockResolvedValue(undefined),
@@ -206,11 +208,32 @@ describe('DocumentosProcesoService', () => {
       );
     });
 
-    it('sin audiencia se guarda con audienciaId null', async () => {
+    it('sin audiencia ni actuación se guarda con ambos en null', async () => {
       await subir();
 
       expect(documentos.crear).toHaveBeenCalledWith(
-        expect.objectContaining({ audienciaId: null }),
+        expect.objectContaining({ audienciaId: null, actuacionId: null }),
+      );
+    });
+
+    it('un documento de actuación queda enlazado, se audita como tal y no anota "Se subió…"', async () => {
+      const actuacionId = '77777777-7777-4777-8777-777777777777';
+
+      await subir({ actuacionId });
+
+      expect(documentos.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ actuacionId, audienciaId: null }),
+      );
+      expect(bitacora.registrar).not.toHaveBeenCalled();
+      expect(auditService.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'ACTUACION_DOCUMENTO_SUBIDO',
+          detalles: {
+            procesoId: PROCESO_ID,
+            carpetaId: CARPETA_ID,
+            actuacionId,
+          },
+        }),
       );
     });
 

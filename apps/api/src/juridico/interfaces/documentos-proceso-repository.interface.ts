@@ -46,6 +46,8 @@ export interface CrearDocumentoProcesoParams {
   subidoPorId: string;
   /** Documento propio de una audiencia del mismo proceso (acta, citación). */
   audienciaId: string | null;
+  /** Documento adjunto a una actuación de la bitácora del mismo proceso. */
+  actuacionId: string | null;
 }
 
 export interface RenombrarDocumentoParams {

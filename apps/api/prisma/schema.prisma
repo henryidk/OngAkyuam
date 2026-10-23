@@ -508,6 +508,8 @@ model NotaAvanceProceso {
   registradoPor   Usuario         @relation(fields: [registradoPorId], references: [id])
   createdAt       DateTime        @default(now()) @db.Timestamptz(3)
 
+  documentos DocumentoProceso[]
+
   @@index([procesoId, createdAt])
 }
 
@@ -551,10 +553,17 @@ model DocumentoProceso {
   // con documentos nunca se borra.
   audienciaId   String?
   audiencia     AudienciaJuridica?      @relation(fields: [audienciaId], references: [id], onDelete: Restrict)
+  // Documento de una actuación de la bitácora (el memorial, la resolución). Igual que los de
+  // audiencia, vive en una carpeta. NoAction y no Restrict: al borrar el proceso se borran en
+  // cascada tanto la actuación como el documento, y NoAction revisa la referencia al final de
+  // la sentencia, cuando ambos ya se fueron. Una actuación sola nunca se borra desde la app.
+  actuacionId   String?
+  actuacion     NotaAvanceProceso?      @relation(fields: [actuacionId], references: [id], onDelete: NoAction)
 
   @@index([procesoId])
   @@index([carpetaId])
   @@index([audienciaId])
+  @@index([actuacionId])
 }
 
 enum EstadoAudiencia {

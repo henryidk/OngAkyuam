@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { FolderOpen } from 'lucide-react'
 import {
   ETIQUETAS_ORIGEN_CANCELACION,
   diasDesdeFechaGT,
@@ -11,6 +12,7 @@ import Button from '../../../components/ui/Button'
 import { RUTAS_JURIDICO } from '../rutas'
 import EtiquetaEstadoAudiencia from './EtiquetaEstadoAudiencia'
 import { ETIQUETAS_ACCION_AUDIENCIA, separarAcciones, textoEspera } from './formato'
+import { ICONOS_ACCION_AUDIENCIA } from './iconosAccion'
 import MenuAcciones from './MenuAcciones'
 
 interface FilaAudienciaProps {
@@ -22,6 +24,7 @@ interface FilaAudienciaProps {
 export default function FilaAudiencia({ audiencia, vista, onAccion }: FilaAudienciaProps) {
   const navigate = useNavigate()
   const { principal, secundarias } = separarAcciones(audiencia.accionesDisponibles)
+  const IconoPrincipal = principal ? ICONOS_ACCION_AUDIENCIA[principal] : null
   const origen =
     audiencia.origenCancelacion && audiencia.origenCancelacion !== 'MANUAL'
       ? ETIQUETAS_ORIGEN_CANCELACION[audiencia.origenCancelacion]
@@ -30,9 +33,11 @@ export default function FilaAudiencia({ audiencia, vista, onAccion }: FilaAudien
     ...secundarias.map((accion) => ({
       clave: accion,
       etiqueta: ETIQUETAS_ACCION_AUDIENCIA[accion],
+      Icono: ICONOS_ACCION_AUDIENCIA[accion],
+      peligro: accion === 'CANCELAR',
       onElegir: () => onAccion(accion, audiencia),
     })),
-    { clave: 'VER_PROCESO', etiqueta: 'Ver proceso', onElegir: () => navigate(RUTAS_JURIDICO.proceso(audiencia.procesoId)) },
+    { clave: 'VER_PROCESO', etiqueta: 'Ver proceso', Icono: FolderOpen, onElegir: () => navigate(RUTAS_JURIDICO.proceso(audiencia.procesoId)) },
   ]
 
   return (
@@ -73,6 +78,7 @@ export default function FilaAudiencia({ audiencia, vista, onAccion }: FilaAudien
               variante={principal === 'REGISTRAR_RESULTADO' ? 'primary' : 'secondary'}
               onClick={() => onAccion(principal, audiencia)}
             >
+              {IconoPrincipal && <IconoPrincipal size={15} aria-hidden="true" />}
               {ETIQUETAS_ACCION_AUDIENCIA[principal]}
             </Button>
           )}

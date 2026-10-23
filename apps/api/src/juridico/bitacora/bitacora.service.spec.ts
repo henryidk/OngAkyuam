@@ -1,9 +1,15 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ForbiddenException } from '@nestjs/common';
-import { registrarActuacionSchema } from '@akyuam/shared';
-import { MENSAJE_SIN_ACCESO_PROCESO } from '../compartido/mensajes';
-import type { IBitacoraRepository } from '../interfaces/bitacora-repository.interface';
+import { CARPETA_ACTUACIONES, registrarActuacionSchema } from '@akyuam/shared';
 import {
+  MENSAJE_SIN_ACCESO_ACTUACION,
+  MENSAJE_SIN_ACCESO_PROCESO,
+} from '../compartido/mensajes';
+import type { DocumentosProcesoService } from '../documentos/documentos-proceso.service';
+import type { IBitacoraRepository } from '../interfaces/bitacora-repository.interface';
+import type { ICarpetasRepository } from '../interfaces/documentos-proceso-repository.interface';
+import {
+  CARPETA_ID,
   PROCESO_ID,
   contexto,
   crearAcceso,
@@ -11,10 +17,18 @@ import {
   crearProcesosRepository,
 } from '../pruebas/dobles';
 import { BitacoraService } from './bitacora.service';
-import { combinarSugerencias } from './sugerencias-tipo-actuacion';
+
+// RedisService importa @nestjs/config (ESM puro), que Jest no carga: aquí solo se usa su tipo.
+jest.mock('../../redis/redis.service', () => ({
+  RedisService: class RedisService {},
+}));
+
+const ENTRADA_ID = '77777777-7777-4777-8777-777777777777';
 
 describe('BitacoraService', () => {
   let bitacora: jest.Mocked<IBitacoraRepository>;
+  let carpetas: jest.Mocked<Pick<ICarpetasRepository, 'obtenerOCrear'>>;
+  let documentosService: { subir: jest.Mock };
   let procesosRepository: ReturnType<typeof crearProcesosRepository>;
   let service: BitacoraService;
 
@@ -28,16 +42,20 @@ describe('BitacoraService', () => {
           contenido: params.contenido,
           registradoPor: 'Persona Ficticia',
           createdAt: '2026-10-05T12:00:00.000Z',
+          documentos: [],
         }),
       ),
       actualizarContenido: jest.fn(),
       listarPorProceso: jest.fn(),
-      tiposUsadosEnProceso: jest.fn().mockResolvedValue([]),
-      tiposMasUsadosPorTipoProceso: jest.fn().mockResolvedValue([]),
+      buscarEnProceso: jest.fn().mockResolvedValue({ esSistema: false }),
     };
+    carpetas = { obtenerOCrear: jest.fn().mockResolvedValue(CARPETA_ID) };
+    documentosService = { subir: jest.fn().mockResolvedValue({ id: 'doc-1' }) };
     procesosRepository = crearProcesosRepository();
     service = new BitacoraService(
       bitacora,
+      carpetas as unknown as ICarpetasRepository,
+      documentosService as unknown as DocumentosProcesoService,
       crearAcceso(procesosRepository),
       crearAuditService(),
     );
@@ -88,39 +106,55 @@ describe('BitacoraService', () => {
     });
   });
 
-  describe('sugerencias de tipo', () => {
-    it('primero las del proceso, luego las de su tipo, sin duplicados por mayúsculas', async () => {
-      bitacora.tiposUsadosEnProceso.mockResolvedValue([
-        'Memorial de evacuación',
-        'Audiencia',
-      ]);
-      bitacora.tiposMasUsadosPorTipoProceso.mockResolvedValue([
-        'audiencia',
-        'Escrito',
-      ]);
+  describe('documentos de una actuación', () => {
+    const params = { archivo: undefined, nombreVisible: 'Escrito ficticio' };
+    const subir = () =>
+      service.subirDocumento(PROCESO_ID, ENTRADA_ID, params, contexto);
 
-      await expect(service.sugerirTipos(PROCESO_ID)).resolves.toEqual([
-        'Memorial de evacuación',
-        'Audiencia',
-        'Escrito',
-      ]);
-      expect(bitacora.tiposMasUsadosPorTipoProceso).toHaveBeenCalledWith(
-        'MEDIDAS_SEGURIDAD',
-        10,
+    it('se guarda en la carpeta Actuaciones, enlazado a la actuación', async () => {
+      await subir();
+
+      expect(bitacora.buscarEnProceso).toHaveBeenCalledWith(
+        ENTRADA_ID,
+        PROCESO_ID,
+      );
+      expect(carpetas.obtenerOCrear).toHaveBeenCalledWith({
+        procesoId: PROCESO_ID,
+        nombre: CARPETA_ACTUACIONES,
+        creadaPorId: contexto.usuarioId,
+      });
+      expect(documentosService.subir).toHaveBeenCalledWith(
+        {
+          ...params,
+          procesoId: PROCESO_ID,
+          carpetaId: CARPETA_ID,
+          actuacionId: ENTRADA_ID,
+        },
+        contexto,
       );
     });
 
-    it('como máximo 10', () => {
-      const muchos = Array.from({ length: 15 }, (_, i) => `Tipo ${i}`);
-      expect(combinarSugerencias(muchos, ['Otro'])).toHaveLength(10);
-    });
-
-    it('403 sin acceso al proceso', async () => {
+    it('403 sin acceso al proceso, sin buscar la actuación', async () => {
       procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
-      await expect(service.sugerirTipos(PROCESO_ID)).rejects.toThrow(
-        ForbiddenException,
+
+      await expect(subir()).rejects.toThrow(
+        new ForbiddenException(MENSAJE_SIN_ACCESO_PROCESO),
       );
-      expect(bitacora.tiposUsadosEnProceso).not.toHaveBeenCalled();
+      expect(bitacora.buscarEnProceso).not.toHaveBeenCalled();
+      expect(documentosService.subir).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['no existe o es de otro proceso', null],
+      ['es una entrada de sistema', { esSistema: true }],
+    ])('403 si la actuación %s, sin subir nada', async (_caso, entrada) => {
+      bitacora.buscarEnProceso.mockResolvedValue(entrada);
+
+      await expect(subir()).rejects.toThrow(
+        new ForbiddenException(MENSAJE_SIN_ACCESO_ACTUACION),
+      );
+      expect(carpetas.obtenerOCrear).not.toHaveBeenCalled();
+      expect(documentosService.subir).not.toHaveBeenCalled();
     });
   });
 });

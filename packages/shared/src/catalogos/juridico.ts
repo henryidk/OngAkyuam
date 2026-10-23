@@ -117,7 +117,6 @@ export const ETIQUETAS_MOTIVO_ABANDONO: Record<(typeof MOTIVOS_ABANDONO_PROCESO)
 export const LARGO_MAXIMO_TIPO_ACTUACION = 60
 /** Tipo con el que el backend anota sus propios eventos (siempre con `esSistema`). */
 export const TIPO_ENTRADA_SISTEMA = 'Sistema'
-export const MAX_SUGERENCIAS_TIPO_ACTUACION = 10
 
 /** Quita espacios a los lados y colapsa los del medio: "  Memorial   de evacuación " → "Memorial de evacuación". */
 export function normalizarTipoActuacion(tipo: string): string {
@@ -180,6 +179,8 @@ export const TIPOS_PROCESO_VINCULO_RECOMENDADO: readonly TipoProcesoCatalogo[] =
 ]
 
 export const CARPETA_DOCUMENTOS_GENERALES = 'Documentos generales'
+/** Carpeta del proceso donde se guardan solos los documentos adjuntos a una actuación. */
+export const CARPETA_ACTUACIONES = 'Actuaciones'
 
 const CARPETA_EXTRA_POR_TIPO: Partial<Record<TipoProcesoCatalogo, string>> = {
   FIJACION_PENSION_ALIMENTICIA: 'Comprobantes de gastos e ingresos',

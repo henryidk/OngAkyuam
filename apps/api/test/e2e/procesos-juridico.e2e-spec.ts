@@ -454,4 +454,78 @@ describe('Jurídico · procesos: No. judicial, cartera, búsqueda y cierre (e2e)
       });
     });
   });
+
+  describe('documentos de una actuación · acceso', () => {
+    const pdf = Buffer.from('%PDF-1.4 ficticio');
+
+    function subir(procesoId: string, entradaId: string, sesion?: Sesion) {
+      return pedir(
+        'post',
+        `/api/juridico/procesos/${procesoId}/bitacora/${entradaId}/documentos`,
+        sesion,
+      ).attach('archivo', pdf, {
+        filename: 'ficticio.pdf',
+        contentType: 'application/pdf',
+      });
+    }
+
+    function entrada(procesoId: string, esSistema = false) {
+      return prisma.notaAvanceProceso.create({
+        data: {
+          procesoId,
+          tipo: esSistema ? 'Sistema' : 'Escrito',
+          esSistema,
+          contenido: `${MARCA} actuación`,
+          registradoPorId: juridico.id,
+        },
+      });
+    }
+
+    async function sinDocumentos(procesoId: string) {
+      expect(
+        await prisma.documentoProceso.count({ where: { procesoId } }),
+      ).toBe(0);
+      expect(
+        await prisma.carpetaDocumentoProceso.count({ where: { procesoId } }),
+      ).toBe(0);
+    }
+
+    it.each(OTROS_ROLES)('%s → 403', async (rol) => {
+      const sesionRol = sesiones.get(rol);
+      if (!sesionRol) throw new Error(`Sin sesión para ${rol}`);
+      await subir(randomUUID(), randomUUID(), sesionRol).expect(403);
+    });
+
+    it('expediente no referido a Jurídico → 403 sin crear nada', async () => {
+      const { expediente } = await expedienteReferido(['PSICOLOGIA']);
+      const proceso = await crearProceso(prisma, expediente.id, juridico.id);
+      const actuacion = await entrada(proceso.id);
+
+      await subir(proceso.id, actuacion.id).expect(403);
+      await sinDocumentos(proceso.id);
+    });
+
+    it('una actuación de otro proceso → 403 (sin IDOR)', async () => {
+      const { expediente } = await expedienteReferido();
+      const proceso = await crearProceso(prisma, expediente.id, juridico.id);
+      const otro = await crearProceso(prisma, expediente.id, juridico.id, {
+        consecutivo: 2,
+      });
+      const ajena = await entrada(otro.id);
+
+      await subir(proceso.id, ajena.id).expect(403);
+      await subir(proceso.id, randomUUID()).expect(403);
+      await sinDocumentos(proceso.id);
+      await sinDocumentos(otro.id);
+    });
+
+    it('una entrada de sistema → 403', async () => {
+      const { expediente } = await expedienteReferido();
+      const proceso = await crearProceso(prisma, expediente.id, juridico.id);
+      const sistema = await entrada(proceso.id, true);
+
+      await subir(proceso.id, sistema.id).expect(403);
+      await sinDocumentos(proceso.id);
+    });
+  });
 });

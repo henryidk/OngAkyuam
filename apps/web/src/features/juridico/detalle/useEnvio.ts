@@ -7,12 +7,11 @@ export function useEnvio(onConflicto: () => void) {
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  async function enviar(peticion: () => Promise<unknown>, alTerminar: () => void) {
+  async function enviar<T>(peticion: () => Promise<T>, alTerminar: (respuesta: T) => void) {
     setError(null)
     setEnviando(true)
     try {
-      await peticion()
-      alTerminar()
+      alTerminar(await peticion())
     } catch (err) {
       setError(extraerMensajeError(err))
       if (esConflicto(err)) onConflicto()

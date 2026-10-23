@@ -34,5 +34,6 @@ export function mapearDocumento(
           hora: horaGT(documento.audiencia.inicio),
         }
       : null,
+    actuacionId: documento.actuacionId,
   };
 }

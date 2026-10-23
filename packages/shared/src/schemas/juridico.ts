@@ -294,6 +294,8 @@ export interface EntradaBitacoraDto {
   contenido: string
   registradoPor: string
   createdAt: string
+  /** Documentos adjuntos a la actuación, el más antiguo primero (siempre vacío en las de sistema). */
+  documentos: DocumentoProcesoDto[]
 }
 
 export interface DocumentoProcesoDto {
@@ -307,6 +309,8 @@ export interface DocumentoProcesoDto {
   createdAt: string
   /** Audiencia a la que pertenece (acta, citación…), con fecha y hora en Guatemala; `null` si no. */
   audiencia: { id: string; fecha: string; hora: string } | null
+  /** Actuación de la bitácora a la que se adjuntó; `null` si no. */
+  actuacionId: string | null
 }
 
 export interface CarpetaDto {
