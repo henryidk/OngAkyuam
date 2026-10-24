@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { ETIQUETAS_TIPO_REGISTRO, type ProcesoPsicologiaResumen } from '@akyuam/shared'
-import { textoAgresor, textoHijas, textoTipologia } from '../../juridico/usuarias/textoCaso'
+import { ETIQUETAS_TIPO_REGISTRO, ETIQUETAS_ESTADO_ATENCION_PSICOLOGICA, edadEnAniosGT, formatFechaGT, type ProcesoPsicologiaResumen } from '@akyuam/shared'
+import { textoAgresor, textoTipologia } from '../../juridico/usuarias/textoCaso'
 import AtencionesCompartidas from '../../medica/compartido/AtencionesCompartidas'
 import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
 import { RUTAS_PSICOLOGIA } from '../rutas'
@@ -105,7 +105,39 @@ export default function PestanaResumen() {
                     </>
                   )}
                   <Dato etiqueta="Registro" valor={ETIQUETAS_TIPO_REGISTRO[expedienteTs.tipoRegistro]} />
-                  <Dato etiqueta="Hijas e hijos" valor={textoHijas(expedienteTs.ninos)} />
+                  <div className="py-1.5">
+                    <dt className="text-xs text-gray-500">Hijas e hijos</dt>
+                    <dd className="mt-1">
+                      {expedienteTs.ninos.length === 0 ? (
+                        <span className="text-sm text-gray-500">Ninguno registrado</span>
+                      ) : (
+                        <ul className="space-y-2.5">
+                          {expedienteTs.ninos.map((nino) => {
+                            const proceso = nino.numero
+                              ? activos.find((activo) => activo.expedienteNumero === nino.numero)
+                              : undefined
+                            return (
+                              <li key={nino.id ?? nino.numero ?? `${nino.nombres}-${nino.apellidos}-${nino.fechaNacimiento}`}>
+                                <p className="text-sm text-gray-800">{nino.nombres} {nino.apellidos}</p>
+                                <p className="text-xs text-gray-500">
+                                  {edadEnAniosGT(nino.fechaNacimiento)} años · {nino.genero === 'M' ? 'Mujer' : 'Hombre'}
+                                  {' · '}Nacimiento: {formatFechaGT(nino.fechaNacimiento)}
+                                  {nino.numero && <> · Exp. {nino.numero}</>}
+                                </p>
+                                {proceso ? (
+                                  <Link to={RUTAS_PSICOLOGIA.proceso(proceso.id)} className="text-xs text-brand-700 hover:underline">
+                                    {ETIQUETAS_ESTADO_ATENCION_PSICOLOGICA[proceso.etapa]} · {proceso.codigo}
+                                  </Link>
+                                ) : nino.numero ? (
+                                  <p className="text-xs text-gray-500">Sin proceso activo</p>
+                                ) : null}
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                    </dd>
+                  </div>
                 </dl>
                 {datosCaso?.observaciones && (
                   <p className="mt-2 whitespace-pre-line rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">

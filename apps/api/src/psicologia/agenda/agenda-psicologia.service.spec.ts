@@ -123,7 +123,7 @@ describe('AgendaPsicologiaService', () => {
       ).resolves.toEqual([
         { desdeMin: 10 * 60 + 15, hastaMin: 12 * 60 },
         { desdeMin: 13 * 60, hastaMin: 14 * 60 },
-        { desdeMin: 14 * 60 + 45, hastaMin: 17 * 60 },
+        { desdeMin: 14 * 60 + 45, hastaMin: 18 * 60 },
       ]);
       expect(agendaRepository.listarOcupadas).toHaveBeenCalledWith({
         psicologaId: 'psicologa-a',
@@ -137,7 +137,7 @@ describe('AgendaPsicologiaService', () => {
         service.huecos({ fecha: '2026-10-08' }, 'psicologa-a'),
       ).resolves.toEqual([
         { desdeMin: 8 * 60, hastaMin: 12 * 60 },
-        { desdeMin: 13 * 60, hastaMin: 17 * 60 },
+        { desdeMin: 13 * 60, hastaMin: 18 * 60 },
       ]);
     });
 

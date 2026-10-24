@@ -1,5 +1,6 @@
 import {
   DURACIONES_CITA_PSICOLOGICA_MINUTOS,
+  HORARIO_PSICOLOGIA,
   formatInstanteGT,
   sumarDiasGT,
   type CitaResumen,
@@ -111,7 +112,7 @@ export default function QueSigue({ valor, onCambio, diaBase, conflicto, puedeCer
               <input
                 type="time"
                 min="08:00"
-                max={`${String(Math.floor((17 * 60 - valor.duracion) / 60)).padStart(2, '0')}:${String((17 * 60 - valor.duracion) % 60).padStart(2, '0')}`}
+                max={`${String(Math.floor((HORARIO_PSICOLOGIA.finMin - valor.duracion) / 60)).padStart(2, '0')}:${String((HORARIO_PSICOLOGIA.finMin - valor.duracion) % 60).padStart(2, '0')}`}
                 value={valor.hora}
                 onChange={(evento) => onCambio({ ...valor, hora: evento.target.value })}
                 className={CLASE_CAMPO}

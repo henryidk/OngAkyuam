@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import {
   DURACIONES_CITA_PSICOLOGICA_MINUTOS,
+  HORARIO_PSICOLOGIA,
   ESTADOS_ATENCION_PSICOLOGICA,
   ESTADOS_CITA_PSICOLOGICA,
   FILTROS_PROCESOS_PSICOLOGIA,
@@ -50,10 +51,10 @@ export function horarioPsicologiaValido(datos: { fechaHora: string; duracionMinu
   if (!/^\d{2}:\d{2}$/.test(hora)) return false
   const [h, m] = hora.split(':').map(Number)
   const inicio = h * 60 + m
-  return m < 60 && inicio >= 8 * 60 && inicio + datos.duracionMinutos <= 17 * 60
+  return m < 60 && inicio >= HORARIO_PSICOLOGIA.inicioMin && inicio + datos.duracionMinutos <= HORARIO_PSICOLOGIA.finMin
 }
 export const MENSAJE_HORARIO_PSICOLOGIA =
-  'La cita está fuera del horario laboral. Debe comenzar a partir de las 08:00 y terminar a más tardar a las 17:00 (hora de Guatemala).'
+  'La cita está fuera del horario laboral. Debe comenzar a partir de las 08:00 y terminar a más tardar a las 18:00, incluyendo el horario de gracia (hora de Guatemala).'
 const datosCitaPsicologicaSchema = z.object({
   fechaHora: fechaHoraLocalSchema,
   duracionMinutos: duracionCitaPsicologicaSchema.default(DURACIONES_CITA_PSICOLOGICA_MINUTOS[0]),

@@ -8,7 +8,7 @@ Cada hijo tiene un consecutivo estable dentro del expediente de su madre: `04-20
 
 La migración conserva las citas históricas y sus documentos; si un proceso mezclaba personas, separa las citas de los hijos en procesos propios. No se modifican las fechas de las citas históricas.
 
-Las nuevas citas deben comenzar a partir de las 08:00 y finalizar a más tardar a las 17:00, en America/Guatemala. Se comprueba al abrir, programar, reprogramar y crear la próxima cita al guardar una sesión, tanto en los formularios como en la API.
+Las nuevas citas deben comenzar a partir de las 08:00 y finalizar a más tardar a las 18:00, en America/Guatemala, incluyendo una hora de gracia respecto a la salida habitual de las 17:00. Se comprueba al abrir, programar, reprogramar y crear la próxima cita al guardar una sesión, tanto en los formularios como en la API.
 
 Una sesión atendida pide Clínica 1 o Clínica 2. Se guardan clínica, profesional y enfoque terapéutico; las sesiones antiguas sin esos datos se muestran como sin registrar, sin inventarlos. El archivo de sesión se presenta como Hoja de evolución.
 
@@ -32,6 +32,6 @@ La integración crea sus datos en una transacción y la revierte. Comprueba proc
 - Para atender una cita programada de una colega, se presenta una advertencia con sus nombres. **Continuar y atender** cambia únicamente la profesional de esa cita y registra la acción en auditoría. La responsable del proceso y las sesiones anteriores se conservan. También se avisa si el horario se cruza con otra cita propia.
 - La confirmación lleva los identificadores que se mostraron en pantalla. Si otra pestaña cambia la cita, se pide actualizar antes de continuar. No se toman citas con borradores, notas o documentos de otra profesional, ni procesos cerrados. Solo la profesional de la cita puede registrar o corregir esa sesión; el cierre del proceso sigue correspondiendo a su responsable.
 - Una cuenta de Psicología puede consultar el historial del área aunque la profesional anterior esté desactivada. El acceso de otras áreas conserva sus reglas.
-- Fechas inválidas, rangos invertidos o mayores de un año y páginas inválidas se rechazan en el servidor. El horario laboral se valida de 08:00 a 17:00, incluida la duración, y el formulario muestra la causa correcta.
+- Fechas inválidas, rangos invertidos o mayores de un año y páginas inválidas se rechazan en el servidor. El horario laboral se valida de 08:00 a 18:00, incluida la duración, y el formulario muestra la causa correcta.
 
 No requiere una migración adicional. Usa los campos existentes de responsable del proceso y profesional de cada cita. La integración de pruebas crea personas temporales únicamente en la copia de revisión y revierte todos sus registros.

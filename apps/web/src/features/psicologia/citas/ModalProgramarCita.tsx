@@ -5,6 +5,7 @@ import {
   MENSAJE_HORARIO_PSICOLOGIA,
   CODIGO_TRASLAPE_CITA,
   DURACIONES_CITA_PSICOLOGICA_MINUTOS,
+  HORARIO_PSICOLOGIA,
   agendarCitaPsicologicaSchema,
   formatInstanteGT,
   type AgendarCitaPsicologicaInput,
@@ -75,7 +76,7 @@ function duracionInicial(destino: DestinoCita): number {
 
 /**
  * Programar o mover una cita. Se pide solo lo mínimo: a quién se atiende, cuándo y cuánto dura.
- * El horario se valida de 08:00 a 17:00, incluida la duración.
+ * El horario se valida de 08:00 a 18:00 (con horario de gracia), incluida la duración.
  */
 export default function ModalProgramarCita({
   destino,
@@ -116,13 +117,13 @@ export default function ModalProgramarCita({
     titulo = 'Reprogramar cita'
     descripcion = `${destino.cita.persona.nombreCompleto} · ${destino.cita.procesoCodigo} · estaba el ${formatInstanteGT(destino.cita.fechaHora)}`
   } else if (!eligeProceso && proceso) {
-    descripcion = `${proceso.usuariaNombreCompleto} · ${proceso.codigo}`
+    descripcion = `${proceso.personas[0]?.nombreCompleto ?? proceso.usuariaNombreCompleto} · ${proceso.codigo}`
   }
   const sinCita = destino.tipo === 'PROCESO' && destino.sinCita === true
   if (sinCita) {
     titulo = 'Registrar sesión sin cita'
     if (proceso)
-      descripcion = `${proceso.usuariaNombreCompleto} · ${proceso.codigo} · indica cuándo fue la sesión`
+      descripcion = `${proceso.personas[0]?.nombreCompleto ?? proceso.usuariaNombreCompleto} · ${proceso.codigo} · indica cuándo fue la sesión`
   }
 
   // El aviso de traslape era sobre la hora anterior: al tocar un dato deja de valer.
@@ -246,7 +247,7 @@ export default function ModalProgramarCita({
             <option value="">Elige un proceso…</option>
             {destino.procesos.map((uno) => (
               <option key={uno.procesoId} value={uno.procesoId}>
-                {uno.usuariaNombreCompleto} · {uno.codigo}
+                {uno.personas[0]?.nombreCompleto ?? uno.usuariaNombreCompleto} · {uno.codigo}
               </option>
             ))}
           </select>
@@ -294,7 +295,7 @@ export default function ModalProgramarCita({
           <input
             type="time"
             min="08:00"
-            max={`${String(Math.floor((17 * 60 - duracion) / 60)).padStart(2, '0')}:${String((17 * 60 - duracion) % 60).padStart(2, '0')}`}
+            max={`${String(Math.floor((HORARIO_PSICOLOGIA.finMin - duracion) / 60)).padStart(2, '0')}:${String((HORARIO_PSICOLOGIA.finMin - duracion) % 60).padStart(2, '0')}`}
             value={hora}
             onChange={(evento) => alCambiar(setHora)(evento.target.value)}
             className={CLASE_CAMPO}

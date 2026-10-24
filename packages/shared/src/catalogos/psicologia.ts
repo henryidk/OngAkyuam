@@ -68,7 +68,8 @@ export const ETIQUETAS_MOTIVO_CIERRE_PSICOLOGIA: Record<(typeof MOTIVOS_CIERRE_P
 export const HORARIO_PSICOLOGIA = {
   diasLaborables: [1, 2, 3, 4, 5],
   inicioMin: 8 * 60,
-  finMin: 17 * 60,
+  /** Incluye una hora de gracia al finalizar la jornada habitual. */
+  finMin: 18 * 60,
   almuerzoInicioMin: 12 * 60,
   almuerzoFinMin: 13 * 60,
   /** Un espacio más corto que esto no se ofrece como hueco libre. */

@@ -8,7 +8,7 @@ import { rangoPsicologia, resumirPeriodo } from './indicadores';
 import { validarHorarioPsicologia } from '../compartido/validar-horario';
 
 describe('horario laboral de Psicología', () => {
-  it.each(['02:00', '07:59', '16:16', '17:00', '23:00'])(
+  it.each(['02:00', '07:59', '17:16', '18:00', '23:00'])(
     'rechaza %s con 45 minutos en todas las formas de agendar',
     (hora) => {
       const datos = { fechaHora: `2026-10-20T${hora}`, duracionMinutos: 45 };
@@ -23,11 +23,11 @@ describe('horario laboral de Psicología', () => {
   );
   it.each([
     ['08:00', 45],
-    ['16:15', 45],
-    ['15:30', 90],
-    ['16:00', 60],
+    ['17:15', 45],
+    ['16:30', 90],
+    ['17:00', 60],
   ])(
-    'acepta %s y %i minutos si termina a más tardar a las 17',
+    'acepta %s y %i minutos si termina a más tardar a las 18',
     (hora, duracion) => {
       expect(
         agendarCitaPsicologicaSchema.safeParse({
@@ -35,6 +35,18 @@ describe('horario laboral de Psicología', () => {
           duracionMinutos: duracion,
         }).success,
       ).toBe(true);
+      const datos = {
+        fechaHora: `2026-10-20T${hora}`,
+        duracionMinutos: duracion,
+      };
+      expect(moverCitaPsicologicaSchema.safeParse(datos).success).toBe(true);
+      expect(
+        siguientePasoSesionSchema.safeParse({ ...datos, tipo: 'PROGRAMAR' })
+          .success,
+      ).toBe(true);
+      expect(() =>
+        validarHorarioPsicologia(datos.fechaHora, duracion),
+      ).not.toThrow();
     },
   );
 });
