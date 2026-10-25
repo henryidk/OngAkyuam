@@ -1,152 +1,263 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import {
+  ETIQUETAS_AREA_ATENCION,
   ETIQUETAS_TIPO_REGISTRO,
   formatFechaLargaGT,
   hoyGT,
-  mesActualGT,
-  nombreMesGT,
+  type BandejaTs,
   type FilaColaReferir,
-  type ResumenMesTs,
+  type FiltroListaUsuarias,
 } from '@akyuam/shared'
-import Button from '../../../components/ui/Button'
 import { useContextoTrabajoSocial } from '../../../pages/trabajo-social/TrabajoSocialLayout'
 import { useAuthStore } from '../../../store/auth.store'
 import ModalReferir from '../referir/ModalReferir'
-import ColaBandeja, { ColaEsqueleto, FilaCola } from './ColaBandeja'
-import ListaNovedades from './ListaNovedades'
-import TablaRecientes from './TablaRecientes'
 import { cuandoTexto, saludoSegunHora, textoDias } from './textoBandeja'
 
-/** "Ver todas" solo tiene sentido cuando la cola trae más de lo que cabe en la tarjeta. */
-function verTodasSiHayMas(total: number, mostradas: number, ruta: string) {
-  return total > mostradas ? ruta : undefined
+const CLASE_TARJETA = 'rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]'
+const CLASE_ENLACE = 'text-[13px] font-medium text-brand-700 hover:underline'
+const CLASE_FILA = 'flex items-center gap-3 border-t border-gray-100 px-4 py-3'
+const CLASE_ACCION =
+  'whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-1.5 text-[13px] font-medium text-brand-700 hover:bg-brand-50'
+const CLASE_AMBAR = 'text-[#8a5a14]'
+
+function rutaLista(filtro: FiltroListaUsuarias): string {
+  return `/trabajo-social/usuarias?estado=${filtro}`
 }
 
-/** Inicio de Trabajo Social (plan §12.3): lo que requiere atención hoy, en vivo por socket. */
+function plural(total: number, singular: string, varios: string): string {
+  return `${total} ${total === 1 ? singular : varios}`
+}
+
+interface IndicadorProps {
+  etiqueta: string
+  valor: number
+  detalle: string
+  destino: string
+  /** Hay algo pendiente detrás del número: se pinta en ámbar. */
+  alerta?: boolean
+}
+
+function Indicador({ etiqueta, valor, detalle, destino, alerta = false }: IndicadorProps) {
+  return (
+    <Link to={destino} className="group bg-white px-5 py-4 hover:bg-gray-50">
+      <p className="text-[13px] text-gray-600">{etiqueta}</p>
+      <p className={`mt-1 text-[30px] font-semibold leading-none tabular-nums ${alerta ? CLASE_AMBAR : 'text-gray-900'}`}>
+        {valor}
+      </p>
+      <p className="mt-2 text-[12.5px] text-gray-500 group-hover:text-gray-700">{detalle}</p>
+    </Link>
+  )
+}
+
+function Indicadores({ bandeja }: { bandeja: BandejaTs }) {
+  const { indicadores, pendientesReferir, enAlbergue } = bandeja
+  const sinReferir = pendientesReferir.total
+
+  return (
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-gray-200 bg-gray-200 lg:grid-cols-4">
+      <Indicador
+        etiqueta="Sin referir"
+        valor={sinReferir}
+        detalle={sinReferir === 0 ? 'Todas tienen un área asignada' : 'Registradas sin ningún área'}
+        destino={rutaLista('SIN_REFERIR')}
+        alerta={sinReferir > 0}
+      />
+      <Indicador
+        etiqueta="En atención"
+        valor={indicadores.enAtencion}
+        detalle="Con al menos un área atendiéndolas"
+        destino={rutaLista('EN_ATENCION')}
+      />
+      <Indicador
+        etiqueta="Sin atención activa"
+        valor={indicadores.sinAtencionActiva}
+        detalle="Referidas; ningún área las atiende ahora"
+        destino={rutaLista('SIN_ATENCION_ACTIVA')}
+      />
+      <Indicador
+        etiqueta="En albergue"
+        valor={enAlbergue.total}
+        detalle={
+          indicadores.ninosEnAlbergue === 0
+            ? 'Sin hijas/hijos ingresados'
+            : `Con ${plural(indicadores.ninosEnAlbergue, 'hija/hijo', 'hijas/hijos')}`
+        }
+        destino={rutaLista('EN_ALBERGUE')}
+      />
+    </div>
+  )
+}
+
+interface SeccionProps {
+  titulo: string
+  ayuda?: string
+  enlace?: { texto: string; destino: string }
+  children: ReactNode
+}
+
+function Seccion({ titulo, ayuda, enlace, children }: SeccionProps) {
+  return (
+    <section className={`${CLASE_TARJETA} overflow-hidden`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-4 py-3.5">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">{titulo}</h2>
+          {ayuda && <p className="mt-0.5 text-xs text-gray-500">{ayuda}</p>}
+        </div>
+        {enlace && (
+          <Link to={enlace.destino} className={CLASE_ENLACE}>
+            {enlace.texto}
+          </Link>
+        )}
+      </div>
+      {children}
+    </section>
+  )
+}
+
+function Vacio({ children }: { children: ReactNode }) {
+  return <p className="border-t border-gray-100 px-4 py-3.5 text-[13px] text-gray-500">{children}</p>
+}
+
+function NombreUsuaria({ usuariaId, nombre, detalle }: { usuariaId: string; nombre: string; detalle: string }) {
+  return (
+    <div className="min-w-0 flex-1">
+      <Link
+        to={`/trabajo-social/usuarias/${usuariaId}`}
+        className="block truncate text-sm font-medium text-gray-900 hover:underline"
+      >
+        {nombre}
+      </Link>
+      <p className="mt-0.5 truncate text-xs tabular-nums text-gray-500">{detalle}</p>
+    </div>
+  )
+}
+
+/** Lo que espera a Trabajo Social: referir a quien todavía no tiene ningún área. */
+function PorReferir({ cola, onReferir }: { cola: BandejaTs['pendientesReferir']; onReferir: (fila: FilaColaReferir) => void }) {
+  return (
+    <Seccion
+      titulo="Por referir a un área"
+      ayuda="Registradas sin ningún área todavía. La más reciente va primero."
+      enlace={cola.total > cola.filas.length ? { texto: `Ver las ${cola.total}`, destino: rutaLista('SIN_REFERIR') } : undefined}
+    >
+      {cola.total === 0 && <Vacio>Todas las usuarias tienen un área asignada.</Vacio>}
+      {cola.filas.map((fila) => (
+        <div key={fila.expedienteId} className={CLASE_FILA}>
+          <NombreUsuaria
+            usuariaId={fila.usuariaId}
+            nombre={fila.nombreCompleto}
+            detalle={`Exp. ${fila.numeroExpediente} · ${ETIQUETAS_TIPO_REGISTRO[fila.tipoRegistro]} · registrada ${cuandoTexto(fila.createdAt).toLowerCase()}`}
+          />
+          <button type="button" onClick={() => onReferir(fila)} className={CLASE_ACCION}>
+            Referir
+          </button>
+        </div>
+      ))}
+    </Seccion>
+  )
+}
+
+function EnAlbergue({ cola }: { cola: BandejaTs['enAlbergue'] }) {
+  return (
+    <Seccion
+      titulo="En albergue"
+      ayuda="Usuarias internas sin egreso. La que más tiempo lleva va primero."
+      enlace={cola.total > cola.filas.length ? { texto: `Ver las ${cola.total}`, destino: rutaLista('EN_ALBERGUE') } : undefined}
+    >
+      {cola.total === 0 && <Vacio>No hay usuarias en el albergue.</Vacio>}
+      {cola.filas.map((fila) => (
+        <div key={fila.expedienteId} className={CLASE_FILA}>
+          <NombreUsuaria
+            usuariaId={fila.usuariaId}
+            nombre={fila.nombreCompleto}
+            detalle={`Exp. ${fila.numeroExpediente}${
+              fila.cantidadNinos > 0 ? ` · con ${plural(fila.cantidadNinos, 'hija/hijo', 'hijas/hijos')}` : ''
+            }`}
+          />
+          <span className="whitespace-nowrap text-xs tabular-nums text-gray-500">
+            {fila.diasEnAlbergue === null ? 'Sin fecha de ingreso' : textoDias(fila.diasEnAlbergue)}
+          </span>
+        </div>
+      ))}
+    </Seccion>
+  )
+}
+
+function PorArea({ activos }: { activos: BandejaTs['indicadores']['activosPorArea'] }) {
+  const maximo = Math.max(0, ...activos.map((fila) => fila.total))
+  return (
+    <Seccion titulo="Casos en atención por área" ayuda="Una usuaria cuenta en cada área que la atiende ahora.">
+      {maximo === 0 ? (
+        <Vacio>Ningún área tiene casos activos.</Vacio>
+      ) : (
+        <ul className="space-y-3 border-t border-gray-100 px-4 py-4">
+          {activos.map((fila) => (
+            <li key={fila.area}>
+              <div className="flex items-baseline justify-between gap-3 text-[13px]">
+                <span className="text-gray-700">{ETIQUETAS_AREA_ATENCION[fila.area]}</span>
+                <span className="font-medium tabular-nums text-gray-900">{fila.total}</span>
+              </div>
+              <span className="mt-1.5 block h-1.5 rounded-full bg-gray-100" aria-hidden="true">
+                <span
+                  className="block h-1.5 rounded-full bg-brand-500"
+                  style={{ width: `${(fila.total / maximo) * 100}%` }}
+                />
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Seccion>
+  )
+}
+
+function EsqueletoInicio() {
+  return (
+    <div className="space-y-5" aria-busy="true">
+      <div className="h-[104px] animate-pulse rounded-xl bg-gray-100" />
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+        <div className="h-72 animate-pulse rounded-xl bg-gray-100" />
+        <div className="h-72 animate-pulse rounded-xl bg-gray-100" />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Inicio de Trabajo Social: cómo están las usuarias y qué espera de Trabajo Social, en vivo por
+ * socket. Es el mismo para todo el personal del área.
+ */
 export default function Bandeja() {
-  const usuario = useAuthStore((estado) => estado.usuario)
+  const nombre = useAuthStore((estado) => estado.usuario?.nombreCompleto.split(/\s+/)[0] ?? '')
   const { bandeja, error, recargar } = useContextoTrabajoSocial()
   const [referir, setReferir] = useState<FilaColaReferir | null>(null)
 
-  const primerNombre = usuario?.nombreCompleto.split(' ')[0] ?? ''
-
   return (
-    <div className="mx-auto flex max-w-[1240px] flex-col gap-6">
-      <header className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-[22px] font-semibold tracking-tight text-gray-900">
-            {saludoSegunHora()}
-            {primerNombre && `, ${primerNombre}`}
-          </p>
-          <p className="mt-1 text-sm text-gray-500">
-            {formatFechaLargaGT(hoyGT())} · esto es lo que requiere tu atención hoy.
-          </p>
-        </div>
-        {bandeja && <ResumenMes resumen={bandeja.resumenMes} />}
-      </header>
+    <div className="mx-auto max-w-[1240px] space-y-5">
+      <div>
+        <p className="text-[22px] font-semibold tracking-tight text-gray-900">
+          {saludoSegunHora()}
+          {nombre && `, ${nombre}`}
+        </p>
+        <p className="mt-1 text-sm text-gray-500">{formatFechaLargaGT(hoyGT())}</p>
+      </div>
 
       {error && <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      <div className="grid gap-4 [grid-template-columns:repeat(auto-fit,minmax(280px,1fr))]">
-        {!bandeja ? (
-          <>
-            <ColaEsqueleto />
-            <ColaEsqueleto />
-            <ColaEsqueleto />
-          </>
-        ) : (
-          <>
-            <ColaBandeja
-              titulo="Pendientes de referir"
-              subtitulo="Registradas, sin área asignada todavía."
-              tono="warning"
-              total={bandeja.pendientesReferir.total}
-              verTodas={verTodasSiHayMas(
-                bandeja.pendientesReferir.total,
-                bandeja.pendientesReferir.filas.length,
-                '/trabajo-social/usuarias?estado=SIN_REFERIR',
-              )}
-            >
-              {bandeja.pendientesReferir.filas.map((fila) => (
-                <FilaCola
-                  key={fila.expedienteId}
-                  usuariaId={fila.usuariaId}
-                  nombre={fila.nombreCompleto}
-                  meta={`${fila.numeroExpediente} · ${ETIQUETAS_TIPO_REGISTRO[fila.tipoRegistro]} · ${cuandoTexto(fila.createdAt)}`}
-                  accion={
-                    <Button variante="acento" onClick={() => setReferir(fila)}>
-                      Referir
-                    </Button>
-                  }
-                />
-              ))}
-            </ColaBandeja>
-
-            <ColaBandeja
-              titulo="Documentos por subir"
-              subtitulo="Formularios físicos que aún no tienen escaneo."
-              tono="brand"
-              total={bandeja.documentosPendientes.total}
-            >
-              {bandeja.documentosPendientes.filas.map((fila) => (
-                <FilaCola
-                  key={fila.expedienteId}
-                  usuariaId={fila.usuariaId}
-                  nombre={fila.nombreCompleto}
-                  meta={`${fila.numeroExpediente} · ${fila.tiposFaltantes.length} ${
-                    fila.tiposFaltantes.length === 1 ? 'documento' : 'documentos'
-                  }`}
-                  accion={
-                    <Link
-                      to={`/trabajo-social/usuarias/${fila.usuariaId}/documentos?caso=${fila.expedienteId}`}
-                      className="text-xs font-medium text-brand-600 hover:text-brand-700"
-                    >
-                      Subir
-                    </Link>
-                  }
-                />
-              ))}
-            </ColaBandeja>
-
-            <ColaBandeja
-              titulo="En albergue"
-              subtitulo="Usuarias internas activas y sus hijas/hijos."
-              tono="success"
-              total={bandeja.enAlbergue.total}
-              verTodas={verTodasSiHayMas(
-                bandeja.enAlbergue.total,
-                bandeja.enAlbergue.filas.length,
-                '/trabajo-social/usuarias?estado=EN_ALBERGUE',
-              )}
-            >
-              {bandeja.enAlbergue.filas.map((fila) => (
-                <FilaCola
-                  key={fila.expedienteId}
-                  usuariaId={fila.usuariaId}
-                  nombre={fila.nombreCompleto}
-                  meta={`${fila.numeroExpediente}${
-                    fila.cantidadNinos > 0
-                      ? ` · con ${fila.cantidadNinos} ${fila.cantidadNinos === 1 ? 'hija/hijo' : 'hijas/hijos'}`
-                      : ''
-                  }`}
-                  accion={
-                    <span className="text-xs tabular-nums text-gray-500">
-                      {fila.diasEnAlbergue === null ? 'Sin fecha de ingreso' : textoDias(fila.diasEnAlbergue)}
-                    </span>
-                  }
-                />
-              ))}
-            </ColaBandeja>
-          </>
-        )}
-      </div>
-
-      {bandeja && (
-        <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          <TablaRecientes filas={bandeja.recientes} />
-          <ListaNovedades novedades={bandeja.novedades} />
-        </div>
+      {!bandeja ? (
+        !error && <EsqueletoInicio />
+      ) : (
+        <>
+          <Indicadores bandeja={bandeja} />
+          <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
+            <PorReferir cola={bandeja.pendientesReferir} onReferir={setReferir} />
+            <div className="space-y-5">
+              <EnAlbergue cola={bandeja.enAlbergue} />
+              <PorArea activos={bandeja.indicadores.activosPorArea} />
+            </div>
+          </div>
+        </>
       )}
 
       {referir && (
@@ -164,18 +275,4 @@ export default function Bandeja() {
       )}
     </div>
   )
-}
-
-function ResumenMes({ resumen }: { resumen: ResumenMesTs }) {
-  const { mes } = mesActualGT()
-  return (
-    <p className="text-[13px] text-gray-500">
-      {nombreMesGT(mes)}: <Numero valor={resumen.usuariasRegistradas} /> usuarias registradas ·{' '}
-      <Numero valor={resumen.ninosRegistrados} /> hijas/hijos · <Numero valor={resumen.referencias} /> referencias
-    </p>
-  )
-}
-
-function Numero({ valor }: { valor: number }) {
-  return <span className="font-semibold tabular-nums text-gray-900">{valor}</span>
 }

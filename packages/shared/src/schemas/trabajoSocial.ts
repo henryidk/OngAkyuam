@@ -164,15 +164,6 @@ export interface FilaColaReferir {
   createdAt: string
 }
 
-/** Fila de la cola "Documentos por subir". */
-export interface FilaDocumentoPendiente {
-  expedienteId: string
-  usuariaId: string
-  numeroExpediente: string
-  nombreCompleto: string
-  tiposFaltantes: TipoDocumento[]
-}
-
 /** Fila de la cola "En albergue". */
 export interface FilaEnAlbergue {
   expedienteId: string
@@ -185,47 +176,34 @@ export interface FilaEnAlbergue {
   cantidadNinos: number
 }
 
-/** Fila de "Atendidas recientemente". */
-export interface FilaAtendidaReciente {
-  expedienteId: string
-  usuariaId: string
-  numeroExpediente: string
-  nombreCompleto: string
-  areas: AreaAtencion[]
-  estado: EstadoTs
-}
-
 /** Cola de la bandeja: las primeras filas y el total real (el contador de la cabecera). */
 export interface ColaBandeja<TFila> {
   filas: TFila[]
   total: number
 }
 
-/** Ítem de "Novedades de las áreas" — un evento de `AuditLog` en lenguaje natural. */
-export interface NovedadArea {
-  id: string
+/** Casos en atención activa de un área: los que el área tiene abiertos ahora mismo. */
+export interface CasosActivosArea {
   area: AreaAtencion
-  expedienteId: string
-  usuariaId: string
-  nombreCompleto: string
-  texto: string
-  createdAt: string
+  total: number
 }
 
-export interface ResumenMesTs {
-  usuariasRegistradas: number
-  ninosRegistrados: number
-  referencias: number
+/**
+ * Cifras del tablero de Inicio, sobre el caso activo de cada usuaria. Son globales: todo el
+ * personal de Trabajo Social ve lo mismo. Los totales de las colas no se repiten aquí.
+ */
+export interface IndicadoresTs {
+  enAtencion: number
+  sinAtencionActiva: number
+  ninosEnAlbergue: number
+  activosPorArea: CasosActivosArea[]
 }
 
 /** `GET /trabajo-social/bandeja` — todo lo que necesita la pantalla de Inicio en una sola llamada. */
 export interface BandejaTs {
+  indicadores: IndicadoresTs
   pendientesReferir: ColaBandeja<FilaColaReferir>
-  documentosPendientes: ColaBandeja<FilaDocumentoPendiente>
   enAlbergue: ColaBandeja<FilaEnAlbergue>
-  recientes: FilaAtendidaReciente[]
-  novedades: NovedadArea[]
-  resumenMes: ResumenMesTs
 }
 
 /** Una celda de la matriz: cómo se ve el switch y si el usuario puede tocarlo. */
