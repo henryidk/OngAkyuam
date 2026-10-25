@@ -4,7 +4,7 @@ import type { ResumenProcesos } from '@akyuam/shared'
 /** Lo que `JuridicoLayout` carga una sola vez y comparte con sus pantallas. */
 export interface ContextoJuridico {
   resumen: ResumenProcesos | null
-  /** Tras cualquier acción que mueva los totales (crear, finalizar, devolver…). */
+  /** Tras cualquier acción que mueva los totales (crear, finalizar, atender…). */
   recargarResumen: () => void
   /**
    * Sube cada vez que el socket avisa que Trabajo Social cambió algo que Jurídico ve (referencia,

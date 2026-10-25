@@ -20,11 +20,8 @@ import { nombreCompleto } from './mapeo-proceso';
 
 function estadoReferencia(referencia: {
   atendidoEn: Date | null;
-  devueltoEn: Date | null;
 }): EstadoReferenciaJuridico {
-  if (referencia.devueltoEn) return 'DEVUELTA';
-  if (referencia.atendidoEn) return 'ATENDIDA';
-  return 'PENDIENTE';
+  return referencia.atendidoEn ? 'ATENDIDA' : 'PENDIENTE';
 }
 
 type FilaListaRow = {
@@ -75,7 +72,7 @@ function cteLista(busqueda: ListarUsuariasJuridicoParams['busqueda']) {
       CROSS JOIN LATERAL (
         SELECT
           max(ra."createdAt") AS ultima,
-          coalesce(bool_or(ra."atendidoEn" IS NULL AND ra."devueltoEn" IS NULL), FALSE) AS pendiente
+          coalesce(bool_or(ra."atendidoEn" IS NULL), FALSE) AS pendiente
         FROM "ReferidoArea" ra
         JOIN "Expediente" e ON e.id = ra."expedienteId"
         WHERE e."usuariaId" = u.id AND ra.area = 'JURIDICO'
@@ -210,8 +207,6 @@ export class UsuariasJuridicoRepository implements IUsuariasJuridicoRepository {
         createdAt: true,
         motivo: true,
         atendidoEn: true,
-        devueltoEn: true,
-        motivoDevolucion: true,
         otorgadoPor: { select: { nombreCompleto: true } },
         expediente: { select: { numero: true } },
       },
@@ -243,7 +238,6 @@ export class UsuariasJuridicoRepository implements IUsuariasJuridicoRepository {
         referidoPor: referencia.otorgadoPor.nombreCompleto,
         motivo: referencia.motivo,
         estado: estadoReferencia(referencia),
-        motivoDevolucion: referencia.motivoDevolucion,
       })),
     };
   }

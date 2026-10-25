@@ -15,8 +15,7 @@ export const MENSAJE_ACCION_NO_DISPONIBLE =
   'Esta acción no está disponible en el estado actual del proceso';
 export const MENSAJE_PERSONAL_INEXISTENTE =
   'La abogada o procuradora seleccionada no existe';
-export const MENSAJE_REFERENCIA_NO_PENDIENTE =
-  'La referencia ya fue atendida o devuelta';
+export const MENSAJE_REFERENCIA_NO_PENDIENTE = 'La referencia ya fue atendida';
 export const MENSAJE_CARPETA_DUPLICADA = 'Ya existe una carpeta con ese nombre';
 export const MENSAJE_SIN_ACCESO_AUDIENCIA = 'No tiene acceso a esta audiencia';
 export const MENSAJE_SIN_ACCESO_ACTUACION = 'No tiene acceso a esta actuación';

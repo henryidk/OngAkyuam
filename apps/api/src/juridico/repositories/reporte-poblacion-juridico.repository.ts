@@ -19,7 +19,6 @@ import type {
  * - "Día" = inicio del primer proceso; sin procesos, la fecha del referido en Guatemala.
  * - Abierto = algún proceso ni finalizado ni abandonado; sin procesos cuenta como abierto
  *   (la usuaria espera ser atendida).
- * - Un referido devuelto que nunca tuvo proceso no se atendió: no entra.
  */
 function cteExpedientes(filtro: FiltroReportePoblacionJuridico): Prisma.Sql {
   return Prisma.sql`
@@ -32,7 +31,6 @@ function cteExpedientes(filtro: FiltroReportePoblacionJuridico): Prisma.Sql {
       LEFT JOIN "ProcesoJuridico" p ON p."expedienteId" = e.id
       WHERE r.area = 'JURIDICO'
       GROUP BY e.id, r.id
-      HAVING count(p.id) > 0 OR r."devueltoEn" IS NULL
     ),
     enCartera AS (
       SELECT x.* FROM expedientes x

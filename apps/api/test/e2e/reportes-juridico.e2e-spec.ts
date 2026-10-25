@@ -187,16 +187,6 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       const delAnio = await expedienteConProcesos([{ fechaInicio: hoy }]);
       // Referido a Jurídico sin proceso todavía: entra con la fecha del referido (hoy).
       const sinProceso = await expedienteConProcesos([]);
-      // Devuelto a Trabajo Social sin haber abierto proceso: no se atendió.
-      const devuelto = await expedienteConProcesos([]);
-      await prisma.referidoArea.updateMany({
-        where: { expedienteId: devuelto.expediente.id, area: 'JURIDICO' },
-        data: {
-          devueltoEn: new Date(),
-          devueltoPorId: juridico.id,
-          motivoDevolucion: `${MARCA} devuelto`,
-        },
-      });
       // Nunca referido a Jurídico: aunque tenga proceso, no es de este módulo.
       const noReferido = await crearExpediente(prisma, trabajoSocial.id, [
         'PSICOLOGIA',
@@ -222,10 +212,8 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       for (const fuera of [delAnio, sinProceso, cerrado]) {
         expect(seguimientoExcel).not.toContain(numero(fuera));
       }
-      for (const fuera of [devuelto, noReferido]) {
-        expect(delAnioExcel).not.toContain(numero(fuera));
-        expect(seguimientoExcel).not.toContain(numero(fuera));
-      }
+      expect(delAnioExcel).not.toContain(numero(noReferido));
+      expect(seguimientoExcel).not.toContain(numero(noReferido));
     });
 
     it('la edad es la que tenía al "Día" y la vista previa trae las 13 columnas', async () => {

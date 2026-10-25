@@ -123,7 +123,7 @@ export class ProcesosRepository implements IProcesosRepository {
         usuariaId: true,
         referidos: {
           where: { area: 'JURIDICO' },
-          select: { id: true, atendidoEn: true, devueltoEn: true },
+          select: { id: true, atendidoEn: true },
         },
       },
     });
@@ -136,7 +136,7 @@ export class ProcesosRepository implements IProcesosRepository {
       numero: expediente.numero,
       usuariaId: expediente.usuariaId,
       referidoId: referencia.id,
-      referenciaPendiente: !referencia.atendidoEn && !referencia.devueltoEn,
+      referenciaPendiente: !referencia.atendidoEn,
     };
   }
 
@@ -206,7 +206,7 @@ export class ProcesosRepository implements IProcesosRepository {
     const [fila] = await this.prisma.$queryRaw<FilaResumen[]>(Prisma.sql`
       SELECT
         (SELECT count(*) FROM "ReferidoArea" r
-          WHERE r.area = 'JURIDICO' AND r."atendidoEn" IS NULL AND r."devueltoEn" IS NULL
+          WHERE r.area = 'JURIDICO' AND r."atendidoEn" IS NULL
         ) AS "referenciasPendientes",
         count(*) AS total,
         count(*) FILTER (WHERE ${EN_TRAMITE_SQL}) AS "enTramite",
