@@ -28,15 +28,17 @@ describe('horario de Medicina', () => {
 
   it('horaFin suma la duración de 30 minutos, cruzando la hora', () => {
     expect(horaFin('08:30')).toBe('09:00');
-    expect(horaFin('15:30')).toBe('16:00');
+    expect(horaFin('16:30')).toBe('17:00');
   });
 
   it('solo acepta horas del horario, al minuto exacto y en día hábil', () => {
     expect(dentroDeHorario(inicioCita(LUNES, '08:00'))).toBe(true);
-    expect(dentroDeHorario(inicioCita(LUNES, '15:30'))).toBe(true);
-    // 12:30 a 13:30 es el almuerzo; 16:00 ya está fuera.
-    expect(dentroDeHorario(inicioCita(LUNES, '12:30'))).toBe(false);
-    expect(dentroDeHorario(inicioCita(LUNES, '16:00'))).toBe(false);
+    // Sin hueco de almuerzo: el mediodía se agenda como cualquier hora.
+    expect(dentroDeHorario(inicioCita(LUNES, '12:30'))).toBe(true);
+    // La última empieza 16:30 y termina 17:00; 17:00 y antes de 08:00 quedan fuera.
+    expect(dentroDeHorario(inicioCita(LUNES, '16:30'))).toBe(true);
+    expect(dentroDeHorario(inicioCita(LUNES, '17:00'))).toBe(false);
+    expect(dentroDeHorario(inicioCita(LUNES, '07:30'))).toBe(false);
     expect(dentroDeHorario(inicioCita(LUNES, '08:15'))).toBe(false);
     expect(dentroDeHorario(inicioCita('2026-10-17', '08:00'))).toBe(false);
     const conSegundos = new Date(inicioCita(LUNES, '08:00').getTime() + 1_000);
@@ -57,6 +59,8 @@ describe('horario de Medicina', () => {
     expect(horasLibres(LUNES, new Set(['15:00']), ahora)).toEqual([
       '14:30',
       '15:30',
+      '16:00',
+      '16:30',
     ]);
     expect(horasLibres('2026-10-17', new Set(), ahora)).toEqual([]);
   });
@@ -66,7 +70,7 @@ describe('horario de Medicina', () => {
     expect(exigirInicioValido('2026-10-12T10:30', ahora).toISOString()).toBe(
       '2026-10-12T16:30:00.000Z',
     );
-    expect(() => exigirInicioValido('2026-10-12T13:00', ahora)).toThrow();
+    expect(() => exigirInicioValido('2026-10-12T17:00', ahora)).toThrow();
     expect(() => exigirInicioValido('2026-10-12T09:00', ahora)).toThrow();
     // La misma hora que "ahora" ya empezó.
     expect(() => exigirInicioValido('2026-10-12T10:00', ahora)).toThrow();
