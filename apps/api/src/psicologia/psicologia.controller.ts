@@ -78,14 +78,11 @@ export class PsicologiaController {
   }
 
   @Get('citas/:citaId/documento/url')
-  obtenerUrlDescargaDocumentoCita(
+  obtenerUrlDocumentoCita(
     @Param('citaId', ParseUUIDPipe) citaId: string,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.registroService.obtenerUrlDescargaDocumentoCita(
-      citaId,
-      contexto,
-    );
+    return this.registroService.obtenerUrlDocumentoCita(citaId, contexto);
   }
 
   @Get('indicadores')

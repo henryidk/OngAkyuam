@@ -34,6 +34,12 @@ export function formatInstanteGT(fecha: Date | string): string {
   return dt.setZone(GUATEMALA_TZ).toFormat('dd/LL/yyyy HH:mm')
 }
 
+/** Un instante en texto corto para avisos, en hora de Guatemala (ej. "jue 30 oct, 10:00"). */
+export function formatInstanteCortoGT(fecha: Date | string): string {
+  const dt = typeof fecha === 'string' ? DateTime.fromISO(fecha) : DateTime.fromJSDate(fecha)
+  return dt.setZone(GUATEMALA_TZ).setLocale('es').toFormat("ccc d LLL', 'HH:mm").replace(/\./g, '')
+}
+
 /**
  * Suma (o resta, con delta negativo) días a una fecha de calendario "YYYY-MM-DD" devolviendo
  * otra fecha de calendario. Se apoya en Luxon en vez de `new Date(...)` + `setDate` para no

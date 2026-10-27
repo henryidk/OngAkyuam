@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { etiquetaAtencion, etiquetaProceso } from '@akyuam/shared';
+import { etiquetaAtencion, etiquetaProcesoPsicologia } from '@akyuam/shared';
 import type {
   ProcesoPsicologiaCompartidoDto,
   ResumenMedicoParaTs,
@@ -63,6 +63,7 @@ export class CompartidoRepository implements ICompartidoRepository {
       orderBy: { consecutivo: 'asc' },
       select: {
         consecutivo: true,
+        nino: { select: { consecutivo: true } },
         estado: true,
         fechaInicio: true,
         fechaCierre: true,
@@ -80,7 +81,14 @@ export class CompartidoRepository implements ICompartidoRepository {
       },
     });
 
-    return procesos.map((proceso) => {
+    // Primero los de la usuaria y luego los de cada hijo/a, cada persona en su orden.
+    const porPersona = [...procesos].sort(
+      (a, b) =>
+        (a.nino?.consecutivo ?? 0) - (b.nino?.consecutivo ?? 0) ||
+        a.consecutivo - b.consecutivo,
+    );
+
+    return porPersona.map((proceso) => {
       const proxima = proceso.citas.find(
         (cita) => cita.estado === 'PROGRAMADA' && cita.fechaHora >= ahora,
       );
@@ -88,7 +96,11 @@ export class CompartidoRepository implements ICompartidoRepository {
         .flatMap((cita) => cita.documentos)
         .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
       return {
-        codigo: etiquetaProceso(proceso.expediente.numero, proceso.consecutivo),
+        codigo: etiquetaProcesoPsicologia(
+          proceso.expediente.numero,
+          proceso.consecutivo,
+          proceso.nino?.consecutivo ?? null,
+        ),
         etapa: proceso.estado,
         fechaInicio: proceso.fechaInicio?.toISOString() ?? null,
         fechaCierre: proceso.fechaCierre?.toISOString() ?? null,

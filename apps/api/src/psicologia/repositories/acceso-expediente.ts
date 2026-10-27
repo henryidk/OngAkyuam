@@ -1,65 +1,84 @@
 import { Prisma } from '@prisma/client';
 
-// Qué expedientes puede ver una psicóloga: los referidos a Psicología que nadie ha tomado
-// (la cola es de toda el área) y los que tienen un proceso suyo. De los que tomó otra
-// psicóloga no ve nada. Es la misma regla en sus dos formas (Prisma y SQL): si cambia una,
-// cambia la otra.
+// Quién puede qué en Psicología (planpsicologiaequipo.md):
+// - LEER es de toda el área: cualquier cuenta de Psicología ve lo de un expediente que Trabajo
+//   Social refirió a Psicología (usuarias, procesos abiertos y cerrados, sesiones y documentos).
+// - GESTIONAR un proceso (programar, reprogramar, cerrar, visibilidad) es de su responsable.
+// - REGISTRAR o corregir una sesión es de quien la atendió.
+// Cada regla tiene, si hace falta, su forma Prisma y su forma SQL: si cambia una, cambia la otra.
+
+/** Expediente que Trabajo Social refirió a Psicología: toda el área lo puede leer. */
+export const EXPEDIENTE_DE_PSICOLOGIA = {
+  referidos: { some: { area: 'PSICOLOGIA' } },
+} satisfies Prisma.ExpedienteWhereInput;
+
+/** Proceso que cualquier cuenta de Psicología puede leer. Nunca autoriza una escritura. */
+export const PROCESO_LEGIBLE = {
+  expediente: EXPEDIENTE_DE_PSICOLOGIA,
+} satisfies Prisma.AtencionPsicologicaWhereInput;
 
 /** Referencia "sin tomar": ninguna psicóloga se ha hecho cargo de un proceso en ese expediente. */
 export const EXPEDIENTE_SIN_TOMAR = {
   atencionesPsicologicas: { none: { psicologaAsignadaId: { not: null } } },
 } satisfies Prisma.ExpedienteWhereInput;
 
-export function expedienteConProcesoDe(
+/** Expediente referido que alguien del área ya tomó: ahí se abren procesos desde la ficha. */
+export const EXPEDIENTE_TOMADO = {
+  ...EXPEDIENTE_DE_PSICOLOGIA,
+  atencionesPsicologicas: { some: { psicologaAsignadaId: { not: null } } },
+} satisfies Prisma.ExpedienteWhereInput;
+
+/** Proceso que esta psicóloga gestiona: es su responsable. */
+export function procesoGestionable(
   psicologaId: string,
-): Prisma.ExpedienteWhereInput {
-  return {
-    atencionesPsicologicas: { some: { psicologaAsignadaId: psicologaId } },
-  };
+): Prisma.AtencionPsicologicaWhereInput {
+  return { psicologaAsignadaId: psicologaId, ...PROCESO_LEGIBLE };
 }
 
-export function expedienteAccesible(
+/**
+ * Cita cuya sesión esta psicóloga puede registrar o corregir: la atendió (o la tiene asignada)
+ * ella y el proceso sigue abierto. No exige ser la responsable del proceso.
+ */
+export function citaRegistrable(
   psicologaId: string,
-): Prisma.ExpedienteWhereInput {
+): Prisma.CitaPsicologicaWhereInput {
   return {
-    referidos: { some: { area: 'PSICOLOGIA' } },
-    OR: [EXPEDIENTE_SIN_TOMAR, expedienteConProcesoDe(psicologaId)],
+    atendidoPorId: psicologaId,
+    atencion: { estado: { not: 'CIERRE' }, ...PROCESO_LEGIBLE },
   };
 }
 
 /**
- * Proceso que llevó otra psicóloga y que esta puede leer: ya está cerrado y ella atiende o
- * atendió a la misma usuaria (en cualquiera de sus expedientes). Es para que quien retoma a una
- * usuaria conozca lo que se trabajó antes; uno que sigue abierto solo lo ve su dueña.
+ * Sesiones mías que ya empezaron y siguen sin registrar, en procesos abiertos: lo que lista
+ * Consultas › Por registrar y cuenta su insignia. Misma regla que "No asistió".
  */
-export function procesoCerradoDeColega(
+export function sesionPorRegistrar(
   psicologaId: string,
-): Prisma.AtencionPsicologicaWhereInput {
+  ahora: Date,
+): Prisma.CitaPsicologicaWhereInput {
   return {
-    estado: 'CIERRE',
-    AND: [
-      { psicologaAsignadaId: { not: null } },
-      { psicologaAsignadaId: { not: psicologaId } },
-    ],
-    expediente: {
-      usuaria: { expedientes: { some: expedienteConProcesoDe(psicologaId) } },
-    },
+    ...citaRegistrable(psicologaId),
+    estado: 'PROGRAMADA',
+    fechaHora: { lte: ahora },
   };
 }
 
 /**
- * Qué procesos puede LEER una psicóloga: los suyos y los cerrados de una colega con una usuaria
- * que también es suya. Solo para lecturas: escribir sigue siendo cosa de la dueña.
+ * Proceso sin cerrar de una persona: la usuaria (en cualquiera de sus expedientes) o un hijo/a.
+ * Sostiene "un solo proceso abierto por persona"; la base lo garantiza dentro de un expediente
+ * y esta condición lo cubre entre expedientes de la misma usuaria.
  */
-export function procesoLegible(
-  psicologaId: string,
-): Prisma.AtencionPsicologicaWhereInput {
-  return {
-    OR: [
-      { psicologaAsignadaId: psicologaId },
-      procesoCerradoDeColega(psicologaId),
-    ],
-  };
+export function procesoAbiertoDePersona(persona: {
+  usuariaId: string;
+  ninoId: string | null;
+}): Prisma.AtencionPsicologicaWhereInput {
+  return persona.ninoId === null
+    ? {
+        estado: { not: 'CIERRE' },
+        ninoId: null,
+        expediente: { usuariaId: persona.usuariaId },
+      }
+    : { estado: { not: 'CIERRE' }, ninoId: persona.ninoId };
 }
 
 /**
@@ -80,19 +99,8 @@ export function sinTomarSql(expedienteId: Prisma.Sql): Prisma.Sql {
   )`;
 }
 
-/** `expedienteAccesible` sobre el alias `e` de "Expediente". */
-export function expedienteAccesibleSql(psicologaId: string): Prisma.Sql {
-  return Prisma.sql`(
-    EXISTS (
-      SELECT 1 FROM "ReferidoArea" x
-      WHERE x."expedienteId" = e.id AND x.area = 'PSICOLOGIA'
-    )
-    AND (
-      ${sinTomarSql(Prisma.sql`e.id`)}
-      OR EXISTS (
-        SELECT 1 FROM "AtencionPsicologica" m
-        WHERE m."expedienteId" = e.id AND m."psicologaAsignadaId" = ${psicologaId}
-      )
-    )
-  )`;
-}
+/** `EXPEDIENTE_DE_PSICOLOGIA` sobre el alias `e` de "Expediente". */
+export const EXPEDIENTE_DE_PSICOLOGIA_SQL = Prisma.sql`EXISTS (
+  SELECT 1 FROM "ReferidoArea" x
+  WHERE x."expedienteId" = e.id AND x.area = 'PSICOLOGIA'
+)`;

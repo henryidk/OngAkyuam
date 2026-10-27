@@ -5,7 +5,11 @@ import {
   Injectable,
 } from '@nestjs/common';
 import {
+  HORARIO_PSICOLOGIA,
+  PASO_HORARIO_PSICOLOGIA_MIN,
+  SEMANAS_DISPONIBILIDAD_PSICOLOGIA,
   diaSemanaGT,
+  fechaCalendarioGT,
   finDiaGT,
   hoyGT,
   inicioDiaGT,
@@ -17,6 +21,8 @@ import type {
   AgendarCitaPsicologicaInput,
   CitaAgendaDto,
   CitaProgramadaDto,
+  DisponibilidadDiaDto,
+  DisponibilidadPsicologiaQuery,
   HuecoLibreDto,
   HuecosAgendaQuery,
   MoverCitaPsicologicaInput,
@@ -35,13 +41,11 @@ import {
 } from '../compartido/mensajes';
 import { avisarTraslape } from '../compartido/traslape';
 import { estaCerrado } from '../dominio/etapa-proceso';
-import { huecosLibres } from '../dominio/huecos-libres';
+import { horasDeInicio, huecosLibres } from '../dominio/huecos-libres';
 import { AGENDA_PSICOLOGIA_REPOSITORY } from '../interfaces/agenda-psicologia-repository.interface';
 import type { IAgendaPsicologiaRepository } from '../interfaces/agenda-psicologia-repository.interface';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
-import { PROCESOS_PSICOLOGIA_REPOSITORY } from '../interfaces/procesos-psicologia-repository.interface';
-import type { IProcesosPsicologiaRepository } from '../interfaces/procesos-psicologia-repository.interface';
 import { AccesoPsicologiaService } from '../services/acceso-psicologia.service';
 
 /** La agenda se pide por semana o por mes (una cuadrícula de 6 semanas); nunca un rango abierto. */
@@ -55,8 +59,6 @@ export class AgendaPsicologiaService {
     private readonly agendaRepository: IAgendaPsicologiaRepository,
     @Inject(CITAS_PSICOLOGICAS_REPOSITORY)
     private readonly citasRepository: ICitasPsicologicasRepository,
-    @Inject(PROCESOS_PSICOLOGIA_REPOSITORY)
-    private readonly procesosRepository: IProcesosPsicologiaRepository,
     private readonly acceso: AccesoPsicologiaService,
     private readonly auditService: AuditService,
   ) {}
@@ -110,12 +112,73 @@ export class AgendaPsicologiaService {
     );
   }
 
-  /** "Marcar no asistió": la cita ya pasó y la persona no llegó. No lleva texto. */
+  /**
+   * Horas de inicio libres de cada día hábil, desde `desde` hasta unas semanas adelante, donde
+   * cabe completa una cita de `duracion` minutos. Solo mira la agenda de quien consulta y nunca
+   * dice qué ocupa cada hora. Es una sugerencia: agendar fuera de estas horas sigue permitido.
+   */
+  async disponibilidad(
+    query: DisponibilidadPsicologiaQuery,
+    psicologaId: string,
+  ): Promise<DisponibilidadDiaDto[]> {
+    const ahora = new Date();
+    const hoy = fechaCalendarioGT(ahora);
+    const desde = query.desde < hoy ? hoy : query.desde;
+    const hasta = sumarDiasGT(hoy, SEMANAS_DISPONIBILIDAD_PSICOLOGIA * 7);
+    const fechas: string[] = [];
+    for (let dia = desde; dia <= hasta; dia = sumarDiasGT(dia, 1)) {
+      if (
+        (HORARIO_PSICOLOGIA.diasLaborables as readonly number[]).includes(
+          diaSemanaGT(dia),
+        )
+      ) {
+        fechas.push(dia);
+      }
+    }
+    if (fechas.length === 0) {
+      return [];
+    }
+
+    const ocupadas = await this.agendaRepository.listarOcupadas({
+      psicologaId,
+      desde: inicioDiaGT(fechas[0]),
+      hasta: finDiaGT(fechas[fechas.length - 1]),
+    });
+    const porDia = new Map<string, { inicioMin: number; finMin: number }[]>();
+    for (const cita of ocupadas) {
+      const dia = fechaCalendarioGT(cita.fechaHora);
+      const inicioMin = minutosDelDiaGT(cita.fechaHora);
+      const tramos = porDia.get(dia) ?? [];
+      tramos.push({ inicioMin, finMin: inicioMin + cita.duracionMinutos });
+      porDia.set(dia, tramos);
+    }
+
+    return fechas.map((dia) => ({
+      fecha: dia,
+      libres: horasDeInicio(
+        huecosLibres(
+          porDia.get(dia) ?? [],
+          diaSemanaGT(dia),
+          dia === hoy ? minutosDelDiaGT(ahora) : null,
+        ),
+        query.duracion,
+        PASO_HORARIO_PSICOLOGIA_MIN,
+      ),
+    }));
+  }
+
+  /**
+   * "Marcar no asistió": la cita ya pasó y la persona no llegó. No lleva texto. Es un registro
+   * de la sesión: lo hace quien la tenía asignada.
+   */
   async marcarNoAsistio(
     citaId: string,
     contexto: ContextoAuditoria,
   ): Promise<{ id: string; estado: 'NO_ASISTIO' }> {
-    const cita = await this.acceso.exigirAccesoCita(citaId, contexto.usuarioId);
+    const cita = await this.acceso.exigirAutoriaCita(
+      citaId,
+      contexto.usuarioId,
+    );
 
     const marcada = await this.agendaRepository.marcarNoAsistio(
       citaId,
@@ -150,7 +213,7 @@ export class AgendaPsicologiaService {
     );
   }
 
-  /** Cita de seguimiento en un proceso propio que siga abierto, para la usuaria o un hijo/a suyo. */
+  /** Cita de seguimiento en un proceso propio que siga abierto, siempre para la persona del proceso. */
   async programarCita(
     procesoId: string,
     datos: AgendarCitaPsicologicaInput,
@@ -163,13 +226,8 @@ export class AgendaPsicologiaService {
     if (estaCerrado(proceso.etapa)) {
       throw new ConflictException(MENSAJE_PROCESO_CERRADO);
     }
-    if (
-      datos.ninoId !== null &&
-      !(await this.procesosRepository.ninoPerteneceAExpediente(
-        datos.ninoId,
-        proceso.expedienteId,
-      ))
-    ) {
+    // Un proceso por persona: la cita no puede ser para alguien distinto de quien lo tiene.
+    if (datos.ninoId !== proceso.ninoId) {
       throw new BadRequestException(MENSAJE_PERSONA_AJENA);
     }
 
@@ -181,7 +239,7 @@ export class AgendaPsicologiaService {
       psicologaId: contexto.usuarioId,
       fechaHora,
       duracionMinutos: datos.duracionMinutos,
-      ninoId: datos.ninoId,
+      ninoId: proceso.ninoId,
     });
     if (citaId === null) {
       throw new ConflictException(MENSAJE_PROCESO_CERRADO);

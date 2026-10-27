@@ -1,7 +1,9 @@
 import {
   edadEnAniosGT,
   fechaColumnaISO,
+  numeroPersona,
   type PersonaAtendidaDto,
+  type PersonaParaAbrirDto,
 } from '@akyuam/shared';
 
 export interface PersonaConNacimiento {
@@ -50,5 +52,45 @@ export function personasDelExpediente(expediente: {
     ...expediente.ninos.map((nino) =>
       personaAtendida(expediente.usuaria, nino),
     ),
+  ];
+}
+
+/** Proceso abierto de alguien, visto solo para saber quién lo lleva. */
+interface ProcesoAbiertoDe {
+  psicologaAsignada: { nombreCompleto: string } | null;
+}
+
+/**
+ * Las personas a quienes se puede abrir el proceso de un caso tomado: la usuaria primero y luego
+ * cada hijo/a por su número. Quien ya tiene un proceso abierto lleva el nombre de quien la
+ * atiende, para mostrarla deshabilitada; el servidor lo vuelve a validar al abrir.
+ */
+export function personasParaAbrir(
+  expediente: {
+    numero: string;
+    usuaria: PersonaConNacimiento;
+    ninos: (PersonaConNacimiento & {
+      id: string;
+      consecutivo: number;
+      atencionesPsicologicas: ProcesoAbiertoDe[];
+    })[];
+  },
+  abiertoDeUsuaria: ProcesoAbiertoDe | undefined,
+): PersonaParaAbrirDto[] {
+  const atendidaPor = (proceso: ProcesoAbiertoDe | undefined) =>
+    proceso
+      ? (proceso.psicologaAsignada?.nombreCompleto ?? 'otra profesional')
+      : null;
+  return [
+    {
+      ...personaAtendida(expediente.usuaria, null),
+      numero: expediente.numero,
+      atendidaPor: atendidaPor(abiertoDeUsuaria),
+    },
+    ...expediente.ninos.map((nino) => ({
+      ...personaAtendida(expediente.usuaria, nino),
+      numero: numeroPersona(expediente.numero, nino.consecutivo),
+      atendidaPor: atendidaPor(nino.atencionesPsicologicas[0]),
+    })),
   ];
 }

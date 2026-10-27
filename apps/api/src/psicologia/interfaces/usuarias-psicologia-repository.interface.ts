@@ -34,9 +34,13 @@ export interface IUsuariasPsicologiaRepository {
   listar(
     params: ListarUsuariasPsicologiaParams,
   ): Promise<ListaUsuariasPsicologia>;
-  /** `null` tanto si la usuaria no existe como si esta psicóloga no puede verla. */
+  /**
+   * `null` tanto si la usuaria no existe como si esta psicóloga no puede verla. `ahora` decide
+   * cuál es la próxima sesión de cada hijo/a.
+   */
   obtenerFicha(
     usuariaId: string,
     psicologaId: string,
+    ahora: Date,
   ): Promise<FichaUsuariaRepo | null>;
 }

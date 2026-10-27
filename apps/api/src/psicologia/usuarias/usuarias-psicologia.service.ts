@@ -66,9 +66,11 @@ export class UsuariasPsicologiaService {
     usuariaId: string,
     contexto: ContextoAuditoria,
   ): Promise<FichaUsuariaPsicologiaDto> {
+    const ahora = new Date();
     const ficha = await this.usuariasRepository.obtenerFicha(
       usuariaId,
       contexto.usuarioId,
+      ahora,
     );
     if (!ficha) {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_USUARIA);
@@ -77,9 +79,13 @@ export class UsuariasPsicologiaService {
       this.consultasRepository.listarDeUsuaria(
         usuariaId,
         contexto.usuarioId,
-        new Date(),
+        ahora,
       ),
-      this.consultasRepository.listarDeColegas(usuariaId, contexto.usuarioId),
+      this.consultasRepository.listarDeColegas(
+        usuariaId,
+        contexto.usuarioId,
+        ahora,
+      ),
       this.visibilidadMedica.paraPsicologia(usuariaId),
     ]);
 

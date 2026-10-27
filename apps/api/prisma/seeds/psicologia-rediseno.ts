@@ -180,6 +180,28 @@ const CASOS: CasoSeed[] = [
       resumen: 'Dato ficticio: se cumplieron los objetivos acordados.',
     },
   },
+  {
+    // Proceso largo para revisar cómo se ve la pestaña Sesiones con muchas sesiones: una por
+    // semana durante casi seis meses, con alguna inasistencia, y la próxima ya programada.
+    nombres: 'Marta Elena',
+    apellidos: 'Ficticia Choc',
+    dpi: '0000000781601',
+    fechaNacimiento: '1987-04-21',
+    grupoEtnico: 'MAYA_QECHI',
+    municipio: 'COBAN',
+    tipologia: ['FISICA', 'PSICOLOGICA'],
+    referidaHaceDias: 175,
+    tomadaHaceDias: 172,
+    citas: [
+      ...Array.from({ length: 24 }, (_, semana): CitaSeed => ({
+        dias: -168 + semana * 7,
+        hora: '11:00',
+        estado: [4, 11, 19].includes(semana) ? 'NO_ASISTIO' : 'ATENDIDA',
+        duracionMinutos: semana === 0 ? 60 : 45,
+      })),
+      { dias: 7, hora: '11:00', estado: 'PROGRAMADA' },
+    ],
+  },
 ];
 
 /** Misma numeración que usa el sistema, para no chocar con expedientes creados después. */

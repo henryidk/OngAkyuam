@@ -99,6 +99,7 @@ describe('AperturaProcesoService', () => {
           expedienteId: EXPEDIENTE_ID,
           procesoId: PROCESO_ID,
           citaId: CITA_ID,
+          ninoId: null,
           origen: 'REFERENCIA',
         },
       }),
@@ -178,12 +179,23 @@ describe('AperturaProcesoService', () => {
       expect(procesosRepository.abrir).not.toHaveBeenCalled();
     });
 
-    it('agenda para un hijo/a del expediente', async () => {
-      await service.atender(REFERIDO_ID, datos({ ninoId: NINO_ID }), contexto);
+    it('abre el proceso del hijo/a elegido, con su número propio', async () => {
+      procesosRepository.abrir.mockResolvedValue({
+        procesoId: PROCESO_ID,
+        consecutivo: 1,
+        ninoConsecutivo: 1,
+        citaId: CITA_ID,
+      });
 
+      await expect(
+        service.atender(REFERIDO_ID, datos({ ninoId: NINO_ID }), contexto),
+      ).resolves.toMatchObject({ codigo: '05-2026.01' });
       expect(procesosRepository.abrir).toHaveBeenCalledWith(
         expect.objectContaining({ ninoId: NINO_ID }),
       );
+      expect(eventosAuditados(auditService)[0]).toMatchObject({
+        detalles: { ninoId: NINO_ID },
+      });
     });
   });
 
@@ -308,13 +320,14 @@ describe('AperturaProcesoService', () => {
             expedienteId: EXPEDIENTE_ID,
             procesoId: PROCESO_ID,
             citaId: CITA_ID,
+            ninoId: null,
             origen: 'FICHA',
           },
         }),
       ]);
     });
 
-    it('rechaza con 403 a la usuaria que atiende otra psicóloga, sin abrir ni auditar', async () => {
+    it('rechaza con 403 a la usuaria que nunca fue referida a Psicología, sin abrir ni auditar', async () => {
       procesosRepository.buscarAccesoUsuaria.mockResolvedValue(null);
 
       await expect(
@@ -322,8 +335,10 @@ describe('AperturaProcesoService', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(procesosRepository.buscarAccesoUsuaria).toHaveBeenCalledWith(
         USUARIA_ID,
-        'psicologa-a',
       );
+      expect(
+        procesosRepository.buscarExpedienteParaAbrir,
+      ).not.toHaveBeenCalled();
       expect(procesosRepository.abrirNuevo).not.toHaveBeenCalled();
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
@@ -338,16 +353,61 @@ describe('AperturaProcesoService', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it('pide atender la referencia (409) si solo la ve por una referencia sin tomar', async () => {
-      procesosRepository.buscarAccesoUsuaria.mockResolvedValue({
-        usuariaId: USUARIA_ID,
-        expediente: null,
-      });
+    it('pide atender la referencia (409) si ningún expediente suyo fue tomado todavía', async () => {
+      procesosRepository.buscarExpedienteParaAbrir.mockResolvedValue(
+        'SIN_TOMAR',
+      );
 
       await expect(
         service.abrirDesdeFicha(USUARIA_ID, datos(), contexto),
-      ).rejects.toBeInstanceOf(ConflictException);
+      ).rejects.toEqual(
+        new ConflictException(
+          'La usuaria tiene una referencia pendiente: atiéndala desde el Área de atención o la Agenda',
+        ),
+      );
       expect(procesosRepository.abrirNuevo).not.toHaveBeenCalled();
+    });
+
+    it('rechaza con 400 un hijo/a que no es de esta usuaria, sin abrir', async () => {
+      procesosRepository.buscarExpedienteParaAbrir.mockResolvedValue(
+        'PERSONA_AJENA',
+      );
+
+      await expect(
+        service.abrirDesdeFicha(
+          USUARIA_ID,
+          datos({ ninoId: NINO_ID }),
+          contexto,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(procesosRepository.buscarExpedienteParaAbrir).toHaveBeenCalledWith(
+        USUARIA_ID,
+        NINO_ID,
+      );
+      expect(procesosRepository.abrirNuevo).not.toHaveBeenCalled();
+    });
+
+    it('abre el proceso del hijo/a y quien lo abre queda como responsable', async () => {
+      procesosRepository.abrirNuevo.mockResolvedValue({
+        procesoId: PROCESO_ID,
+        consecutivo: 1,
+        ninoConsecutivo: 2,
+        citaId: CITA_ID,
+      });
+
+      await expect(
+        service.abrirDesdeFicha(
+          USUARIA_ID,
+          datos({ ninoId: NINO_ID }),
+          contexto,
+        ),
+      ).resolves.toMatchObject({ codigo: '05-2026.02' });
+      expect(procesosRepository.abrirNuevo).toHaveBeenCalledWith(
+        expect.objectContaining({
+          ninoId: NINO_ID,
+          psicologaId: 'psicologa-a',
+        }),
+      );
     });
 
     it.each([
@@ -423,8 +483,21 @@ describe('AperturaProcesoService', () => {
       expect(segunda).toEqual(primera);
       expect(procesosRepository.abrirNuevo).toHaveBeenCalledTimes(1);
       expect([...redis.datos.keys()]).toEqual([
-        `psicologia:abrir:psicologa-a:${USUARIA_ID}:${clave}`,
+        `psicologia:abrir:psicologa-a:${USUARIA_ID}:usuaria:${clave}`,
       ]);
+    });
+
+    it('la misma clave para otra persona no devuelve la respuesta de la primera', async () => {
+      const clave = 'clave-abrir-0003';
+      await service.abrirDesdeFicha(USUARIA_ID, datos(), contexto, clave);
+      await service.abrirDesdeFicha(
+        USUARIA_ID,
+        datos({ ninoId: NINO_ID }),
+        contexto,
+        clave,
+      );
+
+      expect(procesosRepository.abrirNuevo).toHaveBeenCalledTimes(2);
     });
   });
 });

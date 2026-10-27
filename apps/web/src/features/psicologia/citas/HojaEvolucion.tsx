@@ -4,7 +4,7 @@ import { extraerMensajeError } from '../../../lib/errors'
 import { subirDocumentoCita } from '../api/psicologia.api'
 import BotonVerDocumento from '../procesos/BotonVerDocumento'
 
-interface FormatoGeneralProps {
+interface HojaEvolucionProps {
   citaId: string
   documento: DocumentoCitaDto | null
   onSubido: (documento: DocumentoCitaDto) => void
@@ -13,10 +13,10 @@ interface FormatoGeneralProps {
 const TAMANIO_MAXIMO_MB = Math.round(DOCUMENTO_TAMANIO_MAXIMO_BYTES / (1024 * 1024))
 
 /**
- * El Formato General en papel de la sesión, escaneado. Se sube en cuanto se elige: no depende de
+ * La Hoja de evolución en papel de la sesión, escaneada. Se sube en cuanto se elige: no depende de
  * guardar el registro, y el servidor vuelve a comprobar el tipo real del archivo.
  */
-export default function FormatoGeneral({ citaId, documento, onSubido }: FormatoGeneralProps) {
+export default function HojaEvolucion({ citaId, documento, onSubido }: HojaEvolucionProps) {
   const entrada = useRef<HTMLInputElement>(null)
   const [progreso, setProgreso] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -48,7 +48,7 @@ export default function FormatoGeneral({ citaId, documento, onSubido }: FormatoG
   return (
     <section className="space-y-2">
       <div>
-        <h3 className="text-sm font-semibold text-gray-800">Formato General</h3>
+        <h3 className="text-sm font-semibold text-gray-800">Hoja de evolución</h3>
         <p className="text-xs text-gray-500">
           La hoja en papel de esta sesión, escaneada. PDF o imagen, hasta {TAMANIO_MAXIMO_MB} MB. Opcional.
         </p>
@@ -60,7 +60,7 @@ export default function FormatoGeneral({ citaId, documento, onSubido }: FormatoG
             ✓
           </span>
           <p className="min-w-0 flex-1 truncate text-sm text-gray-800">
-            <span className="sr-only">Formato subido: </span>
+            <span className="sr-only">Hoja subida: </span>
             {documento.nombreArchivo}
           </p>
           <BotonVerDocumento citaId={citaId} nombreArchivo={documento.nombreArchivo} />
@@ -91,7 +91,7 @@ export default function FormatoGeneral({ citaId, documento, onSubido }: FormatoG
         accept="application/pdf,image/jpeg,image/png,image/webp"
         className="sr-only"
         tabIndex={-1}
-        aria-label="Archivo del Formato General"
+        aria-label="Archivo de la Hoja de evolución"
         onChange={(evento) => void alElegir(evento.target.files?.[0])}
       />
       <button
@@ -100,7 +100,7 @@ export default function FormatoGeneral({ citaId, documento, onSubido }: FormatoG
         onClick={() => entrada.current?.click()}
         className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-800 hover:bg-gray-50 disabled:opacity-60"
       >
-        {documento ? 'Reemplazar archivo' : 'Subir Formato General'}
+        {documento ? 'Reemplazar archivo' : 'Subir Hoja de evolución'}
       </button>
 
       {error && (

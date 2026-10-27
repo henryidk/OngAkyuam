@@ -1,5 +1,6 @@
 import type {
   AgendarCitaPsicologicaInput,
+  BuscarHistorialConsultasPsicologiaInput,
   CasoPorAgendarDto,
   CasoPorReasignarDto,
   CasoPsicologiaTomadoDto,
@@ -8,10 +9,13 @@ import type {
   CitaAgendaDto,
   CitaProgramadaDto,
   CitaPsicologicaDetalle,
+  DetalleConsultaPsicologiaDto,
   ConsultaRegistradaDto,
+  DisponibilidadDiaDto,
   DocumentoCitaDto,
   ExpedienteDetalleArea,
   FichaUsuariaPsicologiaDto,
+  HistorialConsultasPsicologiaPaginado,
   HuecoLibreDto,
   IndicadoresPsicologia,
   IndicadoresQuery,
@@ -29,6 +33,7 @@ import type {
   RegistroConsultaInput,
   ResumenProcesosPsicologia,
   SesionesProcesoPaginadas,
+  SesionPorRegistrarDto,
   VisibilidadProcesoPsicologiaDto,
   VisibilidadProcesoPsicologiaInput,
 } from '@akyuam/shared'
@@ -85,6 +90,16 @@ export function listarHuecos(fecha: string) {
   return api.get<HuecoLibreDto[]>('/psicologia/agenda/huecos', { params: { fecha } }).then((res) => res.data)
 }
 
+/**
+ * Horas de inicio libres de cada día hábil desde `desde` (unas semanas adelante) para una cita de
+ * `duracion` minutos, según mi propia agenda. Una sugerencia, no un límite.
+ */
+export function obtenerDisponibilidad(desde: string, duracion: number) {
+  return api
+    .get<DisponibilidadDiaDto[]>('/psicologia/agenda/disponibilidad', { params: { desde, duracion } })
+    .then((res) => res.data)
+}
+
 /** Mis procesos abiertos, con las personas a quienes se puede citar y su próxima cita. */
 export function listarProcesosParaAgendar() {
   return api.get<ProcesoParaAgendarDto[]>('/psicologia/agenda/procesos').then((res) => res.data)
@@ -102,7 +117,10 @@ export function marcarNoAsistio(citaId: string) {
   return api.post(`/psicologia/citas/${citaId}/no-asistio`).then(() => undefined)
 }
 
-/** Mis procesos, por páginas. `filtro` y `q` son opcionales: el servidor aplica "Activos" por defecto. */
+/**
+ * Procesos por páginas: los míos o, con `de: 'EQUIPO'`, los de toda el área. `filtro`, `de` y `q`
+ * son opcionales: el servidor aplica "Activos" y "Míos" por defecto.
+ */
 export function listarProcesos(query: Partial<ListarProcesosPsicologiaQuery>) {
   return api.get<ProcesosPsicologiaPaginados>('/psicologia/procesos', { params: query }).then((res) => res.data)
 }
@@ -160,6 +178,26 @@ export function obtenerExpedienteTs(expedienteId: string) {
 }
 
 
+/** Consultas › Por registrar: mis sesiones que ya empezaron y siguen sin registrar. */
+export function listarSesionesPorRegistrar() {
+  return api.get<SesionPorRegistrarDto[]>('/psicologia/consultas/por-registrar').then((res) => res.data)
+}
+
+/**
+ * Consultas › Historial: solo metadatos. Es POST porque `q` puede ser el nombre de una
+ * sobreviviente y en el cuerpo no queda en logs ni en el historial del navegador.
+ */
+export function buscarHistorialConsultas(datos: BuscarHistorialConsultasPsicologiaInput) {
+  return api
+    .post<HistorialConsultasPsicologiaPaginado>('/psicologia/consultas/historial/busqueda', datos)
+    .then((res) => res.data)
+}
+
+/** Una sesión del historial con sus notas. El servidor deja constancia de cada apertura. */
+export function obtenerConsulta(citaId: string) {
+  return api.get<DetalleConsultaPsicologiaDto>(`/psicologia/consultas/${citaId}`).then((res) => res.data)
+}
+
 export function obtenerDetalleCita(citaId: string) {
   return api.get<CitaPsicologicaDetalle>(`/psicologia/citas/${citaId}`).then((res) => res.data)
 }
@@ -168,7 +206,7 @@ export function registrarConsulta(citaId: string, datos: RegistroConsultaInput) 
   return api.put<ConsultaRegistradaDto>(`/psicologia/citas/${citaId}/registro`, datos).then((res) => res.data)
 }
 
-/** Sube el Formato General escaneado de la sesión. `onProgreso` recibe el porcentaje enviado. */
+/** Sube la Hoja de evolución escaneada de la sesión. `onProgreso` recibe el porcentaje enviado. */
 export function subirDocumentoCita(citaId: string, archivo: File, onProgreso: (porcentaje: number) => void) {
   const form = new FormData()
   form.append('archivo', archivo)

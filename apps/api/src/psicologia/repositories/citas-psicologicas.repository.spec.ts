@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { RegistrarConsultaParams } from '../interfaces/citas-psicologicas-repository.interface';
 import { CitasPsicologicasRepository } from './citas-psicologicas.repository';
@@ -17,6 +18,8 @@ const CITA = {
   temas: null,
   intervencion: null,
   recomendaciones: null,
+  clinica: 'CLINICA_1',
+  enfoqueTerapeutico: null,
   borrador: false,
   reprogramadaDesdeId: null,
   atendidoPor: { nombreCompleto: 'Psicóloga A' },
@@ -25,6 +28,8 @@ const CITA = {
 
 function crearTx() {
   return {
+    // Bloqueo `FOR UPDATE` del proceso abierto: devuelve la fila si cumple las condiciones.
+    $queryRaw: jest.fn().mockResolvedValue([{ id: 'proceso-1' }]),
     citaPsicologica: {
       findUnique: jest
         .fn()
@@ -34,7 +39,7 @@ function crearTx() {
       findUniqueOrThrow: jest.fn().mockResolvedValue(CITA),
     },
     atencionPsicologica: {
-      // 1ª llamada: bloqueo del proceso abierto. 2ª: paso de Inicio a Seguimiento.
+      // Paso de Inicio a Seguimiento.
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     cambioEstadoAtencion: { create: jest.fn() },
@@ -54,10 +59,21 @@ function params(
     acuerdos: null,
     observaciones: null,
     motivoNoAsistencia: null,
+    clinica: 'CLINICA_1',
+    enfoqueTerapeutico: null,
     borrador: false,
     proximaCita: null,
     ...cambios,
   };
+}
+
+/** El SQL del bloqueo del proceso, ya con sus fragmentos anidados resueltos. */
+function sqlDelBloqueo(tx: ReturnType<typeof crearTx>): Prisma.Sql {
+  const [partes, ...valores] = tx.$queryRaw.mock.calls[0] as [
+    TemplateStringsArray,
+    ...unknown[],
+  ];
+  return Prisma.sql(partes, ...valores);
 }
 
 describe('CitasPsicologicasRepository.registrarConsulta', () => {
@@ -74,20 +90,47 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
     repository = new CitasPsicologicasRepository(prisma);
   });
 
-  it('solo escribe si el proceso sigue abierto y es de esa psicóloga', async () => {
-    tx.atencionPsicologica.updateMany.mockResolvedValueOnce({ count: 0 });
+  it('no escribe nada si el proceso ya se cerró', async () => {
+    tx.$queryRaw.mockResolvedValue([]);
 
     await expect(repository.registrarConsulta(params())).resolves.toBeNull();
 
-    expect(tx.atencionPsicologica.updateMany).toHaveBeenCalledWith(
+    const bloqueo = sqlDelBloqueo(tx);
+    expect(bloqueo.sql).toContain(`estado <> 'CIERRE'`);
+    expect(bloqueo.sql).toContain('FOR UPDATE');
+    expect(bloqueo.values).toEqual(['proceso-1']);
+    expect(tx.citaPsicologica.updateMany).not.toHaveBeenCalled();
+    expect(tx.citaPsicologica.create).not.toHaveBeenCalled();
+  });
+
+  it('registrar no exige ser la responsable: solo haber atendido la cita', async () => {
+    await repository.registrarConsulta(params());
+
+    expect(sqlDelBloqueo(tx).sql).not.toContain('psicologaAsignadaId');
+    expect(tx.citaPsicologica.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
-          id: 'proceso-1',
-          psicologaAsignadaId: 'psicologa-a',
-          estado: { not: 'CIERRE' },
-        },
+        where: expect.objectContaining({
+          id: 'cita-1',
+          atendidoPorId: 'psicologa-a',
+        }) as unknown,
       }),
     );
+  });
+
+  it('programar la próxima cita exige además ser la responsable del proceso', async () => {
+    tx.$queryRaw.mockResolvedValue([]);
+
+    await expect(
+      repository.registrarConsulta(
+        params({
+          proximaCita: { fechaHora: new Date(), duracionMinutos: 45 },
+        }),
+      ),
+    ).resolves.toBeNull();
+
+    const bloqueo = sqlDelBloqueo(tx);
+    expect(bloqueo.sql).toContain('"psicologaAsignadaId" = ?');
+    expect(bloqueo.values).toEqual(['proceso-1', 'psicologa-a']);
     expect(tx.citaPsicologica.updateMany).not.toHaveBeenCalled();
     expect(tx.citaPsicologica.create).not.toHaveBeenCalled();
   });
@@ -105,18 +148,37 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
 
     expect(tx.citaPsicologica.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'cita-1', estado: { not: 'REPROGRAMADA' } },
+        where: {
+          id: 'cita-1',
+          atendidoPorId: 'psicologa-a',
+          estado: { not: 'REPROGRAMADA' },
+        },
       }),
     );
     expect(tx.cambioEstadoAtencion.create).not.toHaveBeenCalled();
     expect(tx.citaPsicologica.create).not.toHaveBeenCalled();
   });
 
+  it('guarda la clínica y el enfoque junto con el registro', async () => {
+    await repository.registrarConsulta(
+      params({ enfoqueTerapeutico: 'Sistémico' }),
+    );
+
+    expect(tx.citaPsicologica.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          clinica: 'CLINICA_1',
+          enfoqueTerapeutico: 'Sistémico',
+        }) as unknown,
+      }),
+    );
+  });
+
   it('la primera sesión atendida pasa el proceso a Seguimiento y deja el hito', async () => {
     const resultado = await repository.registrarConsulta(params());
 
     expect(resultado?.pasoASeguimiento).toBe(true);
-    expect(tx.atencionPsicologica.updateMany).toHaveBeenLastCalledWith(
+    expect(tx.atencionPsicologica.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'proceso-1', estado: 'INICIO' },
         data: expect.objectContaining({ estado: 'SEGUIMIENTO' }) as unknown,
@@ -133,9 +195,7 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
   });
 
   it('una sesión atendida en un proceso que ya está en Seguimiento no deja otro hito', async () => {
-    tx.atencionPsicologica.updateMany
-      .mockResolvedValueOnce({ count: 1 })
-      .mockResolvedValueOnce({ count: 0 });
+    tx.atencionPsicologica.updateMany.mockResolvedValue({ count: 0 });
 
     const resultado = await repository.registrarConsulta(params());
 
@@ -151,7 +211,7 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
       );
 
       expect(resultado?.pasoASeguimiento).toBe(false);
-      expect(tx.atencionPsicologica.updateMany).toHaveBeenCalledTimes(1);
+      expect(tx.atencionPsicologica.updateMany).not.toHaveBeenCalled();
       expect(tx.cambioEstadoAtencion.create).not.toHaveBeenCalled();
     },
   );

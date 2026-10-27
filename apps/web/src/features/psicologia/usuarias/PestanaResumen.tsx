@@ -1,17 +1,28 @@
+import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { ETIQUETAS_TIPO_REGISTRO, type ProcesoPsicologiaResumen } from '@akyuam/shared'
-import { textoAgresor, textoHijas, textoTipologia } from '../../juridico/usuarias/textoCaso'
+import { textoAgresor, textoTipologia } from '../../juridico/usuarias/textoCaso'
 import AtencionesCompartidas from '../../medica/compartido/AtencionesCompartidas'
 import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import { useContextoFicha } from './contextoFicha'
 import { textoSesiones, textoSiguiente } from './textoProceso'
 import CodigoProceso from '../compartido/CodigoProceso'
+import TarjetaHijos from './TarjetaHijos'
 
-function FilaProcesoActivo({ proceso }: { proceso: ProcesoPsicologiaResumen }) {
+function FilaProcesoActivo({ proceso, enfocar }: { proceso: ProcesoPsicologiaResumen; enfocar: boolean }) {
+  const enlace = useRef<HTMLAnchorElement>(null)
+  useEffect(() => {
+    if (enfocar) enlace.current?.focus()
+  }, [enfocar])
+
   return (
     <li>
-      <Link to={RUTAS_PSICOLOGIA.proceso(proceso.id)} className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-gray-50">
+      <Link
+        ref={enlace}
+        to={RUTAS_PSICOLOGIA.proceso(proceso.id)}
+        className="flex flex-wrap items-center gap-3 px-5 py-3 hover:bg-gray-50"
+      >
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex flex-wrap items-center gap-2">
             <CodigoProceso codigo={proceso.codigo} className="text-gray-700" />
@@ -37,7 +48,7 @@ function Dato({ etiqueta, valor }: { etiqueta: string; valor: string | null }) {
 }
 
 export default function PestanaResumen() {
-  const { ficha, expedienteTs, errorExpedienteTs } = useContextoFicha()
+  const { ficha, expedienteTs, errorExpedienteTs, abrirProceso, procesoRecienAbierto } = useContextoFicha()
   const activos = ficha.procesos.filter((proceso) => proceso.etapa !== 'CIERRE')
   const pendiente = ficha.referencias.some((referencia) => referencia.estado !== 'ATENDIDA')
   const datosCaso = expedienteTs?.datosCaso ?? null
@@ -48,25 +59,28 @@ export default function PestanaResumen() {
 
   return (
     <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-      <section className="rounded-xl border border-gray-200 bg-white">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
-          <h3 className="text-sm font-semibold text-gray-900">Procesos activos</h3>
-          {ficha.procesos.length + ficha.procesosDeColegas.length > 0 && (
-            <Link to={RUTAS_PSICOLOGIA.usuariaProcesos(ficha.usuaria.id)} className="text-xs font-medium text-brand-700 hover:underline">
-              Ver historial completo
-            </Link>
+      <div className="space-y-4">
+        <section className="rounded-xl border border-gray-200 bg-white">
+          <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
+            <h3 className="text-sm font-semibold text-gray-900">Procesos activos</h3>
+            {ficha.procesos.length + ficha.procesosDeColegas.length > 0 && (
+              <Link to={RUTAS_PSICOLOGIA.usuariaProcesos(ficha.usuaria.id)} className="text-xs font-medium text-brand-700 hover:underline">
+                Ver historial completo
+              </Link>
+            )}
+          </div>
+          {activos.length > 0 ? (
+            <ul className="divide-y divide-gray-100">
+              {activos.map((proceso) => (
+                <FilaProcesoActivo key={proceso.id} proceso={proceso} enfocar={proceso.id === procesoRecienAbierto} />
+              ))}
+            </ul>
+          ) : (
+            <p className="px-5 py-6 text-sm text-gray-500">{sinActivos}</p>
           )}
-        </div>
-        {activos.length > 0 ? (
-          <ul className="divide-y divide-gray-100">
-            {activos.map((proceso) => (
-              <FilaProcesoActivo key={proceso.id} proceso={proceso} />
-            ))}
-          </ul>
-        ) : (
-          <p className="px-5 py-6 text-sm text-gray-500">{sinActivos}</p>
-        )}
-      </section>
+        </section>
+        <TarjetaHijos hijos={ficha.hijos} onAbrirProceso={abrirProceso} procesoRecienAbierto={procesoRecienAbierto} />
+      </div>
 
       <div className="space-y-4">
         <section className="rounded-xl border border-gray-200 bg-white">
@@ -91,7 +105,6 @@ export default function PestanaResumen() {
                     </>
                   )}
                   <Dato etiqueta="Registro" valor={ETIQUETAS_TIPO_REGISTRO[expedienteTs.tipoRegistro]} />
-                  <Dato etiqueta="Hijas e hijos" valor={textoHijas(expedienteTs.ninos)} />
                 </dl>
                 {datosCaso?.observaciones && (
                   <p className="mt-2 whitespace-pre-line rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">

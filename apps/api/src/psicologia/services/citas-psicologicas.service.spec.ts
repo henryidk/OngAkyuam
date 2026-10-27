@@ -21,11 +21,26 @@ function crearCita(overrides: Partial<CitaResumen> = {}): CitaResumen {
     temas: null,
     intervencion: null,
     recomendaciones: null,
+    clinica: null,
+    enfoqueTerapeutico: null,
     borrador: false,
     reprogramadaDesdeId: null,
     atendidoPor: 'Psicóloga A',
     documento: null,
     ...overrides,
+  };
+}
+
+function detalleCon(overrides: Partial<CitaResumen> = {}) {
+  return {
+    ...crearCita(overrides),
+    expedienteId: 'exp-1',
+    numero: '2026-001',
+    procesoId: 'atencion-1',
+    procesoCodigo: '2026-001',
+    procesoEtapa: 'SEGUIMIENTO' as const,
+    ninoNombreCompleto: null,
+    usuariaNombreCompleto: 'Usuaria Prueba',
   };
 }
 
@@ -36,15 +51,17 @@ describe('CitasPsicologicasService', () => {
 
   beforeEach(() => {
     acceso = {
-      exigirAccesoCita: jest.fn(),
+      exigirLecturaCita: jest.fn(),
     } as unknown as jest.Mocked<AccesoPsicologiaService>;
     citasRepository = {
       buscarAccesoCita: jest.fn(),
+      buscarAutoriaCita: jest.fn(),
       buscarLecturaCita: jest.fn(),
       buscarCitasSolapadas: jest.fn(),
       registrarConsulta: jest.fn(),
       listarCitasEnRango: jest.fn(),
       obtenerDetalle: jest.fn(),
+      buscarUltimaClinica: jest.fn().mockResolvedValue(null),
     };
 
     service = new CitasPsicologicasService(acceso, citasRepository);
@@ -52,7 +69,7 @@ describe('CitasPsicologicasService', () => {
 
   describe('obtenerDetalleCita', () => {
     it('propaga el 403 del guard sin llegar al repositorio', async () => {
-      acceso.exigirAccesoCita.mockRejectedValue(
+      acceso.exigirLecturaCita.mockRejectedValue(
         new ForbiddenException('No tiene acceso a esta cita'),
       );
 
@@ -76,7 +93,7 @@ describe('CitasPsicologicasService', () => {
         expedienteId: 'exp-1',
         numero: '2026-001',
         procesoId: 'atencion-1',
-        procesoCodigo: 'P1 · 2026-001',
+        procesoCodigo: '2026-001',
         procesoEtapa: 'SEGUIMIENTO' as const,
         ninoNombreCompleto: null,
         usuariaNombreCompleto: 'Usuaria Prueba',
@@ -88,7 +105,48 @@ describe('CitasPsicologicasService', () => {
         'psicologa-a',
       );
 
-      expect(resultado).toEqual(detalle);
+      expect(resultado).toEqual({ ...detalle, clinicaSugerida: null });
+    });
+
+    it('sugiere la clínica ya anotada en la cita, sin buscar otra', async () => {
+      citasRepository.obtenerDetalle.mockResolvedValue(
+        detalleCon({ clinica: 'CLINICA_2' }),
+      );
+
+      const resultado = await service.obtenerDetalleCita(
+        'cita-1',
+        'psicologa-a',
+      );
+
+      expect(resultado.clinicaSugerida).toBe('CLINICA_2');
+      expect(citasRepository.buscarUltimaClinica).not.toHaveBeenCalled();
+    });
+
+    it('sin clínica en la cita, sugiere la última que usó quien la consulta', async () => {
+      citasRepository.obtenerDetalle.mockResolvedValue(detalleCon());
+      citasRepository.buscarUltimaClinica.mockResolvedValue('CLINICA_1');
+
+      const resultado = await service.obtenerDetalleCita(
+        'cita-1',
+        'psicologa-b',
+      );
+
+      expect(resultado.clinicaSugerida).toBe('CLINICA_1');
+      expect(citasRepository.buscarUltimaClinica).toHaveBeenCalledWith(
+        'psicologa-b',
+      );
+    });
+
+    it('autoriza con el nivel de lectura: la cita de una colega también se puede ver', async () => {
+      citasRepository.obtenerDetalle.mockResolvedValue(null);
+
+      await expect(
+        service.obtenerDetalleCita('cita-1', 'psicologa-a'),
+      ).rejects.toThrow();
+      expect(acceso.exigirLecturaCita).toHaveBeenCalledWith(
+        'cita-1',
+        'psicologa-a',
+      );
     });
   });
 });

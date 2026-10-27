@@ -5,6 +5,7 @@ export const TIPOS_DOCUMENTO = [
   'CONVENIO_INGRESO',
   'RECEPCION_BIENES',
   'FORMATO_ATENCION_PSICOLOGICA',
+  'HOJA_EVOLUCION_PSICOLOGICA',
   'CONVENIO_EGRESO',
   'ACCIONES_REALIZADAS',
 ] as const
@@ -17,6 +18,7 @@ export const ETIQUETAS_TIPO_DOCUMENTO: Record<TipoDocumentoCatalogo, string> = {
   CONVENIO_INGRESO: 'Convenio de ingreso',
   RECEPCION_BIENES: 'Recepción de bienes',
   FORMATO_ATENCION_PSICOLOGICA: 'Formato general de atención psicológica',
+  HOJA_EVOLUCION_PSICOLOGICA: 'Hoja de evolución',
   CONVENIO_EGRESO: 'Convenio de egreso',
   ACCIONES_REALIZADAS: 'Acciones realizadas',
 }
@@ -24,7 +26,7 @@ export const ETIQUETAS_TIPO_DOCUMENTO: Record<TipoDocumentoCatalogo, string> = {
 /**
  * Formularios en papel que maneja Trabajo Social, en el orden en que se muestran en la
  * pestaña Documentos. Solo estos se versionan (uno vigente por tipo y caso):
- * `FORMATO_ATENCION_PSICOLOGICA` queda fuera porque hay uno por cita y lo sube Psicología.
+ * `HOJA_EVOLUCION_PSICOLOGICA` queda fuera porque hay una por cita y la sube Psicología.
  */
 export const TIPOS_DOCUMENTO_TRABAJO_SOCIAL = [
   'ENTREVISTA_USUARIA',

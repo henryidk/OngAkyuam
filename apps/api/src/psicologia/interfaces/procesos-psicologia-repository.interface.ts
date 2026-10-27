@@ -15,13 +15,15 @@ export interface AccesoProcesoPsicologia {
   consecutivo: number;
   etapa: EstadoAtencionPsicologica;
   version: number;
+  /** Persona del proceso: null = la usuaria. Toda cita del proceso es para ella. */
+  ninoId: string | null;
 }
 
-/** Un proceso que la psicóloga puede leer, sea suyo o el cerrado de una colega. */
+/** Un proceso que la psicóloga puede leer: cualquiera de un expediente referido a Psicología. */
 export interface LecturaProcesoPsicologia {
   id: string;
   expedienteId: string;
-  /** `false` = lo llevó otra psicóloga: se lee, no se toca. */
+  /** `false` = lo lleva o llevó otra psicóloga: se lee, no se gestiona. */
   propio: boolean;
 }
 
@@ -31,19 +33,22 @@ export interface AbrirProcesoParams {
   usuariaId: string;
   fechaHora: Date;
   duracionMinutos: number;
-  /** Hijo/a a quien se atiende en la primera cita; null = la usuaria. */
+  /** Persona del proceso que se abre (la de la primera cita); null = la usuaria. */
   ninoId: string | null;
 }
 
-/** Lo que una psicóloga puede saber de una usuaria antes de abrir su ficha. */
+/** La usuaria tiene algún expediente referido a Psicología: toda el área puede ver su ficha. */
 export interface AccesoUsuariaPsicologia {
   usuariaId: string;
-  /**
-   * El expediente más reciente en el que esta psicóloga lleva o llevó un proceso; `null` si la
-   * usuaria solo le es visible por una referencia que nadie ha tomado.
-   */
-  expediente: { id: string; numero: string } | null;
 }
+
+/**
+ * Dónde nacería el proceso de una persona abierto desde la ficha: el expediente del hijo/a, o
+ * el más reciente de la usuaria que el área ya tomó. `PERSONA_AJENA`: el hijo/a no es de esta
+ * usuaria. `SIN_TOMAR`: no hay expediente tomado (la referencia se atiende desde la bandeja).
+ */
+export type ExpedienteParaAbrir =
+  { id: string; numero: string } | 'PERSONA_AJENA' | 'SIN_TOMAR';
 
 export interface AbrirProcesoNuevoParams {
   expedienteId: string;
@@ -51,13 +56,16 @@ export interface AbrirProcesoNuevoParams {
   psicologaId: string;
   fechaHora: Date;
   duracionMinutos: number;
-  /** Hijo/a a quien se atiende en la primera cita; null = la usuaria. */
+  /** Persona del proceso que se abre; null = la usuaria. */
   ninoId: string | null;
 }
 
 export interface ProcesoAbierto {
   procesoId: string;
+  /** Consecutivo del proceso dentro de los de su persona. */
   consecutivo: number;
+  /** Número del hijo/a dentro del expediente; null = el proceso es de la usuaria. */
+  ninoConsecutivo: number | null;
   citaId: string;
 }
 
@@ -88,24 +96,23 @@ export interface ActualizarVisibilidadParams {
 export class ProcesoNoDisponibleError extends Error {}
 /** El caso ya tenía primera cita: otro envío abrió el proceso antes. */
 export class ProcesoYaAbiertoError extends Error {}
-/** La usuaria tiene otro proceso abierto en otro expediente. */
+/** La persona ya tiene otro proceso abierto (la usuaria, en cualquiera de sus expedientes). */
 export class OtroProcesoActivoError extends Error {}
-/** La usuaria tiene una referencia sin tomar o un caso tomado sin agendar: se atiende esa. */
+/** La usuaria tiene una referencia sin tomar o un caso tomado sin agendar: se atiende ese. */
 export class ReferenciaPendienteError extends Error {}
 
 export interface IProcesosPsicologiaRepository {
   /**
-   * Único punto de verificación "¿este proceso es de esta psicóloga?". `null` tanto si no existe
-   * como si es de otra — sin distinción posible desde afuera (sin IDOR).
+   * Único punto de verificación "¿esta psicóloga gestiona este proceso?" (es su responsable).
+   * `null` tanto si no existe como si es de otra — sin distinción posible desde afuera (sin IDOR).
    */
   buscarAccesoProceso(
     procesoId: string,
     psicologaId: string,
   ): Promise<AccesoProcesoPsicologia | null>;
   /**
-   * Único punto de verificación "¿esta psicóloga puede leer este proceso?": es suyo, o es el
-   * proceso ya cerrado de una colega con una usuaria que ella también atiende o atendió. `null`
-   * en cualquier otro caso. No sirve para autorizar escrituras.
+   * Único punto de verificación "¿esta psicóloga puede leer este proceso?": es de un expediente
+   * referido a Psicología. `null` en cualquier otro caso. No sirve para autorizar escrituras.
    */
   buscarLecturaProceso(
     procesoId: string,
@@ -113,27 +120,32 @@ export interface IProcesosPsicologiaRepository {
   ): Promise<LecturaProcesoPsicologia | null>;
   /**
    * Único punto de verificación "¿esta psicóloga puede ver a esta usuaria?": tiene un expediente
-   * referido a Psicología que nadie ha tomado o en el que ella lleva un proceso. `null` tanto
-   * si la usuaria no existe como si solo la atiende otra psicóloga.
+   * referido a Psicología. `null` tanto si la usuaria no existe como si no fue referida.
    */
   buscarAccesoUsuaria(
     usuariaId: string,
-    psicologaId: string,
   ): Promise<AccesoUsuariaPsicologia | null>;
+  /** Ver `ExpedienteParaAbrir`. Se usa tras `exigirAccesoUsuaria`. */
+  buscarExpedienteParaAbrir(
+    usuariaId: string,
+    ninoId: string | null,
+  ): Promise<ExpedienteParaAbrir>;
   ninoPerteneceAExpediente(
     ninoId: string,
     expedienteId: string,
   ): Promise<boolean>;
   /**
-   * Abre el proceso de un caso tomado: fija la fecha de inicio y crea la cita de primera
-   * atención, todo o nada. Revalida dentro de la transacción que el caso siga siendo de la
-   * psicóloga, que no tenga citas y que la usuaria no tenga otro proceso abierto.
+   * Abre el proceso de un caso tomado para la persona elegida: fija la persona y la fecha de
+   * inicio y crea la cita de primera atención, todo o nada. Revalida dentro de la transacción
+   * que el caso siga siendo de la psicóloga, que no tenga citas y que esa persona no tenga otro
+   * proceso abierto.
    */
   abrir(params: AbrirProcesoParams): Promise<ProcesoAbierto>;
   /**
-   * Abre un proceso más (P2, P3…) en un expediente donde la psicóloga ya atendió a la usuaria,
-   * junto con su cita de primera atención, todo o nada. Revalida dentro de la transacción que
-   * el expediente siga siendo suyo y que la usuaria no tenga nada abierto ni pendiente.
+   * Abre desde la ficha el proceso de una persona en un expediente que el área ya tomó, junto
+   * con su cita de primera atención, todo o nada; quien lo abre queda como responsable.
+   * Revalida dentro de la transacción que el expediente siga tomado y que la persona no tenga
+   * nada abierto (ni, si es la usuaria, una referencia pendiente).
    */
   abrirNuevo(params: AbrirProcesoNuevoParams): Promise<ProcesoAbierto>;
   /**

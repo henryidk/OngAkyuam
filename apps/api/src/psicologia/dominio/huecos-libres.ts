@@ -13,8 +13,6 @@ export type HorarioAtencion = {
   readonly diasLaborables: readonly number[];
   readonly inicioMin: number;
   readonly finMin: number;
-  readonly almuerzoInicioMin: number;
-  readonly almuerzoFinMin: number;
   readonly minimoMin: number;
   readonly redondeoMin: number;
 };
@@ -43,10 +41,7 @@ export function huecosLibres(
           Math.ceil(ahoraMin / horario.redondeoMin) * horario.redondeoMin,
         );
 
-  const bloqueos = [
-    ...ocupados,
-    { inicioMin: horario.almuerzoInicioMin, finMin: horario.almuerzoFinMin },
-  ].sort((a, b) => a.inicioMin - b.inicioMin);
+  const bloqueos = [...ocupados].sort((a, b) => a.inicioMin - b.inicioMin);
 
   const huecos: HuecoLibreDto[] = [];
   let cursor = desde;
@@ -61,6 +56,35 @@ export function huecosLibres(
   }
   agregarHueco(huecos, cursor, horario.finMin, horario);
   return huecos;
+}
+
+/**
+ * Horas de inicio ("HH:mm") donde cabe completa una cita de `duracionMin` dentro de los huecos,
+ * alineadas al reloj cada `pasoMin` minutos (09:00, 09:30…): lo que ofrece el selector de horario.
+ */
+export function horasDeInicio(
+  huecos: readonly HuecoLibreDto[],
+  duracionMin: number,
+  pasoMin: number,
+): string[] {
+  const horas: string[] = [];
+  for (const hueco of huecos) {
+    const primero = Math.ceil(hueco.desdeMin / pasoMin) * pasoMin;
+    for (
+      let inicio = primero;
+      inicio + duracionMin <= hueco.hastaMin;
+      inicio += pasoMin
+    ) {
+      horas.push(textoHora(inicio));
+    }
+  }
+  return horas;
+}
+
+function textoHora(minutos: number): string {
+  const hora = String(Math.floor(minutos / 60)).padStart(2, '0');
+  const minuto = String(minutos % 60).padStart(2, '0');
+  return `${hora}:${minuto}`;
 }
 
 function agregarHueco(

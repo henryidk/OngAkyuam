@@ -13,12 +13,12 @@ export const MENSAJE_TOMAR_PRIMERO =
 export const MENSAJE_PROCESO_YA_ABIERTO =
   'Este caso ya tiene agendada su primera cita';
 export const MENSAJE_OTRO_PROCESO_ACTIVO =
-  'La usuaria ya tiene un proceso psicológico activo';
+  'Esta persona ya tiene un proceso psicológico activo';
 export const MENSAJE_PROCESO_CERRADO = 'El proceso ya está cerrado';
 export const MENSAJE_CONFLICTO_VERSION =
   'El proceso cambió mientras lo editabas. Recarga para ver la versión actual';
 export const MENSAJE_PERSONA_AJENA =
-  'La persona seleccionada no pertenece a este expediente';
+  'La persona seleccionada no corresponde a este proceso o expediente';
 export const MENSAJE_TRASLAPE = 'Ya existe una cita programada en ese horario';
 /** `codigo` del 409 de traslape: el frontend lo reconoce para ofrecer "programar de todos modos". */
 export const CODIGO_TRASLAPE_CITA = 'TRASLAPE_CITA';
@@ -30,5 +30,7 @@ export const MENSAJE_RANGO_AGENDA_INVALIDO =
   'El rango de fechas de la agenda no es válido';
 export const MENSAJE_CITA_NO_REPROGRAMABLE =
   'Solo se puede reprogramar una cita que siga programada';
+export const MENSAJE_SOLO_RESPONSABLE_PROGRAMA =
+  'Solo la responsable del proceso puede programar la próxima cita';
 export const MENSAJE_SESION_NO_REGISTRABLE =
   'Esta sesión ya no se puede registrar: el proceso se cerró o la cita se movió a otra fecha';

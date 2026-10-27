@@ -571,8 +571,8 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
   }
 
   /**
-   * Etapa y fechas del proceso psicológico más reciente, solo si Psicología lo compartió con
-   * Medicina. Nunca notas de sesión.
+   * Etapa y fechas del proceso psicológico más reciente de la usuaria (no los de sus hijos/as,
+   * que son de otra persona), solo si Psicología lo compartió con Medicina. Nunca notas de sesión.
    */
   private async vistaPsicologica(
     usuariaId: string,
@@ -580,6 +580,7 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
     const proceso = await this.prisma.atencionPsicologica.findFirst({
       where: {
         visibleMedica: true,
+        ninoId: null,
         expediente: { usuariaId, ...EXPEDIENTE_REFERIDO_A_MEDICA },
       },
       select: {

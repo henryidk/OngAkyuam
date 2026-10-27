@@ -1,23 +1,48 @@
 import { Injectable } from '@nestjs/common';
-import { fechaColumnaISO, etiquetaProceso } from '@akyuam/shared';
-import type { CitaPsicologicaDetalle, CitaResumen } from '@akyuam/shared';
+import { Prisma } from '@prisma/client';
+import { fechaColumnaISO } from '@akyuam/shared';
+import type { CitaResumen, ClinicaPsicologia } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   AccesoCitaPsicologica,
   BuscarSolapamientoParams,
   CitaParaAgregado,
   ConsultaRegistrada,
+  DetalleCitaGuardado,
   ICitasPsicologicasRepository,
   LecturaCitaPsicologica,
   ListarCitasEnRangoParams,
   RegistrarConsultaParams,
 } from '../interfaces/citas-psicologicas-repository.interface';
 import { etapaTrasSesionAtendida } from '../dominio/etapa-proceso';
-import { procesoLegible } from './acceso-expediente';
+import {
+  citaRegistrable,
+  PROCESO_LEGIBLE,
+  procesoGestionable,
+} from './acceso-expediente';
+import { codigoProceso, SELECT_CODIGO_PROCESO } from './codigo-proceso';
 import { INCLUDE_CITA, mapearCita } from './citas-psicologicas.mapper';
 
 /** Margen amplio de sobra sobre cualquier duración real de consulta, para acotar la ventana de candidatas sin riesgo de descartar un traslape real. */
 const MARGEN_SOLAPAMIENTO_MS = 12 * 60 * 60 * 1000;
+
+const SELECT_ACCESO_CITA = {
+  id: true,
+  atencionId: true,
+  atencion: { select: { expedienteId: true } },
+} as const;
+
+function mapearAcceso(cita: {
+  id: string;
+  atencionId: string;
+  atencion: { expedienteId: string };
+}): AccesoCitaPsicologica {
+  return {
+    id: cita.id,
+    atencionId: cita.atencionId,
+    expedienteId: cita.atencion.expedienteId,
+  };
+}
 
 @Injectable()
 export class CitasPsicologicasRepository implements ICitasPsicologicasRepository {
@@ -28,25 +53,21 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     psicologaId: string,
   ): Promise<AccesoCitaPsicologica | null> {
     const cita = await this.prisma.citaPsicologica.findFirst({
-      where: {
-        id: citaId,
-        atencion: {
-          expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
-          psicologaAsignadaId: psicologaId,
-        },
-      },
-      select: {
-        id: true,
-        atencionId: true,
-        atencion: { select: { expedienteId: true } },
-      },
+      where: { id: citaId, atencion: procesoGestionable(psicologaId) },
+      select: SELECT_ACCESO_CITA,
     });
-    if (!cita) return null;
-    return {
-      id: cita.id,
-      atencionId: cita.atencionId,
-      expedienteId: cita.atencion.expedienteId,
-    };
+    return cita ? mapearAcceso(cita) : null;
+  }
+
+  async buscarAutoriaCita(
+    citaId: string,
+    psicologaId: string,
+  ): Promise<AccesoCitaPsicologica | null> {
+    const cita = await this.prisma.citaPsicologica.findFirst({
+      where: { id: citaId, ...citaRegistrable(psicologaId) },
+      select: SELECT_ACCESO_CITA,
+    });
+    return cita ? mapearAcceso(cita) : null;
   }
 
   async buscarLecturaCita(
@@ -54,13 +75,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     psicologaId: string,
   ): Promise<LecturaCitaPsicologica | null> {
     const cita = await this.prisma.citaPsicologica.findFirst({
-      where: {
-        id: citaId,
-        atencion: {
-          expediente: { referidos: { some: { area: 'PSICOLOGIA' } } },
-          ...procesoLegible(psicologaId),
-        },
-      },
+      where: { id: citaId, atencion: PROCESO_LEGIBLE },
       select: {
         id: true,
         atencionId: true,
@@ -118,23 +133,27 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       if (!actual) {
         return null;
       }
-      // Bloquea la fila del proceso (la escritura no cambia ningún dato): un cierre simultáneo
-      // espera, y no queda una sesión ni una cita nueva colgando de un proceso cerrado.
-      const bloqueados = await tx.atencionPsicologica.updateMany({
-        where: {
-          id: actual.atencionId,
-          psicologaAsignadaId: params.psicologaId,
-          estado: { not: 'CIERRE' },
-        },
-        data: { psicologaAsignadaId: params.psicologaId },
-      });
-      if (bloqueados.count !== 1) {
+      // Bloquea la fila del proceso: un cierre simultáneo espera, y no queda una sesión ni una
+      // cita nueva colgando de un proceso cerrado. Registrar es de quien atendió; agendar la
+      // próxima cita, además, de la responsable del proceso.
+      const soloResponsable = params.proximaCita
+        ? Prisma.sql`AND "psicologaAsignadaId" = ${params.psicologaId}`
+        : Prisma.empty;
+      const bloqueados = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM "AtencionPsicologica"
+        WHERE id = ${actual.atencionId} AND estado <> 'CIERRE' ${soloResponsable}
+        FOR UPDATE`;
+      if (bloqueados.length !== 1) {
         return null;
       }
 
       // La condición va en el WHERE: una cita que se movió a otra fecha ya no se registra.
       const registradas = await tx.citaPsicologica.updateMany({
-        where: { id: params.citaId, estado: { not: 'REPROGRAMADA' } },
+        where: {
+          id: params.citaId,
+          atendidoPorId: params.psicologaId,
+          estado: { not: 'REPROGRAMADA' },
+        },
         data: {
           estado: params.estado,
           temas: params.temas,
@@ -143,6 +162,8 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
           acuerdos: params.acuerdos,
           observaciones: params.observaciones,
           motivoNoAsistencia: params.motivoNoAsistencia,
+          clinica: params.clinica,
+          enfoqueTerapeutico: params.enfoqueTerapeutico,
           borrador: params.borrador,
         },
       });
@@ -214,7 +235,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         nino: { select: { fechaNacimiento: true } },
         atencion: {
           select: {
-            consecutivo: true,
+            ...SELECT_CODIGO_PROCESO,
             expediente: {
               select: {
                 numero: true,
@@ -255,15 +276,23 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         tipologias: expediente.referidos[0]?.puedeVerDatosCaso
           ? expediente.tipologiaDelito
           : [],
-        procesoCodigo: etiquetaProceso(
-          expediente.numero,
-          cita.atencion.consecutivo,
-        ),
+        procesoCodigo: codigoProceso(expediente.numero, cita.atencion),
       };
     });
   }
 
-  async obtenerDetalle(citaId: string): Promise<CitaPsicologicaDetalle | null> {
+  async buscarUltimaClinica(
+    psicologaId: string,
+  ): Promise<ClinicaPsicologia | null> {
+    const ultima = await this.prisma.citaPsicologica.findFirst({
+      where: { atendidoPorId: psicologaId, clinica: { not: null } },
+      orderBy: [{ fechaHora: 'desc' }, { id: 'desc' }],
+      select: { clinica: true },
+    });
+    return ultima?.clinica ?? null;
+  }
+
+  async obtenerDetalle(citaId: string): Promise<DetalleCitaGuardado | null> {
     const cita = await this.prisma.citaPsicologica.findUnique({
       where: { id: citaId },
       include: {
@@ -271,8 +300,8 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         nino: { select: { nombres: true, apellidos: true } },
         atencion: {
           select: {
+            ...SELECT_CODIGO_PROCESO,
             expedienteId: true,
-            consecutivo: true,
             estado: true,
             expediente: {
               select: {
@@ -291,9 +320,9 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       expedienteId: cita.atencion.expedienteId,
       numero: cita.atencion.expediente.numero,
       procesoId: cita.atencionId,
-      procesoCodigo: etiquetaProceso(
+      procesoCodigo: codigoProceso(
         cita.atencion.expediente.numero,
-        cita.atencion.consecutivo,
+        cita.atencion,
       ),
       procesoEtapa: cita.atencion.estado,
       ninoNombreCompleto: cita.nino

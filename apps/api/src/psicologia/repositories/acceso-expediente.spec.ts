@@ -1,46 +1,64 @@
 import {
+  citaRegistrable,
+  EXPEDIENTE_DE_PSICOLOGIA,
+  EXPEDIENTE_TOMADO,
+  PROCESO_LEGIBLE,
   PROCESO_POR_REASIGNAR,
-  procesoCerradoDeColega,
-  procesoLegible,
+  procesoAbiertoDePersona,
+  procesoGestionable,
 } from './acceso-expediente';
 
 // La regla vive en la consulta: estas pruebas fijan su forma para que nadie la afloje sin querer.
-describe('procesoLegible', () => {
-  const colega = procesoCerradoDeColega('psicologa-a');
+describe('reglas de acceso de Psicología', () => {
+  it('leer exige que Trabajo Social haya referido el expediente a Psicología', () => {
+    expect(EXPEDIENTE_DE_PSICOLOGIA).toEqual({
+      referidos: { some: { area: 'PSICOLOGIA' } },
+    });
+    expect(PROCESO_LEGIBLE).toEqual({ expediente: EXPEDIENTE_DE_PSICOLOGIA });
+  });
 
-  it('admite solo dos caminos: el proceso propio o el cerrado de una colega', () => {
-    expect(procesoLegible('psicologa-a')).toEqual({
-      OR: [{ psicologaAsignadaId: 'psicologa-a' }, colega],
+  it('gestionar exige ser la responsable, además de poder leer', () => {
+    expect(procesoGestionable('psicologa-a')).toEqual({
+      psicologaAsignadaId: 'psicologa-a',
+      expediente: EXPEDIENTE_DE_PSICOLOGIA,
     });
   });
 
-  it('del proceso de una colega exige que ya esté cerrado', () => {
-    expect(colega.estado).toBe('CIERRE');
-  });
-
-  it('exige que el proceso tenga dueña y que no sea quien pregunta', () => {
-    expect(colega.AND).toEqual([
-      { psicologaAsignadaId: { not: null } },
-      { psicologaAsignadaId: { not: 'psicologa-a' } },
-    ]);
-  });
-
-  it('exige que quien pregunta atienda o haya atendido a la misma usuaria', () => {
-    expect(colega.expediente).toEqual({
-      usuaria: {
-        expedientes: {
-          some: {
-            atencionesPsicologicas: {
-              some: { psicologaAsignadaId: 'psicologa-a' },
-            },
-          },
-        },
+  it('registrar una sesión exige haberla atendido y que el proceso siga abierto', () => {
+    expect(citaRegistrable('psicologa-a')).toEqual({
+      atendidoPorId: 'psicologa-a',
+      atencion: {
+        estado: { not: 'CIERRE' },
+        expediente: EXPEDIENTE_DE_PSICOLOGIA,
       },
     });
   });
-});
 
-describe('PROCESO_POR_REASIGNAR', () => {
+  it('abrir desde la ficha exige un expediente referido que alguien ya tomó', () => {
+    expect(EXPEDIENTE_TOMADO).toEqual({
+      referidos: { some: { area: 'PSICOLOGIA' } },
+      atencionesPsicologicas: { some: { psicologaAsignadaId: { not: null } } },
+    });
+  });
+
+  describe('procesoAbiertoDePersona', () => {
+    it('de la usuaria, mira sus procesos propios en todos sus expedientes', () => {
+      expect(
+        procesoAbiertoDePersona({ usuariaId: 'u1', ninoId: null }),
+      ).toEqual({
+        estado: { not: 'CIERRE' },
+        ninoId: null,
+        expediente: { usuariaId: 'u1' },
+      });
+    });
+
+    it('de un hijo/a, mira solo los suyos', () => {
+      expect(
+        procesoAbiertoDePersona({ usuariaId: 'u1', ninoId: 'n1' }),
+      ).toEqual({ estado: { not: 'CIERRE' }, ninoId: 'n1' });
+    });
+  });
+
   it('solo es de toda el área lo que sigue abierto y tiene a su psicóloga desactivada', () => {
     expect(PROCESO_POR_REASIGNAR).toEqual({
       estado: { not: 'CIERRE' },

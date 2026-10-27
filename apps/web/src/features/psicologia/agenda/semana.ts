@@ -86,16 +86,8 @@ export function resumenDelDia(citas: CitaAgendaDto[]): string {
 }
 
 /**
- * Las citas sin registrar que van en el panel de atrasadas: todas menos las del día abierto, que
- * ya se ven en la lista principal. Cada pendiente aparece en un solo lugar.
- */
-export function citasSinRegistrarFuera(dia: string, citas: CitaAgendaDto[]): CitaAgendaDto[] {
-  return citas.filter((cita) => cita.sinRegistrar && diaDeCita(cita) !== dia)
-}
-
-/**
  * Procesos que de verdad se quedaron sin siguiente fecha. Con una cita sin registrar lo pendiente
- * es registrar esa sesión, no programar otra: ese proceso ya aparece en "Citas sin registrar".
+ * es registrar esa sesión, no programar otra: ese proceso ya aparece en Consultas › Por registrar.
  */
 export function procesosSinProximaCita(procesos: ProcesoParaAgendarDto[]): ProcesoParaAgendarDto[] {
   return procesos.filter((proceso) => proceso.proximaCita === null && !proceso.tieneCitaSinRegistrar)

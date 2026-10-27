@@ -3,7 +3,6 @@ import type { CitaAgendaDto, ProcesoParaAgendarDto } from '@akyuam/shared'
 import {
   citaPrincipal,
   citaYaEmpezo,
-  citasSinRegistrarFuera,
   diasVisibles,
   fechaValida,
   lunesDe,
@@ -89,10 +88,6 @@ describe('resumen del día', () => {
 })
 
 describe('pendientes de la agenda: cada uno en un solo lugar', () => {
-  const HOY = '2026-10-07'
-  const deHoy = cita({ id: 'hoy', fechaHora: '2026-10-07T15:00:00.000Z', sinRegistrar: true })
-  const deAyer = cita({ id: 'ayer', fechaHora: '2026-10-06T15:00:00.000Z', sinRegistrar: true })
-
   function proceso(parcial: Partial<ProcesoParaAgendarDto>): ProcesoParaAgendarDto {
     return {
       procesoId: 'proceso-1',
@@ -105,20 +100,6 @@ describe('pendientes de la agenda: cada uno en un solo lugar', () => {
       ...parcial,
     }
   }
-
-  it('la cita sin registrar de hoy queda solo en la lista del día, no en el panel', () => {
-    expect(citasSinRegistrarFuera(HOY, [deHoy, deAyer]).map((c) => c.id)).toEqual(['ayer'])
-  })
-
-  it('la de ayer sale en el panel mientras el día abierto sea otro', () => {
-    expect(citasSinRegistrarFuera(HOY, [deAyer]).map((c) => c.id)).toEqual(['ayer'])
-    expect(citasSinRegistrarFuera('2026-10-06', [deAyer])).toEqual([])
-  })
-
-  it('el panel ignora las citas que ya están resueltas o aún no terminan', () => {
-    const pendiente = cita({ id: 'luego', fechaHora: '2026-10-06T15:00:00.000Z', sinRegistrar: false })
-    expect(citasSinRegistrarFuera(HOY, [pendiente])).toEqual([])
-  })
 
   it('un proceso con una cita sin registrar no aparece en "Sin próxima cita"', () => {
     const procesos = [

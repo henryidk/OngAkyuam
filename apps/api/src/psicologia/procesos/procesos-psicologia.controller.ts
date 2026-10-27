@@ -48,9 +48,9 @@ export class ProcesosPsicologiaController {
   listar(
     @Query(new ZodValidationPipe(listarProcesosPsicologiaQuerySchema))
     query: ListarProcesosPsicologiaQuery,
-    @CurrentUser() usuario: AuthenticatedUser,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.consultasService.listar(query, usuario.id);
+    return this.consultasService.listar(query, contexto);
   }
 
   // Antes de `:id`: si no, "resumen" se tomaría por un id de proceso.

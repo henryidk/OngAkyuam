@@ -3,14 +3,15 @@ import { Prisma } from '@prisma/client';
 import {
   FILTROS_PROCESOS_PSICOLOGIA,
   MAX_CITAS_SIN_REGISTRAR_EN_DETALLE,
+  type AlcancePsicologia,
   type CitaRefDto,
+  type FilaProcesoPsicologia,
   type FiltroProcesosPsicologia,
   type PersonaAtendidaDto,
   type ProcesoColegaPsicologiaResumen,
   type ProcesoPsicologiaResumen,
   type ResumenProcesosPsicologia,
   type SesionProcesoDto,
-  etiquetaProceso,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { citaSinRegistrar, estaCerrado } from '../dominio/etapa-proceso';
@@ -23,16 +24,18 @@ import type {
 } from '../interfaces/consultas-procesos-repository.interface';
 import {
   EXPEDIENTE_SIN_TOMAR,
+  PROCESO_LEGIBLE,
   PROCESO_POR_REASIGNAR,
-  procesoCerradoDeColega,
-  procesoLegible,
+  sesionPorRegistrar,
 } from './acceso-expediente';
+import { condicionBusqueda } from './busqueda-procesos';
 import { casoPorAgendar } from './bandeja-psicologia.repository';
 import { mapearDocumentoCita } from './citas-psicologicas.mapper';
+import { codigoProceso, SELECT_CODIGO_PROCESO } from './codigo-proceso';
 import { nombreCompleto, personaAtendida, SELECT_PERSONA } from './personas';
 
 const LIMITE_EXTRA_CURSOR = 1;
-/** Tope de procesos de una misma usuaria con una misma psicóloga: en la práctica son uno o dos. */
+/** Tope de procesos de una misma usuaria (con sus hijos/as): en la práctica son unos pocos. */
 const LIMITE_PROCESOS_POR_USUARIA = 50;
 /** Citas que empezaron pero aún no terminan: se piden de más para no dejar fuera una atrasada. */
 const MARGEN_CITAS_EN_CURSO = 5;
@@ -71,24 +74,25 @@ function condicionFiltro(
   }
 }
 
-function condicionBusqueda(
-  palabras: string[],
-): Prisma.AtencionPsicologicaWhereInput[] {
-  return palabras.map((palabra) => ({
-    expediente: {
-      OR: [
-        { numero: { contains: palabra } },
-        { usuaria: { nombres: { contains: palabra, mode: 'insensitive' } } },
-        { usuaria: { apellidos: { contains: palabra, mode: 'insensitive' } } },
-      ],
-    },
-  }));
+/**
+ * De quién son las filas: "Míos" = los que llevo; "Del equipo" = todo proceso del área con
+ * responsable (los míos incluidos). Sin responsable solo queda una referencia sin tomar.
+ */
+function condicionAlcance(
+  alcance: AlcancePsicologia,
+  psicologaId: string,
+): Prisma.AtencionPsicologicaWhereInput {
+  return alcance === 'MIOS'
+    ? { psicologaAsignadaId: psicologaId }
+    : { psicologaAsignadaId: { not: null }, ...PROCESO_LEGIBLE };
 }
 
 // Lo que pinta una fila de la lista. Sin texto clínico: ni notas ni resumen de cierre.
 const SELECT_RESUMEN = {
+  ...SELECT_CODIGO_PROCESO,
+  // Pisa el `nino` del código: además del número, quién es.
+  nino: { select: { id: true, consecutivo: true, ...SELECT_PERSONA } },
   id: true,
-  consecutivo: true,
   estado: true,
   fechaInicio: true,
   tomadaEn: true,
@@ -125,11 +129,12 @@ function mapearResumen(
 ): ProcesoPsicologiaResumen {
   return {
     id: fila.id,
-    codigo: etiquetaProceso(fila.expediente.numero, fila.consecutivo),
+    codigo: codigoProceso(fila.expediente.numero, fila),
     usuariaId: fila.expediente.usuaria.id,
     usuariaNombreCompleto: nombreCompleto(fila.expediente.usuaria),
     expedienteNumero: fila.expediente.numero,
     etapa: fila.estado,
+    persona: personaAtendida(fila.expediente.usuaria, fila.nino),
     sesionesAtendidas: fila._count.citas,
     ultimaSesion: referenciaCita(fila.citas[0]),
     proximaCita: proximas.get(fila.id) ?? null,
@@ -149,17 +154,21 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
 
   async listar(
     params: ListarProcesosParams,
-  ): Promise<PaginaConCursorRepo<ProcesoPsicologiaResumen>> {
+  ): Promise<PaginaConCursorRepo<FilaProcesoPsicologia>> {
     const filas = await this.prisma.atencionPsicologica.findMany({
       where: {
-        psicologaAsignadaId: params.psicologaId,
         AND: [
+          condicionAlcance(params.alcance, params.psicologaId),
           ES_PROCESO,
           condicionFiltro(params.filtro),
           ...condicionBusqueda(params.palabras),
         ],
       },
-      select: SELECT_RESUMEN,
+      select: {
+        ...SELECT_RESUMEN,
+        psicologaAsignadaId: true,
+        psicologaAsignada: { select: { nombreCompleto: true } },
+      },
       // `createdAt` y no `fechaInicio`: el cursor necesita una columna que nunca sea nula.
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       take: params.limite + LIMITE_EXTRA_CURSOR,
@@ -174,7 +183,11 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
     );
 
     return {
-      items: pagina.map((fila) => mapearResumen(fila, proximas)),
+      items: pagina.map((fila) => ({
+        ...mapearResumen(fila, proximas),
+        psicologa: fila.psicologaAsignada?.nombreCompleto ?? '',
+        propio: fila.psicologaAsignadaId === params.psicologaId,
+      })),
       siguienteCursor: hayMas ? pagina[pagina.length - 1].id : null,
     };
   }
@@ -204,12 +217,16 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
   async listarDeColegas(
     usuariaId: string,
     psicologaId: string,
+    ahora: Date,
   ): Promise<ProcesoColegaPsicologiaResumen[]> {
     const filas = await this.prisma.atencionPsicologica.findMany({
       where: {
         AND: [
-          { expediente: { usuariaId } },
-          procesoCerradoDeColega(psicologaId),
+          ES_PROCESO,
+          { expediente: { usuariaId, ...PROCESO_LEGIBLE.expediente } },
+          // Sin responsable solo queda una referencia sin tomar, que no es un proceso.
+          { psicologaAsignadaId: { not: psicologaId } },
+          { psicologaAsignadaId: { not: null } },
         ],
       },
       select: {
@@ -219,10 +236,12 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
       take: LIMITE_PROCESOS_POR_USUARIA,
     });
-    // Un proceso cerrado no tiene próxima cita: al cerrarlo se cancelan las que quedaban.
-    const sinProximas = new Map<string, CitaRefDto>();
+    const proximas = await this.proximasCitas(
+      filas.map((fila) => fila.id),
+      ahora,
+    );
     return filas.map((fila) => ({
-      ...mapearResumen(fila, sinProximas),
+      ...mapearResumen(fila, proximas),
       psicologa: fila.psicologaAsignada?.nombreCompleto ?? '',
     }));
   }
@@ -233,22 +252,35 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
   ): Promise<ResumenProcesosPsicologia> {
     // Cada tarjeta cuenta con la misma condición que usa la lista al filtrar: el número de la
     // tarjeta y las filas que se ven al abrirla no pueden discrepar.
-    const contar = (filtro: FiltroProcesosPsicologia) =>
-      this.prisma.atencionPsicologica.count({
-        where: {
-          psicologaAsignadaId: psicologaId,
-          AND: [ES_PROCESO, condicionFiltro(filtro)],
-        },
-      });
+    const contarPorFiltro = async (alcance: AlcancePsicologia) => {
+      const totales = await Promise.all(
+        FILTROS_PROCESOS_PSICOLOGIA.map((filtro) =>
+          this.prisma.atencionPsicologica.count({
+            where: {
+              AND: [
+                condicionAlcance(alcance, psicologaId),
+                ES_PROCESO,
+                condicionFiltro(filtro),
+              ],
+            },
+          }),
+        ),
+      );
+      return Object.fromEntries(
+        FILTROS_PROCESOS_PSICOLOGIA.map((filtro, i) => [filtro, totales[i]]),
+      ) as Record<FiltroProcesosPsicologia, number>;
+    };
 
     const [
-      porFiltro,
+      procesos,
+      procesosEquipo,
       referenciasSinTomar,
       casosPorReasignar,
       casosPorAgendar,
-      [{ total: citasSinRegistrar }],
+      sesionesPorRegistrar,
     ] = await Promise.all([
-      Promise.all(FILTROS_PROCESOS_PSICOLOGIA.map(contar)),
+      contarPorFiltro('MIOS'),
+      contarPorFiltro('EQUIPO'),
       this.prisma.referidoArea.count({
         where: { area: 'PSICOLOGIA', expediente: EXPEDIENTE_SIN_TOMAR },
       }),
@@ -256,27 +288,18 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       this.prisma.atencionPsicologica.count({
         where: casoPorAgendar(psicologaId),
       }),
-      // La hora de fin depende de la duración de cada cita: eso solo se puede comparar en SQL.
-      this.prisma.$queryRaw<[{ total: number }]>(Prisma.sql`
-        SELECT count(*)::int AS total
-        FROM "CitaPsicologica" c
-        JOIN "AtencionPsicologica" a ON a.id = c."atencionId"
-        WHERE a."psicologaAsignadaId" = ${psicologaId}
-          AND a.estado <> 'CIERRE'
-          AND c.estado = 'PROGRAMADA'
-          AND c."fechaHora" + c."duracionMinutos" * interval '1 minute' <= ${ahora}
-      `),
+      this.prisma.citaPsicologica.count({
+        where: sesionPorRegistrar(psicologaId, ahora),
+      }),
     ]);
 
-    const procesos = Object.fromEntries(
-      FILTROS_PROCESOS_PSICOLOGIA.map((filtro, i) => [filtro, porFiltro[i]]),
-    ) as Record<FiltroProcesosPsicologia, number>;
     return {
       procesos,
+      procesosEquipo,
       referenciasSinTomar,
       casosPorReasignar,
       casosPorAgendar,
-      citasSinRegistrar,
+      sesionesPorRegistrar,
     };
   }
 
@@ -286,7 +309,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
     ahora: Date,
   ): Promise<DetalleProcesoRepo | null> {
     const proceso = await this.prisma.atencionPsicologica.findFirst({
-      where: { id: procesoId, ...procesoLegible(psicologaId) },
+      where: { id: procesoId, ...PROCESO_LEGIBLE },
       select: {
         ...SELECT_RESUMEN,
         psicologaAsignadaId: true,
@@ -392,6 +415,8 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         acuerdos: true,
         observaciones: true,
         motivoNoAsistencia: true,
+        clinica: true,
+        enfoqueTerapeutico: true,
         nino: { select: { id: true, ...SELECT_PERSONA } },
         atencion: {
           select: {
@@ -442,6 +467,8 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         acuerdos: cita.acuerdos,
         observaciones: cita.observaciones,
         motivoNoAsistencia: cita.motivoNoAsistencia,
+        clinica: cita.clinica,
+        enfoqueTerapeutico: cita.enfoqueTerapeutico,
         documento: mapearDocumentoCita(cita.documentos[0]),
       })),
       siguienteCursor: hayMas ? pagina[pagina.length - 1].id : null,

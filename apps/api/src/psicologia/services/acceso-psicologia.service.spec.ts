@@ -17,11 +17,13 @@ describe('AccesoPsicologiaService', () => {
   beforeEach(() => {
     citasRepository = {
       buscarAccesoCita: jest.fn(),
+      buscarAutoriaCita: jest.fn(),
       buscarLecturaCita: jest.fn(),
       buscarCitasSolapadas: jest.fn(),
       registrarConsulta: jest.fn(),
       listarCitasEnRango: jest.fn(),
       obtenerDetalle: jest.fn(),
+      buscarUltimaClinica: jest.fn().mockResolvedValue(null),
     };
     bandejaRepository = {
       listarSinTomar: jest.fn(),
@@ -32,6 +34,7 @@ describe('AccesoPsicologiaService', () => {
       buscarAccesoProceso: jest.fn(),
       buscarLecturaProceso: jest.fn(),
       buscarAccesoUsuaria: jest.fn(),
+      buscarExpedienteParaAbrir: jest.fn(),
       ninoPerteneceAExpediente: jest.fn(),
       abrir: jest.fn(),
       abrirNuevo: jest.fn(),
@@ -68,6 +71,7 @@ describe('AccesoPsicologiaService', () => {
         consecutivo: 1,
         etapa: 'INICIO',
         version: 1,
+        ninoId: null,
       });
 
       await service.exigirAccesoProceso('proc-1', 'psicologa-a');
@@ -123,28 +127,26 @@ describe('AccesoPsicologiaService', () => {
   });
 
   describe('exigirAccesoUsuaria', () => {
-    it('rechaza con 403 a la usuaria inexistente o que solo atiende otra psicóloga', async () => {
+    it('rechaza con 403 a la usuaria inexistente o que nunca fue referida a Psicología', async () => {
       procesosRepository.buscarAccesoUsuaria.mockResolvedValue(null);
 
       await expect(
-        service.exigirAccesoUsuaria('usuaria-ajena', 'psicologa-a'),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+        service.exigirAccesoUsuaria('usuaria-ajena'),
+      ).rejects.toEqual(
+        new ForbiddenException('No tiene acceso a esta usuaria'),
+      );
       expect(procesosRepository.buscarAccesoUsuaria).toHaveBeenCalledWith(
         'usuaria-ajena',
-        'psicologa-a',
       );
     });
 
-    it('devuelve el acceso cuando la psicóloga puede verla', async () => {
-      const acceso = {
-        usuariaId: 'usuaria-1',
-        expediente: { id: 'exp-1', numero: '05-2026' },
-      };
+    it('deja ver a la usuaria referida aunque la atienda otra psicóloga', async () => {
+      const acceso = { usuariaId: 'usuaria-1' };
       procesosRepository.buscarAccesoUsuaria.mockResolvedValue(acceso);
 
-      await expect(
-        service.exigirAccesoUsuaria('usuaria-1', 'psicologa-a'),
-      ).resolves.toEqual(acceso);
+      await expect(service.exigirAccesoUsuaria('usuaria-1')).resolves.toEqual(
+        acceso,
+      );
     });
   });
 
@@ -227,6 +229,38 @@ describe('AccesoPsicologiaService', () => {
         'cita-1',
         'psicologa-a',
       );
+    });
+  });
+
+  describe('exigirAutoriaCita', () => {
+    it('rechaza con el mismo 403 la cita que atendió otra o de un proceso cerrado', async () => {
+      citasRepository.buscarAutoriaCita.mockResolvedValue(null);
+
+      await expect(
+        service.exigirAutoriaCita('cita-1', 'psicologa-b'),
+      ).rejects.toEqual(new ForbiddenException('No tiene acceso a esta cita'));
+      expect(citasRepository.buscarAutoriaCita).toHaveBeenCalledWith(
+        'cita-1',
+        'psicologa-b',
+      );
+    });
+
+    it('quien atendió puede registrar aunque no sea la responsable del proceso', async () => {
+      const acceso = {
+        id: 'cita-1',
+        atencionId: 'atencion-1',
+        expedienteId: 'exp-1',
+      };
+      citasRepository.buscarAutoriaCita.mockResolvedValue(acceso);
+      citasRepository.buscarAccesoCita.mockResolvedValue(null);
+
+      await expect(
+        service.exigirAutoriaCita('cita-1', 'psicologa-a'),
+      ).resolves.toEqual(acceso);
+      // Registrar no da permiso de gestionar: mover la cita sigue siendo de la responsable.
+      await expect(
+        service.exigirAccesoCita('cita-1', 'psicologa-a'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
     });
   });
 

@@ -13,11 +13,14 @@ import { AgendaPsicologiaService } from './agenda/agenda-psicologia.service';
 import { AvisosPsicologiaListener } from './bandeja/avisos-psicologia.listener';
 import { BandejaPsicologiaController } from './bandeja/bandeja-psicologia.controller';
 import { BandejaPsicologiaService } from './bandeja/bandeja-psicologia.service';
+import { ConsultasPsicologiaController } from './consultas/consultas-psicologia.controller';
+import { ConsultasPsicologiaService } from './consultas/consultas-psicologia.service';
 import { AGENDA_PSICOLOGIA_REPOSITORY } from './interfaces/agenda-psicologia-repository.interface';
 import { ATENCION_PSICOLOGICA_REPOSITORY } from './interfaces/atencion-psicologica-repository.interface';
 import { BANDEJA_PSICOLOGIA_REPOSITORY } from './interfaces/bandeja-psicologia-repository.interface';
 import { CITAS_PSICOLOGICAS_REPOSITORY } from './interfaces/citas-psicologicas-repository.interface';
 import { CONSULTAS_PROCESOS_REPOSITORY } from './interfaces/consultas-procesos-repository.interface';
+import { CONSULTAS_SESIONES_REPOSITORY } from './interfaces/consultas-sesiones-repository.interface';
 import { DOCUMENTOS_CITA_REPOSITORY } from './interfaces/documentos-cita-repository.interface';
 import { PROCESOS_PSICOLOGIA_REPOSITORY } from './interfaces/procesos-psicologia-repository.interface';
 import { USUARIAS_PSICOLOGIA_REPOSITORY } from './interfaces/usuarias-psicologia-repository.interface';
@@ -32,6 +35,7 @@ import { AtencionPsicologicaRepository } from './repositories/atencion-psicologi
 import { BandejaPsicologiaRepository } from './repositories/bandeja-psicologia.repository';
 import { CitasPsicologicasRepository } from './repositories/citas-psicologicas.repository';
 import { ConsultasProcesosRepository } from './repositories/consultas-procesos.repository';
+import { ConsultasSesionesRepository } from './repositories/consultas-sesiones.repository';
 import { DocumentosCitaRepository } from './repositories/documentos-cita.repository';
 import { ProcesosPsicologiaRepository } from './repositories/procesos-psicologia.repository';
 import { UsuariasPsicologiaRepository } from './repositories/usuarias-psicologia.repository';
@@ -60,6 +64,7 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     ProcesosPsicologiaController,
     UsuariasPsicologiaController,
     AgendaPsicologiaController,
+    ConsultasPsicologiaController,
   ],
   providers: [
     AccesoPsicologiaService,
@@ -74,6 +79,7 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     ConsultasProcesosService,
     UsuariasPsicologiaService,
     AgendaPsicologiaService,
+    ConsultasPsicologiaService,
     LimitePorUsuarioGuard,
     { provide: EXPORTADOR_HOJA_CALCULO, useClass: ExcelJsExportador },
     {
@@ -87,6 +93,10 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     {
       provide: CONSULTAS_PROCESOS_REPOSITORY,
       useClass: ConsultasProcesosRepository,
+    },
+    {
+      provide: CONSULTAS_SESIONES_REPOSITORY,
+      useClass: ConsultasSesionesRepository,
     },
     {
       provide: USUARIAS_PSICOLOGIA_REPOSITORY,

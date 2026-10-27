@@ -5,7 +5,7 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { parseLocalGT, etiquetaProceso } from '@akyuam/shared';
+import { etiquetaProcesoPsicologia, parseLocalGT } from '@akyuam/shared';
 import type {
   AgendarCitaPsicologicaInput,
   ProcesoPsicologiaAbiertoDto,
@@ -57,7 +57,8 @@ export class AperturaProcesoService {
 
   /**
    * "Atender": agenda la primera cita de un caso ya tomado. Con eso el proceso queda abierto
-   * (recibe su fecha de inicio) y deja de estar "por agendar".
+   * (recibe su fecha de inicio), es de la persona elegida (la usuaria o un hijo/a) y deja de
+   * estar "por agendar". Las demás personas se abren después desde la ficha.
    */
   async atender(
     referidoId: string,
@@ -97,13 +98,21 @@ export class AperturaProcesoService {
         }),
     );
 
-    return this.concluir(abierto, caso, 'REFERENCIA', contexto, claveRedis);
+    return this.concluir(
+      abierto,
+      datos.ninoId,
+      caso,
+      'REFERENCIA',
+      contexto,
+      claveRedis,
+    );
   }
 
   /**
-   * "Abrir proceso" desde la ficha: la usuaria regresa a un expediente donde esta psicóloga ya
-   * la atendió y no hay referencia nueva de Trabajo Social. Nace un proceso más (P2, P3…) con
-   * su primera cita. No se permite si tiene un proceso abierto o una referencia pendiente.
+   * "Abrir proceso" desde la ficha, para una persona: la usuaria (que regresa a un expediente
+   * que el área ya tomó) o uno de sus hijos/as. Nace su proceso (P1, P2…) con su primera cita
+   * y quien lo abre queda como responsable. No se permite si esa persona tiene un proceso
+   * abierto o, si es la usuaria, una referencia pendiente.
    */
   async abrirDesdeFicha(
     usuariaId: string,
@@ -111,27 +120,31 @@ export class AperturaProcesoService {
     contexto: ContextoAuditoria,
     claveIdempotencia?: string,
   ): Promise<ProcesoPsicologiaAbiertoDto> {
-    const acceso = await this.acceso.exigirAccesoUsuaria(
-      usuariaId,
-      contexto.usuarioId,
-    );
+    await this.acceso.exigirAccesoUsuaria(usuariaId);
 
     const claveRedis = this.claveIdempotencia(
       claveIdempotencia,
-      `abrir:${contexto.usuarioId}:${usuariaId}`,
+      `abrir:${contexto.usuarioId}:${usuariaId}:${datos.ninoId ?? 'usuaria'}`,
     );
     const guardada = await this.respuestaGuardada(claveRedis);
     if (guardada) {
       return guardada;
     }
 
-    // La ve solo por una referencia que nadie ha tomado: primero se toma esa.
-    if (!acceso.expediente) {
+    const destino = await this.procesosRepository.buscarExpedienteParaAbrir(
+      usuariaId,
+      datos.ninoId,
+    );
+    if (destino === 'PERSONA_AJENA') {
+      throw new BadRequestException(MENSAJE_PERSONA_AJENA);
+    }
+    // Sin un expediente que el área ya tomó, la referencia se atiende primero desde la bandeja.
+    if (destino === 'SIN_TOMAR') {
       throw new ConflictException(MENSAJE_REFERENCIA_PENDIENTE);
     }
     const expediente = {
-      expedienteId: acceso.expediente.id,
-      expedienteNumero: acceso.expediente.numero,
+      expedienteId: destino.id,
+      expedienteNumero: destino.numero,
     };
 
     const fechaHora = await this.validarPrimeraCita(
@@ -152,7 +165,14 @@ export class AperturaProcesoService {
         }),
     );
 
-    return this.concluir(abierto, expediente, 'FICHA', contexto, claveRedis);
+    return this.concluir(
+      abierto,
+      datos.ninoId,
+      expediente,
+      'FICHA',
+      contexto,
+      claveRedis,
+    );
   }
 
   /** La persona debe ser del expediente; el traslape avisa una vez y se puede confirmar. */
@@ -190,6 +210,7 @@ export class AperturaProcesoService {
 
   private async concluir(
     abierto: ProcesoAbierto,
+    ninoId: string | null,
     expediente: { expedienteId: string; expedienteNumero: string },
     origen: 'REFERENCIA' | 'FICHA',
     contexto: ContextoAuditoria,
@@ -204,6 +225,7 @@ export class AperturaProcesoService {
           expedienteId: expediente.expedienteId,
           procesoId: abierto.procesoId,
           citaId: abierto.citaId,
+          ninoId,
           origen,
         },
       }),
@@ -211,7 +233,11 @@ export class AperturaProcesoService {
 
     const respuesta: ProcesoPsicologiaAbiertoDto = {
       procesoId: abierto.procesoId,
-      codigo: etiquetaProceso(expediente.expedienteNumero, abierto.consecutivo),
+      codigo: etiquetaProcesoPsicologia(
+        expediente.expedienteNumero,
+        abierto.consecutivo,
+        abierto.ninoConsecutivo,
+      ),
       citaId: abierto.citaId,
     };
     if (claveRedis) {

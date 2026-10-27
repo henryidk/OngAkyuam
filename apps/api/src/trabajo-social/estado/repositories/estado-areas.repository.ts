@@ -24,11 +24,11 @@ export class EstadoAreasRepository implements IEstadoAreasRepository {
   async atencionPsicologica(
     expedienteId: string,
   ): Promise<AtencionPsicologicaParaEstado | null> {
-    // Con varios procesos en el expediente manda el más reciente: si la usuaria regresó y hay
-    // uno abierto, el área vuelve a estar en atención aunque el anterior esté cerrado.
-    const atencion = await this.prisma.atencionPsicologica.findFirst({
+    // Cada persona del expediente (la usuaria y cada hijo/a) lleva sus propios procesos: el área
+    // sigue en atención mientras alguno esté abierto, aunque el de otra persona ya se cerró.
+    const procesos = await this.prisma.atencionPsicologica.findMany({
       where: { expedienteId },
-      orderBy: { consecutivo: 'desc' },
+      orderBy: { createdAt: 'desc' },
       select: {
         estado: true,
         psicologaAsignada: { select: { nombreCompleto: true } },
@@ -40,13 +40,25 @@ export class EstadoAreasRepository implements IEstadoAreasRepository {
         },
       },
     });
-    if (!atencion) {
-      return null;
+    const abiertos = procesos.filter((proceso) => proceso.estado !== 'CIERRE');
+    if (abiertos.length === 0) {
+      const ultimo = procesos[0];
+      return ultimo
+        ? {
+            estado: ultimo.estado,
+            psicologa: ultimo.psicologaAsignada?.nombreCompleto ?? null,
+            proximaCita: null,
+          }
+        : null;
     }
+    const proximas = abiertos
+      .flatMap((proceso) => proceso.citas.map((cita) => cita.fechaHora))
+      .sort((a, b) => a.getTime() - b.getTime());
+    const conPsicologa = abiertos.find((proceso) => proceso.psicologaAsignada);
     return {
-      estado: atencion.estado,
-      psicologa: atencion.psicologaAsignada?.nombreCompleto ?? null,
-      proximaCita: atencion.citas[0]?.fechaHora ?? null,
+      estado: (conPsicologa ?? abiertos[0]).estado,
+      psicologa: conPsicologa?.psicologaAsignada?.nombreCompleto ?? null,
+      proximaCita: proximas[0] ?? null,
     };
   }
 

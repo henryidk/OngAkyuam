@@ -7,6 +7,8 @@ import type { z } from 'zod'
 import {
   CODIGO_TRASLAPE_CITA,
   DURACIONES_CITA_PSICOLOGICA_MINUTOS,
+  DURACION_CITA_PSICOLOGICA_POR_DEFECTO,
+  ENFOQUE_TERAPEUTICO_MAX,
   ETIQUETAS_ESTADO_CITA_PSICOLOGICA,
   RESULTADOS_SESION_PSICOLOGICA,
   fechaCalendarioGT,
@@ -32,9 +34,13 @@ import { obtenerDetalleCita, registrarConsulta } from '../api/psicologia.api'
 import { useContextoPsicologia } from '../compartido/contexto'
 import { horaDeInstante } from '../compartido/horas'
 import { RUTAS_PSICOLOGIA } from '../rutas'
-import FormatoGeneral from './FormatoGeneral'
+import HojaEvolucion from './HojaEvolucion'
 import QueSigue, { type EstadoQueSigue } from './QueSigue'
 import CodigoProceso from '../compartido/CodigoProceso'
+import ElegirClinica from './ElegirClinica'
+
+/** El contador del enfoque solo aparece cuando falta poco para el límite. */
+const AVISO_LIMITE_ENFOQUE = ENFOQUE_TERAPEUTICO_MAX - 200
 
 function esResultado(estado: string): estado is ResultadoSesionPsicologica {
   return (RESULTADOS_SESION_PSICOLOGICA as readonly string[]).includes(estado)
@@ -43,13 +49,13 @@ function esResultado(estado: string): estado is ResultadoSesionPsicologica {
 function queSigueInicial(cita: CitaPsicologicaDetalle): EstadoQueSigue {
   const duracion =
     DURACIONES_CITA_PSICOLOGICA_MINUTOS.find((minutos) => minutos === cita.duracionMinutos) ??
-    DURACIONES_CITA_PSICOLOGICA_MINUTOS[0]
+    DURACION_CITA_PSICOLOGICA_POR_DEFECTO
   // La próxima cita suele ser a la misma hora que esta.
   return { tipo: 'NINGUNA', fecha: '', hora: horaDeInstante(cita.fechaHora), duracion }
 }
 
 /**
- * Registrar una sesión: en qué quedó la cita, las notas clínicas, el Formato General escaneado
+ * Registrar una sesión: en qué quedó la cita, las notas clínicas, la Hoja de evolución escaneada
  * y qué sigue con el proceso. El borrador se guarda en el servidor, no en el navegador.
  */
 export default function RegistroConsulta() {
@@ -85,10 +91,14 @@ export default function RegistroConsulta() {
       acuerdos: '',
       observaciones: '',
       motivoNoAsistencia: '',
+      clinica: null,
+      enfoqueTerapeutico: '',
       borrador: false,
     },
   })
   const estado = watch('estado')
+  const clinica = watch('clinica')
+  const largoEnfoque = watch('enfoqueTerapeutico')?.length ?? 0
 
   useTituloPagina({
     titulo: 'Registrar sesión',
@@ -111,6 +121,9 @@ export default function RegistroConsulta() {
       acuerdos: cita.acuerdos ?? '',
       observaciones: cita.observaciones ?? '',
       motivoNoAsistencia: cita.motivoNoAsistencia ?? '',
+      // La del servidor: la ya anotada o la última que usó esta profesional.
+      clinica: cita.clinicaSugerida,
+      enfoqueTerapeutico: cita.enfoqueTerapeutico ?? '',
       borrador: false,
     })
     setDocumento(cita.documento)
@@ -245,30 +258,39 @@ export default function RegistroConsulta() {
         onSubmit={(evento) => void handleSubmit(finalizar)(evento)}
         className="space-y-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
       >
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-semibold text-gray-800">Resultado</legend>
-          <div className="flex flex-wrap gap-2">
-            {RESULTADOS_SESION_PSICOLOGICA.map((resultado) => {
-              const elegido = estado === resultado
-              return (
-                <button
-                  key={resultado}
-                  type="button"
-                  aria-pressed={elegido}
-                  onClick={() => setValue('estado', resultado, { shouldValidate: false })}
-                  className={`rounded-md border px-4 py-2 text-sm font-medium ${
-                    elegido
-                      ? 'border-brand-600 bg-brand-600 text-white'
-                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {ETIQUETAS_ESTADO_CITA_PSICOLOGICA[resultado]}
-                </button>
-              )
-            })}
-          </div>
-          {errors.estado?.message && <p className="text-sm text-red-600">{errors.estado.message}</p>}
-        </fieldset>
+        <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-semibold text-gray-800">Resultado</legend>
+            <div className="flex flex-wrap gap-2">
+              {RESULTADOS_SESION_PSICOLOGICA.map((resultado) => {
+                const elegido = estado === resultado
+                return (
+                  <button
+                    key={resultado}
+                    type="button"
+                    aria-pressed={elegido}
+                    onClick={() => setValue('estado', resultado, { shouldValidate: false })}
+                    className={`rounded-md border px-4 py-2 text-sm font-medium ${
+                      elegido
+                        ? 'border-brand-600 bg-brand-600 text-white'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    {ETIQUETAS_ESTADO_CITA_PSICOLOGICA[resultado]}
+                  </button>
+                )
+              })}
+            </div>
+            {errors.estado?.message && <p className="text-sm text-red-600">{errors.estado.message}</p>}
+          </fieldset>
+          {estado === 'ATENDIDA' && (
+            <ElegirClinica
+              valor={clinica}
+              onCambio={(elegida) => setValue('clinica', elegida, { shouldValidate: true })}
+              error={errors.clinica?.message}
+            />
+          )}
+        </div>
 
         {primeraSesion && !yaRegistrada && (
           <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">
@@ -282,11 +304,27 @@ export default function RegistroConsulta() {
             <div className="space-y-4">
               <TextareaInput label="Temas abordados" registro={register('temas')} opcional error={errors.temas?.message} />
               <TextareaInput label="Intervención" registro={register('intervencion')} opcional error={errors.intervencion?.message} />
+              <div>
+                <TextareaInput
+                  label="Enfoque terapéutico"
+                  registro={register('enfoqueTerapeutico')}
+                  rows={2}
+                  maxLength={ENFOQUE_TERAPEUTICO_MAX}
+                  className="field-sizing-content min-h-16"
+                  ayuda="Opcional. Por ejemplo: cognitivo-conductual, sistémico, centrado en el trauma."
+                  error={errors.enfoqueTerapeutico?.message}
+                />
+                {largoEnfoque >= AVISO_LIMITE_ENFOQUE && (
+                  <p aria-live="polite" className="mt-1 text-right text-xs text-gray-500 tabular-nums">
+                    {largoEnfoque} / {ENFOQUE_TERAPEUTICO_MAX}
+                  </p>
+                )}
+              </div>
               <TextareaInput label="Recomendaciones" registro={register('recomendaciones')} opcional error={errors.recomendaciones?.message} />
               <TextareaInput label="Acuerdos" registro={register('acuerdos')} opcional error={errors.acuerdos?.message} />
               <TextareaInput label="Observaciones" registro={register('observaciones')} opcional error={errors.observaciones?.message} />
             </div>
-            <FormatoGeneral citaId={cita.id} documento={documento} onSubido={setDocumento} />
+            <HojaEvolucion citaId={cita.id} documento={documento} onSubido={setDocumento} />
           </>
         ) : (
           <TextareaInput

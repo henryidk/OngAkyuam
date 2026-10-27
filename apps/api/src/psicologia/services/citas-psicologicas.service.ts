@@ -12,17 +12,21 @@ export class CitasPsicologicasService {
     private readonly citasRepository: ICitasPsicologicasRepository,
   ) {}
 
-  /** Permalink de una cita puntual — `GET /psicologia/citas/:id`. */
+  /** Permalink de una cita puntual — `GET /psicologia/citas/:id`. Lo puede leer toda el área. */
   async obtenerDetalleCita(
     citaId: string,
     psicologaId: string,
   ): Promise<CitaPsicologicaDetalle> {
-    await this.acceso.exigirAccesoCita(citaId, psicologaId);
+    await this.acceso.exigirLecturaCita(citaId, psicologaId);
 
     const cita = await this.citasRepository.obtenerDetalle(citaId);
     if (!cita) {
       throw new NotFoundException('Cita no encontrada');
     }
-    return cita;
+    // Propone la clínica ya anotada o, si no hay, la última que usó quien va a registrar.
+    const clinicaSugerida =
+      cita.clinica ??
+      (await this.citasRepository.buscarUltimaClinica(psicologaId));
+    return { ...cita, clinicaSugerida };
   }
 }

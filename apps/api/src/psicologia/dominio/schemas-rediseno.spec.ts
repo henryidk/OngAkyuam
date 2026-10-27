@@ -15,6 +15,8 @@ const sesionAtendida = {
   acuerdos: '',
   observaciones: '',
   motivoNoAsistencia: '',
+  clinica: 'CLINICA_1',
+  enfoqueTerapeutico: '',
 };
 
 describe('schemas del rediseño de Psicología', () => {
@@ -30,7 +32,16 @@ describe('schemas del rediseño de Psicología', () => {
       });
     });
 
-    it.each([30, 50, 120, 45.5])(
+    it.each([30, 45, 60])('acepta la duración %p', (duracionMinutos) => {
+      expect(
+        agendarCitaPsicologicaSchema.safeParse({
+          fechaHora: '2026-10-07T09:00',
+          duracionMinutos,
+        }).success,
+      ).toBe(true);
+    });
+
+    it.each([15, 50, 90, 120, 45.5])(
       'rechaza la duración %p',
       (duracionMinutos) => {
         expect(
@@ -153,6 +164,57 @@ describe('schemas del rediseño de Psicología', () => {
     });
   });
 
+  describe('clínica y enfoque en el registro de sesión', () => {
+    it('una sesión atendida exige la clínica al finalizar', () => {
+      const resultado = registroConsultaSchema.safeParse({
+        ...sesionAtendida,
+        clinica: null,
+      });
+      expect(resultado.success).toBe(false);
+      expect(resultado.error?.issues[0]).toMatchObject({
+        path: ['clinica'],
+        message: 'Elige la clínica donde se atendió la sesión.',
+      });
+    });
+
+    it('el borrador y la inasistencia pueden quedar sin clínica', () => {
+      expect(
+        registroConsultaSchema.safeParse({
+          ...sesionAtendida,
+          clinica: null,
+          borrador: true,
+        }).success,
+      ).toBe(true);
+      expect(
+        registroConsultaSchema.safeParse({
+          ...sesionAtendida,
+          estado: 'NO_ASISTIO',
+          motivoNoAsistencia: 'No llegó',
+          clinica: null,
+        }).success,
+      ).toBe(true);
+    });
+
+    it('rechaza una clínica fuera del catálogo', () => {
+      expect(
+        registroConsultaSchema.safeParse({
+          ...sesionAtendida,
+          clinica: 'CLINICA_3',
+        }).success,
+      ).toBe(false);
+    });
+
+    it('limita el enfoque terapéutico a 2000 caracteres', () => {
+      const conEnfoque = (largo: number) =>
+        registroConsultaSchema.safeParse({
+          ...sesionAtendida,
+          enfoqueTerapeutico: 'a'.repeat(largo),
+        }).success;
+      expect(conEnfoque(2000)).toBe(true);
+      expect(conEnfoque(2001)).toBe(false);
+    });
+  });
+
   it('la lista de procesos arranca en ACTIVOS y busca desde 3 caracteres', () => {
     expect(listarProcesosPsicologiaQuerySchema.parse({}).filtro).toBe(
       'ACTIVOS',
@@ -168,9 +230,7 @@ describe('schemas del rediseño de Psicología', () => {
 
   it('el horario del área es coherente', () => {
     const h = HORARIO_PSICOLOGIA;
-    expect(h.inicioMin).toBeLessThan(h.almuerzoInicioMin);
-    expect(h.almuerzoInicioMin).toBeLessThan(h.almuerzoFinMin);
-    expect(h.almuerzoFinMin).toBeLessThan(h.finMin);
+    expect(h.inicioMin).toBeLessThan(h.finMin);
     expect(h.minimoMin % h.redondeoMin).toBe(0);
   });
 });
