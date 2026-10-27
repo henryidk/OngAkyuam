@@ -11,6 +11,7 @@ import type {
   ConsultasMedicasPaginaDto,
   ContextoConsultaMedicaDto,
   PersonaConsultaMedicaDto,
+  VisitaConsultaMedicaDto,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -19,6 +20,7 @@ import {
   nombreCompleto,
 } from '../../psicologia/repositories/personas';
 import type {
+  ConsultaCreada,
   ConsultaRegistrada,
   IConsultasMedicasRepository,
   RegistrarConsultaParams,
@@ -27,86 +29,127 @@ import {
   AtencionNoActivaError,
   CitaNoDisponibleError,
   LoteVencidoError,
+  PersonaAjenaError,
+  PersonasVisitaIncompletaError,
 } from '../interfaces/errores-medica';
 import { EXPEDIENTE_REFERIDO_A_MEDICA } from './acceso-medica.repository';
 import { SELECT_CONSULTA, aConsultaDto } from './consulta-completa';
 import { crearCitaEnTx } from './crear-cita';
+import { horaFin } from '../dominio/horario';
 import { codificarCursor, decodificarCursor, procedencia } from './mapeo';
-import { SERIALIZABLE, conReintentos } from './transaccion';
+import { SERIALIZABLE, conReintentosHorario } from './transaccion';
+
+/** La consulta completa más lo necesario para agruparla por visita en la historia clínica. */
+const SELECT_CONSULTA_HISTORIA = {
+  ...SELECT_CONSULTA,
+  ninoId: true,
+  cita: {
+    select: { duracionMin: true, personas: { select: { ninoId: true } } },
+  },
+} satisfies Prisma.ConsultaMedicaSelect;
+
+type FilaConsultaHistoria = Prisma.ConsultaMedicaGetPayload<{
+  select: typeof SELECT_CONSULTA_HISTORIA;
+}>;
 
 @Injectable()
 export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   registrar(params: RegistrarConsultaParams): Promise<ConsultaRegistrada> {
-    return conReintentos(() =>
+    return conReintentosHorario(() =>
       this.prisma.$transaction(async (tx) => {
         const atencion = await tx.atencionMedica.findUnique({
           where: { id: params.atencionId },
-          select: { estado: true },
+          select: {
+            estado: true,
+            expediente: {
+              select: {
+                id: true,
+                usuaria: { select: { nombres: true, apellidos: true } },
+              },
+            },
+          },
         });
         if (atencion?.estado !== 'ACTIVA') {
           throw new AtencionNoActivaError();
         }
         if (params.citaId !== null) {
-          await this.marcarAtendida(tx, params.citaId, params.atencionId);
+          await this.exigirPersonasPendientes(tx, params, params.citaId);
         }
 
-        const consulta = await tx.consultaMedica.create({
-          data: {
-            atencionId: params.atencionId,
-            citaId: params.citaId,
-            ninoId: params.ninoId,
-            fechaHora: params.fechaHora,
-            motivoConsulta: params.motivoConsulta,
-            ...params.signos,
-            diagnostico: params.diagnostico,
-            planTratamiento: params.planTratamiento,
-            recetaLaboratorios: params.recetaLaboratorios,
-            registradaPorId: params.registradaPorId,
-          },
-          select: {
-            id: true,
-            nino: { select: { nombres: true, apellidos: true } },
-            atencion: {
-              select: {
-                expediente: {
-                  select: {
-                    usuaria: { select: { nombres: true, apellidos: true } },
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        const proximaCitaId = params.proxima
-          ? await crearCitaEnTx(tx, {
+        const consultas: ConsultaCreada[] = [];
+        for (const registro of params.registros) {
+          const consulta = await tx.consultaMedica.create({
+            data: {
               atencionId: params.atencionId,
-              ninoId: params.ninoId,
-              inicio: params.proxima,
-              creadoPorId: params.registradaPorId,
-            })
-          : null;
-        const documentosAsociados = params.loteDocumentos
-          ? await this.asociarLote(tx, params, consulta.id)
-          : 0;
+              citaId: params.citaId,
+              ninoId: registro.ninoId,
+              fechaHora: params.fechaHora,
+              motivoConsulta: registro.motivoConsulta,
+              ...registro.signos,
+              diagnostico: registro.diagnostico,
+              planTratamiento: registro.planTratamiento,
+              recetaLaboratorios: registro.recetaLaboratorios,
+              registradaPorId: params.registradaPorId,
+            },
+            select: {
+              id: true,
+              nino: { select: { nombres: true, apellidos: true } },
+            },
+          });
+          consultas.push({
+            consultaId: consulta.id,
+            ninoId: registro.ninoId,
+            personaNombre: nombreCompleto(
+              consulta.nino ?? atencion.expediente.usuaria,
+            ),
+            documentosAsociados: registro.loteDocumentos
+              ? await this.asociarLote(
+                  tx,
+                  params,
+                  registro.loteDocumentos,
+                  consulta.id,
+                )
+              : 0,
+          });
+        }
 
-        return {
-          consultaId: consulta.id,
-          personaNombre: nombreCompleto(
-            consulta.nino ?? consulta.atencion.expediente.usuaria,
-          ),
-          proximaCitaId,
-          documentosAsociados,
-        };
+        if (params.citaId !== null) {
+          await tx.citaMedica.update({
+            where: { id: params.citaId },
+            data: { estado: 'ATENDIDA', version: { increment: 1 } },
+          });
+        }
+        let proximaCitaId: string | null = null;
+        if (params.proxima) {
+          await this.exigirPersonasDelExpediente(
+            tx,
+            atencion.expediente.id,
+            params.proxima.personas,
+          );
+          proximaCitaId = await crearCitaEnTx(tx, {
+            atencionId: params.atencionId,
+            personas: params.proxima.personas,
+            inicio: params.proxima.inicio,
+            duracionMin: params.proxima.duracionMin,
+            creadoPorId: params.registradaPorId,
+          });
+        }
+
+        return { consultas, proximaCitaId };
       }, SERIALIZABLE),
     );
   }
 
   async contexto(
     atencionId: string,
-    cita: { id: string; inicio: Date; ninoId: string | null } | null,
+    cita: {
+      id: string;
+      inicio: Date;
+      duracionMin: number;
+      personas: (string | null)[];
+    } | null,
   ): Promise<ContextoConsultaMedicaDto | null> {
     const atencion = await this.prisma.atencionMedica.findFirst({
       where: { id: atencionId, expediente: EXPEDIENTE_REFERIDO_A_MEDICA },
@@ -170,7 +213,8 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
             id: cita.id,
             fecha: fechaCalendarioGT(cita.inicio),
             hora: horaGT(cita.inicio),
-            ninoId: cita.ninoId,
+            duracionMin: cita.duracionMin,
+            personas: cita.personas,
           }
         : null,
       personas: [
@@ -212,14 +256,18 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
             }
           : {}),
       },
-      select: SELECT_CONSULTA,
+      select: SELECT_CONSULTA_HISTORIA,
       orderBy: [{ fechaHora: 'desc' }, { id: 'desc' }],
       take: PAGINA_CONSULTAS_MEDICA + 1,
     });
     const items = filas.slice(0, PAGINA_CONSULTAS_MEDICA);
     const ultima = items.at(-1);
+    const visita = await this.visitas(items);
     return {
-      items: items.map(aConsultaDto),
+      items: items.map((fila) => ({
+        ...aConsultaDto(fila),
+        visita: visita(fila),
+      })),
       siguienteCursor:
         filas.length > PAGINA_CONSULTAS_MEDICA && ultima
           ? codificarCursor(ultima.fechaHora, ultima.id)
@@ -227,23 +275,122 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
     };
   }
 
-  /** La cita debe ser de esa atención, seguir programada y no tener consulta. */
-  private async marcarAtendida(
+  /**
+   * Datos de la visita de cada consulta de la página: quiénes se atendieron (de la cita o, sin
+   * cita, de las consultas registradas juntas) y si fue la primera de su atención. Se calcula
+   * sin el filtro por persona, para que la historia de un hijo/a diga con quién vino.
+   */
+  private async visitas(
+    filas: FilaConsultaHistoria[],
+  ): Promise<(fila: FilaConsultaHistoria) => VisitaConsultaMedicaDto> {
+    const sinCita = filas.filter((fila) => fila.citaId === null);
+    // Sin filas, `in: []` y `OR: []` no devuelven nada.
+    const [inicios, juntas] = await Promise.all([
+      this.prisma.consultaMedica.groupBy({
+        by: ['atencionId'],
+        where: {
+          atencionId: { in: [...new Set(filas.map((f) => f.atencionId))] },
+        },
+        _min: { fechaHora: true },
+      }),
+      this.prisma.consultaMedica.findMany({
+        where: {
+          citaId: null,
+          OR: sinCita.map((fila) => ({
+            atencionId: fila.atencionId,
+            fechaHora: fila.fechaHora,
+          })),
+        },
+        select: { atencionId: true, fechaHora: true, ninoId: true },
+      }),
+    ]);
+    const inicioDe = new Map(
+      inicios.map((inicio) => [inicio.atencionId, inicio._min.fechaHora]),
+    );
+    const claveSinCita = (atencionId: string, fechaHora: Date) =>
+      `${atencionId}:${fechaHora.toISOString()}`;
+    const personasSinCita = new Map<string, (string | null)[]>();
+    for (const consulta of juntas) {
+      const clave = claveSinCita(consulta.atencionId, consulta.fechaHora);
+      personasSinCita.set(clave, [
+        ...(personasSinCita.get(clave) ?? []),
+        consulta.ninoId,
+      ]);
+    }
+    return (fila) => {
+      const clave =
+        fila.citaId ?? claveSinCita(fila.atencionId, fila.fechaHora);
+      return {
+        clave,
+        horaFin: fila.cita
+          ? horaFin(horaGT(fila.fechaHora), fila.cita.duracionMin)
+          : null,
+        personas: fila.cita
+          ? fila.cita.personas.map((persona) => persona.ninoId)
+          : (personasSinCita.get(clave) ?? [fila.ninoId]),
+        primera:
+          inicioDe.get(fila.atencionId)?.getTime() === fila.fechaHora.getTime(),
+      };
+    };
+  }
+
+  /** Los hijos/as de la próxima cita son de este expediente (se lee dentro de la transacción). */
+  private async exigirPersonasDelExpediente(
     tx: Prisma.TransactionClient,
-    citaId: string,
-    atencionId: string,
+    expedienteId: string,
+    personas: (string | null)[],
   ): Promise<void> {
-    const { count } = await tx.citaMedica.updateMany({
+    const ninos = personas.filter(
+      (persona): persona is string => persona !== null,
+    );
+    if (ninos.length === 0) {
+      return;
+    }
+    const delExpediente = await tx.nino.count({
+      where: { id: { in: ninos }, expedienteId },
+    });
+    if (delExpediente !== ninos.length) {
+      throw new PersonaAjenaError();
+    }
+  }
+
+  /**
+   * La cita debe ser de esa atención y seguir programada, y los registros deben ser exactamente
+   * las personas de la cita que aún no tienen consulta: ni falta nadie (la visita no queda a
+   * medias) ni sobra nadie. Los índices `ConsultaMedica_cita_*_uq` respaldan la comprobación ante
+   * dos registros simultáneos de la misma persona.
+   */
+  private async exigirPersonasPendientes(
+    tx: Prisma.TransactionClient,
+    params: RegistrarConsultaParams,
+    citaId: string,
+  ): Promise<void> {
+    const cita = await tx.citaMedica.findFirst({
       where: {
         id: citaId,
-        atencionId,
+        atencionId: params.atencionId,
         estado: 'PROGRAMADA',
-        consulta: { is: null },
       },
-      data: { estado: 'ATENDIDA', version: { increment: 1 } },
+      select: {
+        personas: { select: { ninoId: true } },
+        consultas: { select: { ninoId: true } },
+      },
     });
-    if (count === 0) {
+    if (!cita) {
       throw new CitaNoDisponibleError();
+    }
+    const registradas = new Set(cita.consultas.map((c) => c.ninoId));
+    const pendientes = cita.personas
+      .map((persona) => persona.ninoId)
+      .filter((ninoId) => !registradas.has(ninoId));
+    const enviadas = params.registros.map((registro) => registro.ninoId);
+    if (enviadas.some((ninoId) => !pendientes.includes(ninoId))) {
+      throw enviadas.some((ninoId) => registradas.has(ninoId))
+        ? new CitaNoDisponibleError()
+        : new PersonaAjenaError();
+    }
+    if (pendientes.some((ninoId) => !enviadas.includes(ninoId))) {
+      throw new PersonasVisitaIncompletaError();
     }
   }
 
@@ -255,11 +402,12 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
   private async asociarLote(
     tx: Prisma.TransactionClient,
     params: RegistrarConsultaParams,
+    lote: string,
     consultaId: string,
   ): Promise<number> {
     const pendientes = await tx.documentoMedicoPendiente.findMany({
       where: {
-        lote: params.loteDocumentos!,
+        lote,
         subidoPorId: params.registradaPorId,
         atencionId: params.atencionId,
       },
@@ -275,7 +423,6 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
     await tx.documentoMedico.createMany({
       data: pendientes.map((p) => ({
         consultaId,
-        tipo: p.tipo,
         nombreVisible: p.nombreVisible,
         nombreArchivo: p.nombreArchivo,
         claveObjeto: p.claveObjeto,

@@ -33,7 +33,6 @@ export const SELECT_CONSULTA = {
   documentos: {
     select: {
       id: true,
-      tipo: true,
       nombreVisible: true,
       nombreArchivo: true,
       mimeType: true,

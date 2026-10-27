@@ -86,12 +86,12 @@ export class AccesoMedicaRepository implements IAccesoMedicaRepository {
       },
       select: {
         id: true,
-        ninoId: true,
         inicio: true,
         duracionMin: true,
         estado: true,
         version: true,
-        consulta: { select: { id: true } },
+        personas: { select: { ninoId: true } },
+        consultas: { select: { ninoId: true } },
         reprogramadaA: { select: { id: true } },
         atencion: { select: SELECT_ATENCION },
       },
@@ -102,12 +102,12 @@ export class AccesoMedicaRepository implements IAccesoMedicaRepository {
     return {
       ...this.aAtencion(cita.atencion),
       citaId: cita.id,
-      ninoId: cita.ninoId,
+      personas: cita.personas.map((persona) => persona.ninoId),
+      personasRegistradas: cita.consultas.map((consulta) => consulta.ninoId),
       inicio: cita.inicio,
       duracionMin: cita.duracionMin,
       estadoCita: cita.estado,
       versionCita: cita.version,
-      consultaId: cita.consulta?.id ?? null,
       reprogramadaAId: cita.reprogramadaA?.id ?? null,
     };
   }

@@ -17,7 +17,6 @@ import {
   SELECT_PERSONA,
   edad,
   nombreCompleto,
-  personaAtendida,
   personasDelExpediente,
 } from '../../psicologia/repositories/personas';
 import { derivarEstadoCita } from '../dominio/estado-cita';
@@ -33,6 +32,7 @@ import type {
   ILectorPendientesMedica,
 } from '../interfaces/agenda-medica-repository.interface';
 import { EXPEDIENTE_REFERIDO_A_MEDICA } from './acceso-medica.repository';
+import { SELECT_PERSONAS_CITA, personasDeCita } from './mapeo';
 
 const SELECT_NINOS = {
   select: { id: true, ...SELECT_PERSONA },
@@ -48,9 +48,14 @@ function selectCitaAgenda(ahora: Date) {
     inicio: true,
     duracionMin: true,
     estado: true,
-    consulta: { select: { id: true } },
+    // Una consulta para "Ver consulta": la de la usuaria si vino.
+    consultas: {
+      select: { id: true },
+      orderBy: [{ ninoId: { sort: 'asc', nulls: 'first' } }, { id: 'asc' }],
+      take: 1,
+    },
     reprogramadaA: { select: { id: true, inicio: true } },
-    nino: { select: { id: true, ...SELECT_PERSONA } },
+    personas: SELECT_PERSONAS_CITA,
     atencion: {
       select: {
         consecutivo: true,
@@ -89,14 +94,15 @@ function aCitaAgenda(fila: FilaCitaAgenda, ahora: Date): CitaAgendaMedicaDto {
     expedienteId: expediente.id,
     usuariaId: expediente.usuaria.id,
     usuariaNombreCompleto: nombreCompleto(expediente.usuaria),
-    persona: personaAtendida(expediente.usuaria, fila.nino),
+    personas: personasDeCita(expediente.usuaria, fila.personas),
     inicio: fila.inicio.toISOString(),
     fecha: fechaCalendarioGT(fila.inicio),
     hora,
     horaFin: horaFin(hora, fila.duracionMin),
+    duracionMin: fila.duracionMin,
     estado: fila.estado,
     estadoVista: derivarEstadoCita(fila, ahora),
-    consultaId: fila.consulta?.id ?? null,
+    consultaId: fila.consultas[0]?.id ?? null,
     reprogramadaA: fila.reprogramadaA
       ? {
           id: fila.reprogramadaA.id,
@@ -141,6 +147,8 @@ export class AgendaMedicaRepository
     excluirDesde: Date,
     excluirHasta: Date,
   ): Promise<CitaAgendaMedicaDto[]> {
+    // Ninguna cita dura menos que el bloque: las que empezaron después aún no terminan. Las más
+    // largas se terminan de filtrar con su propia duración.
     const terminadasAntesDe = new Date(
       ahora.getTime() - DURACION_CITA_MEDICA_MIN * 60_000,
     );
@@ -154,7 +162,9 @@ export class AgendaMedicaRepository
       select: selectCitaAgenda(ahora),
       orderBy: [{ inicio: 'asc' }, { id: 'asc' }],
     });
-    return filas.map((fila) => aCitaAgenda(fila, ahora));
+    return filas
+      .filter((fila) => derivarEstadoCita(fila, ahora) === 'SIN_REGISTRAR')
+      .map((fila) => aCitaAgenda(fila, ahora));
   }
 
   resumenEntre(desde: Date, hasta: Date): Promise<CitaResumida[]> {

@@ -6,8 +6,8 @@ export function obtenerMedicinaCompartida(usuariaId: string) {
   return api.get<VistaMedicaParaJuridico[]>(`/juridico/usuarias/${usuariaId}/medicina`).then((res) => res.data)
 }
 
-/** URL firmada de corta duración de una constancia médica compartida. */
-export function obtenerUrlConstanciaMedica(usuariaId: string, documentoId: string, modo: UrlDocumentoMedicoQuery['modo']) {
+/** URL firmada de corta duración de un documento médico compartido. */
+export function obtenerUrlDocumentoMedico(usuariaId: string, documentoId: string, modo: UrlDocumentoMedicoQuery['modo']) {
   return api
     .get<{ url: string }>(`/juridico/usuarias/${usuariaId}/medicina/documentos/${documentoId}/url`, { params: { modo } })
     .then((res) => res.data.url)

@@ -3,7 +3,7 @@ import type { CitaAgendaMedicaDto } from '@akyuam/shared'
 import CodigoAtencion from '../compartido/CodigoAtencion'
 import EstadoCita from '../compartido/EstadoCita'
 import { fechaLargaEnFrase } from '../compartido/fechas'
-import { primerNombre } from '../compartido/personas'
+import { detallePersonasCita } from '../compartido/personas'
 import { RUTAS_MEDICA } from '../rutas'
 
 interface FilaCitaProps {
@@ -46,10 +46,8 @@ export default function FilaCita({ cita, onReprogramar, onIrA }: FilaCitaProps) 
             <span className="text-[14.5px] font-semibold text-[#1c2430]">{cita.usuariaNombreCompleto}</span>
             <EstadoCita estado={estado} />
           </div>
-          {cita.persona.ninoId && (
-            <span className="text-[12.5px] text-[#7346a5]">
-              Consulta de {primerNombre(cita.persona.nombreCompleto)} · {cita.persona.edad} años
-            </span>
+          {detallePersonasCita(cita.personas) && (
+            <span className="text-[12.5px] text-[#7346a5]">{detallePersonasCita(cita.personas)}</span>
           )}
           <CodigoAtencion codigo={cita.codigoAtencion} />
           {cita.reprogramadaA && (

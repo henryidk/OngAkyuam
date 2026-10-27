@@ -10,6 +10,18 @@ export class SinReferenciaPendienteError extends Error {}
 /** La referencia ya abrió su atención (doble envío o dos pestañas). */
 export class ReferenciaYaAtendidaError extends Error {}
 
+/** Algún hijo/a de la cita no es del expediente. */
+export class PersonaAjenaError extends Error {}
+
+/**
+ * La cita abre la atención (primera consulta) pero no incluye a la usuaria y a todos sus hijos/as
+ * registrados. Puede pasar si Trabajo Social agregó un hijo/a mientras se programaba.
+ */
+export class PersonasPrimeraConsultaError extends Error {}
+
+/** Al registrar una visita falta alguna persona de la cita: no se guarda una visita a medias. */
+export class PersonasVisitaIncompletaError extends Error {}
+
 /** La atención ya tiene alta. */
 export class AtencionNoActivaError extends Error {}
 

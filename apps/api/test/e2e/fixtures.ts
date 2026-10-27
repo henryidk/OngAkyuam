@@ -1,6 +1,13 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import type { Rol } from '@prisma/client';
+import {
+  finDiaGT,
+  hoyGT,
+  inicioDiaGT,
+  limiteAgendaMedica,
+  sumarDiasGT,
+} from '@akyuam/shared';
 import cookieParser from 'cookie-parser';
 import { Test } from '@nestjs/testing';
 import type { App } from 'supertest/types';
@@ -9,6 +16,11 @@ import { COOKIE_NAMES } from '../../src/auth/constants/auth.constants';
 import { TokenService } from '../../src/auth/services/token.service';
 import { HttpExceptionFilter } from '../../src/common/filters/http-exception.filter';
 import { PrismaService } from '../../src/prisma/prisma.service';
+import {
+  bloquesOcupadosPorDia,
+  diasHabilesEntre,
+  horasLibres,
+} from '../../src/medica/dominio/horario';
 
 /**
  * Datos de prueba de las E2E. Todo es ficticio y se marca como tal: nunca datos reales. Cada
@@ -80,15 +92,59 @@ export async function crearExpediente(
   return { usuaria, expediente };
 }
 
+/** Hijo/a ficticio registrado en el expediente. */
+export async function crearNino(prisma: PrismaService, expedienteId: string) {
+  return prisma.nino.create({
+    data: {
+      expedienteId,
+      nombres: MARCA,
+      apellidos: `Nino ${sufijo()}`,
+      fechaNacimiento: new Date('2018-01-01'),
+      genero: 'MUJER',
+    },
+  });
+}
+
+/**
+ * Inicio "YYYY-MM-DDTHH:mm" (hora de Guatemala) de una hora libre con espacio para 1 h 30, al
+ * azar entre mañana y el límite de agenda (un mes): el backend ya no acepta citas más lejanas.
+ * Se lee lo ocupado en la base para que las citas e2e no choquen entre sí ni entre corridas
+ * (las pruebas corren en serie, `--runInBand`).
+ */
+export async function inicioCitaMedicaLibre(
+  prisma: PrismaService,
+): Promise<string> {
+  const hoy = hoyGT();
+  const dias = diasHabilesEntre(sumarDiasGT(hoy, 1), limiteAgendaMedica(hoy));
+  const ocupadas = bloquesOcupadosPorDia(
+    await prisma.citaMedica.findMany({
+      where: {
+        inicio: {
+          gte: inicioDiaGT(dias[0]),
+          lte: finDiaGT(dias[dias.length - 1]),
+        },
+        estado: { in: ['PROGRAMADA', 'ATENDIDA'] },
+      },
+      select: { inicio: true, duracionMin: true },
+    }),
+  );
+  const libres = dias.flatMap((dia) =>
+    horasLibres(dia, ocupadas.get(dia) ?? new Set(), new Date(), 90).map(
+      (hora) => `${dia}T${hora}`,
+    ),
+  );
+  if (libres.length === 0) {
+    throw new Error('No quedan horas libres de Medicina en el próximo mes');
+  }
+  return libres[Math.floor(Math.random() * libres.length)];
+}
+
 /** Atención activa con una consulta (con datos clínicos marcados) y un documento. */
 export async function crearAtencionConConsulta(
   prisma: PrismaService,
   expedienteId: string,
   medicaId: string,
-  opciones: {
-    visibleJuridico?: boolean;
-    tipoDocumento?: 'CONSTANCIA' | 'RECETA';
-  } = {},
+  opciones: { visibleJuridico?: boolean } = {},
 ) {
   const atencion = await prisma.atencionMedica.create({
     data: {
@@ -115,7 +171,6 @@ export async function crearAtencionConConsulta(
   const documento = await prisma.documentoMedico.create({
     data: {
       consultaId: consulta.id,
-      tipo: opciones.tipoDocumento ?? 'RECETA',
       nombreVisible: `${MARCA} documento`,
       nombreArchivo: 'ficticio.pdf',
       claveObjeto: `medica/${expedienteId}/${atencion.id}/${randomUUID()}`,

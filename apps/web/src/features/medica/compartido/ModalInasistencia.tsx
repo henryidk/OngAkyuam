@@ -5,9 +5,9 @@ import Button from '../../../components/ui/Button'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { extraerMensajeError } from '../../../lib/errors'
 import { registrarInasistencia, reprogramarCita } from '../api/medica.api'
-import { fechaLarga, fechaLargaEnFrase } from './fechas'
+import { fechaLarga, fechaLargaEnFrase, horaMasMinutos } from './fechas'
 import ModalMedica from './ModalMedica'
-import { primerNombre } from './personas'
+import { detallePersonasCita } from './personas'
 import SelectorHorario from './SelectorHorario'
 import { esConflictoHorario, MENSAJE_HORARIO_TOMADO, useHorario } from './useHorario'
 
@@ -17,7 +17,10 @@ export interface CitaInasistencia {
   version: number
   fecha: string
   hora: string
-  persona: PersonaAtendidaDto
+  horaFin: string
+  duracionMin: number
+  /** Personas de la visita: la inasistencia y la nueva cita son de todas ellas. */
+  personas: PersonaAtendidaDto[]
   usuariaNombreCompleto: string
   /** "Exp. 123-2026" o el código de la atención: identifica el caso en el subtítulo. */
   referencia: string
@@ -37,11 +40,14 @@ interface ModalInasistenciaProps {
   onListo: (resultado: ResultadoInasistencia) => void
 }
 
-/** Registra que la paciente no asistió y, si se puede, la reprograma en el mismo paso. */
+/**
+ * Registra que la paciente no asistió y, si se puede, la reprograma en el mismo paso. Es de la
+ * visita completa: si falta uno, faltan todos, y la nueva cita conserva las personas y la duración.
+ */
 export default function ModalInasistencia({ cita, modo, onCerrar, onListo }: ModalInasistenciaProps) {
   const [reprogramar, setReprogramar] = useState(true)
   // La nueva cita se propone desde mañana, a la misma hora si está libre.
-  const horario = useHorario({ despuesDe: hoyGT(), hora: cita.hora })
+  const horario = useHorario({ despuesDe: hoyGT(), hora: cita.hora, duracion: cita.duracionMin })
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
@@ -49,8 +55,8 @@ export default function ModalInasistencia({ cita, modo, onCerrar, onListo }: Mod
   const conNuevaCita = soloReprogramar || reprogramar
   const titulo = soloReprogramar ? 'Reprogramar consulta' : 'No asistió a la consulta'
   const subtitulo = [
-    cita.persona.ninoId ? `Consulta de ${primerNombre(cita.persona.nombreCompleto)}` : null,
     cita.usuariaNombreCompleto,
+    detallePersonasCita(cita.personas),
     cita.referencia,
   ]
     .filter(Boolean)
@@ -130,7 +136,7 @@ export default function ModalInasistencia({ cita, modo, onCerrar, onListo }: Mod
         <div className="text-[13px]">
           <p className="text-[#5b6573]">Consulta a la que no asistió</p>
           <p className="font-medium text-[#1c2430] line-through decoration-[#9aa4b0]">
-            {fechaLarga(cita.fecha)} · {cita.hora}
+            {fechaLarga(cita.fecha)} · {cita.hora} – {cita.horaFin}
           </p>
         </div>
       </div>
@@ -189,8 +195,13 @@ export default function ModalInasistencia({ cita, modo, onCerrar, onListo }: Mod
             <div className="text-[13px]">
               <p className="font-semibold text-[#5b3985]">Nueva consulta</p>
               <p className="text-[#1c2430]">
-                {horario.fecha && horario.hora ? `${fechaLarga(horario.fecha)} · ${horario.hora}` : 'Elige una hora'}
+                {horario.fecha && horario.hora
+                  ? `${fechaLarga(horario.fecha)} · ${horario.hora} – ${horaMasMinutos(horario.hora, cita.duracionMin)}`
+                  : 'Elige una hora'}
               </p>
+              {cita.personas.length > 1 && (
+                <p className="text-[12px] text-[#5b6573]">Con las mismas {cita.personas.length} personas de la visita</p>
+              )}
             </div>
           </div>
         </>

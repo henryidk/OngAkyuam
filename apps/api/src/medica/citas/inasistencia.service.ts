@@ -61,7 +61,7 @@ export class InasistenciaService {
       throw new ConflictException(MENSAJE_INASISTENCIA_NO_PERMITIDA);
     }
     const reprogramarA = datos.reprogramarA
-      ? exigirInicioValido(datos.reprogramarA, ahora)
+      ? exigirInicioValido(datos.reprogramarA, ahora, cita.duracionMin)
       : null;
 
     const nuevaCitaId = await this.citasRepository
@@ -103,7 +103,11 @@ export class InasistenciaService {
     contexto: ContextoAuditoria,
   ): Promise<CitaMedicaProgramadaDto> {
     const cita = await this.acceso.exigirCita(citaId);
-    const inicio = exigirInicioValido(datos.inicio, this.reloj.ahora());
+    const inicio = exigirInicioValido(
+      datos.inicio,
+      this.reloj.ahora(),
+      cita.duracionMin,
+    );
 
     const nuevaCitaId = await this.citasRepository
       .reprogramar({

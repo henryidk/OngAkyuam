@@ -10,15 +10,29 @@ interface ModalMedicaProps {
   ancho?: number
   /** Mientras se guarda no se puede cerrar (ni con Esc ni tocando fuera). */
   ocupado?: boolean
+  /**
+   * Solo se sale con el botón Cancelar del pie: ni tocando fuera, ni con Esc, ni con la ✕. Para
+   * modales donde cerrar por accidente pierde lo ya elegido (programar una consulta).
+   */
+  soloConCancelar?: boolean
   onCerrar: () => void
   pie: ReactNode
   children: ReactNode
 }
 
 /** Marco de los modales del módulo: encabezado, cuerpo con scroll y pie gris con las acciones. */
-export default function ModalMedica({ titulo, subtitulo, ancho = 560, ocupado = false, onCerrar, pie, children }: ModalMedicaProps) {
+export default function ModalMedica({
+  titulo,
+  subtitulo,
+  ancho = 560,
+  ocupado = false,
+  soloConCancelar = false,
+  onCerrar,
+  pie,
+  children,
+}: ModalMedicaProps) {
   const cerrar = () => {
-    if (!ocupado) onCerrar()
+    if (!ocupado && !soloConCancelar) onCerrar()
   }
   const panel = useDialogoModal<HTMLDivElement>(true, cerrar)
 
@@ -41,15 +55,17 @@ export default function ModalMedica({ titulo, subtitulo, ancho = 560, ocupado = 
             </h2>
             {subtitulo && <p className="mt-0.5 text-[13px] text-[#5b6573]">{subtitulo}</p>}
           </div>
-          <button
-            type="button"
-            aria-label="Cerrar"
-            onClick={cerrar}
-            disabled={ocupado}
-            className="rounded p-1 text-[#5b6573] hover:bg-gray-100 disabled:opacity-50"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {!soloConCancelar && (
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={cerrar}
+              disabled={ocupado}
+              className="rounded p-1 text-[#5b6573] hover:bg-gray-100 disabled:opacity-50"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-4">{children}</div>
         <div className="flex items-center justify-end gap-2 border-t border-[#e3e6ea] bg-[#fafbfc] px-5 py-3">{pie}</div>

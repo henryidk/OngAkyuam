@@ -191,7 +191,15 @@ export default function Agenda() {
         </div>
       )}
 
-      {programar && <ModalProgramar preseleccion={programar} onCerrar={() => setProgramar(null)} onProgramada={trasProgramar} />}
+      {programar && (
+        <ModalProgramar
+          preseleccion={programar}
+          // Se propone el día que se está viendo en la agenda (si no ya pasó).
+          fechaPreferida={dia >= hoy ? dia : null}
+          onCerrar={() => setProgramar(null)}
+          onProgramada={trasProgramar}
+        />
+      )}
       {reprogramar && (
         <ModalInasistencia
           cita={{ ...reprogramar, referencia: reprogramar.codigoAtencion }}

@@ -6,7 +6,7 @@ import EtiquetaEstado from '../compartido/EtiquetaEstado'
 import { fechaDeReferencia } from '../compartido/formato'
 import AccionesDocumento from '../../medica/compartido/AccionesDocumento'
 import AtencionesCompartidas from '../../medica/compartido/AtencionesCompartidas'
-import { obtenerMedicinaCompartida, obtenerUrlConstanciaMedica } from '../api/medicina.api'
+import { obtenerMedicinaCompartida, obtenerUrlDocumentoMedico } from '../api/medicina.api'
 import { useRecurso } from '../compartido/useRecurso'
 import { RUTAS_JURIDICO } from '../rutas'
 import { useContextoFicha } from './contextoFicha'
@@ -42,7 +42,7 @@ function FilaProcesoActivo({ proceso }: { proceso: ProcesoResumen }) {
   )
 }
 
-/** Fechas de consulta y constancias que Medicina decidió compartir con Jurídico. */
+/** Fechas de consulta y documentos que Medicina decidió compartir con Jurídico. */
 function MedicinaCompartida({ usuariaId }: { usuariaId: string }) {
   const cargar = useCallback(() => obtenerMedicinaCompartida(usuariaId), [usuariaId])
   const { datos: atenciones, error } = useRecurso(cargar)
@@ -51,11 +51,11 @@ function MedicinaCompartida({ usuariaId }: { usuariaId: string }) {
   return (
     <AtencionesCompartidas
       atenciones={atenciones}
-      accionesConstancia={(constancia) => (
+      accionesDocumento={(documento) => (
         <AccionesDocumento
-          documentoId={constancia.id}
-          nombre={constancia.nombreVisible}
-          obtenerUrl={(documentoId, modo) => obtenerUrlConstanciaMedica(usuariaId, documentoId, modo)}
+          documentoId={documento.id}
+          nombre={documento.nombreVisible}
+          obtenerUrl={(documentoId, modo) => obtenerUrlDocumentoMedico(usuariaId, documentoId, modo)}
         />
       )}
     />

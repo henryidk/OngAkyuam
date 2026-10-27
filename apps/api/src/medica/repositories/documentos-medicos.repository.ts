@@ -3,7 +3,6 @@ import { fechaCalendarioGT } from '@akyuam/shared';
 import type {
   DocumentoMedicoDto,
   DocumentoMedicoSubidoDto,
-  TipoDocumentoMedico,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { nombreCompleto } from '../../psicologia/repositories/personas';
@@ -18,7 +17,6 @@ import { EXPEDIENTE_REFERIDO_A_MEDICA } from './acceso-medica.repository';
 /** Lo que se devuelve al subir: nunca la clave del objeto. */
 const SELECT_SUBIDO = {
   id: true,
-  tipo: true,
   nombreVisible: true,
   nombreArchivo: true,
   tamanioBytes: true,
@@ -50,17 +48,6 @@ export class DocumentosMedicosRepository implements IDocumentosMedicosRepository
     return this.prisma.documentoMedicoPendiente.findFirst({
       where: { id, subidoPorId },
       select: SELECT_PENDIENTE,
-    });
-  }
-
-  cambiarTipoPendiente(
-    id: string,
-    tipo: TipoDocumentoMedico,
-  ): Promise<DocumentoMedicoSubidoDto> {
-    return this.prisma.documentoMedicoPendiente.update({
-      where: { id },
-      data: { tipo },
-      select: SELECT_SUBIDO,
     });
   }
 

@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { useCallback, useMemo, useState } from 'react'
-import { DIAS_DISPONIBILIDAD, hoyGT, sugerirHorario } from '@akyuam/shared'
+import { DURACION_CITA_MEDICA_MIN, hoyGT, sugerirHorario } from '@akyuam/shared'
 import { useRecurso } from '../../../lib/useRecurso'
 import { obtenerDisponibilidad } from '../api/medica.api'
 
@@ -16,13 +16,17 @@ export function esConflictoHorario(err: unknown): boolean {
 }
 
 /**
- * Disponibilidad de los próximos días hábiles y el día y hora elegidos. Al llegar la
+ * Disponibilidad de los días hábiles hasta un mes adelante y el día y hora elegidos. Al llegar la
  * disponibilidad se propone el primer hueco (respetando `preferido`); si después se recarga
- * (por un conflicto), se conserva el día y se vuelve a proponer una hora libre.
+ * (por un conflicto o porque cambió la duración), se conserva el día y se vuelve a proponer una
+ * hora libre. Con `duracion` solo se ofrecen horas donde cabe la cita completa.
  */
-export function useHorario(preferido: { fecha?: string | null; hora?: string | null; despuesDe?: string | null } = {}) {
+export function useHorario(
+  preferido: { fecha?: string | null; hora?: string | null; despuesDe?: string | null; duracion?: number } = {},
+) {
+  const duracion = preferido.duracion ?? DURACION_CITA_MEDICA_MIN
   const { datos: disponibilidad, error, recargar } = useRecurso(
-    useCallback(() => obtenerDisponibilidad(hoyGT(), DIAS_DISPONIBILIDAD), []),
+    useCallback(() => obtenerDisponibilidad(hoyGT(), duracion), [duracion]),
   )
   // Lo que la persona eligió a mano; `null` mientras no toque nada.
   const [eleccion, setEleccion] = useState<{ fecha: string; hora: string | null } | null>(null)

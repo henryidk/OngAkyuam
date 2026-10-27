@@ -46,32 +46,32 @@ export const ETIQUETAS_ESTADO_CITA_MEDICA: Record<(typeof ESTADOS_CITA_MEDICA_DE
   SIN_REGISTRAR: 'Sin registrar',
 }
 
-/** Tipos de documento que la médica adjunta a una consulta. */
-export const TIPOS_DOCUMENTO_MEDICO = [
-  'RESULTADO_LABORATORIO',
-  'RECETA',
-  'ORDEN_MEDICA',
-  'CONSTANCIA',
-  'IMAGEN',
-  'OTRO',
-] as const
-
-export const ETIQUETAS_TIPO_DOCUMENTO_MEDICO: Record<(typeof TIPOS_DOCUMENTO_MEDICO)[number], string> = {
-  RESULTADO_LABORATORIO: 'Resultado de laboratorio',
-  RECETA: 'Receta',
-  ORDEN_MEDICA: 'Orden médica',
-  CONSTANCIA: 'Constancia',
-  IMAGEN: 'Imagen / rayos X',
-  OTRO: 'Otro',
-}
-
 /** Nombre visible de un documento médico — el mismo `VarChar(120)` de la base. */
 export const NOMBRE_DOCUMENTO_MEDICO_MAX = 120
 
 // ---- Horario y agenda ----
 
-/** Duración fija de una cita médica. */
+/**
+ * Duración por defecto de una cita médica y tamaño de cada bloque del horario: toda duración es
+ * un múltiplo de este bloque y ocupa bloques seguidos.
+ */
 export const DURACION_CITA_MEDICA_MIN = 30
+
+/**
+ * Duraciones que elige la médica al programar (una visita familiar puede necesitar más). Mismos
+ * valores que el CHECK `CitaMedica_duracion_chk` de la base de datos.
+ */
+export const DURACIONES_CITA_MEDICA_MIN = [30, 60, 90] as const
+export type DuracionCitaMedica = (typeof DURACIONES_CITA_MEDICA_MIN)[number]
+
+export const ETIQUETAS_DURACION_CITA_MEDICA: Record<DuracionCitaMedica, string> = {
+  30: '30 min',
+  60: '1 h',
+  90: '1 h 30',
+}
+
+/** Desde cuántas personas en una misma cita se sugiere una duración mayor (solo una sugerencia). */
+export const PERSONAS_SUGERIR_DURACION_MAYOR = 3
 
 /**
  * Horario de la médica: horas de inicio de cita, en hora de Guatemala, de lunes a viernes.
@@ -90,14 +90,11 @@ export const HORARIO_MEDICINA = {
 
 export type HoraMedicina = (typeof HORARIO_MEDICINA.horas)[number]
 
-/** Días hábiles que muestra el selector de horario de los modales de programar e inasistencia. */
-export const DIAS_DISPONIBILIDAD = 8
-
-/** Máximo de días hábiles que acepta `GET /medica/agenda/disponibilidad`. */
-export const MAX_DIAS_DISPONIBILIDAD = 15
-
-/** Días hábiles que ofrece "Próxima consulta" dentro del formulario de consulta. */
-export const DIAS_PROXIMA_CONSULTA = 12
+/**
+ * Hasta cuántos meses adelante se puede agendar una cita (programar, próxima consulta o
+ * reprogramar). Ataja errores de fecha y define hasta dónde llega el selector de horario.
+ */
+export const MESES_MAX_AGENDA_MEDICA = 1
 
 // ---- Signos vitales ----
 
@@ -126,8 +123,8 @@ export type SignoVital = keyof typeof RANGOS_SIGNOS_VITALES
  */
 export const SIGNOS_VITALES_FORMULARIO = [
   { clave: 'presionArterial', etiqueta: 'Presión arterial', unidad: 'mmHg', ejemplo: '120/80' },
-  { clave: 'frecuenciaCardiaca', etiqueta: 'Frecuencia cardíaca', unidad: 'latidos/min', ejemplo: '80' },
-  { clave: 'frecuenciaResp', etiqueta: 'Frecuencia respiratoria', unidad: 'respiraciones/min', ejemplo: '18' },
+  { clave: 'frecuenciaCardiaca', etiqueta: 'Frecuencia cardíaca', unidad: 'lat/min', ejemplo: '80' },
+  { clave: 'frecuenciaResp', etiqueta: 'Frecuencia respiratoria', unidad: 'resp/min', ejemplo: '18' },
   { clave: 'temperaturaC', etiqueta: 'Temperatura', unidad: '°C', ejemplo: '36.5' },
   { clave: 'saturacionO2', etiqueta: 'Oxígeno en sangre', unidad: '%', ejemplo: '98' },
   { clave: 'glucosaMgDl', etiqueta: 'Glucosa (glucómetro)', unidad: 'mg/dL', ejemplo: '95' },
@@ -158,6 +155,15 @@ export const ETIQUETAS_FILTRO_PACIENTES_MEDICA: Record<(typeof FILTROS_PACIENTES
 export const BUSQUEDA_PACIENTES_MEDICA_MIN = 2
 export const BUSQUEDA_PACIENTES_MEDICA_MAX = 80
 export const PAGINA_PACIENTES_MEDICA = 30
+/** Máximo de coincidencias que devuelve el buscador de pacientes de los modales. */
+export const RESULTADOS_BUSCADOR_PACIENTES_MEDICA = 10
+/** Pacientes por agendar que el buscador sugiere antes de escribir. */
+export const SUGERENCIAS_BUSCADOR_PACIENTES_MEDICA = 5
+/**
+ * Letras mínimas para buscar por nombre: la misma regla que `interpretarBusqueda` del backend
+ * (un número de expediente o un DPI ya las superan).
+ */
+export const MIN_LETRAS_BUSCADOR_PACIENTES_MEDICA = 3
 export const PAGINA_CONSULTAS_MEDICA = 20
 export const PAGINA_HISTORIAL_CONSULTAS_MEDICA = 25
 /** Rango máximo del historial: acota lo que puede barrer una sola búsqueda. */

@@ -6,7 +6,6 @@ import {
   HttpCode,
   Param,
   ParseUUIDPipe,
-  Patch,
   Post,
   Query,
   UploadedFile,
@@ -17,12 +16,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import {
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
-  cambiarTipoDocumentoMedicoPendienteSchema,
   subirDocumentoMedicoPendienteSchema,
   urlDocumentoMedicoQuerySchema,
 } from '@akyuam/shared';
 import type {
-  CambiarTipoDocumentoMedicoPendienteInput,
   SubirDocumentoMedicoPendienteInput,
   UrlDocumentoMedicoQuery,
 } from '@akyuam/shared';
@@ -56,22 +53,6 @@ export class DocumentosMedicosController {
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.documentosService.subirPendiente(archivo, datos, contexto);
-  }
-
-  @Patch('pendientes/:id')
-  @UseGuards(LimitePorUsuarioGuard)
-  @Throttle({ default: { limit: 30, ttl: 60_000 } })
-  cambiarTipoPendiente(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body(new ZodValidationPipe(cambiarTipoDocumentoMedicoPendienteSchema))
-    datos: CambiarTipoDocumentoMedicoPendienteInput,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
-  ) {
-    return this.documentosService.cambiarTipoPendiente(
-      id,
-      datos.tipo,
-      contexto,
-    );
   }
 
   @Delete('pendientes/:id')

@@ -3,7 +3,7 @@ import { ETIQUETAS_ESTADO_ATENCION_MEDICA, type EstadoAtencionMedica } from '@ak
 import CodigoAtencion from './CodigoAtencion'
 import { fechaDeInstante } from './fechas'
 
-interface ConstanciaCompartida {
+interface DocumentoCompartido {
   id: string
   nombreVisible: string
   fecha: string
@@ -14,20 +14,20 @@ interface AtencionCompartida {
   codigo: string
   estado: EstadoAtencionMedica
   fechasConsulta: string[]
-  constancias?: ConstanciaCompartida[]
+  documentos?: DocumentoCompartido[]
 }
 
 interface AtencionesCompartidasProps {
   atenciones: AtencionCompartida[]
-  /** Acciones de cada constancia (Ver / Descargar); cada área firma la URL con su propio endpoint. */
-  accionesConstancia?: (constancia: ConstanciaCompartida) => ReactNode
+  /** Acciones de cada documento (Ver / Descargar); cada área firma la URL con su propio endpoint. */
+  accionesDocumento?: (documento: DocumentoCompartido) => ReactNode
 }
 
 /**
  * Lo que Medicina compartió con otra área (Jurídico o Psicología), de solo lectura. Si la médica
  * no compartió ninguna atención, la tarjeta no aparece: el área no necesita saber que existe.
  */
-export default function AtencionesCompartidas({ atenciones, accionesConstancia }: AtencionesCompartidasProps) {
+export default function AtencionesCompartidas({ atenciones, accionesDocumento }: AtencionesCompartidasProps) {
   if (atenciones.length === 0) return null
   return (
     <section className="rounded-xl border border-gray-200 bg-white">
@@ -49,15 +49,15 @@ export default function AtencionesCompartidas({ atenciones, accionesConstancia }
                 ? 'Sin consultas registradas todavía.'
                 : `Consultas: ${atencion.fechasConsulta.map(fechaDeInstante).join(', ')}`}
             </p>
-            {atencion.constancias && atencion.constancias.length > 0 && (
-              <ul aria-label={`Constancias de ${atencion.codigo}`} className="space-y-1">
-                {atencion.constancias.map((constancia) => (
-                  <li key={constancia.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-gray-50 px-3 py-2">
+            {atencion.documentos && atencion.documentos.length > 0 && (
+              <ul aria-label={`Documentos de ${atencion.codigo}`} className="space-y-1">
+                {atencion.documentos.map((documento) => (
+                  <li key={documento.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-gray-50 px-3 py-2">
                     <span className="min-w-0 text-sm text-gray-800">
-                      {constancia.nombreVisible}
-                      <span className="ml-2 text-xs text-gray-500 tabular-nums">{fechaDeInstante(constancia.fecha)}</span>
+                      {documento.nombreVisible}
+                      <span className="ml-2 text-xs text-gray-500 tabular-nums">{fechaDeInstante(documento.fecha)}</span>
                     </span>
-                    {accionesConstancia?.(constancia)}
+                    {accionesDocumento?.(documento)}
                   </li>
                 ))}
               </ul>

@@ -1,4 +1,11 @@
-import { diaSemanaGT, fechaCalendarioGT, formatFechaGT, formatFechaLargaGT, hoyGT, nombreMesGT, sumarDiasGT } from '@akyuam/shared'
+import {
+  diaSemanaGT,
+  fechaCalendarioGT,
+  formatFechaGT,
+  formatFechaLargaGT,
+  nombreMesGT,
+  sumarDiasGT,
+} from '@akyuam/shared'
 
 // Todo aquí trabaja sobre fechas de calendario "YYYY-MM-DD" como texto: nunca se envuelven en
 // un `Date` (ahí se cuela el corrimiento de medianoche). El cálculo pasa por `timezone.ts`.
@@ -65,13 +72,9 @@ export function diaHabil(fecha: string): string {
   return fecha
 }
 
-/** Los siguientes `cantidad` días hábiles después de hoy (para "Próxima consulta"). */
-export function diasHabilesSiguientes(cantidad: number): string[] {
-  const dias: string[] = []
-  let fecha = hoyGT()
-  while (dias.length < cantidad) {
-    fecha = sumarDiasGT(fecha, 1)
-    if (diaSemanaGT(fecha) <= 5) dias.push(fecha)
-  }
-  return dias
+/** "08:30" + 60 → "09:30". Solo reloj de pared dentro del mismo día (la agenda no cruza medianoche). */
+export function horaMasMinutos(hora: string, minutos: number): string {
+  const [h, m] = hora.split(':').map(Number)
+  const total = h * 60 + m + minutos
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`
 }

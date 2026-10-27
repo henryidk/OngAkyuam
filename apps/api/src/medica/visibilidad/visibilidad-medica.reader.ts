@@ -7,7 +7,7 @@ import type {
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
-  ConstanciaMedicaParaFirmar,
+  DocumentoMedicoParaFirmar,
   IVisibilidadMedicaReader,
 } from '../interfaces/visibilidad-medica-reader.interface';
 
@@ -47,7 +47,6 @@ export class VisibilidadMedicaReader implements IVisibilidadMedicaReader {
           select: {
             fechaHora: true,
             documentos: {
-              where: { tipo: 'CONSTANCIA' },
               orderBy: { createdAt: 'asc' },
               select: {
                 id: true,
@@ -67,7 +66,7 @@ export class VisibilidadMedicaReader implements IVisibilidadMedicaReader {
       ),
       estado: atencion.estado,
       fechasConsulta: atencion.consultas.map((c) => c.fechaHora.toISOString()),
-      constancias: atencion.consultas.flatMap((consulta) =>
+      documentos: atencion.consultas.flatMap((consulta) =>
         consulta.documentos.map((documento) => ({
           id: documento.id,
           nombreVisible: documento.nombreVisible,
@@ -78,14 +77,13 @@ export class VisibilidadMedicaReader implements IVisibilidadMedicaReader {
     }));
   }
 
-  async constanciaParaJuridico(
+  async documentoParaJuridico(
     usuariaId: string,
     documentoId: string,
-  ): Promise<ConstanciaMedicaParaFirmar | null> {
+  ): Promise<DocumentoMedicoParaFirmar | null> {
     const documento = await this.prisma.documentoMedico.findFirst({
       where: {
         id: documentoId,
-        tipo: 'CONSTANCIA',
         consulta: { atencion: atencionesVisibles(usuariaId, 'JURIDICO') },
       },
       select: {

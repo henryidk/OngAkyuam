@@ -13,7 +13,7 @@ import { eventoAuditoria } from '../compartido/auditoria';
 import { MENSAJE_SIN_ACCESO_DOCUMENTO } from '../compartido/mensajes';
 
 /**
- * Lo que Medicina compartió con Jurídico sobre una usuaria: fechas de consulta y constancias.
+ * Lo que Medicina compartió con Jurídico sobre una usuaria: fechas de consulta y documentos.
  * Qué se ve lo decide la médica (visibilidad por atención) y el lector de Medicina ya filtra
  * por la referencia a Jurídico; aquí solo se firma y se audita.
  */
@@ -49,30 +49,30 @@ export class VistaMedicaJuridicoService {
     query: UrlDocumentoMedicoQuery,
     contexto: ContextoAuditoria,
   ): Promise<{ url: string }> {
-    const constancia = await this.visibilidadMedica.constanciaParaJuridico(
+    const documento = await this.visibilidadMedica.documentoParaJuridico(
       usuariaId,
       documentoId,
     );
-    // Mismo 403 si no existe, no es constancia, es de otra usuaria o Medicina no la compartió.
-    if (!constancia) {
+    // Mismo 403 si no existe, es de otra usuaria o Medicina no compartió su atención.
+    if (!documento) {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_DOCUMENTO);
     }
     const url =
       query.modo === 'vista'
         ? await this.objectStorage.generarUrlVistaPrevia(
-            constancia.claveObjeto,
-            constancia.mimeType,
+            documento.claveObjeto,
+            documento.mimeType,
           )
         : await this.objectStorage.generarUrlDescarga(
-            constancia.claveObjeto,
-            constancia.nombreArchivo,
+            documento.claveObjeto,
+            documento.nombreArchivo,
           );
     await this.auditService.registrar(
       eventoAuditoria(contexto, {
         accion: 'DOCUMENTO_MEDICO_VISTO_POR_JURIDICO',
         entidad: 'DocumentoMedico',
         entidadId: documentoId,
-        detalles: { expedienteId: constancia.expedienteId, modo: query.modo },
+        detalles: { expedienteId: documento.expedienteId, modo: query.modo },
       }),
     );
     return { url };

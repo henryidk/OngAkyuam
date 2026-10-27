@@ -5,6 +5,7 @@ import {
   crearApp,
   crearAtencionConConsulta,
   crearExpediente,
+  crearNino,
   crearUsuario,
   instanteUnico,
 } from './fixtures';
@@ -42,11 +43,14 @@ describe('Medicina · restricciones de la base (e2e)', () => {
     return { expediente, atencion };
   }
 
-  function cita(atencionId: string, inicio: Date) {
+  function cita(atencionId: string, inicio: Date, duracionMin = 30) {
     return prisma.citaMedica.create({
-      data: { atencionId, inicio, creadoPorId: medica.id },
+      data: { atencionId, inicio, duracionMin, creadoPorId: medica.id },
     });
   }
+
+  const minutos = (inicio: Date, min: number) =>
+    new Date(inicio.getTime() + min * 60_000);
 
   function consulta(atencionId: string, datos: Record<string, unknown>) {
     return prisma.consultaMedica.create({
@@ -101,7 +105,84 @@ describe('Medicina · restricciones de la base (e2e)', () => {
     const { atencion: otra } = await atencionActiva();
     const inicio = instanteUnico();
     await cita(atencion.id, inicio);
-    await expect(cita(otra.id, inicio)).rejects.toThrow(/Unique constraint/);
+    await expect(cita(otra.id, inicio)).rejects.toThrow(
+      /CitaMedica_sin_traslape_excl/,
+    );
+  });
+
+  it('no admite citas que se traslapan aunque empiecen a horas distintas', async () => {
+    const { atencion } = await atencionActiva();
+    const { atencion: otra } = await atencionActiva();
+    const inicio = instanteUnico();
+    // Visita de 1 h 30: una de 30 min a la mitad choca con ella.
+    await cita(atencion.id, inicio, 90);
+    await expect(cita(otra.id, minutos(inicio, 60))).rejects.toThrow(
+      /CitaMedica_sin_traslape_excl/,
+    );
+    // Y una de 1 h que empieza antes y termina dentro, también.
+    await expect(cita(otra.id, minutos(inicio, -30), 60)).rejects.toThrow(
+      /CitaMedica_sin_traslape_excl/,
+    );
+  });
+
+  it('una cita puede empezar justo cuando termina la anterior', async () => {
+    const { atencion } = await atencionActiva();
+    const inicio = instanteUnico();
+    await cita(atencion.id, inicio, 60);
+    await expect(cita(atencion.id, minutos(inicio, 60))).resolves.toBeDefined();
+    await expect(
+      cita(atencion.id, minutos(inicio, -30)),
+    ).resolves.toBeDefined();
+  });
+
+  it('solo admite duraciones de 30, 60 o 90 minutos', async () => {
+    const { atencion } = await atencionActiva();
+    await expect(cita(atencion.id, instanteUnico(), 45)).rejects.toThrow(
+      /CitaMedica_duracion_chk/,
+    );
+    await expect(cita(atencion.id, instanteUnico(), 120)).rejects.toThrow(
+      /CitaMedica_duracion_chk/,
+    );
+  });
+
+  it('una persona no se repite en la misma cita (usuaria ni hijo/a)', async () => {
+    const { expediente, atencion } = await atencionActiva();
+    const nino = await crearNino(prisma, expediente.id);
+    const { id: citaId } = await cita(atencion.id, instanteUnico());
+    await prisma.citaMedicaPersona.createMany({
+      data: [
+        { citaId, ninoId: null },
+        { citaId, ninoId: nino.id },
+      ],
+    });
+    await expect(
+      prisma.citaMedicaPersona.create({ data: { citaId, ninoId: null } }),
+    ).rejects.toThrow(/Unique constraint/);
+    await expect(
+      prisma.citaMedicaPersona.create({ data: { citaId, ninoId: nino.id } }),
+    ).rejects.toThrow(/Unique constraint/);
+  });
+
+  it('una cita familiar admite una consulta por persona, no dos', async () => {
+    const { expediente, atencion } = await atencionActiva();
+    const nino = await crearNino(prisma, expediente.id);
+    const { id: citaId } = await cita(atencion.id, instanteUnico());
+    await consulta(atencion.id, { citaId, ninoId: null });
+    await consulta(atencion.id, { citaId, ninoId: nino.id });
+    await expect(
+      consulta(atencion.id, { citaId, ninoId: null }),
+    ).rejects.toThrow(/Unique constraint/);
+    await expect(
+      consulta(atencion.id, { citaId, ninoId: nino.id }),
+    ).rejects.toThrow(/Unique constraint/);
+  });
+
+  it('las consultas sin cita de la misma persona no chocan entre sí', async () => {
+    const { atencion } = await atencionActiva();
+    await consulta(atencion.id, { citaId: null, ninoId: null });
+    await expect(
+      consulta(atencion.id, { citaId: null, ninoId: null }),
+    ).resolves.toBeDefined();
   });
 
   it('una NO_ASISTIO libera el horario para una PROGRAMADA', async () => {

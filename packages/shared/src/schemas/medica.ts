@@ -3,12 +3,13 @@ import {
   BUSQUEDA_PACIENTES_MEDICA_MAX,
   BUSQUEDA_PACIENTES_MEDICA_MIN,
   DIAGNOSTICO_MEDICO_MAX,
-  DIAS_DISPONIBILIDAD,
+  DURACION_CITA_MEDICA_MIN,
+  DURACIONES_CITA_MEDICA_MIN,
   ESTADOS_ATENCION_MEDICA,
   ESTADOS_CITA_MEDICA,
   ESTADOS_CITA_MEDICA_DERIVADOS,
   FILTROS_PACIENTES_MEDICA,
-  MAX_DIAS_DISPONIBILIDAD,
+  MESES_MAX_AGENDA_MEDICA,
   MAX_DIAS_RANGO_HISTORIAL_MEDICA,
   MOTIVO_CONSULTA_MEDICA_MAX,
   MOTIVOS_ALTA_MEDICA,
@@ -17,10 +18,9 @@ import {
   PLAN_TRATAMIENTO_MAX,
   RANGOS_SIGNOS_VITALES,
   RECETA_LABORATORIOS_MAX,
-  TIPOS_DOCUMENTO_MEDICO,
   type SignoVital,
 } from '../catalogos/medica.js'
-import { diasEntreFechasGT } from '../timezone.js'
+import { diasEntreFechasGT, sumarMesesGT } from '../timezone.js'
 import type { PersonaAtendidaDto } from './psicologia.js'
 import type { ConteoReporte } from './trabajoSocial.js'
 
@@ -32,6 +32,22 @@ const inicioCitaSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/, 'Fe
 
 /** Contador de concurrencia optimista: el cliente devuelve la versión que leyó. */
 const versionSchema = z.number().int().min(1)
+
+/** Duración de una cita: 30, 60 o 90 minutos (`DURACIONES_CITA_MEDICA_MIN`). */
+const duracionCitaMedicaSchema = z
+  .number()
+  .int()
+  .refine((valor) => (DURACIONES_CITA_MEDICA_MIN as readonly number[]).includes(valor), 'Duración no válida')
+
+/** Tope de personas por visita: holgado (la usuaria y sus hijos/as), solo para acotar el cuerpo. */
+const MAX_PERSONAS_CITA = 20
+
+/** Personas de una visita: null = la usuaria, un uuid = un hijo/a. Al menos una y sin repetir. */
+const personasCitaSchema = z
+  .array(z.uuid().nullable())
+  .min(1, 'Elige al menos a una persona')
+  .max(MAX_PERSONAS_CITA)
+  .refine((personas) => new Set(personas).size === personas.length, 'Hay personas repetidas')
 
 // Caracteres de control (salvo tabulador y saltos de línea): no tienen uso en un texto clínico y
 // pueden romper el Excel o la vista.
@@ -65,9 +81,6 @@ export type EstadoCitaMedica = z.infer<typeof estadoCitaMedicaSchema>
 
 export const estadoCitaMedicaDerivadoSchema = z.enum(ESTADOS_CITA_MEDICA_DERIVADOS)
 export type EstadoCitaMedicaDerivado = z.infer<typeof estadoCitaMedicaDerivadoSchema>
-
-export const tipoDocumentoMedicoSchema = z.enum(TIPOS_DOCUMENTO_MEDICO)
-export type TipoDocumentoMedico = z.infer<typeof tipoDocumentoMedicoSchema>
 
 export const filtroPacientesMedicaSchema = z.enum(FILTROS_PACIENTES_MEDICA)
 export type FiltroPacientesMedica = z.infer<typeof filtroPacientesMedicaSchema>
@@ -176,8 +189,12 @@ export const programarCitaMedicaSchema = z
   .object({
     expedienteId: z.uuid().optional(),
     referidoId: z.uuid().optional(),
-    /** Hijo/a que se atiende; null = la usuaria. */
-    ninoId: z.uuid().nullable(),
+    /**
+     * Personas que se atienden en la visita: null = la usuaria, un uuid = un hijo/a del
+     * expediente. La cita que abre la atención exige a la usuaria y a todos sus hijos/as.
+     */
+    personas: personasCitaSchema,
+    duracionMin: duracionCitaMedicaSchema,
     inicio: inicioCitaSchema,
   })
   .refine((v) => (v.expedienteId ? 1 : 0) + (v.referidoId ? 1 : 0) === 1, {
@@ -200,28 +217,60 @@ export const reprogramarCitaMedicaSchema = z.object({
 })
 export type ReprogramarCitaMedicaInput = z.infer<typeof reprogramarCitaMedicaSchema>
 
-/** `POST /medica/consultas` — registra una consulta, desde una cita o sin cita. */
-export const registrarConsultaMedicaSchema = z.object({
-  citaId: z.uuid().nullable(),
-  atencionId: z.uuid(),
-  /** Hijo/a atendido; null = la usuaria. Con cita debe coincidir con el de la cita. */
+/** Lo que se registra de una persona en la consulta: cada persona atendida tiene su propio registro. */
+export const registroPersonaConsultaSchema = z.object({
+  /** Hijo/a atendido; null = la usuaria. */
   ninoId: z.uuid().nullable(),
   motivoConsulta: textoOpcional(MOTIVO_CONSULTA_MEDICA_MAX),
   signos: signosVitalesSchema,
   diagnostico: textoLibre(DIAGNOSTICO_MEDICO_MAX).min(1, 'Escribe el diagnóstico.'),
   planTratamiento: textoOpcional(PLAN_TRATAMIENTO_MAX),
   recetaLaboratorios: textoOpcional(RECETA_LABORATORIOS_MAX),
-  /** Próxima consulta (crea la cita en la misma transacción); null = sin próxima por ahora. */
-  proxima: inicioCitaSchema.nullable(),
-  /** Lote de documentos subidos antes de guardar; null = sin documentos. */
+  /** Lote de documentos de esta persona, subidos antes de guardar; null = sin documentos. */
   loteDocumentos: z.uuid().nullable(),
 })
+export type RegistroPersonaConsultaInput = z.input<typeof registroPersonaConsultaSchema>
+
+/**
+ * La próxima consulta que se elige al registrar: día y hora, duración y a quiénes se atiende
+ * (por defecto, las personas de esta visita; puede ser cualquiera del expediente).
+ */
+export const proximaConsultaMedicaSchema = z.object({
+  inicio: inicioCitaSchema,
+  duracionMin: duracionCitaMedicaSchema,
+  personas: personasCitaSchema,
+})
+export type ProximaConsultaMedicaInput = z.infer<typeof proximaConsultaMedicaSchema>
+
+/**
+ * `POST /medica/consultas` — registra la visita completa, desde una cita o sin cita: un registro
+ * por persona atendida, todos en la misma transacción. Con cita, deben venir exactamente las
+ * personas de la cita que aún no tienen su consulta.
+ */
+export const registrarConsultaMedicaSchema = z
+  .object({
+    citaId: z.uuid().nullable(),
+    atencionId: z.uuid(),
+    registros: z.array(registroPersonaConsultaSchema).min(1, 'Registra al menos a una persona.').max(20),
+    /** Próxima consulta (crea la cita en la misma transacción); null = sin próxima por ahora. */
+    proxima: proximaConsultaMedicaSchema.nullable(),
+  })
+  .refine((v) => new Set(v.registros.map((r) => r.ninoId)).size === v.registros.length, {
+    message: 'Una persona aparece dos veces',
+    path: ['registros'],
+  })
+  .refine(
+    (v) => {
+      const lotes = v.registros.flatMap((r) => (r.loteDocumentos ? [r.loteDocumentos] : []))
+      return new Set(lotes).size === lotes.length
+    },
+    { message: 'Cada persona usa su propio lote de documentos', path: ['registros'] },
+  )
 export type RegistrarConsultaMedicaInput = z.input<typeof registrarConsultaMedicaSchema>
 export type RegistrarConsultaMedicaDatos = z.output<typeof registrarConsultaMedicaSchema>
 
 /** Campos de texto del multipart `POST /medica/consultas/:id/documentos`. */
 export const subirDocumentoMedicoSchema = z.object({
-  tipo: tipoDocumentoMedicoSchema,
   nombreVisible: textoOpcional(NOMBRE_DOCUMENTO_MEDICO_MAX),
 })
 export type SubirDocumentoMedicoInput = z.output<typeof subirDocumentoMedicoSchema>
@@ -233,10 +282,6 @@ export const subirDocumentoMedicoPendienteSchema = subirDocumentoMedicoSchema.ex
   atencionId: z.uuid(),
 })
 export type SubirDocumentoMedicoPendienteInput = z.output<typeof subirDocumentoMedicoPendienteSchema>
-
-/** `PATCH /medica/documentos/pendientes/:id` — cambiar el tipo de un documento aún no guardado. */
-export const cambiarTipoDocumentoMedicoPendienteSchema = z.object({ tipo: tipoDocumentoMedicoSchema })
-export type CambiarTipoDocumentoMedicoPendienteInput = z.infer<typeof cambiarTipoDocumentoMedicoPendienteSchema>
 
 /** `GET /medica/documentos/:id/url?modo=` — "vista" abre el PDF o la imagen en la app. */
 export const urlDocumentoMedicoQuerySchema = z.object({
@@ -276,10 +321,22 @@ export type SemanaAgendaMedicaQuery = z.infer<typeof semanaAgendaMedicaQuerySche
 export const diaAgendaMedicaQuerySchema = z.object({ fecha: fechaCalendarioSchema })
 export type DiaAgendaMedicaQuery = z.infer<typeof diaAgendaMedicaQuerySchema>
 
-/** `GET /medica/agenda/disponibilidad?desde=&dias=`. */
+/**
+ * Último día en que se puede agendar una cita, contado desde `hoy` ("YYYY-MM-DD", inclusive).
+ * El backend rechaza cualquier inicio posterior y la disponibilidad llega solo hasta aquí.
+ */
+export function limiteAgendaMedica(hoy: string): string {
+  return sumarMesesGT(hoy, MESES_MAX_AGENDA_MEDICA)
+}
+
+/**
+ * `GET /medica/agenda/disponibilidad?desde=&duracion=` — horas de inicio en las que cabe una cita
+ * de esa duración (bloques libres seguidos dentro del horario), de cada día hábil desde `desde`
+ * hasta `limiteAgendaMedica`.
+ */
 export const disponibilidadMedicaQuerySchema = z.object({
   desde: fechaCalendarioSchema,
-  dias: z.coerce.number().int().min(1).max(MAX_DIAS_DISPONIBILIDAD).default(DIAS_DISPONIBILIDAD),
+  duracion: z.coerce.number().pipe(duracionCitaMedicaSchema).default(DURACION_CITA_MEDICA_MIN),
 })
 export type DisponibilidadMedicaQuery = z.infer<typeof disponibilidadMedicaQuerySchema>
 
@@ -289,6 +346,24 @@ export const programablesMedicaQuerySchema = z.object({
   usuariaId: z.uuid().optional(),
 })
 export type ProgramablesMedicaQuery = z.infer<typeof programablesMedicaQuerySchema>
+
+/**
+ * `POST /medica/agenda/programables/busqueda` — buscador de pacientes de los modales de programar
+ * y de consulta sin cita. El texto va en el cuerpo, nunca en la URL. Sin texto devuelve las
+ * sugerencias: las pacientes por agendar, de la referencia más antigua a la más reciente.
+ */
+export const buscarPacientesProgramablesMedicaSchema = z.object({
+  q: z
+    .string()
+    .trim()
+    .max(BUSQUEDA_PACIENTES_MEDICA_MAX)
+    .optional()
+    .transform((valor) => valor || undefined),
+  /** Sin valor: en atención y por agendar (las dos programables). */
+  situacion: z.enum(['EN_ATENCION', 'POR_AGENDAR']).optional(),
+})
+export type BuscarPacientesProgramablesMedicaInput = z.input<typeof buscarPacientesProgramablesMedicaSchema>
+export type BuscarPacientesProgramablesMedicaDatos = z.output<typeof buscarPacientesProgramablesMedicaSchema>
 
 /** `GET /medica/pacientes?q=&estado=&cursor=`. */
 export const listarPacientesMedicaQuerySchema = z.object({
@@ -412,12 +487,14 @@ export interface CitaAgendaMedicaDto {
   expedienteId: string
   usuariaId: string
   usuariaNombreCompleto: string
-  persona: PersonaAtendidaDto
+  /** Personas que se atienden en la visita: la usuaria primero (si viene) y luego sus hijos/as. */
+  personas: PersonaAtendidaDto[]
   /** Instante UTC (ISO). */
   inicio: string
   fecha: string
   hora: string
   horaFin: string
+  duracionMin: number
   estado: EstadoCitaMedica
   /** Estado con los derivados del reloj (`EN_CURSO`, `SIN_REGISTRAR`). */
   estadoVista: EstadoCitaMedicaDerivado
@@ -525,6 +602,21 @@ export interface PacienteMedicaFilaDto {
   proximaCita: { fecha: string; hora: string } | null
 }
 
+/**
+ * Coincidencia del buscador de pacientes: lo justo para reconocerla. El motivo de referencia y
+ * los hijos/as se piden después, solo de la elegida (`GET /medica/agenda/programables?usuariaId=`).
+ */
+export interface PacienteBuscadaMedicaDto {
+  usuariaId: string
+  nombreCompleto: string
+  expedienteNumero: string
+  situacion: 'EN_ATENCION' | 'POR_AGENDAR'
+  hijos: number
+  proximaCita: { fecha: string; hora: string } | null
+  /** Instante de la referencia pendiente más antigua; solo para las por agendar. */
+  referidaEl: string | null
+}
+
 export interface PacientesMedicaPaginaDto {
   items: PacienteMedicaFilaDto[]
   siguienteCursor: string | null
@@ -549,7 +641,10 @@ export interface CitaMedicaBreveDto {
   version: number
   fecha: string
   hora: string
-  persona: PersonaAtendidaDto
+  horaFin: string
+  duracionMin: number
+  /** Personas que se atienden en la visita: la usuaria primero (si viene) y luego sus hijos/as. */
+  personas: PersonaAtendidaDto[]
 }
 
 /** Etapa y fechas del proceso psicológico, si Psicología lo compartió con Medicina (§6.4). */
@@ -561,6 +656,13 @@ export interface VistaPsicologicaParaMedicaDto {
 }
 
 /** `GET /medica/pacientes/:usuariaId` — encabezado y pestaña Resumen de la ficha. */
+/** Resumen de las consultas de una persona del expediente, para su tarjeta en la ficha. */
+export interface ConsultasDePersonaMedicaDto {
+  ninoId: string | null
+  total: number
+  ultima: { id: string; fecha: string; hora: string; diagnostico: string }
+}
+
 export interface FichaPacienteMedicaDto {
   usuariaId: string
   nombreCompleto: string
@@ -589,6 +691,8 @@ export interface FichaPacienteMedicaDto {
   pendiente: { referidoId: string; expedienteId: string; expedienteNumero: string; referidoEn: string; motivo: string | null } | null
   atenciones: AtencionMedicaResumenDto[]
   ultimaConsulta: { id: string; fecha: string; hora: string; diagnostico: string } | null
+  /** Una entrada por cada persona del expediente con consultas (null = la usuaria). Quien no aparece aún no tiene su primera consulta. */
+  consultasPorPersona: ConsultasDePersonaMedicaDto[]
   proximaCita: CitaMedicaBreveDto | null
   citaSinRegistrar: CitaMedicaBreveDto | null
   /** Últimas dos tomas de la usuaria (no de sus hijos/as). */
@@ -601,7 +705,6 @@ export interface FichaPacienteMedicaDto {
 export interface DocumentoMedicoDto {
   id: string
   consultaId: string
-  tipo: TipoDocumentoMedico
   nombreVisible: string
   nombreArchivo: string
   mimeType: string
@@ -629,8 +732,25 @@ export interface ConsultaMedicaDto {
   documentos: DocumentoMedicoDto[]
 }
 
+/** La visita a la que pertenece una consulta de la historia clínica. */
+export interface VisitaConsultaMedicaDto {
+  /** Agrupa las consultas de una misma visita: la cita o, sin cita, la atención y la hora de registro. */
+  clave: string
+  /** Fin de la cita según su duración; `null` en las consultas sin cita. */
+  horaFin: string | null
+  /** Quiénes se atendieron en la visita (null = la usuaria), aunque la historia esté filtrada. */
+  personas: (string | null)[]
+  /** La visita que abrió la atención (primera consulta). */
+  primera: boolean
+}
+
+/** Consulta de la historia clínica: la consulta completa más los datos de su visita. */
+export interface ConsultaHistoriaMedicaDto extends ConsultaMedicaDto {
+  visita: VisitaConsultaMedicaDto
+}
+
 export interface ConsultasMedicasPaginaDto {
-  items: ConsultaMedicaDto[]
+  items: ConsultaHistoriaMedicaDto[]
   siguienteCursor: string | null
 }
 
@@ -673,22 +793,31 @@ export interface ContextoConsultaMedicaDto {
   usuariaNombreCompleto: string
   telefono: string | null
   procedencia: string | null
-  cita: { id: string; fecha: string; hora: string; ninoId: string | null } | null
+  /**
+   * `personas`: ids de quienes se atienden en la cita y aún no tienen su consulta (null = la
+   * usuaria). `duracionMin`: la próxima consulta la propone igual (se puede cambiar).
+   */
+  cita: { id: string; fecha: string; hora: string; duracionMin: number; personas: (string | null)[] } | null
   personas: PersonaConsultaMedicaDto[]
+}
+
+/** Una consulta creada al registrar la visita, en el orden en que vinieron los registros. */
+export interface ConsultaMedicaCreadaDto {
+  consultaId: string
+  ninoId: string | null
+  personaNombre: string
 }
 
 /** Respuesta de `POST /medica/consultas`. */
 export interface ConsultaMedicaRegistradaDto {
-  consultaId: string
   usuariaId: string
-  personaNombre: string
+  consultas: ConsultaMedicaCreadaDto[]
   proximaCita: CitaMedicaProgramadaDto | null
 }
 
 /** Respuesta de subir un documento (pendiente o a una consulta). Nunca incluye la clave del objeto. */
 export interface DocumentoMedicoSubidoDto {
   id: string
-  tipo: TipoDocumentoMedico
   nombreVisible: string
   nombreArchivo: string
   tamanioBytes: number
@@ -743,12 +872,12 @@ export interface ResumenMedicoParaTs {
   signosVitales: { fecha: string; valores: SignosVitalesDto } | null
 }
 
-/** Para Jurídico, si Medicina lo comparte: fechas de consulta y constancias. */
+/** Para Jurídico, si Medicina lo comparte: fechas de consulta y los documentos de sus consultas. */
 export interface VistaMedicaParaJuridico {
   codigo: string
   estado: EstadoAtencionMedica
   fechasConsulta: string[]
-  constancias: { id: string; nombreVisible: string; fecha: string; mimeType: string }[]
+  documentos: { id: string; nombreVisible: string; fecha: string; mimeType: string }[]
 }
 
 /** Para Psicología, si Medicina lo comparte: solo fechas de consulta. */

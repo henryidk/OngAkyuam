@@ -248,7 +248,7 @@ model Nino {
   genero          GeneroPersona
 
   citasPsicologicas CitaPsicologica[]
-  citasMedicas      CitaMedica[]
+  citasMedicas      CitaMedicaPersona[]
   consultasMedicas  ConsultaMedica[]
 
   @@index([expedienteId])
@@ -802,15 +802,6 @@ enum EstadoCitaMedica {
   CANCELADA
 }
 
-enum TipoDocumentoMedico {
-  RESULTADO_LABORATORIO
-  RECETA
-  ORDEN_MEDICA
-  CONSTANCIA
-  IMAGEN
-  OTRO
-}
-
 // Episodio de atención médica de un expediente. Se abre al agendar la primera consulta; la base
 // solo deja una ACTIVA por expediente ("AtencionMedica_activa_uq"). El código visible
 // "M{consecutivo}-{numero de expediente}" se deriva, no se guarda.
@@ -854,10 +845,9 @@ model CitaMedica {
   id                  String           @id @default(uuid())
   atencionId          String
   atencion            AtencionMedica   @relation(fields: [atencionId], references: [id], onDelete: Restrict)
-  // Hijo/a que se atiende; null = la usuaria. Debe ser del mismo expediente (se valida en el servicio).
-  ninoId              String?
-  nino                Nino?            @relation(fields: [ninoId], references: [id], onDelete: Restrict)
   inicio              DateTime         @db.Timestamptz(3)
+  // 30, 60 o 90 (CHECK en la migración). Dos citas vigentes no se traslapan: restricción de
+  // exclusión gist sobre [inicio, inicio + duracionMin) en la migración medica_citas_familiares.
   duracionMin         Int              @default(30)
   estado              EstadoCitaMedica @default(PROGRAMADA)
   reprogramadaDesdeId String?          @unique
@@ -869,10 +859,26 @@ model CitaMedica {
   createdAt           DateTime         @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime         @updatedAt @db.Timestamptz(3)
 
-  consulta ConsultaMedica?
+  personas  CitaMedicaPersona[]
+  consultas ConsultaMedica[]
 
   @@index([inicio])
   @@index([atencionId, estado])
+}
+
+// Personas que se atienden en una cita (visita familiar): la usuaria (ninoId null) y/o sus
+// hijos/as. Cada una tiene su propio registro de consulta. Único por (citaId, ninoId) con
+// índices únicos parciales (migración medica_unicos_parciales_persona) para que la usuaria
+// (ninoId null) no aparezca dos veces.
+model CitaMedicaPersona {
+  id     String     @id @default(uuid())
+  citaId String
+  cita   CitaMedica @relation(fields: [citaId], references: [id], onDelete: Cascade)
+  // Debe ser del mismo expediente (se valida en el servicio).
+  ninoId String?
+  nino   Nino?      @relation(fields: [ninoId], references: [id], onDelete: Restrict)
+
+  @@index([citaId])
   @@index([ninoId])
 }
 
@@ -882,7 +888,9 @@ model ConsultaMedica {
   id                 String         @id @default(uuid())
   atencionId         String
   atencion           AtencionMedica @relation(fields: [atencionId], references: [id], onDelete: Restrict)
-  citaId             String?        @unique
+  // Una consulta por persona de la cita: único por (citaId, ninoId), con índices parciales en la
+  // migración medica_unicos_parciales_persona (las consultas sin cita no chocan entre sí).
+  citaId             String?
   cita               CitaMedica?    @relation(fields: [citaId], references: [id], onDelete: Restrict)
   ninoId             String?
   nino               Nino?          @relation(fields: [ninoId], references: [id], onDelete: Restrict)
@@ -910,13 +918,13 @@ model ConsultaMedica {
   // Historial de Consultas: rango de fechas con paginación por (fechaHora desc, id desc).
   @@index([fechaHora, id])
   @@index([ninoId])
+  @@index([citaId])
 }
 
 model DocumentoMedico {
   id            String              @id @default(uuid())
   consultaId    String
   consulta      ConsultaMedica      @relation(fields: [consultaId], references: [id], onDelete: Restrict)
-  tipo          TipoDocumentoMedico
   nombreVisible String              @db.VarChar(120)
   // Solo para mostrar — nunca forma parte de la clave del objeto.
   nombreArchivo String              @db.VarChar(255)
@@ -938,7 +946,6 @@ model DocumentoMedicoPendiente {
   id            String              @id @default(uuid())
   // Agrupa los documentos de un mismo formulario de consulta.
   lote          String              @db.Uuid
-  tipo          TipoDocumentoMedico
   nombreVisible String              @db.VarChar(120)
   nombreArchivo String              @db.VarChar(255)
   // "medica/{expedienteId}/{atencionId}/{uuid}" — ya definitiva al subir.

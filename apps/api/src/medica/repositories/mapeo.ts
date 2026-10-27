@@ -1,8 +1,14 @@
 import type { Prisma } from '@prisma/client';
 import {
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
+  type PersonaAtendidaDto,
   type SignosVitalesDto,
 } from '@akyuam/shared';
+import {
+  SELECT_PERSONA,
+  personaAtendida,
+  type PersonaConNacimiento,
+} from '../../psicologia/repositories/personas';
 
 /** Las columnas de signos vitales, tal como se piden a Prisma. */
 export const SELECT_SIGNOS = {
@@ -79,4 +85,28 @@ export function decodificarCursor(
     return null;
   }
   return { instante, id };
+}
+
+/** Las personas de una cita, tal como se piden a Prisma (null en `nino` = la usuaria). */
+export const SELECT_PERSONAS_CITA = {
+  select: { nino: { select: { id: true, ...SELECT_PERSONA } } },
+} as const;
+
+/**
+ * Personas de una visita para mostrar: la usuaria primero (si viene) y luego sus hijos/as del
+ * mayor al menor, igual que en el expediente.
+ */
+export function personasDeCita(
+  usuaria: PersonaConNacimiento,
+  filas: { nino: (PersonaConNacimiento & { id: string }) | null }[],
+): PersonaAtendidaDto[] {
+  const ninos = filas
+    .flatMap((fila) => (fila.nino ? [fila.nino] : []))
+    .sort((a, b) => a.fechaNacimiento.getTime() - b.fechaNacimiento.getTime());
+  return [
+    ...(filas.some((fila) => fila.nino === null)
+      ? [personaAtendida(usuaria, null)]
+      : []),
+    ...ninos.map((nino) => personaAtendida(usuaria, nino)),
+  ];
 }

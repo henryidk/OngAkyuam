@@ -1,11 +1,9 @@
 import type {
   DocumentoMedicoDto,
   DocumentoMedicoSubidoDto,
-  TipoDocumentoMedico,
 } from '@akyuam/shared';
 
 export interface ArchivoMedicoGuardado {
-  tipo: TipoDocumentoMedico;
   nombreVisible: string;
   nombreArchivo: string;
   claveObjeto: string;
@@ -35,10 +33,6 @@ export interface IDocumentosMedicosRepository {
     id: string,
     subidoPorId: string,
   ): Promise<PendienteMedico | null>;
-  cambiarTipoPendiente(
-    id: string,
-    tipo: TipoDocumentoMedico,
-  ): Promise<DocumentoMedicoSubidoDto>;
   eliminarPendiente(id: string): Promise<void>;
   crearEnConsulta(
     consultaId: string,

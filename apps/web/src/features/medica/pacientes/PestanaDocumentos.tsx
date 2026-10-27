@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ETIQUETAS_TIPO_DOCUMENTO_MEDICO, formatFechaGT } from '@akyuam/shared'
+import { formatFechaGT } from '@akyuam/shared'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useRecurso } from '../../../lib/useRecurso'
 import { listarDocumentos } from '../api/medica.api'
@@ -26,7 +26,7 @@ export default function PestanaDocumentos() {
     <section className={`${CLASE_TARJETA} flex flex-col gap-2.5 px-5 py-4`}>
       <h2 className="text-sm font-semibold text-[#1c2430]">Documentos médicos</h2>
       <p className="text-[12.5px] text-[#5b6573]">
-        Resultados, recetas, órdenes y constancias adjuntados en cada consulta. Los documentos de Trabajo Social están en{' '}
+        Los documentos adjuntados en cada consulta. Los documentos de Trabajo Social están en{' '}
         <Link to={RUTAS_MEDICA.datos(usuariaId)} className="font-medium text-brand-700 hover:underline">
           Datos y caso
         </Link>
@@ -46,7 +46,7 @@ export default function PestanaDocumentos() {
               <div className="flex min-w-[180px] flex-1 flex-col">
                 <span className="text-[13px] font-medium text-[#1c2430]">{documento.nombreVisible}</span>
                 <span className="text-xs tabular-nums text-[#5b6573]">
-                  {ETIQUETAS_TIPO_DOCUMENTO_MEDICO[documento.tipo]} · {formatFechaGT(documento.fechaConsulta)} · {documento.personaNombre}
+                  {formatFechaGT(documento.fechaConsulta)} · {documento.personaNombre}
                 </span>
               </div>
               <AccionesDocumento documentoId={documento.id} nombre={documento.nombreVisible} />
