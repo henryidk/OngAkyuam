@@ -25,15 +25,10 @@ import PanelesAgenda from './PanelesAgenda'
 
 const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/
 
-interface InasistenciaAbierta {
-  cita: CitaAgendaMedicaDto
-  modo: 'inasistencia' | 'reprogramar'
-}
-
 /**
- * Agenda de consultas: la semana (lunes a viernes) con el día abierto y, a la derecha, lo que
- * pide acción (referencias por agendar, citas pasadas sin registrar, pacientes sin próxima
- * consulta). El día vive en la URL (`?dia=`) para que "Ver en agenda" y recargar caigan ahí.
+ * Agenda de consultas: la semana (lunes a viernes) con el día abierto y, a la derecha, las
+ * pacientes sin próxima consulta. Aquí se programa y reprograma; registrar es de Consultas. El
+ * día vive en la URL (`?dia=`) para que "Ver en agenda" y recargar caigan ahí.
  */
 export default function Agenda() {
   useTituloPagina({ titulo: 'Agenda' })
@@ -62,8 +57,7 @@ export default function Agenda() {
   // no lo reabra.
   const agendar = params.get('agendar')
   const [programar, setProgramar] = useState<ProgramablesMedicaQuery | null>(() => (agendar ? { referidoId: agendar } : null))
-  const [inasistencia, setInasistencia] = useState<InasistenciaAbierta | null>(null)
-  const [referidoResaltado, setReferidoResaltado] = useState<string | null>(agendar)
+  const [reprogramar, setReprogramar] = useState<CitaAgendaMedicaDto | null>(null)
 
   useEffect(() => {
     if (!agendar) return
@@ -93,7 +87,6 @@ export default function Agenda() {
 
   function trasProgramar(cita: CitaMedicaProgramadaDto) {
     setProgramar(null)
-    setReferidoResaltado(null)
     const cuando = `${fechaLargaEnFrase(cita.fecha)}, ${cita.hora}`
     mostrar(
       cita.atencionAbierta ? `Atención ${cita.codigoAtencion} abierta · Consulta programada: ${cuando}` : `Consulta programada: ${cuando}`,
@@ -104,8 +97,8 @@ export default function Agenda() {
     recargarContadores()
   }
 
-  function trasInasistencia({ mensaje, nuevaFecha }: ResultadoInasistencia) {
-    setInasistencia(null)
+  function trasReprogramar({ mensaje, nuevaFecha }: ResultadoInasistencia) {
+    setReprogramar(null)
     mostrar(mensaje, 'success', nuevaFecha ? { etiqueta: 'Ver en agenda', onClick: () => irADia(nuevaFecha) } : undefined)
     recargarTodo()
     recargarContadores()
@@ -188,32 +181,23 @@ export default function Agenda() {
                 <FilaCita
                   key={cita.id}
                   cita={cita}
-                  onNoAsistio={() => setInasistencia({ cita, modo: 'inasistencia' })}
-                  onReprogramar={() => setInasistencia({ cita, modo: 'reprogramar' })}
+                  onReprogramar={() => setReprogramar(cita)}
                   onIrA={irADia}
                 />
               ))
             )}
           </div>
-          <PanelesAgenda
-            pendientes={agendaDia.datos.pendientes}
-            sinRegistrar={agendaDia.datos.sinRegistrar}
-            sinProxima={agendaDia.datos.sinProxima}
-            referidoResaltado={referidoResaltado}
-            onAgendarPendiente={(referidoId) => setProgramar({ referidoId })}
-            onAgendarPaciente={(usuariaId) => setProgramar({ usuariaId })}
-            onNoAsistio={(cita) => setInasistencia({ cita, modo: 'inasistencia' })}
-          />
+          <PanelesAgenda sinProxima={agendaDia.datos.sinProxima} onAgendarPaciente={(usuariaId) => setProgramar({ usuariaId })} />
         </div>
       )}
 
       {programar && <ModalProgramar preseleccion={programar} onCerrar={() => setProgramar(null)} onProgramada={trasProgramar} />}
-      {inasistencia && (
+      {reprogramar && (
         <ModalInasistencia
-          cita={{ ...inasistencia.cita, referencia: inasistencia.cita.codigoAtencion }}
-          modo={inasistencia.modo}
-          onCerrar={() => setInasistencia(null)}
-          onListo={trasInasistencia}
+          cita={{ ...reprogramar, referencia: reprogramar.codigoAtencion }}
+          modo="reprogramar"
+          onCerrar={() => setReprogramar(null)}
+          onListo={trasReprogramar}
         />
       )}
     </div>

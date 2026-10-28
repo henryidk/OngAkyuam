@@ -357,6 +357,19 @@ describe('Medicina · acceso (e2e)', () => {
       expect(JSON.stringify(filas)).not.toContain('Buscado');
     });
 
+    it('el día de la Agenda ya no trae lo que pasó a Consultas', async () => {
+      const respuesta = await pedir(
+        'get',
+        '/api/medica/agenda/dia?fecha=2026-01-02',
+        sesionMedica,
+      ).expect(200);
+      expect(Object.keys(respuesta.body as object).sort()).toEqual([
+        'citas',
+        'fecha',
+        'sinProxima',
+      ]);
+    });
+
     it('la búsqueda no existe por GET con el texto en la URL', async () => {
       await pedir(
         'get',

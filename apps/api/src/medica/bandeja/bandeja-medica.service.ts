@@ -1,16 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { fechaCalendarioGT, inicioDiaGT, sumarDiasGT } from '@akyuam/shared';
 import type {
   ContadoresMedicaDto,
   ReferenciaBandejaMedicaDto,
 } from '@akyuam/shared';
-import { RELOJ, type IReloj } from '../../common/reloj';
-import { derivarEstadoCita } from '../dominio/estado-cita';
-import { esPorAtender } from '../dominio/por-atender';
+import { PorAtenderService } from '../consultas/por-atender.service';
 import {
-  LECTOR_CITAS_MEDICAS,
   LECTOR_PENDIENTES_MEDICA,
-  type ILectorCitasMedicas,
   type ILectorPendientesMedica,
 } from '../interfaces/agenda-medica-repository.interface';
 
@@ -20,30 +15,22 @@ export class BandejaMedicaService {
   constructor(
     @Inject(LECTOR_PENDIENTES_MEDICA)
     private readonly lectorPendientes: ILectorPendientesMedica,
-    @Inject(LECTOR_CITAS_MEDICAS)
-    private readonly lectorCitas: ILectorCitasMedicas,
-    @Inject(RELOJ) private readonly reloj: IReloj,
+    private readonly porAtender: PorAtenderService,
   ) {}
 
   pendientes(): Promise<ReferenciaBandejaMedicaDto[]> {
     return this.lectorPendientes.referenciasPendientes();
   }
 
+  /** La insignia de Consultas cuenta lo mismo que muestra "Por atender": una sola definición. */
   async contadores(): Promise<ContadoresMedicaDto> {
-    const ahora = this.reloj.ahora();
-    const hoy = fechaCalendarioGT(ahora);
-    const [referencias, citasHoy] = await Promise.all([
+    const [referencias, porAtender] = await Promise.all([
       this.lectorPendientes.referenciasPendientes(),
-      this.lectorCitas.resumenEntre(
-        inicioDiaGT(hoy),
-        inicioDiaGT(sumarDiasGT(hoy, 1)),
-      ),
+      this.porAtender.listar(),
     ]);
     return {
       areaAtencion: referencias.length,
-      agendaHoy: citasHoy.filter((c) =>
-        esPorAtender(derivarEstadoCita(c, ahora)),
-      ).length,
+      consultasPorAtender: porAtender.hoy.length + porAtender.atrasadas.length,
     };
   }
 }

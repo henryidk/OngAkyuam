@@ -15,7 +15,10 @@ function conQuery(base: string, params: Record<string, string | undefined>) {
 }
 
 /** De dónde se abrió el registro de una consulta: al guardar se vuelve ahí (regla 1.7). */
-export type OrigenConsulta = 'agenda' | 'ficha'
+export type OrigenConsulta = 'consultas' | 'ficha'
+
+/** Pestañas de Consultas. "Por atender" es la de entrada y no se escribe en la URL. */
+export type VistaConsultas = 'por-atender' | 'historial'
 
 export const RUTAS_MEDICA = {
   /** Pantalla de entrada: referencias pendientes de primera consulta. */
@@ -32,6 +35,12 @@ export const RUTAS_MEDICA = {
     conQuery(`/medica/pacientes/${usuariaId}/historia`, { persona, consulta }),
   documentos: (usuariaId: string) => `/medica/pacientes/${usuariaId}/documentos`,
   datos: (usuariaId: string) => `/medica/pacientes/${usuariaId}/datos`,
+  /**
+   * Consultas: `vista` elige la pestaña; `consulta` (id) abre su detalle en el Historial. Solo
+   * ids: la búsqueda por nombre nunca va en la URL (planconsultasmedica.md §10).
+   */
+  consultas: (params: { vista?: VistaConsultas; consulta?: string } = {}) =>
+    conQuery('/medica/consultas', { vista: params.vista === 'historial' ? 'historial' : undefined, consulta: params.consulta }),
   /** Registrar consulta desde una cita (`cita`) o, de forma excepcional, sin cita (`usuaria`). */
   nuevaConsulta: (params: { cita?: string; usuaria?: string; origen: OrigenConsulta }) =>
     conQuery('/medica/consultas/nueva', params),
