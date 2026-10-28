@@ -2,7 +2,9 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Headers,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
@@ -15,11 +17,13 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import {
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
+  buscarHistorialConsultasMedicaSchema,
   contextoConsultaMedicaQuerySchema,
   registrarConsultaMedicaSchema,
   subirDocumentoMedicoSchema,
 } from '@akyuam/shared';
 import type {
+  BuscarHistorialConsultasMedicaDatos,
   ContextoConsultaMedicaQuery,
   RegistrarConsultaMedicaDatos,
   SubirDocumentoMedicoInput,
@@ -32,6 +36,8 @@ import type { ContextoAuditoria as IContextoAuditoria } from '../../common/types
 import { LimitePorUsuarioGuard } from '../../juridico/compartido/limite-por-usuario.guard';
 import { DocumentosMedicosService } from '../documentos/documentos-medicos.service';
 import { ConsultasMedicasService } from './consultas-medicas.service';
+import { HistorialConsultasService } from './historial-consultas.service';
+import { PorAtenderService } from './por-atender.service';
 import { RegistroConsultaService } from './registro-consulta.service';
 
 @Controller('medica/consultas')
@@ -42,7 +48,32 @@ export class ConsultasMedicasController {
     private readonly consultasService: ConsultasMedicasService,
     private readonly registroService: RegistroConsultaService,
     private readonly documentosService: DocumentosMedicosService,
+    private readonly porAtenderService: PorAtenderService,
+    private readonly historialService: HistorialConsultasService,
   ) {}
+
+  /** Lista de trabajo: citas de hoy pendientes y las de días anteriores sin registrar. */
+  @Get('por-atender')
+  porAtender() {
+    return this.porAtenderService.listar();
+  }
+
+  /**
+   * Búsqueda en el historial. Es POST de solo lectura porque `q` puede ser el nombre de una
+   * sobreviviente: en el cuerpo no queda en logs de acceso ni en el historial del navegador.
+   */
+  @Post('historial/busqueda')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  buscarHistorial(
+    @Body(new ZodValidationPipe(buscarHistorialConsultasMedicaSchema))
+    datos: BuscarHistorialConsultasMedicaDatos,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.historialService.buscar(datos, contexto);
+  }
 
   /** Ficha de solo lectura y personas para abrir el formulario de consulta. */
   @Get('contexto')
@@ -87,5 +118,15 @@ export class ConsultasMedicasController {
       datos,
       contexto,
     );
+  }
+
+  /** La consulta completa, con su contenido clínico. Cada apertura queda en la auditoría. */
+  @Get(':id')
+  @Header('Cache-Control', 'no-store')
+  detalle(
+    @Param('id', ParseUUIDPipe) consultaId: string,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.historialService.detalle(consultaId, contexto);
   }
 }

@@ -6,15 +6,13 @@ import type {
 } from '@akyuam/shared';
 import { RELOJ, type IReloj } from '../../common/reloj';
 import { derivarEstadoCita } from '../dominio/estado-cita';
+import { esPorAtender } from '../dominio/por-atender';
 import {
   LECTOR_CITAS_MEDICAS,
   LECTOR_PENDIENTES_MEDICA,
   type ILectorCitasMedicas,
   type ILectorPendientesMedica,
 } from '../interfaces/agenda-medica-repository.interface';
-
-/** Estados que todavía piden algo de la médica hoy. */
-const POR_ATENDER = new Set(['PROGRAMADA', 'EN_CURSO', 'SIN_REGISTRAR']);
 
 /** Área de atención: las referencias de Trabajo Social que esperan primera consulta. */
 @Injectable()
@@ -44,7 +42,7 @@ export class BandejaMedicaService {
     return {
       areaAtencion: referencias.length,
       agendaHoy: citasHoy.filter((c) =>
-        POR_ATENDER.has(derivarEstadoCita(c, ahora)),
+        esPorAtender(derivarEstadoCita(c, ahora)),
       ).length,
     };
   }

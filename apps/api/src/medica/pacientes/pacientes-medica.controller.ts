@@ -17,7 +17,9 @@ import type {
 } from '@akyuam/shared';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
+import { ContextoAuditoria } from '../../common/decorators/contexto-auditoria.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
+import type { ContextoAuditoria as IContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { LimitePorUsuarioGuard } from '../../juridico/compartido/limite-por-usuario.guard';
 import { ConsultasMedicasService } from '../consultas/consultas-medicas.service';
 import { DocumentosMedicosService } from '../documentos/documentos-medicos.service';
@@ -54,8 +56,9 @@ export class PacientesMedicaController {
     @Param('usuariaId', ParseUUIDPipe) usuariaId: string,
     @Query(new ZodValidationPipe(consultasPacienteMedicaQuerySchema))
     query: ConsultasPacienteMedicaQuery,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.consultasService.historia(usuariaId, query);
+    return this.consultasService.historia(usuariaId, query, contexto);
   }
 
   @Get(':usuariaId/documentos')

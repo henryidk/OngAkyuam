@@ -912,6 +912,8 @@ model ConsultaMedica {
   documentos DocumentoMedico[]
 
   @@index([atencionId, fechaHora])
+  // Historial de Consultas: rango de fechas con paginación por (fechaHora desc, id desc).
+  @@index([fechaHora, id])
   @@index([ninoId])
 }
 

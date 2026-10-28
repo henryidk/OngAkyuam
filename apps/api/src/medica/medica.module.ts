@@ -22,6 +22,8 @@ import { IdempotenciaMedica } from './compartido/idempotencia';
 import { RELOJ, RelojSistema } from '../common/reloj';
 import { ConsultasMedicasController } from './consultas/consultas-medicas.controller';
 import { ConsultasMedicasService } from './consultas/consultas-medicas.service';
+import { HistorialConsultasService } from './consultas/historial-consultas.service';
+import { PorAtenderService } from './consultas/por-atender.service';
 import { RegistroConsultaService } from './consultas/registro-consulta.service';
 import { DocumentosMedicosController } from './documentos/documentos-medicos.controller';
 import { DocumentosMedicosService } from './documentos/documentos-medicos.service';
@@ -35,6 +37,7 @@ import { ATENCIONES_MEDICAS_REPOSITORY } from './interfaces/atenciones-medicas-r
 import { CITAS_MEDICAS_REPOSITORY } from './interfaces/citas-medicas-repository.interface';
 import { CONSULTAS_MEDICAS_REPOSITORY } from './interfaces/consultas-medicas-repository.interface';
 import { DOCUMENTOS_MEDICOS_REPOSITORY } from './interfaces/documentos-medicos-repository.interface';
+import { HISTORIAL_CONSULTAS_REPOSITORY } from './interfaces/historial-consultas-repository.interface';
 import { PACIENTES_MEDICA_REPOSITORY } from './interfaces/pacientes-medica-repository.interface';
 import { REPORTES_MEDICA_REPOSITORY } from './interfaces/reportes-medica-repository.interface';
 import { PacientesMedicaController } from './pacientes/pacientes-medica.controller';
@@ -47,6 +50,7 @@ import { AtencionesMedicasRepository } from './repositories/atenciones-medicas.r
 import { CitasMedicasRepository } from './repositories/citas-medicas.repository';
 import { ConsultasMedicasRepository } from './repositories/consultas-medicas.repository';
 import { DocumentosMedicosRepository } from './repositories/documentos-medicos.repository';
+import { HistorialConsultasRepository } from './repositories/historial-consultas.repository';
 import { PacientesMedicaRepository } from './repositories/pacientes-medica.repository';
 import { ReportesMedicaRepository } from './repositories/reportes-medica.repository';
 
@@ -83,6 +87,8 @@ import { VisibilidadMedicaReader } from './visibilidad/visibilidad-medica.reader
     InasistenciaService,
     RegistroConsultaService,
     ConsultasMedicasService,
+    PorAtenderService,
+    HistorialConsultasService,
     DocumentosMedicosService,
     LimpiezaDocumentosMedicosService,
     AltaAtencionService,
@@ -96,6 +102,10 @@ import { VisibilidadMedicaReader } from './visibilidad/visibilidad-medica.reader
     {
       provide: CONSULTAS_MEDICAS_REPOSITORY,
       useClass: ConsultasMedicasRepository,
+    },
+    {
+      provide: HISTORIAL_CONSULTAS_REPOSITORY,
+      useClass: HistorialConsultasRepository,
     },
     {
       provide: ATENCIONES_MEDICAS_REPOSITORY,
