@@ -158,6 +158,9 @@ export const BUSQUEDA_PACIENTES_MEDICA_MIN = 2
 export const BUSQUEDA_PACIENTES_MEDICA_MAX = 80
 export const PAGINA_PACIENTES_MEDICA = 30
 export const PAGINA_CONSULTAS_MEDICA = 20
+export const PAGINA_HISTORIAL_CONSULTAS_MEDICA = 25
+/** Rango máximo del historial: acota lo que puede barrer una sola búsqueda. */
+export const MAX_DIAS_RANGO_HISTORIAL_MEDICA = 366
 
 /**
  * Un conteo menor que esto se publica como "<3" en el Excel de reportes: en un municipio o un

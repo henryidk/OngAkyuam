@@ -9,6 +9,7 @@ import {
   ESTADOS_CITA_MEDICA_DERIVADOS,
   FILTROS_PACIENTES_MEDICA,
   MAX_DIAS_DISPONIBILIDAD,
+  MAX_DIAS_RANGO_HISTORIAL_MEDICA,
   MOTIVO_CONSULTA_MEDICA_MAX,
   MOTIVOS_ALTA_MEDICA,
   NOMBRE_DOCUMENTO_MEDICO_MAX,
@@ -19,6 +20,7 @@ import {
   TIPOS_DOCUMENTO_MEDICO,
   type SignoVital,
 } from '../catalogos/medica.js'
+import { diasEntreFechasGT } from '../timezone.js'
 import type { PersonaAtendidaDto } from './psicologia.js'
 import type { ConteoReporte } from './trabajoSocial.js'
 
@@ -308,6 +310,33 @@ export const consultasPacienteMedicaQuerySchema = z.object({
 })
 export type ConsultasPacienteMedicaQuery = z.infer<typeof consultasPacienteMedicaQuerySchema>
 
+/**
+ * Cuerpo de `POST /medica/consultas/historial/busqueda`. Es POST porque `q` puede ser el nombre
+ * de una sobreviviente: en el cuerpo no queda en logs de acceso ni en el historial del navegador.
+ */
+export const buscarHistorialConsultasMedicaSchema = z
+  .object({
+    desde: fechaCalendarioSchema,
+    hasta: fechaCalendarioSchema,
+    q: z
+      .string()
+      .trim()
+      .max(BUSQUEDA_PACIENTES_MEDICA_MAX)
+      .optional()
+      .transform((valor) => (valor && valor.length >= BUSQUEDA_PACIENTES_MEDICA_MIN ? valor : undefined)),
+    cursor: z.string().max(200).optional(),
+  })
+  .refine((v) => diasEntreFechasGT(v.desde, v.hasta) >= 0, {
+    message: 'La fecha final no puede ser anterior a la inicial',
+    path: ['hasta'],
+  })
+  .refine((v) => diasEntreFechasGT(v.desde, v.hasta) < MAX_DIAS_RANGO_HISTORIAL_MEDICA, {
+    message: `El rango no puede pasar de ${MAX_DIAS_RANGO_HISTORIAL_MEDICA} días`,
+    path: ['hasta'],
+  })
+export type BuscarHistorialConsultasMedicaInput = z.input<typeof buscarHistorialConsultasMedicaSchema>
+export type BuscarHistorialConsultasMedicaDatos = z.output<typeof buscarHistorialConsultasMedicaSchema>
+
 /** `GET /medica/consultas/contexto?cita=|usuaria=` — datos para abrir el formulario de consulta. */
 export const contextoConsultaMedicaQuerySchema = z
   .object({
@@ -440,6 +469,15 @@ export interface DiaAgendaMedicaDto {
   /** Solo de otros días: las del día abierto ya están en la lista. */
   sinRegistrar: CitaAgendaMedicaDto[]
   sinProxima: SinProximaConsultaDto[]
+}
+
+/**
+ * `GET /medica/consultas/por-atender` — lo que la médica tiene que atender o registrar.
+ * `hoy` va en curso primero; `atrasadas` son citas de días anteriores que siguen sin registrar.
+ */
+export interface PorAtenderMedicaDto {
+  hoy: CitaAgendaMedicaDto[]
+  atrasadas: CitaAgendaMedicaDto[]
 }
 
 /** Contadores del menú lateral. */
@@ -605,6 +643,27 @@ export interface ConsultaMedicaDto {
 
 export interface ConsultasMedicasPaginaDto {
   items: ConsultaMedicaDto[]
+  siguienteCursor: string | null
+}
+
+/**
+ * Fila del historial de consultas. Solo metadatos, nunca contenido clínico: el diagnóstico y el
+ * resto se piden con `GET /medica/consultas/:id`, que deja constancia en la auditoría.
+ */
+export interface ConsultaHistorialMedicaDto {
+  id: string
+  fecha: string
+  hora: string
+  usuariaId: string
+  usuariaNombreCompleto: string
+  persona: PersonaAtendidaDto
+  codigoAtencion: string
+  conCita: boolean
+  totalDocumentos: number
+}
+
+export interface HistorialConsultasMedicaPaginaDto {
+  items: ConsultaHistorialMedicaDto[]
   siguienteCursor: string | null
 }
 
