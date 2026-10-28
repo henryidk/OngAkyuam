@@ -20,8 +20,10 @@ import { RELOJ, type IReloj } from '../../common/reloj';
 import { derivarEstadoCita } from '../dominio/estado-cita';
 import { diasHabilesDesde, horasLibres } from '../dominio/horario';
 import {
-  AGENDA_MEDICA_REPOSITORY,
-  type IAgendaMedicaRepository,
+  LECTOR_CITAS_MEDICAS,
+  LECTOR_PENDIENTES_MEDICA,
+  type ILectorCitasMedicas,
+  type ILectorPendientesMedica,
 } from '../interfaces/agenda-medica-repository.interface';
 import {
   CITAS_MEDICAS_REPOSITORY,
@@ -37,8 +39,10 @@ const DIAS_SEMANA_LABORAL = 5;
 @Injectable()
 export class AgendaMedicaService {
   constructor(
-    @Inject(AGENDA_MEDICA_REPOSITORY)
-    private readonly agendaRepository: IAgendaMedicaRepository,
+    @Inject(LECTOR_CITAS_MEDICAS)
+    private readonly lectorCitas: ILectorCitasMedicas,
+    @Inject(LECTOR_PENDIENTES_MEDICA)
+    private readonly lectorPendientes: ILectorPendientesMedica,
     @Inject(CITAS_MEDICAS_REPOSITORY)
     private readonly citasRepository: ICitasMedicasRepository,
     @Inject(RELOJ) private readonly reloj: IReloj,
@@ -50,7 +54,7 @@ export class AgendaMedicaService {
     const fechas = Array.from({ length: DIAS_SEMANA_LABORAL }, (_, i) =>
       sumarDiasGT(lunes, i),
     );
-    const citas = await this.agendaRepository.resumenEntre(
+    const citas = await this.lectorCitas.resumenEntre(
       inicioDiaGT(lunes),
       inicioDiaGT(sumarDiasGT(lunes, DIAS_SEMANA_LABORAL)),
     );
@@ -72,10 +76,10 @@ export class AgendaMedicaService {
     const desde = inicioDiaGT(fecha);
     const hasta = inicioDiaGT(sumarDiasGT(fecha, 1));
     const [citas, sinRegistrar, referencias, sinProxima] = await Promise.all([
-      this.agendaRepository.citasEntre(desde, hasta, ahora),
-      this.agendaRepository.citasSinRegistrar(ahora, desde, hasta),
-      this.agendaRepository.referenciasPendientes(),
-      this.agendaRepository.sinProxima(),
+      this.lectorCitas.citasEntre(desde, hasta, ahora),
+      this.lectorCitas.citasSinRegistrar(ahora, desde, hasta),
+      this.lectorPendientes.referenciasPendientes(),
+      this.lectorPendientes.sinProxima(),
     ]);
     return {
       fecha,
@@ -122,6 +126,6 @@ export class AgendaMedicaService {
   programables(
     query: ProgramablesMedicaQuery,
   ): Promise<PacienteProgramableDto[]> {
-    return this.agendaRepository.programables(query);
+    return this.lectorPendientes.programables(query);
   }
 }

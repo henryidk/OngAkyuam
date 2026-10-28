@@ -27,7 +27,10 @@ import { DocumentosMedicosController } from './documentos/documentos-medicos.con
 import { DocumentosMedicosService } from './documentos/documentos-medicos.service';
 import { LimpiezaDocumentosMedicosService } from './documentos/limpieza-documentos-medicos.service';
 import { ACCESO_MEDICA_REPOSITORY } from './interfaces/acceso-medica-repository.interface';
-import { AGENDA_MEDICA_REPOSITORY } from './interfaces/agenda-medica-repository.interface';
+import {
+  LECTOR_CITAS_MEDICAS,
+  LECTOR_PENDIENTES_MEDICA,
+} from './interfaces/agenda-medica-repository.interface';
 import { ATENCIONES_MEDICAS_REPOSITORY } from './interfaces/atenciones-medicas-repository.interface';
 import { CITAS_MEDICAS_REPOSITORY } from './interfaces/citas-medicas-repository.interface';
 import { CONSULTAS_MEDICAS_REPOSITORY } from './interfaces/consultas-medicas-repository.interface';
@@ -102,7 +105,10 @@ import { VisibilidadMedicaReader } from './visibilidad/visibilidad-medica.reader
       provide: DOCUMENTOS_MEDICOS_REPOSITORY,
       useClass: DocumentosMedicosRepository,
     },
-    { provide: AGENDA_MEDICA_REPOSITORY, useClass: AgendaMedicaRepository },
+    // Una sola instancia atiende las dos interfaces de lectura (ISP sin duplicar consultas).
+    AgendaMedicaRepository,
+    { provide: LECTOR_CITAS_MEDICAS, useExisting: AgendaMedicaRepository },
+    { provide: LECTOR_PENDIENTES_MEDICA, useExisting: AgendaMedicaRepository },
     {
       provide: PACIENTES_MEDICA_REPOSITORY,
       useClass: PacientesMedicaRepository,

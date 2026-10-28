@@ -18,7 +18,12 @@ export interface FiltroProgramables {
   usuariaId?: string;
 }
 
-export interface IAgendaMedicaRepository {
+/**
+ * Lecturas de citas para la Agenda, Consultas y los contadores. Separada de
+ * `ILectorPendientesMedica` para que cada servicio dependa solo de lo que usa; las dos las
+ * implementa `AgendaMedicaRepository`.
+ */
+export interface ILectorCitasMedicas {
   /** Citas no canceladas que empiezan en [desde, hasta), por hora. `ahora` deriva el estado. */
   citasEntre(
     desde: Date,
@@ -33,6 +38,10 @@ export interface IAgendaMedicaRepository {
   ): Promise<CitaAgendaMedicaDto[]>;
   /** Solo lo necesario para contar: la tira de la semana y el contador del menú. */
   resumenEntre(desde: Date, hasta: Date): Promise<CitaResumida[]>;
+}
+
+/** Quién espera algo de la médica sin tener una cita delante. */
+export interface ILectorPendientesMedica {
   /** Referencias de Trabajo Social pendientes de primera consulta, las más antiguas primero. */
   referenciasPendientes(): Promise<ReferenciaBandejaMedicaDto[]>;
   /** Atenciones activas sin ninguna cita programada (ni futura ni sin registrar). */
@@ -40,4 +49,5 @@ export interface IAgendaMedicaRepository {
   programables(filtro: FiltroProgramables): Promise<PacienteProgramableDto[]>;
 }
 
-export const AGENDA_MEDICA_REPOSITORY = Symbol('AGENDA_MEDICA_REPOSITORY');
+export const LECTOR_CITAS_MEDICAS = Symbol('LECTOR_CITAS_MEDICAS');
+export const LECTOR_PENDIENTES_MEDICA = Symbol('LECTOR_PENDIENTES_MEDICA');

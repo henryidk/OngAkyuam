@@ -1,5 +1,5 @@
 import type { PersonaAtendidaDto } from '@akyuam/shared'
-import { etiquetaPersonaBoton } from '../compartido/personas'
+import { etiquetaPersonaBoton } from './personas'
 
 interface SelectorPersonaProps {
   personas: PersonaAtendidaDto[]

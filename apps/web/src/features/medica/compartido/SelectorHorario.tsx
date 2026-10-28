@@ -1,6 +1,6 @@
 import { useEffect, useRef, type KeyboardEvent } from 'react'
 import { HORARIO_MEDICINA, hoyGT, type DisponibilidadDiaDto } from '@akyuam/shared'
-import { diaSemanaCorto, numeroDia } from '../compartido/fechas'
+import { diaSemanaCorto, numeroDia } from './fechas'
 
 interface SelectorHorarioProps {
   disponibilidad: DisponibilidadDiaDto[]

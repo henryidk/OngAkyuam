@@ -29,7 +29,8 @@ import {
 import type {
   CitaResumida,
   FiltroProgramables,
-  IAgendaMedicaRepository,
+  ILectorCitasMedicas,
+  ILectorPendientesMedica,
 } from '../interfaces/agenda-medica-repository.interface';
 import { EXPEDIENTE_REFERIDO_A_MEDICA } from './acceso-medica.repository';
 
@@ -113,7 +114,9 @@ function aCitaAgenda(fila: FilaCitaAgenda, ahora: Date): CitaAgendaMedicaDto {
 }
 
 @Injectable()
-export class AgendaMedicaRepository implements IAgendaMedicaRepository {
+export class AgendaMedicaRepository
+  implements ILectorCitasMedicas, ILectorPendientesMedica
+{
   constructor(private readonly prisma: PrismaService) {}
 
   async citasEntre(
