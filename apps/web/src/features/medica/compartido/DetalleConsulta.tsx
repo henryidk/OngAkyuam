@@ -1,4 +1,4 @@
-import { ETIQUETAS_TIPO_DOCUMENTO_MEDICO, type ConsultaMedicaDto, type DocumentoMedicoDto } from '@akyuam/shared'
+import { type ConsultaMedicaDto, type DocumentoMedicoDto } from '@akyuam/shared'
 import { etiquetaFormato } from '../../../lib/documentos/archivoDocumento'
 import AccionesDocumento from './AccionesDocumento'
 import { CLASE_SECCION } from './estilos'
@@ -14,15 +14,12 @@ export function InsigniaFormato({ mimeType }: { mimeType: string }) {
   )
 }
 
-/** Documento adjunto a una consulta, compacto: insignia, nombre, tipo y "Ver". */
+/** Documento adjunto a una consulta, compacto: insignia, nombre y "Ver". */
 export function ChipDocumento({ documento }: { documento: DocumentoMedicoDto }) {
   return (
     <div className="flex items-center gap-2.5 rounded-md border border-[#e3e6ea] px-3 py-2">
       <InsigniaFormato mimeType={documento.mimeType} />
-      <div className="flex min-w-0 flex-col">
-        <span className="truncate text-[13px] font-medium text-[#1c2430]">{documento.nombreVisible}</span>
-        <span className="text-[11.5px] text-[#5b6573]">{ETIQUETAS_TIPO_DOCUMENTO_MEDICO[documento.tipo]}</span>
-      </div>
+      <span className="min-w-0 truncate text-[13px] font-medium text-[#1c2430]">{documento.nombreVisible}</span>
       <AccionesDocumento documentoId={documento.id} nombre={documento.nombreVisible} conDescarga={false} />
     </div>
   )

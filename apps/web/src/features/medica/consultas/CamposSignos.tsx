@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { SIGNOS_VITALES_FORMULARIO, calcularImc, type CampoSignoFormulario } from '@akyuam/shared'
 import { CLASE_TARJETA } from '../compartido/estilos'
-import { leerSignos, type ValoresSignos } from './signosFormulario'
+import { filtrarSigno, leerSignos, type ValoresSignos } from './signosFormulario'
 
 interface CamposSignosProps {
   valores: ValoresSignos
@@ -10,8 +10,22 @@ interface CamposSignosProps {
   mostrarTodos: boolean
 }
 
+/** Teclado del celular/tableta: numérico; la presión necesita la "/" y los decimales el punto. */
+const MODO_TECLADO: Record<CampoSignoFormulario, 'numeric' | 'decimal' | 'text'> = {
+  presionArterial: 'text',
+  frecuenciaCardiaca: 'numeric',
+  frecuenciaResp: 'numeric',
+  temperaturaC: 'decimal',
+  saturacionO2: 'numeric',
+  glucosaMgDl: 'numeric',
+  pesoKg: 'decimal',
+  tallaM: 'decimal',
+}
+
 /** Signos vitales opcionales, con el IMC calculado al vuelo. El error aparece al salir de la casilla. */
 export default function CamposSignos({ valores, onCambiar, mostrarTodos }: CamposSignosProps) {
+  // Varias personas en la misma pantalla: los ids de error no pueden repetirse entre formularios.
+  const base = useId()
   const [visitadas, setVisitadas] = useState<Set<CampoSignoFormulario>>(() => new Set())
   const { signos, errores } = leerSignos(valores)
   const imc = calcularImc(signos.pesoKg, signos.tallaM)
@@ -22,10 +36,10 @@ export default function CamposSignos({ valores, onCambiar, mostrarTodos }: Campo
         <h2 className="text-sm font-semibold text-[#1c2430]">Signos vitales</h2>
         <span className="text-xs text-[#5b6573]">Opcionales · deja vacío lo que no se tomó</span>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(132px,1fr))] gap-2.5">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5">
         {SIGNOS_VITALES_FORMULARIO.map(({ clave, etiqueta, unidad, ejemplo }) => {
           const error = (mostrarTodos || visitadas.has(clave)) && valores[clave].trim() !== '' ? errores[clave] : undefined
-          const idError = `signo-${clave}-error`
+          const idError = `${base}-${clave}-error`
           return (
             <label key={clave} className="flex flex-col gap-1">
               <span className="whitespace-nowrap text-xs font-medium text-[#5b6573]">{etiqueta}</span>
@@ -38,10 +52,10 @@ export default function CamposSignos({ valores, onCambiar, mostrarTodos }: Campo
               >
                 <input
                   value={valores[clave]}
-                  onChange={(evento) => onCambiar(clave, evento.target.value)}
+                  onChange={(evento) => onCambiar(clave, filtrarSigno(clave, evento.target.value))}
                   onBlur={() => setVisitadas((actuales) => new Set(actuales).add(clave))}
                   placeholder={ejemplo}
-                  inputMode={clave === 'presionArterial' ? 'text' : 'decimal'}
+                  inputMode={MODO_TECLADO[clave]}
                   aria-invalid={error ? true : undefined}
                   aria-describedby={error ? idError : undefined}
                   className="w-full min-w-0 flex-1 border-0 px-2.5 py-2 font-mono text-[13.5px] text-[#1c2430] outline-none"

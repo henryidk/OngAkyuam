@@ -24,12 +24,14 @@ export interface AccesoAtencionMedica extends AccesoExpedienteMedica {
 
 export interface AccesoCitaMedica extends AccesoAtencionMedica {
   citaId: string;
-  ninoId: string | null;
+  /** Personas de la visita (null = la usuaria). */
+  personas: (string | null)[];
+  /** Personas de la visita que ya tienen su consulta registrada. */
+  personasRegistradas: (string | null)[];
   inicio: Date;
   duracionMin: number;
   estadoCita: EstadoCitaMedica;
   versionCita: number;
-  consultaId: string | null;
   reprogramadaAId: string | null;
 }
 

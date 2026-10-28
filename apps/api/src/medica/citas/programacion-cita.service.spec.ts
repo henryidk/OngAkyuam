@@ -8,9 +8,16 @@ import type { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import type { RedisService } from '../../redis/redis.service';
 import type { AccesoMedicaService } from '../compartido/acceso-medica.service';
-import { CODIGO_HORARIO_OCUPADO } from '../compartido/errores-http';
+import {
+  CODIGO_HORARIO_OCUPADO,
+  CODIGO_PERSONAS_PRIMERA_CONSULTA,
+} from '../compartido/errores-http';
 import { IdempotenciaMedica } from '../compartido/idempotencia';
-import { HorarioOcupadoError } from '../interfaces/errores-medica';
+import {
+  HorarioOcupadoError,
+  PersonaAjenaError,
+  PersonasPrimeraConsultaError,
+} from '../interfaces/errores-medica';
 import type { ICitasMedicasRepository } from '../interfaces/citas-medicas-repository.interface';
 import { ProgramacionCitaService } from './programacion-cita.service';
 
@@ -48,7 +55,6 @@ describe('ProgramacionCitaService', () => {
         .fn()
         .mockResolvedValue({ ...EXPEDIENTE, referidoId: 'r-1' }),
       exigirExpediente: jest.fn().mockResolvedValue(EXPEDIENTE),
-      personaDelExpediente: jest.fn().mockResolvedValue(true),
     } as unknown as jest.Mocked<AccesoMedicaService>;
     redis = { get: jest.fn().mockResolvedValue(null), set: jest.fn() };
     audit = { registrar: jest.fn() } as unknown as jest.Mocked<AuditService>;
@@ -63,7 +69,7 @@ describe('ProgramacionCitaService', () => {
 
   it('desde una referencia abre la atención y audita apertura y cita', async () => {
     const respuesta = await service.programar(
-      { referidoId: 'r-1', ninoId: null, inicio: INICIO },
+      { referidoId: 'r-1', personas: [null], duracionMin: 30, inicio: INICIO },
       CONTEXTO,
     );
     expect(respuesta).toEqual({
@@ -80,6 +86,8 @@ describe('ProgramacionCitaService', () => {
         referidoId: 'r-1',
         hoy: '2026-10-14',
         creadoPorId: 'medica-1',
+        personas: [null],
+        duracionMin: 30,
       }),
     );
     const acciones = audit.registrar.mock.calls.map(
@@ -95,7 +103,12 @@ describe('ProgramacionCitaService', () => {
     acceso.exigirReferencia.mockRejectedValue(new ForbiddenException());
     await expect(
       service.programar(
-        { referidoId: 'r-1', ninoId: null, inicio: INICIO },
+        {
+          referidoId: 'r-1',
+          personas: [null],
+          duracionMin: 30,
+          inicio: INICIO,
+        },
         CONTEXTO,
       ),
     ).rejects.toBeInstanceOf(ForbiddenException);
@@ -103,24 +116,84 @@ describe('ProgramacionCitaService', () => {
     expect(audit.registrar).not.toHaveBeenCalled();
   });
 
-  it('un niño de otro expediente responde 400', async () => {
-    acceso.personaDelExpediente.mockResolvedValue(false);
+  it('un niño de otro expediente responde 400 y no audita', async () => {
+    repository.programar.mockRejectedValue(new PersonaAjenaError());
     await expect(
       service.programar(
         {
           expedienteId: 'exp-1',
-          ninoId: 'nino-ajeno',
+          personas: [null, 'nino-ajeno'],
+          duracionMin: 30,
           inicio: INICIO,
         },
         CONTEXTO,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(acceso.personaDelExpediente).toHaveBeenCalledWith(
-      'nino-ajeno',
-      'exp-1',
-    );
-    expect(repository.programar).not.toHaveBeenCalled();
+    expect(audit.registrar).not.toHaveBeenCalled();
   });
+
+  it('una primera consulta sin todos los hijos/as responde 409 con su código', async () => {
+    repository.programar.mockRejectedValue(new PersonasPrimeraConsultaError());
+    const error = await service
+      .programar(
+        {
+          expedienteId: 'exp-1',
+          personas: [null],
+          duracionMin: 30,
+          inicio: INICIO,
+        },
+        CONTEXTO,
+      )
+      .catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ConflictException);
+    expect((error as ConflictException).getResponse()).toEqual(
+      expect.objectContaining({ codigo: CODIGO_PERSONAS_PRIMERA_CONSULTA }),
+    );
+    expect(audit.registrar).not.toHaveBeenCalled();
+  });
+
+  it('una visita familiar pasa personas y duración al repositorio y las audita', async () => {
+    await service.programar(
+      {
+        expedienteId: 'exp-1',
+        personas: [null, 'nino-1', 'nino-2'],
+        duracionMin: 90,
+        inicio: '2026-10-15T15:30',
+      },
+      CONTEXTO,
+    );
+    expect(repository.programar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        personas: [null, 'nino-1', 'nino-2'],
+        duracionMin: 90,
+      }),
+    );
+    expect(audit.registrar).toHaveBeenCalledWith(
+      expect.objectContaining({
+        accion: 'CITA_MEDICA_PROGRAMADA',
+        detalles: expect.objectContaining({
+          personas: 3,
+          duracionMin: 90,
+        }) as unknown,
+      }),
+    );
+  });
+
+  it.each([
+    [60, '2026-10-15T16:30'],
+    [90, '2026-10-15T16:00'],
+  ])(
+    'una cita de %i min que termina después de las 17:00 responde 400',
+    async (duracionMin, inicio) => {
+      await expect(
+        service.programar(
+          { expedienteId: 'exp-1', personas: [null], duracionMin, inicio },
+          CONTEXTO,
+        ),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(repository.programar).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     ['en el pasado', '2026-10-13T09:00'],
@@ -129,7 +202,7 @@ describe('ProgramacionCitaService', () => {
   ])('un inicio %s responde 400', async (_caso, inicio) => {
     await expect(
       service.programar(
-        { expedienteId: 'exp-1', ninoId: null, inicio },
+        { expedienteId: 'exp-1', personas: [null], duracionMin: 30, inicio },
         CONTEXTO,
       ),
     ).rejects.toBeInstanceOf(BadRequestException);
@@ -140,7 +213,12 @@ describe('ProgramacionCitaService', () => {
     repository.programar.mockRejectedValue(new HorarioOcupadoError());
     const error = await service
       .programar(
-        { expedienteId: 'exp-1', ninoId: null, inicio: INICIO },
+        {
+          expedienteId: 'exp-1',
+          personas: [null],
+          duracionMin: 30,
+          inicio: INICIO,
+        },
         CONTEXTO,
       )
       .catch((e: unknown) => e);
@@ -159,7 +237,12 @@ describe('ProgramacionCitaService', () => {
       atencionAbierta: false,
     });
     await service.programar(
-      { expedienteId: 'exp-1', ninoId: null, inicio: INICIO },
+      {
+        expedienteId: 'exp-1',
+        personas: [null],
+        duracionMin: 30,
+        inicio: INICIO,
+      },
       CONTEXTO,
     );
     expect(audit.registrar).toHaveBeenCalledTimes(1);
@@ -174,7 +257,12 @@ describe('ProgramacionCitaService', () => {
       redis.get.mockResolvedValue(JSON.stringify(primera));
       await expect(
         service.programar(
-          { expedienteId: 'exp-1', ninoId: null, inicio: INICIO },
+          {
+            expedienteId: 'exp-1',
+            personas: [null],
+            duracionMin: 30,
+            inicio: INICIO,
+          },
           CONTEXTO,
           'clave-12345678',
         ),
@@ -188,7 +276,12 @@ describe('ProgramacionCitaService', () => {
 
     it('la primera vez guarda la respuesta bajo la clave', async () => {
       const respuesta = await service.programar(
-        { expedienteId: 'exp-1', ninoId: null, inicio: INICIO },
+        {
+          expedienteId: 'exp-1',
+          personas: [null],
+          duracionMin: 30,
+          inicio: INICIO,
+        },
         CONTEXTO,
         'clave-12345678',
       );
@@ -202,7 +295,12 @@ describe('ProgramacionCitaService', () => {
     it('una clave con formato inválido responde 400', async () => {
       await expect(
         service.programar(
-          { expedienteId: 'exp-1', ninoId: null, inicio: INICIO },
+          {
+            expedienteId: 'exp-1',
+            personas: [null],
+            duracionMin: 30,
+            inicio: INICIO,
+          },
           CONTEXTO,
           'x',
         ),

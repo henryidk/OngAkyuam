@@ -2,8 +2,8 @@ import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
   fechaCalendarioGT,
   finDiaGT,
-  horaGT,
   inicioDiaGT,
+  limiteAgendaMedica,
   lunesDeSemanaGT,
   sumarDiasGT,
 } from '@akyuam/shared';
@@ -18,7 +18,11 @@ import type {
 import { MENSAJE_RANGO_DISPONIBILIDAD } from '../compartido/mensajes';
 import { RELOJ, type IReloj } from '../../common/reloj';
 import { derivarEstadoCita } from '../dominio/estado-cita';
-import { diasHabilesDesde, horasLibres } from '../dominio/horario';
+import {
+  bloquesOcupadosPorDia,
+  diasHabilesEntre,
+  horasLibres,
+} from '../dominio/horario';
 import {
   LECTOR_CITAS_MEDICAS,
   LECTOR_PENDIENTES_MEDICA,
@@ -84,29 +88,36 @@ export class AgendaMedicaService {
     return { fecha, citas, sinProxima };
   }
 
-  /** Horas libres de los próximos días hábiles. Nunca dice quién ocupa cada hora. */
+  /**
+   * Horas de cada día hábil, de `query.desde` hasta el límite de agenda (un mes), en las que cabe
+   * una cita de `query.duracion`. Nunca dice quién ocupa cada hora.
+   */
   async disponibilidad(
     query: DisponibilidadMedicaQuery,
   ): Promise<DisponibilidadDiaDto[]> {
     const ahora = this.reloj.ahora();
-    if (query.desde < fechaCalendarioGT(ahora)) {
+    const hoy = fechaCalendarioGT(ahora);
+    const limite = limiteAgendaMedica(hoy);
+    if (query.desde < hoy || query.desde > limite) {
       throw new BadRequestException(MENSAJE_RANGO_DISPONIBILIDAD);
     }
-    const fechas = diasHabilesDesde(query.desde, query.dias);
+    const fechas = diasHabilesEntre(query.desde, limite);
+    if (fechas.length === 0) {
+      return [];
+    }
     const ocupadas = await this.citasRepository.listarOcupadas(
       inicioDiaGT(fechas[0]),
       finDiaGT(fechas[fechas.length - 1]),
     );
-    const porDia = new Map<string, Set<string>>();
-    for (const inicio of ocupadas) {
-      const dia = fechaCalendarioGT(inicio);
-      const horas = porDia.get(dia) ?? new Set<string>();
-      horas.add(horaGT(inicio));
-      porDia.set(dia, horas);
-    }
+    const porDia = bloquesOcupadosPorDia(ocupadas);
     return fechas.map((dia) => ({
       fecha: dia,
-      libres: horasLibres(dia, porDia.get(dia) ?? new Set(), ahora),
+      libres: horasLibres(
+        dia,
+        porDia.get(dia) ?? new Set(),
+        ahora,
+        query.duracion,
+      ),
     }));
   }
 

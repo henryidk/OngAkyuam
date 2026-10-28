@@ -1,10 +1,9 @@
-import { useCallback, useRef, useState } from 'react'
-import { NOMBRE_DOCUMENTO_MEDICO_MAX, type DocumentoMedicoSubidoDto, type TipoDocumentoMedico } from '@akyuam/shared'
+import { useCallback, useState } from 'react'
+import { NOMBRE_DOCUMENTO_MEDICO_MAX, type DocumentoMedicoSubidoDto } from '@akyuam/shared'
 import { useToast } from '../../../components/ui/Toast'
-import { esImagen } from '../../../lib/documentos/archivoDocumento'
 import { useColaSubida, type ItemCola } from '../../../lib/documentos/useColaSubida'
 import { extraerMensajeError } from '../../../lib/errors'
-import { subirDocumentoPendiente, cambiarTipoPendiente, eliminarPendiente } from '../api/medica.api'
+import { subirDocumentoPendiente, eliminarPendiente } from '../api/medica.api'
 
 interface DestinoMedico {
   lote: string
@@ -22,13 +21,6 @@ export function useDocumentosConsulta(atencionId: string | null) {
   const { mostrar } = useToast()
   // Un lote por formulario: no cambia entre renders ni al reintentar el guardado.
   const [lote] = useState(() => crypto.randomUUID())
-  const [tipos, setTipos] = useState<Record<string, TipoDocumentoMedico>>({})
-  // `subir` lee el tipo por ref: el usuario puede cambiarlo mientras el archivo espera turno.
-  const tiposRef = useRef(tipos)
-  const fijarTipos = useCallback((cambios: Record<string, TipoDocumentoMedico>) => {
-    tiposRef.current = { ...tiposRef.current, ...cambios }
-    setTipos(tiposRef.current)
-  }, [])
 
   const subir = useCallback(
     (item: ItemDocumento, { destino, signal, onProgreso }: { destino: DestinoMedico; signal: AbortSignal; onProgreso: (p: number) => void }) =>
@@ -37,7 +29,6 @@ export function useDocumentosConsulta(atencionId: string | null) {
         {
           lote: destino.lote,
           atencionId: destino.atencionId,
-          tipo: tiposRef.current[item.id] ?? 'OTRO',
           nombreVisible: item.nombreVisible,
         },
         { signal, onProgreso },
@@ -50,28 +41,10 @@ export function useDocumentosConsulta(atencionId: string | null) {
   const adjuntar = useCallback(
     (archivos: File[]) => {
       if (!atencionId || archivos.length === 0) return
-      const nuevos = agregar(archivos)
-      const tiposNuevos: Record<string, TipoDocumentoMedico> = {}
-      for (const item of nuevos) tiposNuevos[item.id] = esImagen(item.archivo.type) ? 'IMAGEN' : 'RESULTADO_LABORATORIO'
-      fijarTipos(tiposNuevos)
+      agregar(archivos)
       void iniciar({ lote, atencionId })
     },
-    [agregar, iniciar, fijarTipos, lote, atencionId],
-  )
-
-  const cambiarTipo = useCallback(
-    async (item: ItemDocumento, tipo: TipoDocumentoMedico) => {
-      const anterior = tiposRef.current[item.id]
-      fijarTipos({ [item.id]: tipo })
-      if (item.estado !== 'listo' || !item.resultado) return
-      try {
-        await cambiarTipoPendiente(item.resultado.id, tipo)
-      } catch (err) {
-        fijarTipos({ [item.id]: anterior })
-        mostrar(extraerMensajeError(err), 'error')
-      }
-    },
-    [fijarTipos, mostrar],
+    [agregar, iniciar, lote, atencionId],
   )
 
   const eliminar = useCallback(
@@ -93,9 +66,7 @@ export function useDocumentosConsulta(atencionId: string | null) {
   return {
     lote,
     items,
-    tipos,
     adjuntar,
-    cambiarTipo,
     eliminar,
     reintentar,
     subiendo: items.some((item) => item.estado === 'pendiente' || item.estado === 'subiendo'),

@@ -1,4 +1,4 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { fechaCalendarioGT, horaGT, etiquetaAtencion } from '@akyuam/shared';
 import type {
   CitaMedicaProgramadaDto,
@@ -10,7 +10,6 @@ import { AccesoMedicaService } from '../compartido/acceso-medica.service';
 import { eventoAuditoria } from '../compartido/auditoria';
 import { traducirErrorMedica } from '../compartido/errores-http';
 import { IdempotenciaMedica } from '../compartido/idempotencia';
-import { MENSAJE_PERSONA_AJENA } from '../compartido/mensajes';
 import { RELOJ, type IReloj } from '../../common/reloj';
 import { exigirInicioValido } from '../compartido/validar-horario';
 import {
@@ -53,21 +52,16 @@ export class ProgramacionCitaService {
       ? await this.acceso.exigirReferencia(datos.referidoId)
       : await this.acceso.exigirExpediente(datos.expedienteId!);
     const ahora = this.reloj.ahora();
-    const inicio = exigirInicioValido(datos.inicio, ahora);
-    if (
-      !(await this.acceso.personaDelExpediente(
-        datos.ninoId,
-        expediente.expedienteId,
-      ))
-    ) {
-      throw new BadRequestException(MENSAJE_PERSONA_AJENA);
-    }
+    const inicio = exigirInicioValido(datos.inicio, ahora, datos.duracionMin);
 
+    // Que los hijos/as sean del expediente y la regla de la primera consulta (usuaria y todos
+    // sus hijos/as) se validan dentro de la transacción, donde se sabe si la cita abre la atención.
     const programada = await this.citasRepository
       .programar({
         expedienteId: expediente.expedienteId,
         referidoId: datos.referidoId ?? null,
-        ninoId: datos.ninoId,
+        personas: datos.personas,
+        duracionMin: datos.duracionMin,
         inicio,
         creadoPorId: contexto.usuarioId,
         hoy: fechaCalendarioGT(ahora),
@@ -95,6 +89,8 @@ export class ProgramacionCitaService {
         detalles: {
           expedienteId: expediente.expedienteId,
           atencionId: programada.atencionId,
+          personas: datos.personas.length,
+          duracionMin: datos.duracionMin,
         },
       }),
     );

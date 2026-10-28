@@ -307,7 +307,7 @@ async function crearCaso(
       const creada = await tx.citaMedica.create({
         data: {
           atencionId: atencion.id,
-          ninoId,
+          personas: { create: [{ ninoId }] },
           inicio,
           estado: cita.estado,
           creadoPorId: medicaId,

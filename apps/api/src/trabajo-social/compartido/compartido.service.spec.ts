@@ -259,7 +259,7 @@ describe('CompartidoService', () => {
       '05-2026 · En atención',
       'Consultas: 01/10/2026, 07/10/2026',
       'Próxima consulta: 16/10/2026 10:00',
-      'Signos vitales (07/10/2026): Presión arterial 120/80 mmHg · Frecuencia cardíaca 78 latidos/min · Temperatura 36.5 °C · Oxígeno en sangre 98 % · Peso 60 kg · Talla 1.55 m · Índice de masa corporal 25',
+      'Signos vitales (07/10/2026): Presión arterial 120/80 mmHg · Frecuencia cardíaca 78 lat/min · Temperatura 36.5 °C · Oxígeno en sangre 98 % · Peso 60 kg · Talla 1.55 m · Índice de masa corporal 25',
     ]);
   });
 

@@ -17,7 +17,7 @@ describe('VistaMedicaJuridicoService', () => {
   beforeEach(() => {
     reader = {
       paraJuridico: jest.fn().mockResolvedValue([]),
-      constanciaParaJuridico: jest.fn().mockResolvedValue(null),
+      documentoParaJuridico: jest.fn().mockResolvedValue(null),
       paraPsicologia: jest.fn(),
     };
     storage = {
@@ -32,18 +32,18 @@ describe('VistaMedicaJuridicoService', () => {
     service = new VistaMedicaJuridicoService(reader, storage, audit);
   });
 
-  it('una constancia no compartida (o inexistente) responde 403 sin firmar ni auditar', async () => {
+  it('un documento no compartido (o inexistente) responde 403 sin firmar ni auditar', async () => {
     await expect(
       service.url('u-1', 'd-1', { modo: 'vista' }, CONTEXTO),
     ).rejects.toBeInstanceOf(ForbiddenException);
-    expect(reader.constanciaParaJuridico).toHaveBeenCalledWith('u-1', 'd-1');
+    expect(reader.documentoParaJuridico).toHaveBeenCalledWith('u-1', 'd-1');
     expect(storage.generarUrlVistaPrevia).not.toHaveBeenCalled();
     expect(storage.generarUrlDescarga).not.toHaveBeenCalled();
     expect(audit.registrar).not.toHaveBeenCalled();
   });
 
-  it('firma la constancia compartida y audita DOCUMENTO_MEDICO_VISTO_POR_JURIDICO solo con ids', async () => {
-    reader.constanciaParaJuridico.mockResolvedValue({
+  it('firma el documento compartido y audita DOCUMENTO_MEDICO_VISTO_POR_JURIDICO solo con ids', async () => {
+    reader.documentoParaJuridico.mockResolvedValue({
       documentoId: 'd-1',
       expedienteId: 'exp-1',
       claveObjeto: 'medica/exp-1/a-1/x',

@@ -4,6 +4,9 @@ import {
   CitaNoDisponibleError,
   HorarioOcupadoError,
   LoteVencidoError,
+  PersonaAjenaError,
+  PersonasPrimeraConsultaError,
+  PersonasVisitaIncompletaError,
   ReferenciaYaAtendidaError,
   SinReferenciaPendienteError,
   VersionCambioError,
@@ -12,12 +15,18 @@ import {
   MENSAJE_ATENCION_NO_ACTIVA,
   MENSAJE_HORARIO_OCUPADO,
   MENSAJE_LOTE_VENCIDO,
+  MENSAJE_PERSONA_AJENA,
+  MENSAJE_PERSONAS_PRIMERA_CONSULTA,
+  MENSAJE_PERSONAS_VISITA_INCOMPLETA,
   MENSAJE_REFERENCIA_YA_ATENDIDA,
   MENSAJE_SIN_REFERENCIA_PENDIENTE,
 } from './mensajes';
 
 /** Código del 409 de horario ocupado: el frontend lo reconoce para recargar la disponibilidad. */
 export const CODIGO_HORARIO_OCUPADO = 'HORARIO_OCUPADO';
+
+/** Código del 409 de la primera consulta incompleta: el frontend recarga las personas. */
+export const CODIGO_PERSONAS_PRIMERA_CONSULTA = 'PERSONAS_PRIMERA_CONSULTA';
 
 /**
  * Traduce a HTTP, en un solo lugar, los errores de dominio que lanzan los repositorios. Los
@@ -34,6 +43,18 @@ export function traducirErrorMedica(
       message: MENSAJE_HORARIO_OCUPADO,
       codigo: CODIGO_HORARIO_OCUPADO,
     });
+  }
+  if (error instanceof PersonasPrimeraConsultaError) {
+    throw new ConflictException({
+      message: MENSAJE_PERSONAS_PRIMERA_CONSULTA,
+      codigo: CODIGO_PERSONAS_PRIMERA_CONSULTA,
+    });
+  }
+  if (error instanceof PersonaAjenaError) {
+    throw new BadRequestException(MENSAJE_PERSONA_AJENA);
+  }
+  if (error instanceof PersonasVisitaIncompletaError) {
+    throw new BadRequestException(MENSAJE_PERSONAS_VISITA_INCOMPLETA);
   }
   if (error instanceof SinReferenciaPendienteError) {
     throw new ConflictException(MENSAJE_SIN_REFERENCIA_PENDIENTE);

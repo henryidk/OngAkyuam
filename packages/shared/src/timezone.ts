@@ -44,6 +44,14 @@ export function sumarDiasGT(fechaIso: string, dias: number): string {
 }
 
 /**
+ * Suma meses de calendario a una fecha "YYYY-MM-DD". Si el día no existe en el mes destino, Luxon
+ * lo ajusta al último día de ese mes (31 de enero + 1 mes → 28 o 29 de febrero).
+ */
+export function sumarMesesGT(fechaIso: string, meses: number): string {
+  return DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).plus({ months: meses }).toISODate()!
+}
+
+/**
  * Días calendario completos transcurridos en Guatemala desde un instante hasta hoy — el "lleva
  * N días esperando" de las colas de trabajo. Se compara día contra día (no horas entre
  * instantes) para que una referencia de ayer a las 23:00 cuente como 1 y no como 0.

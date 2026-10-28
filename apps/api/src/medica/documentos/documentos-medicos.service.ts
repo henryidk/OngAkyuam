@@ -12,7 +12,6 @@ import type {
   DocumentoMedicoSubidoDto,
   SubirDocumentoMedicoInput,
   SubirDocumentoMedicoPendienteInput,
-  TipoDocumentoMedico,
   UrlDocumentoMedicoQuery,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
@@ -93,20 +92,10 @@ export class DocumentosMedicosService {
         detalles: {
           expedienteId: atencion.expedienteId,
           atencionId: atencion.atencionId,
-          tipo: subido.tipo,
         },
       }),
     );
     return subido;
-  }
-
-  async cambiarTipoPendiente(
-    id: string,
-    tipo: TipoDocumentoMedico,
-    contexto: ContextoAuditoria,
-  ): Promise<DocumentoMedicoSubidoDto> {
-    await this.exigirPendiente(id, contexto.usuarioId);
-    return this.documentosRepository.cambiarTipoPendiente(id, tipo);
   }
 
   async eliminarPendiente(
@@ -154,7 +143,6 @@ export class DocumentosMedicosService {
           expedienteId: consulta.expedienteId,
           atencionId: consulta.atencionId,
           consultaId,
-          tipo: subido.tipo,
         },
       }),
     );
@@ -247,7 +235,6 @@ export class DocumentosMedicosService {
     );
     try {
       return await crear({
-        tipo: datos.tipo,
         nombreVisible: resolverNombreVisible(
           datos.nombreVisible ?? undefined,
           archivo.originalname,

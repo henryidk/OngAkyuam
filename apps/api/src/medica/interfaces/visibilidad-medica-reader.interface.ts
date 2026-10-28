@@ -5,8 +5,8 @@ import type {
 
 export const VISIBILIDAD_MEDICA_READER = Symbol('VISIBILIDAD_MEDICA_READER');
 
-/** Lo mínimo para firmar la URL de una constancia: nunca se devuelve al navegador. */
-export interface ConstanciaMedicaParaFirmar {
+/** Lo mínimo para firmar la URL de un documento: nunca se devuelve al navegador. */
+export interface DocumentoMedicoParaFirmar {
   documentoId: string;
   expedienteId: string;
   claveObjeto: string;
@@ -21,13 +21,13 @@ export interface ConstanciaMedicaParaFirmar {
  * para Jurídico no aparece en un expediente que Trabajo Social no refirió a Jurídico.
  */
 export interface IVisibilidadMedicaReader {
-  /** Fechas de consulta y constancias de las atenciones con `visibleJuridico`. */
+  /** Fechas de consulta y documentos de las atenciones con `visibleJuridico`. */
   paraJuridico(usuariaId: string): Promise<VistaMedicaParaJuridico[]>;
-  /** La constancia, solo si es `CONSTANCIA`, de esa usuaria y de una atención visible para Jurídico. */
-  constanciaParaJuridico(
+  /** El documento, solo si es de esa usuaria y de una atención visible para Jurídico. */
+  documentoParaJuridico(
     usuariaId: string,
     documentoId: string,
-  ): Promise<ConstanciaMedicaParaFirmar | null>;
+  ): Promise<DocumentoMedicoParaFirmar | null>;
   /** Fechas de consulta de las atenciones con `visiblePsicologia`. */
   paraPsicologia(usuariaId: string): Promise<VistaMedicaParaPsicologia[]>;
 }

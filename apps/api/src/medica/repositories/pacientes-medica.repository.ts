@@ -13,6 +13,7 @@ import type {
   AtencionMedicaResumenDto,
   FichaPacienteMedicaDto,
   FiltroPacientesMedica,
+  PacienteBuscadaMedicaDto,
   PacientesMedicaPaginaDto,
   VistaPsicologicaParaMedicaDto,
 } from '@akyuam/shared';
@@ -22,7 +23,6 @@ import {
   SELECT_PERSONA,
   edad,
   nombreCompleto,
-  personaAtendida,
   personasDelExpediente,
 } from '../../psicologia/repositories/personas';
 import {
@@ -30,11 +30,20 @@ import {
   situacionPaciente,
 } from '../dominio/reglas-atencion';
 import type {
+  BuscarProgramablesParams,
   IPacientesMedicaRepository,
   ListarPacientesMedicaParams,
 } from '../interfaces/pacientes-medica-repository.interface';
 import { EXPEDIENTE_REFERIDO_A_MEDICA } from './acceso-medica.repository';
-import { SELECT_SIGNOS, procedencia, signosDeFila } from './mapeo';
+import { derivarEstadoCita } from '../dominio/estado-cita';
+import { horaFin } from '../dominio/horario';
+import {
+  SELECT_PERSONAS_CITA,
+  SELECT_SIGNOS,
+  personasDeCita,
+  procedencia,
+  signosDeFila,
+} from './mapeo';
 
 type FilaPacienteRow = {
   usuariaId: string;
@@ -80,7 +89,9 @@ const ATENCION_ACTIVA_SQL = Prisma.sql`
   )`;
 
 /** Una fila por usuaria con algún expediente referido a Medicina. */
-function cteLista(params: ListarPacientesMedicaParams): Prisma.Sql {
+function cteLista(
+  params: Pick<ListarPacientesMedicaParams, 'busqueda' | 'ahora'>,
+): Prisma.Sql {
   return Prisma.sql`
     WITH lista AS (
       SELECT
@@ -247,6 +258,64 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
     };
   }
 
+  async buscarProgramables(
+    params: BuscarProgramablesParams,
+  ): Promise<PacienteBuscadaMedicaDto[]> {
+    if (params.situaciones.length === 0) {
+      return [];
+    }
+    const { busqueda } = params;
+    let orden: Prisma.Sql;
+    if (params.orden === 'referencia') {
+      orden = Prisma.sql`"referidaEl" ASC NULLS LAST, "nombreOrden", "usuariaId"`;
+    } else if (busqueda?.tipo === 'nombre') {
+      orden = Prisma.sql`word_similarity(${busqueda.valor}, "nombreOrden") DESC, "nombreOrden", "usuariaId"`;
+    } else {
+      orden = Prisma.sql`"nombreOrden", "usuariaId"`;
+    }
+
+    const filas = await this.prisma.$queryRaw<
+      (FilaPacienteRow & { referidaEl: Date | null })[]
+    >(Prisma.sql`
+      ${cteLista(params)}
+      SELECT * FROM (
+        SELECT lista.*, (
+          -- La referencia pendiente más antigua de la usuaria (misma regla que REFERENCIA_PENDIENTE_SQL).
+          SELECT min(r."createdAt") FROM "ReferidoArea" r
+          JOIN "Expediente" e ON e.id = r."expedienteId"
+          WHERE e."usuariaId" = lista."usuariaId" AND r.area = 'MEDICA'
+            AND NOT EXISTS (
+              SELECT 1 FROM "AtencionMedica" a
+              WHERE a."expedienteId" = e.id
+                AND (a.estado = 'ACTIVA' OR a."createdAt" >= r."createdAt")
+            )
+        ) AS "referidaEl"
+        FROM lista
+      ) lista
+      WHERE situacion IN (${Prisma.join([...params.situaciones])})
+      ORDER BY ${orden}
+      LIMIT ${params.limite}
+    `);
+
+    return filas.map((fila) => ({
+      usuariaId: fila.usuariaId,
+      nombreCompleto: nombreCompleto(fila),
+      expedienteNumero: fila.expedienteNumero,
+      situacion: fila.situacion as PacienteBuscadaMedicaDto['situacion'],
+      hijos: fila.hijos,
+      proximaCita: fila.proximaCita
+        ? {
+            fecha: fechaCalendarioGT(fila.proximaCita),
+            hora: horaGT(fila.proximaCita),
+          }
+        : null,
+      referidaEl:
+        fila.situacion === 'POR_AGENDAR' && fila.referidaEl
+          ? fila.referidaEl.toISOString()
+          : null,
+    }));
+  }
+
   async ficha(
     usuariaId: string,
     ahora: Date,
@@ -301,8 +370,10 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
     const SELECT_CITA_BREVE = {
       id: true,
       version: true,
+      estado: true,
       inicio: true,
-      nino: { select: { id: true, ...SELECT_PERSONA } },
+      duracionMin: true,
+      personas: SELECT_PERSONAS_CITA,
     } as const;
 
     const [
@@ -313,6 +384,8 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
       totalConsultas,
       totalDocumentos,
       psicologia,
+      ultimasPorPersona,
+      totalesPorPersona,
     ] = await Promise.all([
       this.prisma.consultaMedica.findFirst({
         where: delaUsuaria,
@@ -324,15 +397,23 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
         select: SELECT_CITA_BREVE,
         orderBy: { inicio: 'asc' },
       }),
-      this.prisma.citaMedica.findFirst({
-        where: {
-          ...delaUsuaria,
-          estado: 'PROGRAMADA',
-          inicio: { lte: sinRegistrarAntesDe },
-        },
-        select: SELECT_CITA_BREVE,
-        orderBy: { inicio: 'asc' },
-      }),
+      // Las más largas aún pueden estar en curso: se filtran con su propia duración.
+      this.prisma.citaMedica
+        .findMany({
+          where: {
+            ...delaUsuaria,
+            estado: 'PROGRAMADA',
+            inicio: { lte: sinRegistrarAntesDe },
+          },
+          select: SELECT_CITA_BREVE,
+          orderBy: { inicio: 'asc' },
+        })
+        .then(
+          (citas) =>
+            citas.find(
+              (cita) => derivarEstadoCita(cita, ahora) === 'SIN_REGISTRAR',
+            ) ?? null,
+        ),
       // Solo de la usuaria: los signos de sus hijos/as no se comparan con los de ella.
       this.prisma.consultaMedica.findMany({
         where: { ...delaUsuaria, ninoId: null },
@@ -343,6 +424,18 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
       this.prisma.consultaMedica.count({ where: delaUsuaria }),
       this.prisma.documentoMedico.count({ where: { consulta: delaUsuaria } }),
       this.vistaPsicologica(usuariaId),
+      // La más reciente de cada persona (usuaria e hijos/as).
+      this.prisma.consultaMedica.findMany({
+        where: delaUsuaria,
+        distinct: ['ninoId'],
+        select: { id: true, ninoId: true, fechaHora: true, diagnostico: true },
+        orderBy: [{ fechaHora: 'desc' }, { id: 'desc' }],
+      }),
+      this.prisma.consultaMedica.groupBy({
+        by: ['ninoId'],
+        where: delaUsuaria,
+        _count: { _all: true },
+      }),
     ]);
 
     // Situación y expediente de trabajo, sumando todos los expedientes referidos.
@@ -401,7 +494,9 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
             version: cita.version,
             fecha: fechaCalendarioGT(cita.inicio),
             hora: horaGT(cita.inicio),
-            persona: personaAtendida(usuaria, cita.nino),
+            horaFin: horaFin(horaGT(cita.inicio), cita.duracionMin),
+            duracionMin: cita.duracionMin,
+            personas: personasDeCita(usuaria, cita.personas),
           }
         : null;
 
@@ -447,6 +542,18 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
             diagnostico: ultimaConsulta.diagnostico,
           }
         : null,
+      consultasPorPersona: ultimasPorPersona.map((consulta) => ({
+        ninoId: consulta.ninoId,
+        total:
+          totalesPorPersona.find((t) => t.ninoId === consulta.ninoId)?._count
+            ._all ?? 0,
+        ultima: {
+          id: consulta.id,
+          fecha: fechaCalendarioGT(consulta.fechaHora),
+          hora: horaGT(consulta.fechaHora),
+          diagnostico: consulta.diagnostico,
+        },
+      })),
       proximaCita: citaBreve(proximaCita),
       citaSinRegistrar: citaBreve(citaSinRegistrar),
       signosVitales: actual

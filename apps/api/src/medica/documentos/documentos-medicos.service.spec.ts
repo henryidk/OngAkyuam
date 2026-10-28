@@ -29,7 +29,6 @@ describe('DocumentosMedicosService', () => {
       crearPendiente: jest.fn(),
       crearEnConsulta: jest.fn(),
       buscarPendiente: jest.fn().mockResolvedValue(null),
-      cambiarTipoPendiente: jest.fn(),
       eliminarPendiente: jest.fn(),
       listarPorUsuaria: jest.fn(),
     } as unknown as jest.Mocked<IDocumentosMedicosRepository>;
@@ -121,7 +120,6 @@ describe('DocumentosMedicosService', () => {
           {
             atencionId: 'a-1',
             lote: 'lote-1',
-            tipo: 'RESULTADO_LABORATORIO',
           } as never,
           CONTEXTO,
         ),
@@ -145,7 +143,7 @@ describe('DocumentosMedicosService', () => {
         service.subirAConsulta(
           'k-1',
           ARCHIVO,
-          { tipo: 'RESULTADO_LABORATORIO' } as never,
+          { nombreVisible: 'resultado hemograma' },
           CONTEXTO,
         ),
       ).rejects.toThrow('falla');

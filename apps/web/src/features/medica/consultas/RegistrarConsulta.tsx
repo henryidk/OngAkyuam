@@ -1,17 +1,14 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  DIAGNOSTICO_MEDICO_MAX,
-  DIAS_PROXIMA_CONSULTA,
-  HORARIO_MEDICINA,
-  MOTIVO_CONSULTA_MEDICA_MAX,
-  PLAN_TRATAMIENTO_MAX,
-  RECETA_LABORATORIOS_MAX,
+  DURACION_CITA_MEDICA_MIN,
+  ETIQUETAS_DURACION_CITA_MEDICA,
   formatFechaGT,
   hoyGT,
   registrarConsultaMedicaSchema,
   type CampoSignoFormulario,
   type ContextoConsultaMedicaDto,
+  type DuracionCitaMedica,
   type RegistrarConsultaMedicaInput,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
@@ -21,24 +18,33 @@ import { useToast } from '../../../components/ui/Toast'
 import { extraerMensajeError } from '../../../lib/errors'
 import { pedirConfirmacionSalida, registrarGuardiaSalida } from '../../../lib/guardiaSalida'
 import { useRecurso } from '../../../lib/useRecurso'
-import { esConflictoHorario } from '../compartido/useHorario'
-import SelectorPersona from '../compartido/SelectorPersona'
+import { esConflictoHorario, MENSAJE_HORARIO_TOMADO } from '../compartido/useHorario'
+import SelectorPersonasCita from '../compartido/SelectorPersonasCita'
 import { obtenerContextoConsulta, registrarConsulta } from '../api/medica.api'
 import CodigoAtencion from '../compartido/CodigoAtencion'
 import { useContextoMedica } from '../compartido/contexto'
-import { CLASE_CAMPO, CLASE_SECCION, CLASE_TARJETA } from '../compartido/estilos'
-import { diasHabilesSiguientes, fechaCorta, fechaLarga } from '../compartido/fechas'
-import { clavePersona, primerNombre } from '../compartido/personas'
+import { CLASE_TARJETA } from '../compartido/estilos'
+import { fechaCorta, fechaLarga, horaMasMinutos } from '../compartido/fechas'
+import { clavePersona, listaPrimerosNombres, primerNombre } from '../compartido/personas'
 import { RUTAS_MEDICA, type OrigenConsulta } from '../rutas'
-import CamposSignos from './CamposSignos'
-import ConsultasAnteriores from './ConsultasAnteriores'
-import DocumentosConsulta from './DocumentosConsulta'
-import { useDocumentosConsulta } from './useDocumentosConsulta'
-import { leerSignos, signosVacios, type ValoresSignos } from './signosFormulario'
+import ModalProximaConsulta, { type ProximaElegida } from './ModalProximaConsulta'
+import PanelPersona from './PanelPersona'
+import PestanasPersonas, { type EstadoPestana } from './PestanasPersonas'
+import {
+  SIN_DOCUMENTOS,
+  estadoInicial,
+  pendienteDe,
+  tieneCambios,
+  type EstadoPersona,
+  type ResumenDocumentos,
+} from './registroVisita'
+import { leerSignos } from './signosFormulario'
 
 /**
  * Registrar consulta: se abre desde una cita (`?cita=`) o, de forma excepcional, sin cita desde la
- * ficha (`?usuaria=`). `?origen=` decide a dónde se vuelve al guardar o cancelar.
+ * ficha (`?usuaria=`). `?origen=` decide a dónde se vuelve al guardar o cancelar. Una visita puede
+ * ser de varias personas (la usuaria y sus hijos/as): cada una tiene su pestaña y su propio
+ * registro, y se guardan todas juntas.
  */
 export default function RegistrarConsulta() {
   const [params] = useSearchParams()
@@ -68,43 +74,60 @@ export default function RegistrarConsulta() {
   return <FormularioConsulta key={`${contexto.atencionId}:${contexto.cita?.id ?? ''}`} contexto={contexto} origen={origen} />
 }
 
-type Pestana = 'actual' | 'anteriores'
-
 function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMedicaDto; origen: OrigenConsulta }) {
   const navigate = useNavigate()
   const { mostrar } = useToast()
   const { recargarContadores } = useContextoMedica()
   const hoy = hoyGT()
+  const cita = contexto.cita
 
-  // Con cita, la persona es la de la cita y no se cambia; sin cita se elige (por defecto la usuaria).
-  const [ninoId, setNinoId] = useState<string | null>(contexto.cita ? contexto.cita.ninoId : null)
-  const persona = contexto.personas.find((una) => una.ninoId === ninoId) ?? contexto.personas[0]
-  const esHijo = persona.ninoId !== null
+  // Con cita: las personas de la cita que aún no tienen su consulta, todas obligatorias (la visita
+  // no queda a medias). Sin cita: la médica marca a quiénes atiende (por defecto la usuaria).
+  const [marcadas, setMarcadas] = useState<(string | null)[]>([null])
+  const elegidas = contexto.personas.filter((persona) =>
+    cita ? cita.personas.includes(persona.ninoId) : marcadas.includes(persona.ninoId),
+  )
+  const personas = elegidas.length > 0 ? elegidas : contexto.personas.slice(0, 1)
+  // Sin cita, quien se desmarca conserva lo escrito y sus subidas por si se vuelve a marcar.
+  const montadas = cita ? personas : contexto.personas
 
-  // Punto de partida del formulario: se fija al abrir y sirve para saber si hubo cambios.
-  const [signosIniciales] = useState(() => signosVacios(persona.ultimaTallaM))
-  const [signos, setSignos] = useState<ValoresSignos>(signosIniciales)
-  const [motivo, setMotivo] = useState('')
-  const [diagnostico, setDiagnostico] = useState('')
-  const [plan, setPlan] = useState('')
-  const [receta, setReceta] = useState('')
-  const [proximaFecha, setProximaFecha] = useState('')
-  const [proximaHora, setProximaHora] = useState('09:00')
-  const [pestana, setPestana] = useState<Pestana>('actual')
+  // Punto de partida de cada persona: se fija al abrir y sirve para saber si hubo cambios.
+  const [inicio] = useState(() =>
+    Object.fromEntries(contexto.personas.map((persona) => [clavePersona(persona), estadoInicial(persona)])),
+  )
+  const [estados, setEstados] = useState<Record<string, EstadoPersona>>(inicio)
+  const [documentos, setDocumentos] = useState<Record<string, ResumenDocumentos>>({})
+  const [activa, setActiva] = useState(() => clavePersona(personas[0]))
+  const claveActiva = personas.some((persona) => clavePersona(persona) === activa) ? activa : clavePersona(personas[0])
+
+  const duracion = (cita?.duracionMin ?? DURACION_CITA_MEDICA_MIN) as DuracionCitaMedica
+  const [proxima, setProxima] = useState<ProximaElegida | null>(null)
+  const [modalProxima, setModalProxima] = useState(false)
+  // Por qué se reabrió el modal: la hora elegida se ocupó mientras se llenaba la consulta.
+  const [avisoProxima, setAvisoProxima] = useState<string | null>(null)
   const [intentado, setIntentado] = useState(false)
   const [errorGuardar, setErrorGuardar] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [salidaPendiente, setSalidaPendiente] = useState<(() => void) | null>(null)
-  const documentos = useDocumentosConsulta(contexto.atencionId)
-  // Se calcula una vez al abrir: si la pantalla queda abierta de un día a otro, no cambia bajo el cursor.
-  const [diasProxima] = useState(() => diasHabilesSiguientes(DIAS_PROXIMA_CONSULTA))
-  // Una clave por contenido: un doble clic o un reintento tras un corte de red no registra dos consultas.
+  // Una clave por contenido: un doble clic o un reintento tras un corte de red no registra dos veces.
   const idempotencia = useRef<{ firma: string; clave: string } | null>(null)
 
-  const hayCambios =
-    [motivo, diagnostico, plan, receta, proximaFecha].some((texto) => texto.trim() !== '') ||
-    documentos.items.length > 0 ||
-    (Object.keys(signos) as CampoSignoFormulario[]).some((clave) => signos[clave] !== signosIniciales[clave])
+  const documentosDe = (clave: string) => documentos[clave] ?? SIN_DOCUMENTOS
+  const cambiosDe = (clave: string) => tieneCambios(estados[clave], inicio[clave], documentosDe(clave).cantidad)
+  const hayCambios = proxima !== null || montadas.some((persona) => cambiosDe(clavePersona(persona)))
+
+  const estadosPestana: Record<string, EstadoPestana> = {}
+  for (const persona of personas) {
+    const clave = clavePersona(persona)
+    estadosPestana[clave] =
+      pendienteDe(estados[clave], documentosDe(clave)) === null
+        ? 'lista'
+        : intentado
+          ? 'falta'
+          : cambiosDe(clave)
+            ? 'en-curso'
+            : 'vacia'
+  }
 
   useEffect(() => {
     if (!hayCambios) return
@@ -117,37 +140,64 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
     }
   }, [hayCambios])
 
-  const rutaVolver = origen === 'ficha' ? RUTAS_MEDICA.paciente(contexto.usuariaId) : RUTAS_MEDICA.consultas()
+  const reportarDocumentos = useCallback((clave: string, resumen: ResumenDocumentos) => {
+    setDocumentos((actuales) => ({ ...actuales, [clave]: resumen }))
+  }, [])
 
-  function elegirPersona(nuevo: string | null) {
-    const anterior = persona
-    const siguiente = contexto.personas.find((una) => una.ninoId === nuevo)
-    setNinoId(nuevo)
-    // La talla precargada es la de la persona: si no se tocó, se cambia por la de la nueva.
-    if (siguiente && signos.tallaM === (anterior.ultimaTallaM === null ? '' : String(anterior.ultimaTallaM))) {
-      setSignos((actuales) => ({ ...actuales, tallaM: siguiente.ultimaTallaM === null ? '' : String(siguiente.ultimaTallaM) }))
-    }
+  function cambiar(clave: string, cambios: Partial<Omit<EstadoPersona, 'signos'>>) {
+    setEstados((actuales) => ({ ...actuales, [clave]: { ...actuales[clave], ...cambios } }))
   }
+
+  function cambiarSigno(clave: string, campo: CampoSignoFormulario, valor: string) {
+    setEstados((actuales) => ({
+      ...actuales,
+      [clave]: { ...actuales[clave], signos: { ...actuales[clave].signos, [campo]: valor } },
+    }))
+  }
+
+  function irA(clave: string) {
+    setActiva(clave)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const rutaVolver = origen === 'ficha' ? RUTAS_MEDICA.paciente(contexto.usuariaId) : RUTAS_MEDICA.consultas()
 
   async function guardar() {
     setIntentado(true)
     setErrorGuardar(null)
-    if (documentos.subiendo) return setErrorGuardar('Espera a que terminen de subir los documentos.')
-    if (documentos.conError) return setErrorGuardar('Hay un documento que no se subió. Reintenta o quítalo.')
-    const lectura = leerSignos(signos)
-    if (Object.keys(lectura.errores).length > 0) return setErrorGuardar('Revisa los signos vitales marcados en rojo.')
+    for (const persona of personas) {
+      const clave = clavePersona(persona)
+      const falta = pendienteDe(estados[clave], documentosDe(clave))
+      if (falta) {
+        if (clave !== claveActiva) irA(clave)
+        return setErrorGuardar(
+          personas.length > 1
+            ? `${primerNombre(persona.nombreCompleto)}: ${falta}.`
+            : `${falta[0].toUpperCase()}${falta.slice(1)}.`,
+        )
+      }
+    }
 
     const datos: RegistrarConsultaMedicaInput = {
-      citaId: contexto.cita?.id ?? null,
+      citaId: cita?.id ?? null,
       atencionId: contexto.atencionId,
-      ninoId: persona.ninoId,
-      motivoConsulta: motivo,
-      signos: lectura.signos,
-      diagnostico,
-      planTratamiento: plan,
-      recetaLaboratorios: receta,
-      proxima: proximaFecha ? `${proximaFecha}T${proximaHora}` : null,
-      loteDocumentos: documentos.hayListos ? documentos.lote : null,
+      registros: personas.map((persona) => {
+        const clave = clavePersona(persona)
+        const estado = estados[clave]
+        const docs = documentos[clave]
+        return {
+          ninoId: persona.ninoId,
+          motivoConsulta: estado.motivo,
+          signos: leerSignos(estado.signos).signos,
+          diagnostico: estado.diagnostico,
+          planTratamiento: estado.plan,
+          recetaLaboratorios: estado.receta,
+          loteDocumentos: docs?.hayListos ? docs.lote : null,
+        }
+      }),
+      proxima: proxima
+        ? { inicio: `${proxima.fecha}T${proxima.hora}`, duracionMin: proxima.duracionMin, personas: proxima.personas }
+        : null,
     }
     const validacion = registrarConsultaMedicaSchema.safeParse(datos)
     if (!validacion.success) return setErrorGuardar(validacion.error.issues[0]?.message ?? 'Revisa el formulario.')
@@ -157,11 +207,12 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
     setGuardando(true)
     try {
       const registrada = await registrarConsulta(datos, idempotencia.current.clave)
-      const proxima = registrada.proximaCita
-      const mensaje = `Consulta de ${primerNombre(registrada.personaNombre)} registrada${
-        proxima ? ` · próxima: ${fechaCorta(proxima.fecha)}, ${proxima.hora}` : ''
-      }`
-      const rutaHistoria = RUTAS_MEDICA.historia(registrada.usuariaId, undefined, registrada.consultaId)
+      const agendada = registrada.proximaCita
+      const nombres = listaPrimerosNombres(registrada.consultas.map((consulta) => consulta.personaNombre))
+      const mensaje = `${registrada.consultas.length > 1 ? 'Consultas' : 'Consulta'} de ${nombres} ${
+        registrada.consultas.length > 1 ? 'registradas' : 'registrada'
+      }${agendada ? ` · próxima: ${fechaCorta(agendada.fecha)}, ${agendada.hora}` : ''}`
+      const rutaHistoria = RUTAS_MEDICA.historia(registrada.usuariaId, undefined, registrada.consultas[0]?.consultaId)
       recargarContadores()
       if (origen === 'consultas') {
         navigate(RUTAS_MEDICA.consultas())
@@ -171,19 +222,23 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
         mostrar(mensaje, 'success')
       }
     } catch (err) {
-      setErrorGuardar(
-        esConflictoHorario(err)
-          ? 'La hora elegida para la próxima consulta ya está ocupada. Elige otra.'
-          : extraerMensajeError(err),
-      )
+      if (esConflictoHorario(err)) {
+        // La consulta no se guardó: se vuelve a elegir la próxima con las horas recargadas.
+        setErrorGuardar('La hora elegida para la próxima consulta ya está ocupada. Elige otra.')
+        setAvisoProxima(MENSAJE_HORARIO_TOMADO)
+        setModalProxima(true)
+      } else {
+        setErrorGuardar(extraerMensajeError(err))
+      }
       setGuardando(false)
     }
   }
 
-  const subtitulo = contexto.cita
-    ? `Cita del ${formatFechaGT(contexto.cita.fecha)} · ${contexto.cita.hora}`
+  const subtitulo = cita
+    ? `Cita del ${formatFechaGT(cita.fecha)} · ${cita.hora} – ${horaMasMinutos(cita.hora, duracion)}`
     : `Sin cita · hoy ${formatFechaGT(hoy)}`
-  const errorDiagnostico = intentado && diagnostico.trim() === '' ? 'Escribe el diagnóstico.' : null
+  const varias = personas.length > 1
+  const atendidasProxima = proxima ? contexto.personas.filter((persona) => proxima.personas.includes(persona.ninoId)) : []
 
   return (
     <div className="mx-auto flex max-w-[920px] flex-col gap-4">
@@ -191,182 +246,142 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
         <h1 className="text-[22px] font-semibold text-[#1c2430]">Registrar consulta</h1>
         <p className="text-[13px] text-[#5b6573]">
           <CodigoAtencion codigo={contexto.codigoAtencion} /> · {subtitulo}
+          {varias && ` · ${personas.length} personas`}
         </p>
       </header>
 
-      <section className={`${CLASE_TARJETA} flex flex-col gap-4 px-5 py-[18px]`}>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className={CLASE_SECCION}>Ficha de la paciente</h2>
-          <span className="text-xs text-[#9aa4b0]">Datos de Trabajo Social</span>
-        </div>
-        <dl className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-x-5 gap-y-3 text-[13.5px]">
-          <DatoFicha etiqueta="Nombre">{persona.nombreCompleto}</DatoFicha>
-          <DatoFicha etiqueta="Edad">{persona.edad} años</DatoFicha>
-          <DatoFicha etiqueta="Fecha de nacimiento">{formatFechaGT(persona.fechaNacimiento)}</DatoFicha>
-          <DatoFicha etiqueta="Procedencia">{contexto.procedencia ?? '—'}</DatoFicha>
-          <DatoFicha etiqueta="No. de expediente">
-            <span className="font-mono">{contexto.expedienteNumero}</span>
-          </DatoFicha>
-          <DatoFicha etiqueta={esHijo ? 'Teléfono (madre)' : 'Teléfono'}>{contexto.telefono ?? '—'}</DatoFicha>
-        </dl>
-        {contexto.personas.length > 1 && (
-          <SelectorPersona
+      {!cita && contexto.personas.length > 1 && (
+        <section className={`${CLASE_TARJETA} px-5 py-[18px]`}>
+          <SelectorPersonasCita
             personas={contexto.personas}
-            ninoId={persona.ninoId}
-            onElegir={elegirPersona}
-            deshabilitado={contexto.cita !== null || guardando}
-          />
-        )}
-      </section>
-
-      <div role="tablist" className="flex gap-5 border-b border-[#e3e6ea]">
-        {(
-          [
-            ['actual', 'Consulta actual'],
-            ['anteriores', `Consultas anteriores (${persona.consultasAnteriores})`],
-          ] as const
-        ).map(([valor, etiqueta]) => (
-          <button
-            key={valor}
-            type="button"
-            role="tab"
-            aria-selected={pestana === valor}
-            onClick={() => setPestana(valor)}
-            className={`-mb-px border-b-2 px-0.5 pb-2.5 text-[13.5px] font-medium ${
-              pestana === valor ? 'border-[#7346a5] text-[#5b3985]' : 'border-transparent text-[#5b6573] hover:text-[#1c2430]'
-            }`}
-          >
-            {etiqueta}
-          </button>
-        ))}
-      </div>
-
-      {pestana === 'anteriores' ? (
-        <ConsultasAnteriores usuariaId={contexto.usuariaId} persona={clavePersona(persona)} nombre={primerNombre(persona.nombreCompleto)} />
-      ) : null}
-
-      {/* La consulta actual se oculta (no se desmonta) para no perder lo escrito ni cortar subidas. */}
-      <div className={pestana === 'actual' ? 'flex flex-col gap-4' : 'hidden'}>
-        <section className={`${CLASE_TARJETA} flex flex-col gap-2 px-5 py-[18px]`}>
-          <label htmlFor="motivo" className="text-sm font-semibold text-[#1c2430]">
-            Motivo de consulta
-          </label>
-          <textarea
-            id="motivo"
-            rows={2}
-            maxLength={MOTIVO_CONSULTA_MEDICA_MAX}
-            value={motivo}
-            onChange={(evento) => setMotivo(evento.target.value)}
-            placeholder="Lo que refiere la paciente, con sus palabras"
-            className={CLASE_CAMPO}
+            elegidas={marcadas}
+            obligatorias={false}
+            onCambiar={setMarcadas}
           />
         </section>
+      )}
 
-        <CamposSignos
-          valores={signos}
-          onCambiar={(clave, valor) => setSignos((actuales) => ({ ...actuales, [clave]: valor }))}
-          mostrarTodos={intentado}
-        />
+      {varias && <PestanasPersonas personas={personas} activa={claveActiva} estados={estadosPestana} onElegir={irA} />}
 
-        <section className={`${CLASE_TARJETA} flex flex-col gap-4 px-5 py-[18px]`}>
-          <CampoTexto
-            id="diagnostico"
-            etiqueta="Diagnóstico"
-            obligatorio
-            filas={2}
-            maximo={DIAGNOSTICO_MEDICO_MAX}
-            placeholder="Impresión clínica"
-            valor={diagnostico}
-            onCambiar={setDiagnostico}
-            error={errorDiagnostico}
+      {montadas.map((persona) => {
+        const clave = clavePersona(persona)
+        const indice = personas.findIndex((una) => clavePersona(una) === clave)
+        const siguiente = indice >= 0 ? personas[indice + 1] : undefined
+        return (
+          <PanelPersona
+            key={clave}
+            contexto={contexto}
+            persona={persona}
+            estado={estados[clave]}
+            onCambiar={(cambios) => cambiar(clave, cambios)}
+            onSigno={(campo, valor) => cambiarSigno(clave, campo, valor)}
+            onDocumentos={reportarDocumentos}
+            visible={clave === claveActiva}
+            intentado={intentado}
+            deshabilitado={guardando}
+            siguiente={
+              siguiente
+                ? { nombre: primerNombre(siguiente.nombreCompleto), ir: () => irA(clavePersona(siguiente)) }
+                : null
+            }
           />
-          <CampoTexto
-            id="plan"
-            etiqueta="Plan de tratamiento"
-            filas={3}
-            maximo={PLAN_TRATAMIENTO_MAX}
-            placeholder="Indicaciones, cuidados, referencias"
-            valor={plan}
-            onCambiar={setPlan}
-          />
-          <CampoTexto
-            id="receta"
-            etiqueta="Receta y laboratorios"
-            filas={3}
-            maximo={RECETA_LABORATORIOS_MAX}
-            placeholder="Medicamentos con dosis, y laboratorios solicitados"
-            valor={receta}
-            onCambiar={setReceta}
-          />
-        </section>
+        )
+      })}
 
-        <DocumentosConsulta documentos={documentos} deshabilitado={guardando} />
-
-        <section className={`${CLASE_TARJETA} flex flex-col gap-2.5 px-5 py-[18px]`}>
+      <section className={`${CLASE_TARJETA} flex flex-wrap items-center justify-between gap-3 px-5 py-[18px]`}>
+        <div className="min-w-0">
           <h2 className="text-sm font-semibold text-[#1c2430]">Próxima consulta</h2>
-          <div className="flex flex-wrap items-center gap-2.5">
-            <select
-              aria-label="Día de la próxima consulta"
-              value={proximaFecha}
-              onChange={(evento) => setProximaFecha(evento.target.value)}
-              className={`${CLASE_CAMPO} w-auto min-w-[240px]`}
+          {proxima ? (
+            <>
+              <p className="mt-0.5 text-[13.5px] text-[#1c2430]">
+                <span className="font-semibold text-[#5b3985]">{fechaLarga(proxima.fecha)}</span>
+                {' · '}
+                <span className="font-mono">
+                  {proxima.hora} – {horaMasMinutos(proxima.hora, proxima.duracionMin)}
+                </span>
+                {` (${ETIQUETAS_DURACION_CITA_MEDICA[proxima.duracionMin]})`}
+              </p>
+              <p className="text-[12.5px] text-[#5b6573]">
+                {contexto.personas.length > 1 &&
+                  `Para ${listaPrimerosNombres(atendidasProxima.map((persona) => persona.nombreCompleto))} · `}
+                Se agrega a la agenda al guardar.
+              </p>
+            </>
+          ) : (
+            <p className="mt-0.5 text-[13px] text-[#5b6573]">Sin próxima consulta por ahora.</p>
+          )}
+        </div>
+        <div className="flex flex-none items-center gap-2">
+          {proxima && (
+            <button
+              type="button"
+              disabled={guardando}
+              onClick={() => setProxima(null)}
+              className="rounded-md px-3 py-2 text-[13px] font-medium text-[#5b6573] hover:bg-[#f8f9fa] disabled:opacity-60"
             >
-              <option value="">Sin próxima consulta por ahora</option>
-              {diasProxima.map((fecha) => (
-                <option key={fecha} value={fecha}>
-                  {fechaLarga(fecha)}
-                </option>
-              ))}
-            </select>
-            {proximaFecha && (
-              <>
-                <select
-                  aria-label="Hora de la próxima consulta"
-                  value={proximaHora}
-                  onChange={(evento) => setProximaHora(evento.target.value)}
-                  className={`${CLASE_CAMPO} w-auto font-mono`}
-                >
-                  {HORARIO_MEDICINA.horas.map((hora) => (
-                    <option key={hora} value={hora}>
-                      {hora}
-                    </option>
-                  ))}
-                </select>
-                <span className="text-[12.5px] text-[#5b6573]">Se agrega a la agenda al guardar.</span>
-              </>
-            )}
-          </div>
-        </section>
-
-        <div className="flex flex-wrap items-center justify-end gap-3 pb-6">
-          {errorGuardar && (
-            <p role="alert" className="mr-auto text-[13px] text-[#9b2c20]">
-              {errorGuardar}
-            </p>
+              Quitar
+            </button>
           )}
           <button
             type="button"
             disabled={guardando}
-            onClick={() => pedirConfirmacionSalida(() => navigate(rutaVolver))}
-            className="rounded-md border border-[#d5dadf] bg-white px-4 py-2.5 text-[13.5px] font-medium text-[#1c2430] hover:bg-[#f8f9fa] disabled:opacity-60"
+            onClick={() => {
+              setAvisoProxima(null)
+              setModalProxima(true)
+            }}
+            className="rounded-md border border-[#d5dadf] bg-white px-3.5 py-2 text-[13px] font-semibold text-[#7346a5] hover:bg-[#f7f3fc] disabled:opacity-60"
           >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={guardando}
-            onClick={() => void guardar()}
-            className="rounded-md bg-[#7346a5] px-5 py-2.5 text-[13.5px] font-semibold text-white hover:bg-[#5b3985] disabled:opacity-60"
-          >
-            {guardando ? 'Guardando…' : 'Guardar consulta'}
+            {proxima ? 'Cambiar' : 'Programar próxima'}
           </button>
         </div>
+      </section>
+
+      {modalProxima && (
+        <ModalProximaConsulta
+          personas={contexto.personas}
+          usuariaNombreCompleto={contexto.usuariaNombreCompleto}
+          inicial={
+            proxima ?? { duracionMin: duracion, personas: personas.map((persona) => persona.ninoId) }
+          }
+          aviso={avisoProxima}
+          onCerrar={() => setModalProxima(false)}
+          onElegir={(elegida) => {
+            setProxima(elegida)
+            setModalProxima(false)
+            setAvisoProxima(null)
+            setErrorGuardar(null)
+          }}
+        />
+      )}
+
+      <div className="flex flex-wrap items-center justify-end gap-3 pb-6">
+        {errorGuardar && (
+          <p role="alert" className="mr-auto text-[13px] text-[#9b2c20]">
+            {errorGuardar}
+          </p>
+        )}
+        <button
+          type="button"
+          disabled={guardando}
+          onClick={() => pedirConfirmacionSalida(() => navigate(rutaVolver))}
+          className="rounded-md border border-[#d5dadf] bg-white px-4 py-2.5 text-[13.5px] font-medium text-[#1c2430] hover:bg-[#f8f9fa] disabled:opacity-60"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          disabled={guardando}
+          onClick={() => void guardar()}
+          className="rounded-md bg-[#7346a5] px-5 py-2.5 text-[13.5px] font-semibold text-white hover:bg-[#5b3985] disabled:opacity-60"
+        >
+          {guardando ? 'Guardando…' : varias ? `Guardar ${personas.length} consultas` : 'Guardar consulta'}
+        </button>
       </div>
 
       <ConfirmModal
         abierto={salidaPendiente !== null}
         titulo="¿Descartar los cambios?"
-        descripcion="La consulta no se ha guardado. Si sales, se pierde lo escrito y los documentos adjuntos."
+        descripcion={`${varias ? 'Las consultas no se han guardado' : 'La consulta no se ha guardado'}. Si sales, se pierde lo escrito y los documentos adjuntos.`}
         confirmarLabel="Descartar"
         cancelarLabel="Seguir editando"
         peligro
@@ -377,60 +392,6 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
         }}
         onCancelar={() => setSalidaPendiente(null)}
       />
-    </div>
-  )
-}
-
-function DatoFicha({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-[#5b6573]">{etiqueta}</dt>
-      <dd className="font-medium text-[#1c2430]">{children}</dd>
-    </div>
-  )
-}
-
-interface CampoTextoProps {
-  id: string
-  etiqueta: string
-  obligatorio?: boolean
-  filas: number
-  maximo: number
-  placeholder: string
-  valor: string
-  onCambiar: (valor: string) => void
-  error?: string | null
-}
-
-function CampoTexto({ id, etiqueta, obligatorio = false, filas, maximo, placeholder, valor, onCambiar, error }: CampoTextoProps) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-semibold text-[#1c2430]">
-        {etiqueta}
-        {obligatorio && (
-          <span aria-hidden="true" className="text-[#9b2c20]">
-            {' '}
-            *
-          </span>
-        )}
-      </label>
-      <textarea
-        id={id}
-        rows={filas}
-        maxLength={maximo}
-        required={obligatorio}
-        value={valor}
-        onChange={(evento) => onCambiar(evento.target.value)}
-        placeholder={placeholder}
-        aria-invalid={error ? true : undefined}
-        aria-describedby={error ? `${id}-error` : undefined}
-        className={`${CLASE_CAMPO} ${error ? 'border-[#d4574a]' : ''}`}
-      />
-      {error && (
-        <span id={`${id}-error`} className="text-[12px] text-[#9b2c20]">
-          {error}
-        </span>
-      )}
     </div>
   )
 }

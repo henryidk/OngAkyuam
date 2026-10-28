@@ -11,9 +11,9 @@ import { useToast } from '../../../components/ui/Toast'
 import { extraerMensajeError } from '../../../lib/errors'
 import { cambiarVisibilidad } from '../api/medica.api'
 import CodigoAtencion from '../compartido/CodigoAtencion'
-import { CLASE_TARJETA } from '../compartido/estilos'
+import { CLASE_TARJETA, CLASES_TONO } from '../compartido/estilos'
 import { fechaDeInstante, fechaLarga } from '../compartido/fechas'
-import { primerNombre } from '../compartido/personas'
+import { clavePersona, detallePersonasCita, iniciales, primerNombre } from '../compartido/personas'
 import SignosVitales from '../compartido/SignosVitales'
 import { RUTAS_MEDICA } from '../rutas'
 import { useContextoFicha } from './contextoFicha'
@@ -45,11 +45,11 @@ function Enlace({ to, children }: { to: string; children: ReactNode }) {
 }
 
 function textoCita(cita: CitaMedicaBreveDto) {
-  return `${fechaLarga(cita.fecha)} · ${cita.hora}`
+  return `${fechaLarga(cita.fecha)} · ${cita.hora} – ${cita.horaFin}`
 }
 
 function personaDeCita(cita: CitaMedicaBreveDto) {
-  return cita.persona.ninoId ? `Consulta de ${cita.persona.nombreCompleto}` : null
+  return detallePersonasCita(cita.personas)
 }
 
 /** Tarjeta de la atención activa: hechos clave, acciones y "Dar de alta". */
@@ -113,6 +113,58 @@ function TarjetaAtencion({ ficha }: { ficha: FichaPacienteMedicaDto }) {
         </button>
       </div>
     </section>
+  )
+}
+
+/**
+ * Una fila por persona del expediente (usuaria e hijos/as): su última consulta y cuántas lleva,
+ * o que aún le falta la primera. Solo aparece cuando hay hijos/as.
+ */
+function TarjetaPersonas({ ficha }: { ficha: FichaPacienteMedicaDto }) {
+  return (
+    <Tarjeta titulo="Personas atendidas" extremo={<Enlace to={RUTAS_MEDICA.historia(ficha.usuariaId)}>Ver historia clínica</Enlace>}>
+      <ul>
+        {ficha.personas.map((persona) => {
+          const consultas = ficha.consultasPorPersona.find((c) => c.ninoId === persona.ninoId)
+          const clave = clavePersona(persona)
+          return (
+            <li key={clave} className="flex items-center gap-3 border-b border-[#eef0f2] px-5 py-3 last:border-b-0">
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#f2ecfa] text-[12px] font-semibold text-[#5b3985]"
+              >
+                {iniciales(persona.nombreCompleto)}
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <span className="text-[13.5px] text-[#5b6573]">
+                  <span className="font-semibold text-[#1c2430]">{persona.nombreCompleto}</span>
+                  {persona.ninoId === null ? ' · Usuaria' : ` · ${persona.edad} años`}
+                </span>
+                {consultas ? (
+                  <span className="truncate text-[13px] text-[#5b6573]">
+                    <span className="tabular-nums">Última: {formatFechaGT(consultas.ultima.fecha)}</span> · {consultas.ultima.diagnostico}
+                  </span>
+                ) : (
+                  <span className="text-[13px] text-[#5b6573]">Sin consultas registradas</span>
+                )}
+              </div>
+              {consultas ? (
+                <Link
+                  to={RUTAS_MEDICA.historia(ficha.usuariaId, clave)}
+                  className="flex-none whitespace-nowrap text-[13px] font-medium text-brand-700 hover:underline"
+                >
+                  {consultas.total} {consultas.total === 1 ? 'consulta' : 'consultas'}
+                </Link>
+              ) : (
+                <span className={`flex-none whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${CLASES_TONO.amber}`}>
+                  Falta su primera consulta
+                </span>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </Tarjeta>
   )
 }
 
@@ -205,7 +257,7 @@ function TarjetaVisibilidad({ ficha }: { ficha: FichaPacienteMedicaDto }) {
           <>
             <Interruptor
               etiqueta="Compartir con Jurídico"
-              detalle="Fechas de consulta y constancias"
+              detalle="Fechas de consulta y documentos"
               encendido={estado.juridico}
               ocupado={guardando}
               onCambiar={() => void cambiar('juridico')}
@@ -290,6 +342,8 @@ export default function PestanaResumen() {
               }
             />
           )}
+
+          {ficha.personas.some((persona) => persona.ninoId !== null) && <TarjetaPersonas ficha={ficha} />}
 
           {ficha.signosVitales && (
             <Tarjeta

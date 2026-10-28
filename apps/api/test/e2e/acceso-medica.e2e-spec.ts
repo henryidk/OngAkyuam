@@ -3,7 +3,17 @@ import type { INestApplication } from '@nestjs/common';
 import type { Rol, Usuario } from '@prisma/client';
 import type {
   ConsultaMedicaDto,
+  ConsultasMedicasPaginaDto,
+  FichaPacienteMedicaDto,
   HistorialConsultasMedicaPaginaDto,
+  PacienteBuscadaMedicaDto,
+  VistaMedicaParaJuridico,
+} from '@akyuam/shared';
+import {
+  diaSemanaGT,
+  hoyGT,
+  limiteAgendaMedica,
+  sumarDiasGT,
 } from '@akyuam/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types';
@@ -13,7 +23,9 @@ import {
   crearApp,
   crearAtencionConConsulta,
   crearExpediente,
+  crearNino,
   crearUsuario,
+  inicioCitaMedicaLibre,
   sesionDe,
   type Sesion,
 } from './fixtures';
@@ -30,6 +42,7 @@ const ENDPOINTS: [Metodo, string][] = [
   ['get', '/api/medica/agenda/dia'],
   ['get', '/api/medica/agenda/disponibilidad'],
   ['get', '/api/medica/agenda/programables'],
+  ['post', '/api/medica/agenda/programables/busqueda'],
   ['get', '/api/medica/pacientes'],
   ['get', `/api/medica/pacientes/${ID}`],
   ['get', `/api/medica/pacientes/${ID}/consultas`],
@@ -47,7 +60,6 @@ const ENDPOINTS: [Metodo, string][] = [
   ['post', '/api/medica/consultas'],
   ['post', `/api/medica/consultas/${ID}/documentos`],
   ['post', '/api/medica/documentos/pendientes'],
-  ['patch', `/api/medica/documentos/pendientes/${ID}`],
   ['delete', `/api/medica/documentos/pendientes/${ID}`],
   ['post', `/api/medica/atenciones/${ID}/alta`],
   ['patch', `/api/medica/atenciones/${ID}/visibilidad`],
@@ -68,6 +80,18 @@ const DATOS_CLINICOS = [
   `${MARCA} receta`,
   `${MARCA} motivo`,
 ];
+
+const SIN_SIGNOS = {
+  presionSistolica: null,
+  presionDiastolica: null,
+  frecuenciaCardiaca: null,
+  frecuenciaResp: null,
+  temperaturaC: null,
+  saturacionO2: null,
+  glucosaMgDl: null,
+  pesoKg: null,
+  tallaM: null,
+};
 
 describe('Medicina · acceso (e2e)', () => {
   let app: INestApplication<App>;
@@ -121,7 +145,7 @@ describe('Medicina · acceso (e2e)', () => {
       ).expect(200);
     });
 
-    it('Jurídico firma la constancia compartida de su propia usuaria', async () => {
+    it('Jurídico firma un documento de la atención compartida de su propia usuaria', async () => {
       const { usuaria, expediente } = await crearExpediente(prisma, medica.id, [
         'MEDICA',
         'JURIDICO',
@@ -130,7 +154,7 @@ describe('Medicina · acceso (e2e)', () => {
         prisma,
         expediente.id,
         medica.id,
-        { visibleJuridico: true, tipoDocumento: 'CONSTANCIA' },
+        { visibleJuridico: true },
       );
       await pedir(
         'get',
@@ -153,7 +177,8 @@ describe('Medicina · acceso (e2e)', () => {
       await pedir('post', '/api/medica/citas', sesionMedica)
         .send({
           expedienteId: expediente.id,
-          ninoId: null,
+          personas: [null],
+          duracionMin: 30,
           inicio: '2099-01-05T09:00',
         })
         .expect(403);
@@ -171,10 +196,361 @@ describe('Medicina · acceso (e2e)', () => {
       await pedir('post', '/api/medica/citas', sesionMedica)
         .send({
           referidoId: expediente.referidos[0].id,
-          ninoId: null,
+          personas: [null],
+          duracionMin: 30,
           inicio: '2099-01-05T09:00',
         })
         .expect(403);
+    });
+  });
+
+  describe('personas de la visita', () => {
+    async function expedienteConHijos() {
+      const { expediente } = await crearExpediente(prisma, medica.id, [
+        'MEDICA',
+      ]);
+      const hijo = await crearNino(prisma, expediente.id);
+      const hija = await crearNino(prisma, expediente.id);
+      return { expediente, hijo, hija };
+    }
+
+    /** Programa en una hora libre (salvo que `datos` traiga su `inicio`) y exige `estado`. */
+    async function programar(datos: object, estado: number) {
+      return pedir('post', '/api/medica/citas', sesionMedica)
+        .send({
+          duracionMin: 60,
+          inicio: await inicioCitaMedicaLibre(prisma),
+          ...datos,
+        })
+        .expect(estado);
+    }
+
+    it('no programa a más de un mes y no abre la atención', async () => {
+      const { expediente } = await expedienteConHijos();
+      let dia = sumarDiasGT(limiteAgendaMedica(hoyGT()), 1);
+      while (diaSemanaGT(dia) > 5) {
+        dia = sumarDiasGT(dia, 1);
+      }
+      const respuesta = await programar(
+        {
+          referidoId: expediente.referidos[0].id,
+          personas: [null],
+          duracionMin: 30,
+          inicio: `${dia}T09:00`,
+        },
+        400,
+      );
+      expect(JSON.stringify(respuesta.body)).toContain('un mes adelante');
+      expect(
+        await prisma.atencionMedica.count({
+          where: { expedienteId: expediente.id },
+        }),
+      ).toBe(0);
+    });
+
+    it('la primera consulta sin todos los hijos/as responde 409 y no abre la atención', async () => {
+      const { expediente, hijo } = await expedienteConHijos();
+      const respuesta = await programar(
+        {
+          referidoId: expediente.referidos[0].id,
+          personas: [null, hijo.id],
+        },
+        409,
+      );
+      expect(respuesta.body).toEqual(
+        expect.objectContaining({ codigo: 'PERSONAS_PRIMERA_CONSULTA' }),
+      );
+      expect(
+        await prisma.atencionMedica.count({
+          where: { expedienteId: expediente.id },
+        }),
+      ).toBe(0);
+    });
+
+    it('la primera consulta sin la usuaria también responde 409', async () => {
+      const { expediente, hijo, hija } = await expedienteConHijos();
+      await programar(
+        {
+          referidoId: expediente.referidos[0].id,
+          personas: [hijo.id, hija.id],
+        },
+        409,
+      );
+    });
+
+    it('con la usuaria y todos sus hijos/as abre la atención con una persona por fila', async () => {
+      const { expediente, hijo, hija } = await expedienteConHijos();
+      const respuesta = await programar(
+        {
+          referidoId: expediente.referidos[0].id,
+          personas: [null, hijo.id, hija.id],
+        },
+        201,
+      );
+      const { citaId } = respuesta.body as { citaId: string };
+      const personas = await prisma.citaMedicaPersona.findMany({
+        where: { citaId },
+        select: { ninoId: true },
+      });
+      expect(personas.map((p) => p.ninoId).sort()).toEqual(
+        [null, hijo.id, hija.id].sort(),
+      );
+    });
+
+    it('en las siguientes citas cada hijo/a es opcional, también una cita solo de hijos/as', async () => {
+      const { expediente, hijo, hija } = await expedienteConHijos();
+      await programar(
+        {
+          referidoId: expediente.referidos[0].id,
+          personas: [null, hijo.id, hija.id],
+        },
+        201,
+      );
+      await programar(
+        {
+          expedienteId: expediente.id,
+          personas: [null],
+        },
+        201,
+      );
+      await programar(
+        {
+          expedienteId: expediente.id,
+          personas: [hija.id],
+        },
+        201,
+      );
+    });
+
+    it('un hijo/a de otro expediente responde 400 y no se agenda', async () => {
+      const { expediente, hijo, hija } = await expedienteConHijos();
+      const { expediente: otro } = await crearExpediente(prisma, medica.id, [
+        'MEDICA',
+      ]);
+      const ajeno = await crearNino(prisma, otro.id);
+      await programar(
+        {
+          referidoId: expediente.referidos[0].id,
+          personas: [null, hijo.id, hija.id, ajeno.id],
+        },
+        400,
+      );
+      expect(
+        await prisma.citaMedicaPersona.count({ where: { ninoId: ajeno.id } }),
+      ).toBe(0);
+    });
+
+    describe('registrar la visita', () => {
+      function registro(ninoId: string | null) {
+        return {
+          ninoId,
+          motivoConsulta: null,
+          signos: SIN_SIGNOS,
+          diagnostico: `${MARCA} diagnóstico`,
+          planTratamiento: null,
+          recetaLaboratorios: null,
+          loteDocumentos: null,
+        };
+      }
+
+      async function visitaProgramada() {
+        const { expediente, hijo, hija } = await expedienteConHijos();
+        const respuesta = await programar(
+          {
+            referidoId: expediente.referidos[0].id,
+            personas: [null, hijo.id, hija.id],
+          },
+          201,
+        );
+        const { citaId, atencionId } = respuesta.body as {
+          citaId: string;
+          atencionId: string;
+        };
+        return { citaId, atencionId, hijo, hija, expediente };
+      }
+
+      function registrar(datos: object) {
+        return pedir('post', '/api/medica/consultas', sesionMedica).send({
+          proxima: null,
+          ...datos,
+        });
+      }
+
+      it('si falta una persona responde 400 y no guarda ninguna consulta', async () => {
+        const { citaId, atencionId, hijo } = await visitaProgramada();
+        await registrar({
+          citaId,
+          atencionId,
+          registros: [registro(null), registro(hijo.id)],
+        }).expect(400);
+        expect(await prisma.consultaMedica.count({ where: { citaId } })).toBe(
+          0,
+        );
+      });
+
+      it('con todas las personas crea una consulta por persona y la próxima con lo elegido', async () => {
+        const { citaId, atencionId, hijo, hija } = await visitaProgramada();
+        const respuesta = await registrar({
+          citaId,
+          atencionId,
+          registros: [registro(null), registro(hijo.id), registro(hija.id)],
+          proxima: {
+            inicio: await inicioCitaMedicaLibre(prisma),
+            duracionMin: 90,
+            personas: [hijo.id],
+          },
+        }).expect(201);
+        const cuerpo = respuesta.body as {
+          consultas: { ninoId: string | null }[];
+          proximaCita: { citaId: string };
+        };
+        expect(cuerpo.consultas.map((c) => c.ninoId)).toEqual([
+          null,
+          hijo.id,
+          hija.id,
+        ]);
+        expect(await prisma.consultaMedica.count({ where: { citaId } })).toBe(
+          3,
+        );
+        const cita = await prisma.citaMedica.findUniqueOrThrow({
+          where: { id: citaId },
+          select: { estado: true },
+        });
+        expect(cita.estado).toBe('ATENDIDA');
+        const siguiente = await prisma.citaMedica.findUniqueOrThrow({
+          where: { id: cuerpo.proximaCita.citaId },
+          select: { duracionMin: true, personas: { select: { ninoId: true } } },
+        });
+        expect(siguiente.duracionMin).toBe(90);
+        expect(siguiente.personas.map((p) => p.ninoId)).toEqual([hijo.id]);
+      });
+
+      it('una próxima con un hijo/a de otro expediente responde 400 y no guarda nada', async () => {
+        const { citaId, atencionId, hijo, hija } = await visitaProgramada();
+        const { expediente: otro } = await crearExpediente(prisma, medica.id, [
+          'MEDICA',
+        ]);
+        const ajeno = await crearNino(prisma, otro.id);
+        await registrar({
+          citaId,
+          atencionId,
+          registros: [registro(null), registro(hijo.id), registro(hija.id)],
+          proxima: {
+            inicio: await inicioCitaMedicaLibre(prisma),
+            duracionMin: 30,
+            personas: [null, ajeno.id],
+          },
+        }).expect(400);
+        expect(await prisma.consultaMedica.count({ where: { citaId } })).toBe(
+          0,
+        );
+        expect(
+          await prisma.citaMedicaPersona.count({ where: { ninoId: ajeno.id } }),
+        ).toBe(0);
+      });
+
+      it('si la próxima cita choca, no queda ninguna consulta a medias', async () => {
+        const { citaId, atencionId, hijo, hija } = await visitaProgramada();
+        const ocupado = await inicioCitaMedicaLibre(prisma);
+        const { expediente: otro } = await crearExpediente(prisma, medica.id, [
+          'MEDICA',
+        ]);
+        await programar(
+          {
+            referidoId: otro.referidos[0].id,
+            personas: [null],
+            duracionMin: 30,
+            inicio: ocupado,
+          },
+          201,
+        );
+        await registrar({
+          citaId,
+          atencionId,
+          registros: [registro(null), registro(hijo.id), registro(hija.id)],
+          proxima: { inicio: ocupado, duracionMin: 30, personas: [null] },
+        }).expect(409);
+        expect(await prisma.consultaMedica.count({ where: { citaId } })).toBe(
+          0,
+        );
+        const cita = await prisma.citaMedica.findUniqueOrThrow({
+          where: { id: citaId },
+          select: { estado: true },
+        });
+        expect(cita.estado).toBe('PROGRAMADA');
+      });
+
+      it('la historia agrupa la visita y, filtrada por un hijo/a, solo trae su consulta', async () => {
+        const { citaId, atencionId, hijo, hija, expediente } =
+          await visitaProgramada();
+        await registrar({
+          citaId,
+          atencionId,
+          registros: [registro(null), registro(hijo.id), registro(hija.id)],
+        }).expect(201);
+        const ruta = `/api/medica/pacientes/${expediente.usuariaId}/consultas`;
+
+        const todas = await pedir('get', ruta, sesionMedica).expect(200);
+        const items = (todas.body as ConsultasMedicasPaginaDto).items;
+        expect(items).toHaveLength(3);
+        expect(new Set(items.map((c) => c.visita.clave))).toEqual(
+          new Set([citaId]),
+        );
+        expect(items.every((c) => c.visita.primera)).toBe(true);
+
+        const deHijo = await pedir('get', ruta, sesionMedica)
+          .query({ persona: hijo.id })
+          .expect(200);
+        const [unica, ...resto] = (deHijo.body as ConsultasMedicasPaginaDto)
+          .items;
+        expect(resto).toHaveLength(0);
+        expect(unica.persona.ninoId).toBe(hijo.id);
+        // Solo dice con quién vino (ids), nunca trae las consultas de las demás personas.
+        expect(unica.visita.personas.sort()).toEqual(
+          [null, hijo.id, hija.id].sort(),
+        );
+        expect(unica.visita.horaFin).not.toBeNull();
+
+        const ficha = await pedir(
+          'get',
+          `/api/medica/pacientes/${expediente.usuariaId}`,
+          sesionMedica,
+        ).expect(200);
+        const porPersona = (ficha.body as FichaPacienteMedicaDto)
+          .consultasPorPersona;
+        expect(porPersona.map((p) => p.ninoId).sort()).toEqual(
+          [null, hijo.id, hija.id].sort(),
+        );
+        expect(porPersona.every((p) => p.total === 1)).toBe(true);
+      });
+
+      it('una persona repetida responde 400', async () => {
+        const { citaId, atencionId, hijo, hija } = await visitaProgramada();
+        await registrar({
+          citaId,
+          atencionId,
+          registros: [
+            registro(null),
+            registro(hijo.id),
+            registro(hija.id),
+            registro(hija.id),
+          ],
+        }).expect(400);
+      });
+    });
+
+    it('una duración fuera del catálogo responde 400', async () => {
+      const { expediente } = await crearExpediente(prisma, medica.id, [
+        'MEDICA',
+      ]);
+      await programar(
+        {
+          referidoId: expediente.referidos[0].id,
+          personas: [null],
+          duracionMin: 45,
+        },
+        400,
+      );
     });
   });
 
@@ -196,7 +572,7 @@ describe('Medicina · acceso (e2e)', () => {
       ).expect(403);
     });
 
-    it('Jurídico no firma la constancia de otra usuaria pidiéndola por la suya', async () => {
+    it('Jurídico no firma el documento de otra usuaria pidiéndolo por la suya', async () => {
       const ajena = await crearExpediente(prisma, medica.id, [
         'MEDICA',
         'JURIDICO',
@@ -205,7 +581,7 @@ describe('Medicina · acceso (e2e)', () => {
         prisma,
         ajena.expediente.id,
         medica.id,
-        { visibleJuridico: true, tipoDocumento: 'CONSTANCIA' },
+        { visibleJuridico: true },
       );
       const propia = await crearExpediente(prisma, medica.id, [
         'MEDICA',
@@ -218,7 +594,7 @@ describe('Medicina · acceso (e2e)', () => {
       ).expect(403);
     });
 
-    it('Jurídico no firma una receta aunque la atención esté compartida', async () => {
+    it('Jurídico no firma un documento de una atención que Medicina no compartió', async () => {
       const { usuaria, expediente } = await crearExpediente(prisma, medica.id, [
         'MEDICA',
         'JURIDICO',
@@ -227,7 +603,7 @@ describe('Medicina · acceso (e2e)', () => {
         prisma,
         expediente.id,
         medica.id,
-        { visibleJuridico: true, tipoDocumento: 'RECETA' },
+        { visibleJuridico: false },
       );
       await pedir(
         'get',
@@ -419,6 +795,132 @@ describe('Medicina · acceso (e2e)', () => {
     });
   });
 
+  describe('Agenda: buscador de pacientes', () => {
+    async function conDpi(usuariaId: string): Promise<string> {
+      const dpi = `8${randomInt(10 ** 11, 10 ** 12)}`;
+      await prisma.usuaria.update({ where: { id: usuariaId }, data: { dpi } });
+      return dpi;
+    }
+
+    function buscar(datos: object, sesion: Sesion = sesionMedica) {
+      return pedir(
+        'post',
+        '/api/medica/agenda/programables/busqueda',
+        sesion,
+      ).send(datos);
+    }
+
+    it('encuentra por DPI y solo devuelve datos ligeros, sin motivo ni hijos por nombre', async () => {
+      const { usuaria, expediente } = await crearExpediente(prisma, medica.id, [
+        'MEDICA',
+      ]);
+      const dpi = await conDpi(usuaria.id);
+
+      const respuesta = await buscar({ q: dpi }).expect(200);
+      expect(respuesta.headers['cache-control']).toBe('no-store');
+      const items = respuesta.body as PacienteBuscadaMedicaDto[];
+      expect(items).toHaveLength(1);
+      expect(items[0]).toEqual({
+        usuariaId: usuaria.id,
+        nombreCompleto: `${usuaria.nombres} ${usuaria.apellidos}`,
+        expedienteNumero: expediente.numero,
+        situacion: 'POR_AGENDAR',
+        hijos: 0,
+        proximaCita: null,
+        referidaEl: expect.any(String) as unknown,
+      });
+    });
+
+    it('nunca devuelve a una usuaria no referida a Medicina ni a una dada de alta', async () => {
+      const ajena = await crearExpediente(prisma, medica.id, ['JURIDICO']);
+      const deAlta = await crearExpediente(prisma, medica.id, ['MEDICA']);
+      const { atencion } = await crearAtencionConConsulta(
+        prisma,
+        deAlta.expediente.id,
+        medica.id,
+      );
+      await prisma.atencionMedica.update({
+        where: { id: atencion.id },
+        data: {
+          estado: 'ALTA',
+          fechaAlta: new Date('2026-01-03'),
+          motivoAlta: 'ALTA_MEDICA',
+        },
+      });
+      for (const { usuaria } of [ajena, deAlta]) {
+        const dpi = await conDpi(usuaria.id);
+        const respuesta = await buscar({ q: dpi }).expect(200);
+        expect(respuesta.body).toEqual([]);
+      }
+    });
+
+    it('filtra por situación: la consulta sin cita solo ve las en atención', async () => {
+      const enAtencion = await crearExpediente(prisma, medica.id, ['MEDICA']);
+      await crearAtencionConConsulta(
+        prisma,
+        enAtencion.expediente.id,
+        medica.id,
+      );
+      const porAgendar = await crearExpediente(prisma, medica.id, ['MEDICA']);
+      const dpiEnAtencion = await conDpi(enAtencion.usuaria.id);
+      const dpiPorAgendar = await conDpi(porAgendar.usuaria.id);
+
+      const encontrada = await buscar({
+        q: dpiEnAtencion,
+        situacion: 'EN_ATENCION',
+      }).expect(200);
+      expect(
+        (encontrada.body as PacienteBuscadaMedicaDto[]).map((p) => p.situacion),
+      ).toEqual(['EN_ATENCION']);
+      const excluida = await buscar({
+        q: dpiPorAgendar,
+        situacion: 'EN_ATENCION',
+      }).expect(200);
+      expect(excluida.body).toEqual([]);
+    });
+
+    it('sin texto sugiere hasta 5 por agendar, y ninguna si se piden solo las en atención', async () => {
+      await crearExpediente(prisma, medica.id, ['MEDICA']);
+      const sugerencias = (await buscar({}).expect(200))
+        .body as PacienteBuscadaMedicaDto[];
+      expect(sugerencias.length).toBeGreaterThan(0);
+      expect(sugerencias.length).toBeLessThanOrEqual(5);
+      expect(new Set(sugerencias.map((p) => p.situacion))).toEqual(
+        new Set(['POR_AGENDAR']),
+      );
+      const enAtencion = await buscar({ situacion: 'EN_ATENCION' }).expect(200);
+      expect(enAtencion.body).toEqual([]);
+    });
+
+    it('rechaza un nombre de menos de 3 letras', async () => {
+      await buscar({ q: 'ma' }).expect(400);
+    });
+
+    it('la búsqueda no existe por GET con el texto en la URL', async () => {
+      await pedir(
+        'get',
+        '/api/medica/agenda/programables/busqueda?q=Maria',
+        sesionMedica,
+      ).expect(404);
+    });
+
+    it('sin token CSRF responde 403', async () => {
+      await request(app.getHttpServer())
+        .post('/api/medica/agenda/programables/busqueda')
+        .set('Cookie', sesionMedica.cookie)
+        .send({ q: 'Maria' })
+        .expect(403);
+    });
+
+    it('limita las búsquedas por usuario a 120 por minuto', async () => {
+      const sesion = sesionDe(app, await crearUsuario(prisma, 'MEDICA'));
+      for (let i = 0; i < 120; i++) {
+        await buscar({ situacion: 'EN_ATENCION' }, sesion).expect(200);
+      }
+      await buscar({ situacion: 'EN_ATENCION' }, sesion).expect(429);
+    });
+  });
+
   describe('CSRF', () => {
     it.each([
       ['ausente', undefined],
@@ -431,7 +933,12 @@ describe('Medicina · acceso (e2e)', () => {
         peticion.set('X-CSRF-Token', header);
       }
       const respuesta = await peticion
-        .send({ expedienteId: ID, ninoId: null, inicio: '2099-01-05T09:00' })
+        .send({
+          expedienteId: ID,
+          personas: [null],
+          duracionMin: 30,
+          inicio: '2099-01-05T09:00',
+        })
         .expect(403);
       expect(JSON.stringify(respuesta.body)).toContain('CSRF');
     });
@@ -450,7 +957,6 @@ describe('Medicina · acceso (e2e)', () => {
       usuariaId = usuaria.id;
       await crearAtencionConConsulta(prisma, expediente.id, medica.id, {
         visibleJuridico: true,
-        tipoDocumento: 'CONSTANCIA',
       });
     });
 
@@ -471,13 +977,16 @@ describe('Medicina · acceso (e2e)', () => {
       sinDatosClinicos(respuesta.body);
     });
 
-    it('Jurídico ve fechas y constancias, nunca datos clínicos', async () => {
+    it('Jurídico ve fechas y documentos, nunca datos clínicos', async () => {
       const respuesta = await pedir(
         'get',
         `/api/juridico/usuarias/${usuariaId}/medicina`,
         sesiones.get('JURIDICO')!,
       ).expect(200);
       expect(respuesta.body).toHaveLength(1);
+      expect(
+        (respuesta.body as VistaMedicaParaJuridico[])[0].documentos,
+      ).toHaveLength(1);
       sinDatosClinicos(respuesta.body);
     });
   });

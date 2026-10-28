@@ -11,45 +11,33 @@ import type {
 import {
   AtencionNoActivaError,
   CitaNoDisponibleError,
-  HorarioOcupadoError,
+  PersonaAjenaError,
+  PersonasPrimeraConsultaError,
   ReferenciaYaAtendidaError,
   SinReferenciaPendienteError,
   VersionCambioError,
 } from '../interfaces/errores-medica';
 import { columnaFecha, crearCitaEnTx } from './crear-cita';
-import { SERIALIZABLE, conReintentos, esChoqueUnico } from './transaccion';
-
-/**
- * Si tras los reintentos sigue chocando con un índice único, es el horario: otra petición tomó
- * la misma hora en el mismo instante.
- */
-async function traducirChoque<T>(operacion: () => Promise<T>): Promise<T> {
-  try {
-    return await conReintentos(operacion);
-  } catch (error) {
-    if (esChoqueUnico(error)) {
-      throw new HorarioOcupadoError();
-    }
-    throw error;
-  }
-}
+import { SERIALIZABLE, conReintentosHorario } from './transaccion';
 
 @Injectable()
 export class CitasMedicasRepository implements ICitasMedicasRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   programar(params: ProgramarCitaParams): Promise<CitaProgramada> {
-    return traducirChoque(() =>
+    return conReintentosHorario(() =>
       this.prisma.$transaction(async (tx) => {
         // Serializa la apertura por expediente: dos "Agendar primera consulta" simultáneos no
         // pueden calcular el mismo consecutivo.
         await tx.$queryRaw`SELECT id FROM "Expediente" WHERE id = ${params.expedienteId} FOR UPDATE`;
 
         const atencion = await this.atencionParaCita(tx, params);
+        await this.exigirPersonas(tx, params, atencion.atencionAbierta);
         const citaId = await crearCitaEnTx(tx, {
           atencionId: atencion.atencionId,
-          ninoId: params.ninoId,
+          personas: params.personas,
           inicio: params.inicio,
+          duracionMin: params.duracionMin,
           creadoPorId: params.creadoPorId,
         });
         return { ...atencion, citaId };
@@ -60,7 +48,7 @@ export class CitasMedicasRepository implements ICitasMedicasRepository {
   registrarInasistencia(
     params: RegistrarInasistenciaParams,
   ): Promise<string | null> {
-    return traducirChoque(() =>
+    return conReintentosHorario(() =>
       this.prisma.$transaction(async (tx) => {
         // Versión, estado y que ya haya empezado van en el WHERE: si otra pestaña la registró,
         // no se actualiza ninguna fila.
@@ -85,8 +73,9 @@ export class CitasMedicasRepository implements ICitasMedicasRepository {
         }
         return crearCitaEnTx(tx, {
           atencionId: cita.atencionId,
-          ninoId: cita.ninoId,
+          personas: cita.personas.map((persona) => persona.ninoId),
           inicio: params.reprogramarA,
+          duracionMin: cita.duracionMin,
           creadoPorId: params.creadoPorId,
           reprogramadaDesdeId: params.citaId,
         });
@@ -95,7 +84,7 @@ export class CitasMedicasRepository implements ICitasMedicasRepository {
   }
 
   reprogramar(params: ReprogramarCitaParams): Promise<string> {
-    return traducirChoque(() =>
+    return conReintentosHorario(() =>
       this.prisma.$transaction(async (tx) => {
         const cita = await this.citaConAtencion(tx, params.citaId);
         if (cita.version !== params.version) {
@@ -116,8 +105,9 @@ export class CitasMedicasRepository implements ICitasMedicasRepository {
         }
         return crearCitaEnTx(tx, {
           atencionId: cita.atencionId,
-          ninoId: cita.ninoId,
+          personas: cita.personas.map((persona) => persona.ninoId),
           inicio: params.inicio,
+          duracionMin: cita.duracionMin,
           creadoPorId: params.creadoPorId,
           reprogramadaDesdeId: params.citaId,
         });
@@ -125,15 +115,47 @@ export class CitasMedicasRepository implements ICitasMedicasRepository {
     );
   }
 
-  async listarOcupadas(desde: Date, hasta: Date): Promise<Date[]> {
-    const citas = await this.prisma.citaMedica.findMany({
+  listarOcupadas(
+    desde: Date,
+    hasta: Date,
+  ): Promise<{ inicio: Date; duracionMin: number }[]> {
+    return this.prisma.citaMedica.findMany({
       where: {
         inicio: { gte: desde, lte: hasta },
         estado: { in: ['PROGRAMADA', 'ATENDIDA'] },
       },
-      select: { inicio: true },
+      select: { inicio: true, duracionMin: true },
     });
-    return citas.map((cita) => cita.inicio);
+  }
+
+  /**
+   * Los hijos/as de la cita son del expediente y, si la cita abre la atención (primera
+   * consulta), van la usuaria y todos los hijos/as registrados. Se lee dentro de la transacción
+   * (con el expediente bloqueado) para comparar con los hijos/as de ese momento.
+   */
+  private async exigirPersonas(
+    tx: Prisma.TransactionClient,
+    params: ProgramarCitaParams,
+    abreAtencion: boolean,
+  ): Promise<void> {
+    const ninos = await tx.nino.findMany({
+      where: { expedienteId: params.expedienteId },
+      select: { id: true },
+    });
+    const delExpediente = new Set(ninos.map((nino) => nino.id));
+    const ninosCita = params.personas.filter(
+      (persona): persona is string => persona !== null,
+    );
+    if (ninosCita.some((ninoId) => !delExpediente.has(ninoId))) {
+      throw new PersonaAjenaError();
+    }
+    if (
+      abreAtencion &&
+      (!params.personas.includes(null) ||
+        ninosCita.length !== delExpediente.size)
+    ) {
+      throw new PersonasPrimeraConsultaError();
+    }
   }
 
   /**
@@ -208,7 +230,8 @@ export class CitasMedicasRepository implements ICitasMedicasRepository {
       where: { id: citaId },
       select: {
         atencionId: true,
-        ninoId: true,
+        duracionMin: true,
+        personas: { select: { ninoId: true } },
         estado: true,
         version: true,
         reprogramadaA: { select: { id: true } },

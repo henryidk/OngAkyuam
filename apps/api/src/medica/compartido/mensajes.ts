@@ -13,9 +13,15 @@ export const MENSAJE_SIN_ACCESO_USUARIA = 'No tiene acceso a esta paciente';
 export const MENSAJE_FUERA_DE_HORARIO =
   'Elige un día hábil y una hora del horario de consulta';
 export const MENSAJE_HORARIO_PASADO = 'Esa hora ya pasó: elige otra';
+export const MENSAJE_HORARIO_MUY_LEJANO =
+  'Solo se puede agendar hasta un mes adelante: elige una fecha más cercana';
 export const MENSAJE_HORARIO_OCUPADO = 'Ese horario ya está ocupado';
 export const MENSAJE_PERSONA_AJENA =
   'La persona seleccionada no pertenece a este expediente';
+export const MENSAJE_PERSONAS_PRIMERA_CONSULTA =
+  'La primera consulta es para la usuaria y todos sus hijos/as registrados. Vuelve a cargar la lista de personas.';
+export const MENSAJE_PERSONAS_VISITA_INCOMPLETA =
+  'Registra la consulta de todas las personas de la cita';
 export const MENSAJE_SIN_REFERENCIA_PENDIENTE =
   'La paciente no tiene una atención activa ni una referencia pendiente de Trabajo Social';
 export const MENSAJE_REFERENCIA_YA_ATENDIDA =
@@ -34,7 +40,7 @@ export const MENSAJE_CITA_NO_REGISTRABLE =
 export const MENSAJE_LOTE_VENCIDO =
   'Algunos documentos tardaron demasiado en guardarse y se descartaron. Vuelve a subirlos';
 export const MENSAJE_RANGO_DISPONIBILIDAD =
-  'La disponibilidad solo se consulta desde hoy';
+  'La disponibilidad solo se consulta desde hoy y hasta un mes adelante';
 export const MENSAJE_ARCHIVO_REQUERIDO = 'Debe adjuntar un archivo';
 
 export const MENSAJES_ARCHIVO = {

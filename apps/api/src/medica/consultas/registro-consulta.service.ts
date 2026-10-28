@@ -5,7 +5,7 @@ import {
   Inject,
   Injectable,
 } from '@nestjs/common';
-import { fechaCalendarioGT, horaGT, etiquetaAtencion } from '@akyuam/shared';
+import { etiquetaAtencion, fechaCalendarioGT, horaGT } from '@akyuam/shared';
 import type {
   ConsultaMedicaRegistradaDto,
   RegistrarConsultaMedicaDatos,
@@ -20,6 +20,7 @@ import {
   MENSAJE_ATENCION_NO_ACTIVA,
   MENSAJE_CITA_NO_REGISTRABLE,
   MENSAJE_PERSONA_AJENA,
+  MENSAJE_PERSONAS_VISITA_INCOMPLETA,
   MENSAJE_SIN_ACCESO_CITA,
 } from '../compartido/mensajes';
 import { RELOJ, type IReloj } from '../../common/reloj';
@@ -65,24 +66,27 @@ export class RegistroConsultaService {
       throw new ConflictException(MENSAJE_ATENCION_NO_ACTIVA);
     }
     const ahora = this.reloj.ahora();
-    const fechaHora = await this.fechaDeConsulta(datos, atencion, ahora);
+    const fechaHora = await this.visitaDeConsulta(datos, atencion, ahora);
+    // Los hijos/as de la próxima se comprueban en la transacción, contra el expediente.
     const proxima = datos.proxima
-      ? exigirInicioValido(datos.proxima, ahora)
+      ? {
+          inicio: exigirInicioValido(
+            datos.proxima.inicio,
+            ahora,
+            datos.proxima.duracionMin,
+          ),
+          duracionMin: datos.proxima.duracionMin,
+          personas: datos.proxima.personas,
+        }
       : null;
 
     const registrada = await this.consultasRepository
       .registrar({
         atencionId: datos.atencionId,
         citaId: datos.citaId,
-        ninoId: datos.ninoId,
+        registros: datos.registros,
         fechaHora,
-        motivoConsulta: datos.motivoConsulta,
-        signos: datos.signos,
-        diagnostico: datos.diagnostico,
-        planTratamiento: datos.planTratamiento,
-        recetaLaboratorios: datos.recetaLaboratorios,
         proxima,
-        loteDocumentos: datos.loteDocumentos,
         registradaPorId: contexto.usuarioId,
         ahora,
       })
@@ -92,19 +96,23 @@ export class RegistroConsultaService {
         }),
       );
 
-    await this.auditService.registrar(
-      eventoAuditoria(contexto, {
-        accion: 'CONSULTA_MEDICA_REGISTRADA',
-        entidad: 'ConsultaMedica',
-        entidadId: registrada.consultaId,
-        detalles: {
-          expedienteId: atencion.expedienteId,
-          atencionId: atencion.atencionId,
-          citaId: datos.citaId,
-          documentos: registrada.documentosAsociados,
-        },
-      }),
-    );
+    // Una entrada por consulta: cada persona tiene su propio registro clínico.
+    for (const consulta of registrada.consultas) {
+      await this.auditService.registrar(
+        eventoAuditoria(contexto, {
+          accion: 'CONSULTA_MEDICA_REGISTRADA',
+          entidad: 'ConsultaMedica',
+          entidadId: consulta.consultaId,
+          detalles: {
+            expedienteId: atencion.expedienteId,
+            atencionId: atencion.atencionId,
+            citaId: datos.citaId,
+            personasVisita: registrada.consultas.length,
+            documentos: consulta.documentosAsociados,
+          },
+        }),
+      );
+    }
     if (registrada.proximaCitaId) {
       await this.auditService.registrar(
         eventoAuditoria(contexto, {
@@ -114,16 +122,23 @@ export class RegistroConsultaService {
           detalles: {
             expedienteId: atencion.expedienteId,
             atencionId: atencion.atencionId,
-            consultaId: registrada.consultaId,
+            consultaIds: registrada.consultas.map((c) => c.consultaId),
+            personas: proxima?.personas.length,
+            duracionMin: proxima?.duracionMin,
           },
         }),
       );
     }
 
     const respuesta: ConsultaMedicaRegistradaDto = {
-      consultaId: registrada.consultaId,
       usuariaId: atencion.usuariaId,
-      personaNombre: registrada.personaNombre,
+      consultas: registrada.consultas.map(
+        ({ consultaId, ninoId, personaNombre }) => ({
+          consultaId,
+          ninoId,
+          personaNombre,
+        }),
+      ),
       proximaCita:
         registrada.proximaCitaId && proxima
           ? {
@@ -134,8 +149,8 @@ export class RegistroConsultaService {
                 atencion.consecutivo,
               ),
               atencionAbierta: false,
-              fecha: fechaCalendarioGT(proxima),
-              hora: horaGT(proxima),
+              fecha: fechaCalendarioGT(proxima.inicio),
+              hora: horaGT(proxima.inicio),
             }
           : null,
     };
@@ -144,23 +159,28 @@ export class RegistroConsultaService {
   }
 
   /**
-   * Con cita: debe ser de esta atención, seguir programada y sin consulta, y la persona es la de
-   * la cita; la consulta toma la hora de la cita. Sin cita: la persona debe ser del expediente y
-   * la consulta queda con la hora actual.
+   * Con cita: debe ser de esta atención y seguir programada, y los registros deben ser
+   * exactamente sus personas pendientes (ni falta ni sobra nadie) y la consulta toma la hora de la
+   * cita. Sin cita: cada persona debe ser del expediente y la consulta queda con la hora actual.
+   * El repositorio repite la comprobación dentro de la transacción. Devuelve la fecha y hora de
+   * la consulta.
    */
-  private async fechaDeConsulta(
+  private async visitaDeConsulta(
     datos: RegistrarConsultaMedicaDatos,
     atencion: AccesoAtencionMedica,
     ahora: Date,
   ): Promise<Date> {
+    const enviadas = datos.registros.map((registro) => registro.ninoId);
     if (datos.citaId === null) {
-      if (
-        !(await this.acceso.personaDelExpediente(
-          datos.ninoId,
-          atencion.expedienteId,
-        ))
-      ) {
-        throw new BadRequestException(MENSAJE_PERSONA_AJENA);
+      for (const ninoId of enviadas) {
+        if (
+          !(await this.acceso.personaDelExpediente(
+            ninoId,
+            atencion.expedienteId,
+          ))
+        ) {
+          throw new BadRequestException(MENSAJE_PERSONA_AJENA);
+        }
       }
       return ahora;
     }
@@ -168,11 +188,20 @@ export class RegistroConsultaService {
     if (cita.atencionId !== atencion.atencionId) {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_CITA);
     }
-    if (cita.estadoCita !== 'PROGRAMADA' || cita.consultaId !== null) {
+    if (enviadas.some((ninoId) => !cita.personas.includes(ninoId))) {
+      throw new BadRequestException(MENSAJE_PERSONA_AJENA);
+    }
+    if (
+      cita.estadoCita !== 'PROGRAMADA' ||
+      enviadas.some((ninoId) => cita.personasRegistradas.includes(ninoId))
+    ) {
       throw new ConflictException(MENSAJE_CITA_NO_REGISTRABLE);
     }
-    if (cita.ninoId !== datos.ninoId) {
-      throw new BadRequestException(MENSAJE_PERSONA_AJENA);
+    const pendientes = cita.personas.filter(
+      (ninoId) => !cita.personasRegistradas.includes(ninoId),
+    );
+    if (pendientes.some((ninoId) => !enviadas.includes(ninoId))) {
+      throw new BadRequestException(MENSAJE_PERSONAS_VISITA_INCOMPLETA);
     }
     return cita.inicio;
   }

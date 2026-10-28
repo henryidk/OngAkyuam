@@ -39,14 +39,19 @@ export class ConsultasMedicasService {
   ): Promise<ContextoConsultaMedicaDto> {
     if (query.cita) {
       const cita = await this.acceso.exigirCita(query.cita);
-      if (cita.estadoCita !== 'PROGRAMADA' || cita.consultaId !== null) {
+      if (cita.estadoCita !== 'PROGRAMADA') {
         throw new ConflictException(MENSAJE_CITA_NO_REGISTRABLE);
       }
       return this.exigirContexto(
         this.consultasRepository.contexto(cita.atencionId, {
           id: cita.citaId,
           inicio: cita.inicio,
-          ninoId: cita.ninoId,
+          duracionMin: cita.duracionMin,
+          // Solo las que aún no tienen su consulta (con datos anteriores al registro por visita
+          // puede quedar alguna ya registrada).
+          personas: cita.personas.filter(
+            (persona) => !cita.personasRegistradas.includes(persona),
+          ),
         }),
       );
     }

@@ -2,7 +2,7 @@ import type { PrismaService } from '../../prisma/prisma.service';
 import { VisibilidadMedicaReader } from './visibilidad-medica.reader';
 
 // Lo que Medicina comparte depende solo de estos filtros: un error aquí muestra fechas o
-// constancias médicas de una sobreviviente a un área que la médica no autorizó.
+// documentos médicos de una sobreviviente a un área que la médica no autorizó.
 
 describe('VisibilidadMedicaReader', () => {
   const prisma = {
@@ -31,7 +31,7 @@ describe('VisibilidadMedicaReader', () => {
     expect(JSON.stringify(select)).not.toMatch(
       /diagnostico|planTratamiento|recetaLaboratorios|motivoConsulta|presion|claveObjeto/,
     );
-    expect(JSON.stringify(select)).toContain('"tipo":"CONSTANCIA"');
+    expect(JSON.stringify(select)).toContain('"documentos"');
   });
 
   it('Psicología: solo atenciones visibles para Psicología y solo fechas', async () => {
@@ -49,13 +49,12 @@ describe('VisibilidadMedicaReader', () => {
     );
   });
 
-  it('la constancia se busca por id, tipo CONSTANCIA y atención visible para Jurídico', async () => {
+  it('el documento se busca por id y atención visible para Jurídico', async () => {
     await expect(
-      reader.constanciaParaJuridico('u-1', 'd-1'),
+      reader.documentoParaJuridico('u-1', 'd-1'),
     ).resolves.toBeNull();
     expect(argumentos(prisma.documentoMedico.findFirst).where).toEqual({
       id: 'd-1',
-      tipo: 'CONSTANCIA',
       consulta: {
         atencion: {
           visibleJuridico: true,

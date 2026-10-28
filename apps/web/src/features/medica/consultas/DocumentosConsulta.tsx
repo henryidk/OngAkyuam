@@ -1,5 +1,4 @@
 import { useRef, useState, type DragEvent } from 'react'
-import { ETIQUETAS_TIPO_DOCUMENTO_MEDICO, TIPOS_DOCUMENTO_MEDICO, type TipoDocumentoMedico } from '@akyuam/shared'
 import { ACCEPT_DOCUMENTOS } from '../../../lib/documentos/archivoDocumento'
 import { CLASE_TARJETA } from '../compartido/estilos'
 import type { DocumentosConsultaEstado, ItemDocumento } from './useDocumentosConsulta'
@@ -10,7 +9,7 @@ const CLASE_BOTON = 'whitespace-nowrap rounded-md border bg-white px-3 py-1.5 te
 export default function DocumentosConsulta({ documentos, deshabilitado }: { documentos: DocumentosConsultaEstado; deshabilitado: boolean }) {
   const input = useRef<HTMLInputElement>(null)
   const [arrastrando, setArrastrando] = useState(false)
-  const { items, tipos, adjuntar, cambiarTipo, eliminar, reintentar } = documentos
+  const { items, adjuntar, eliminar, reintentar } = documentos
 
   function soltar(evento: DragEvent) {
     evento.preventDefault()
@@ -27,7 +26,7 @@ export default function DocumentosConsulta({ documentos, deshabilitado }: { docu
         <div className="flex flex-col gap-0.5">
           <h2 className="text-sm font-semibold text-[#1c2430]">Documentos</h2>
           <p className="text-[12.5px] text-[#5b6573]">
-            Resultados de laboratorio, recetas, órdenes, constancias. PDF o imagen, máx. 15 MB.
+            Cualquier documento de esta consulta. PDF o imagen, máx. 15 MB.
           </p>
         </div>
         <button
@@ -71,9 +70,7 @@ export default function DocumentosConsulta({ documentos, deshabilitado }: { docu
             <FilaSubida
               key={item.id}
               item={item}
-              tipo={tipos[item.id] ?? 'OTRO'}
               deshabilitado={deshabilitado}
-              onTipo={(tipo) => void cambiarTipo(item, tipo)}
               onQuitar={() => void eliminar(item)}
               onReintentar={() => void reintentar(item.id)}
             />
@@ -89,14 +86,12 @@ export default function DocumentosConsulta({ documentos, deshabilitado }: { docu
 
 interface FilaSubidaProps {
   item: ItemDocumento
-  tipo: TipoDocumentoMedico
   deshabilitado: boolean
-  onTipo: (tipo: TipoDocumentoMedico) => void
   onQuitar: () => void
   onReintentar: () => void
 }
 
-function FilaSubida({ item, tipo, deshabilitado, onTipo, onQuitar, onReintentar }: FilaSubidaProps) {
+function FilaSubida({ item, deshabilitado, onQuitar, onReintentar }: FilaSubidaProps) {
   const error = item.estado === 'error'
   const listo = item.estado === 'listo'
   const icono = error
@@ -132,19 +127,6 @@ function FilaSubida({ item, tipo, deshabilitado, onTipo, onQuitar, onReintentar 
           />
         </div>
       </div>
-      <select
-        aria-label={`Tipo de ${item.nombreVisible || item.archivo.name}`}
-        value={tipo}
-        disabled={deshabilitado || item.estado === 'subiendo' || item.invalido}
-        onChange={(evento) => onTipo(evento.target.value as TipoDocumentoMedico)}
-        className="rounded-md border border-[#d5dadf] bg-white px-2 py-1.5 text-[12.5px] text-[#1c2430] disabled:opacity-60"
-      >
-        {TIPOS_DOCUMENTO_MEDICO.map((opcion) => (
-          <option key={opcion} value={opcion}>
-            {ETIQUETAS_TIPO_DOCUMENTO_MEDICO[opcion]}
-          </option>
-        ))}
-      </select>
       {error && !item.invalido && (
         <button
           type="button"

@@ -15,7 +15,7 @@ import {
 } from '../interfaces/atenciones-medicas-repository.interface';
 
 /**
- * Lo que Medicina comparte con Jurídico (fechas y constancias) y Psicología (fechas). Se puede
+ * Lo que Medicina comparte con Jurídico (fechas y documentos) y Psicología (fechas). Se puede
  * cambiar también después del alta: compartir o dejar de compartir el historial no lo modifica.
  */
 @Injectable()

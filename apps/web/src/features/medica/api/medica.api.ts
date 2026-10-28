@@ -2,6 +2,7 @@ import type {
   AltaAtencionMedicaInput,
   AltaAtencionMedicaRegistradaDto,
   BuscarHistorialConsultasMedicaInput,
+  BuscarPacientesProgramablesMedicaInput,
   CitaMedicaProgramadaDto,
   ConsultaMedicaDto,
   ConsultaMedicaRegistradaDto,
@@ -21,6 +22,7 @@ import type {
   InasistenciaCitaMedicaInput,
   InasistenciaRegistradaDto,
   ListarPacientesMedicaQuery,
+  PacienteBuscadaMedicaDto,
   PacienteProgramableDto,
   PacientesMedicaPaginaDto,
   PorAtenderMedicaDto,
@@ -30,7 +32,6 @@ import type {
   RegistrarConsultaMedicaInput,
   ReprogramarCitaMedicaInput,
   SemanaAgendaMedicaDto,
-  TipoDocumentoMedico,
   UrlDocumentoMedicoQuery,
   VisibilidadAtencionMedicaDto,
   VisibilidadAtencionMedicaInput,
@@ -63,14 +64,27 @@ export function obtenerDia(fecha: string) {
   return api.get<DiaAgendaMedicaDto>('/medica/agenda/dia', { params: { fecha } }).then((res) => res.data)
 }
 
-export function obtenerDisponibilidad(desde: string, dias: number) {
+/** Horas de inicio en las que cabe una cita de `duracion` minutos (todos sus bloques libres). */
+/** Horas libres de cada día hábil desde `desde` hasta el límite de agenda (un mes). */
+export function obtenerDisponibilidad(desde: string, duracion: number) {
   return api
-    .get<DisponibilidadDiaDto[]>('/medica/agenda/disponibilidad', { params: { desde, dias } })
+    .get<DisponibilidadDiaDto[]>('/medica/agenda/disponibilidad', { params: { desde, duracion } })
     .then((res) => res.data)
 }
 
+/** Detalle para programar (motivo, personas, atención) de una paciente ya elegida. */
 export function listarProgramables(query: ProgramablesMedicaQuery = {}) {
   return api.get<PacienteProgramableDto[]>('/medica/agenda/programables', { params: query }).then((res) => res.data)
+}
+
+/**
+ * Buscador de pacientes de los modales: pocas coincidencias con datos ligeros. Es POST porque `q`
+ * puede ser el nombre de una sobreviviente; sin `q` devuelve las sugerencias por agendar.
+ */
+export function buscarPacientesProgramables(datos: BuscarPacientesProgramablesMedicaInput) {
+  return api
+    .post<PacienteBuscadaMedicaDto[]>('/medica/agenda/programables/busqueda', datos)
+    .then((res) => res.data)
 }
 
 // ---- Citas ----
@@ -135,14 +149,13 @@ interface OpcionesSubida {
 /** Documento de una consulta que todavía no se guarda: queda en el `lote` hasta registrarla. */
 export function subirDocumentoPendiente(
   archivo: File,
-  campos: { lote: string; atencionId: string; tipo: TipoDocumentoMedico; nombreVisible: string },
+  campos: { lote: string; atencionId: string; nombreVisible: string },
   { signal, onProgreso }: OpcionesSubida,
 ) {
   const form = new FormData()
   form.append('archivo', archivo)
   form.append('lote', campos.lote)
   form.append('atencionId', campos.atencionId)
-  form.append('tipo', campos.tipo)
   if (campos.nombreVisible) form.append('nombreVisible', campos.nombreVisible)
   return api
     .post<DocumentoMedicoSubidoDto>('/medica/documentos/pendientes', form, {
@@ -150,10 +163,6 @@ export function subirDocumentoPendiente(
       onUploadProgress: (evento) => onProgreso(evento.total ? Math.round((evento.loaded / evento.total) * 100) : 0),
     })
     .then((res) => res.data)
-}
-
-export function cambiarTipoPendiente(documentoId: string, tipo: TipoDocumentoMedico) {
-  return api.patch<void>(`/medica/documentos/pendientes/${documentoId}`, { tipo }).then(() => undefined)
 }
 
 export function eliminarPendiente(documentoId: string) {
