@@ -1,5 +1,7 @@
 import type { FiltroProcesosPsicologia, FiltroUsuariasPsicologia } from '@akyuam/shared'
 
+export type VistaConsultasPsicologia = 'por-registrar' | 'historial'
+
 /**
  * Constructor único de las URLs del módulo. Ningún componente arma un path de psicología con un
  * template string suelto: cuando una ruta se mueve, se corrige aquí y no en cada pantalla.
@@ -22,7 +24,15 @@ export const RUTAS_PSICOLOGIA = {
    * resalta el caso recién tomado en el panel "Casos tomados por agendar".
    */
   agenda: (dia?: string, porAgendar?: string) => conQuery('/psicologia/agenda', { dia, porAgendar }),
-  procesos: (filtro?: FiltroProcesosPsicologia) => conQuery('/psicologia/procesos', { filtro }),
+  /** `consulta` (id de la cita) abre el Historial con esa sesión a la vista. */
+  consultas: (vista?: VistaConsultasPsicologia, consulta?: string) =>
+    conQuery('/psicologia/consultas', {
+      vista: vista === 'historial' || consulta ? 'historial' : undefined,
+      consulta,
+    }),
+  /** `equipo` muestra los procesos de toda el área en vez de solo los míos. */
+  procesos: (filtro?: FiltroProcesosPsicologia, equipo?: boolean) =>
+    conQuery('/psicologia/procesos', { filtro, de: equipo ? 'equipo' : undefined }),
   /**
    * `sesion` (id de la cita) abre el detalle con esa sesión ya desplegada. `cerrar` lo abre con
    * el modal de cierre a la vista: así llega quien eligió "Cerrar proceso" al registrar una sesión.

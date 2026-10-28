@@ -52,6 +52,7 @@ export function procesoConAcceso(
     consecutivo: 1,
     etapa: 'SEGUIMIENTO',
     version: 3,
+    ninoId: null,
     ...parcial,
   };
 }
@@ -75,19 +76,21 @@ export function crearProcesosRepository(): jest.Mocked<IProcesosPsicologiaReposi
       expedienteId: EXPEDIENTE_ID,
       propio: true,
     }),
-    buscarAccesoUsuaria: jest.fn().mockResolvedValue({
-      usuariaId: USUARIA_ID,
-      expediente: { id: EXPEDIENTE_ID, numero: '05-2026' },
-    }),
+    buscarAccesoUsuaria: jest.fn().mockResolvedValue({ usuariaId: USUARIA_ID }),
+    buscarExpedienteParaAbrir: jest
+      .fn()
+      .mockResolvedValue({ id: EXPEDIENTE_ID, numero: '05-2026' }),
     ninoPerteneceAExpediente: jest.fn().mockResolvedValue(true),
     abrir: jest.fn().mockResolvedValue({
       procesoId: PROCESO_ID,
       consecutivo: 1,
+      ninoConsecutivo: null,
       citaId: CITA_ID,
     }),
     abrirNuevo: jest.fn().mockResolvedValue({
       procesoId: PROCESO_ID,
       consecutivo: 2,
+      ninoConsecutivo: null,
       citaId: CITA_ID,
     }),
     cerrar: jest.fn().mockResolvedValue({ version: 4, citasCanceladas: 2 }),
@@ -97,7 +100,10 @@ export function crearProcesosRepository(): jest.Mocked<IProcesosPsicologiaReposi
 
 type CitasParaAcceso = Pick<
   jest.Mocked<ICitasPsicologicasRepository>,
-  'buscarCitasSolapadas' | 'buscarAccesoCita' | 'buscarLecturaCita'
+  | 'buscarCitasSolapadas'
+  | 'buscarAccesoCita'
+  | 'buscarAutoriaCita'
+  | 'buscarLecturaCita'
 > &
   ICitasPsicologicasRepository;
 
@@ -105,6 +111,11 @@ export function crearCitasRepository(): CitasParaAcceso {
   return {
     buscarCitasSolapadas: jest.fn().mockResolvedValue([]),
     buscarAccesoCita: jest.fn().mockResolvedValue({
+      id: CITA_ID,
+      atencionId: PROCESO_ID,
+      expedienteId: EXPEDIENTE_ID,
+    }),
+    buscarAutoriaCita: jest.fn().mockResolvedValue({
       id: CITA_ID,
       atencionId: PROCESO_ID,
       expedienteId: EXPEDIENTE_ID,

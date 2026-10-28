@@ -12,6 +12,7 @@ import Button from '../../../components/ui/Button'
 import { ErrorVista } from '../../../components/ui/EstadosVista'
 import { listarProcesos } from '../api/psicologia.api'
 import { useContextoPsicologia } from '../compartido/contexto'
+import SelectorAlcance from '../compartido/SelectorAlcance'
 import { usePaginasCursor } from '../compartido/usePaginasCursor'
 import FilaProceso from './FilaProceso'
 import TarjetasFiltro from './TarjetasFiltro'
@@ -19,15 +20,17 @@ import TarjetasFiltro from './TarjetasFiltro'
 const ESPERA_BUSQUEDA_MS = 350
 /** El servidor rechaza búsquedas más cortas. */
 const LARGO_MINIMO_BUSQUEDA = 3
-const COLUMNAS = ['Proceso', 'Usuaria', 'Etapa', 'Sesiones', 'Última sesión', 'Próxima cita']
+const COLUMNAS = ['Proceso', 'Persona', 'Etapa', 'Sesiones', 'Última sesión', 'Próxima cita']
+/** En "Del equipo" importa quién lleva cada proceso; en "Míos" sobra. */
+const COLUMNAS_EQUIPO = [...COLUMNAS.slice(0, 2), 'Atiende', ...COLUMNAS.slice(2)]
 const FILTRO_INICIAL: FiltroProcesosPsicologia = 'ACTIVOS'
 
-function FilasEsqueleto() {
+function FilasEsqueleto({ columnas }: { columnas: string[] }) {
   return (
     <>
       {Array.from({ length: 5 }, (_, indice) => (
         <tr key={indice} className="border-t border-gray-100">
-          {COLUMNAS.map((columna) => (
+          {columnas.map((columna) => (
             <td key={columna} className="px-4 py-3">
               <div className="h-4 animate-pulse rounded bg-gray-100" />
             </td>
@@ -39,8 +42,9 @@ function FilasEsqueleto() {
 }
 
 /**
- * Mis procesos psicológicos. El filtro vive en la URL; el término buscado no, para que el nombre
- * de una usuaria no quede en el historial del navegador.
+ * Procesos psicológicos: los míos o los de toda el área (`?de=equipo`). El filtro y el alcance
+ * viven en la URL; el término buscado no, para que el nombre de una usuaria no quede en el
+ * historial del navegador.
  */
 export default function ListaProcesos() {
   useTituloPagina({ titulo: 'Procesos' })
@@ -48,6 +52,9 @@ export default function ListaProcesos() {
   const [params, setParams] = useSearchParams()
   const filtroLeido = filtroProcesosPsicologiaSchema.safeParse(params.get('filtro'))
   const filtro = filtroLeido.success ? filtroLeido.data : FILTRO_INICIAL
+  const equipo = params.get('de') === 'equipo'
+  const de = equipo ? 'EQUIPO' : 'MIOS'
+  const columnas = equipo ? COLUMNAS_EQUIPO : COLUMNAS
 
   const [texto, setTexto] = useState('')
   const [busqueda, setBusqueda] = useState('')
@@ -60,23 +67,27 @@ export default function ListaProcesos() {
   }, [siguienteBusqueda, busqueda])
 
   const cargar = useCallback(
-    (cursor?: string) => listarProcesos({ filtro, q: busqueda || undefined, cursor }),
-    [filtro, busqueda],
+    (cursor?: string) => listarProcesos({ filtro, de, q: busqueda || undefined, cursor }),
+    [filtro, de, busqueda],
   )
   const { items, error, cargando, hayMas, cargarMas, cargandoMas, errorMas, recargar } = usePaginasCursor(
-    `${filtro}|${busqueda}`,
+    `${filtro}|${de}|${busqueda}`,
     cargar,
   )
 
-  function elegirFiltro(nuevo: FiltroProcesosPsicologia) {
-    setParams(nuevo === FILTRO_INICIAL ? {} : { filtro: nuevo }, { replace: true })
+  function irA(nuevoFiltro: FiltroProcesosPsicologia, nuevoEquipo: boolean) {
+    const destino = new URLSearchParams()
+    if (nuevoFiltro !== FILTRO_INICIAL) destino.set('filtro', nuevoFiltro)
+    if (nuevoEquipo) destino.set('de', 'equipo')
+    setParams(destino, { replace: true })
   }
 
   const textoCorto = recortado.length > 0 && recortado.length < LARGO_MINIMO_BUSQUEDA
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+        <SelectorAlcance etiqueta="Procesos" valor={de} onCambio={(alcance) => irA(filtro, alcance === 'EQUIPO')} />
         <p className="min-w-[240px] flex-1 text-[13px] text-gray-500">
           Cada proceso va de Inicio a Seguimiento y Cierre. El historial completo de cada usuaria está en su
           expediente.
@@ -97,7 +108,11 @@ export default function ListaProcesos() {
       </div>
       {textoCorto && <p className="text-xs text-gray-500">Escribe al menos {LARGO_MINIMO_BUSQUEDA} caracteres.</p>}
 
-      <TarjetasFiltro filtro={filtro} totales={resumen?.procesos ?? null} onElegir={elegirFiltro} />
+      <TarjetasFiltro
+        filtro={filtro}
+        totales={(equipo ? resumen?.procesosEquipo : resumen?.procesos) ?? null}
+        onElegir={(nuevo) => irA(nuevo, equipo)}
+      />
 
       {error && !items ? (
         <ErrorVista
@@ -110,10 +125,12 @@ export default function ListaProcesos() {
         <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[820px] text-left">
-              <caption className="sr-only">Procesos: {ETIQUETAS_FILTRO_PROCESOS_PSICOLOGIA[filtro]}</caption>
+              <caption className="sr-only">
+                Procesos {equipo ? 'del equipo' : 'míos'}: {ETIQUETAS_FILTRO_PROCESOS_PSICOLOGIA[filtro]}
+              </caption>
               <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
                 <tr>
-                  {COLUMNAS.map((columna) => (
+                  {columnas.map((columna) => (
                     <th key={columna} scope="col" className="whitespace-nowrap px-4 py-2.5 font-medium">
                       {columna}
                     </th>
@@ -121,9 +138,9 @@ export default function ListaProcesos() {
                 </tr>
               </thead>
               <tbody className={cargando && items ? 'opacity-60' : undefined}>
-                {!items && <FilasEsqueleto />}
+                {!items && <FilasEsqueleto columnas={columnas} />}
                 {items?.map((proceso) => (
-                  <FilaProceso key={proceso.id} proceso={proceso} />
+                  <FilaProceso key={proceso.id} proceso={proceso} conResponsable={equipo} />
                 ))}
               </tbody>
             </table>

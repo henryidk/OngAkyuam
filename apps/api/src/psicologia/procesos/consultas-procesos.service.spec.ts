@@ -31,6 +31,7 @@ function detalle(
     usuariaNombreCompleto: 'Usuaria De Prueba',
     expedienteNumero: '05-2026',
     etapa: 'SEGUIMIENTO',
+    persona: { ninoId: null, nombreCompleto: 'Usuaria De Prueba', edad: 30 },
     sesionesAtendidas: 2,
     ultimaSesion: null,
     proximaCita: null,
@@ -95,21 +96,55 @@ describe('ConsultasProcesosService', () => {
   });
 
   describe('lista y resumen', () => {
-    it('lista siempre los procesos de quien consulta, nunca los de otra psicóloga', async () => {
+    it('lista con el id de la sesión, nunca con uno que venga de la petición', async () => {
       await service.listar(
-        { filtro: 'SIN_PROXIMA', q: 'ana 05-2026', cursor: 'c1' },
-        'psicologa-a',
+        { filtro: 'SIN_PROXIMA', de: 'MIOS', q: 'ana 05-2026', cursor: 'c1' },
+        contexto,
       );
 
       expect(consultasRepository.listar).toHaveBeenCalledWith(
         expect.objectContaining({
           psicologaId: 'psicologa-a',
+          alcance: 'MIOS',
           filtro: 'SIN_PROXIMA',
           palabras: ['ana', '05-2026'],
           cursor: 'c1',
           limite: 20,
         }),
       );
+    });
+
+    it('"Míos" no deja rastro de lista en la auditoría', async () => {
+      await service.listar({ filtro: 'ACTIVOS', de: 'MIOS' }, contexto);
+
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    it('"Del equipo" audita cada página sin guardar el texto buscado', async () => {
+      consultasRepository.listar.mockResolvedValue({
+        items: [{} as never, {} as never],
+        siguienteCursor: null,
+      });
+
+      await service.listar(
+        { filtro: 'ACTIVOS', de: 'EQUIPO', q: 'Nombre Buscado' },
+        contexto,
+      );
+
+      expect(consultasRepository.listar).toHaveBeenCalledWith(
+        expect.objectContaining({ alcance: 'EQUIPO' }),
+      );
+      const [evento] = eventosAuditados(auditService);
+      expect(evento).toMatchObject({
+        accion: 'PROCESOS_EQUIPO_PSICOLOGIA_CONSULTADOS',
+        detalles: {
+          filtro: 'ACTIVOS',
+          conBusqueda: true,
+          pagina: 'primera',
+          resultados: 2,
+        },
+      });
+      expect(JSON.stringify(evento)).not.toContain('Nombre');
     });
 
     it('cuenta el resumen solo para quien consulta', async () => {

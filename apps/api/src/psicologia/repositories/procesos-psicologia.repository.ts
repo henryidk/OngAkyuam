@@ -14,16 +14,19 @@ import type {
   AccesoUsuariaPsicologia,
   ActualizarVisibilidadParams,
   CerrarProcesoParams,
+  ExpedienteParaAbrir,
   IProcesosPsicologiaRepository,
   LecturaProcesoPsicologia,
   ProcesoAbierto,
   ProcesoCerrado,
 } from '../interfaces/procesos-psicologia-repository.interface';
 import {
+  EXPEDIENTE_DE_PSICOLOGIA,
   EXPEDIENTE_SIN_TOMAR,
-  expedienteAccesible,
-  expedienteConProcesoDe,
-  procesoLegible,
+  EXPEDIENTE_TOMADO,
+  PROCESO_LEGIBLE,
+  procesoAbiertoDePersona,
+  procesoGestionable,
 } from './acceso-expediente';
 
 const INTENTOS_MAXIMOS = 3;
@@ -40,6 +43,41 @@ function esReintentable(error: unknown): boolean {
   );
 }
 
+/** Siguiente número de proceso de la persona: la usuaria en este expediente, o el hijo/a. */
+async function siguienteConsecutivo(
+  tx: Prisma.TransactionClient,
+  expedienteId: string,
+  ninoId: string | null,
+): Promise<number> {
+  const ultimo = await tx.atencionPsicologica.aggregate({
+    where: ninoId === null ? { expedienteId, ninoId: null } : { ninoId },
+    _max: { consecutivo: true },
+  });
+  return (ultimo._max.consecutivo ?? 0) + 1;
+}
+
+/**
+ * Número del hijo/a dentro del expediente, o null si el proceso es de la usuaria. Si el hijo/a
+ * no es del expediente, el caso no está disponible (el servicio ya lo validó antes).
+ */
+async function consecutivoDeNino(
+  tx: Prisma.TransactionClient,
+  ninoId: string | null,
+  expedienteId: string,
+): Promise<number | null> {
+  if (ninoId === null) {
+    return null;
+  }
+  const nino = await tx.nino.findFirst({
+    where: { id: ninoId, expedienteId },
+    select: { consecutivo: true },
+  });
+  if (!nino) {
+    throw new ProcesoNoDisponibleError();
+  }
+  return nino.consecutivo;
+}
+
 @Injectable()
 export class ProcesosPsicologiaRepository implements IProcesosPsicologiaRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -49,10 +87,11 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
     psicologaId: string,
   ): Promise<AccesoProcesoPsicologia | null> {
     const proceso = await this.prisma.atencionPsicologica.findFirst({
-      where: { id: procesoId, psicologaAsignadaId: psicologaId },
+      where: { id: procesoId, ...procesoGestionable(psicologaId) },
       select: {
         id: true,
         expedienteId: true,
+        ninoId: true,
         consecutivo: true,
         estado: true,
         version: true,
@@ -70,6 +109,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
       consecutivo: proceso.consecutivo,
       etapa: proceso.estado,
       version: proceso.version,
+      ninoId: proceso.ninoId,
     };
   }
 
@@ -78,7 +118,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
     psicologaId: string,
   ): Promise<LecturaProcesoPsicologia | null> {
     const proceso = await this.prisma.atencionPsicologica.findFirst({
-      where: { id: procesoId, ...procesoLegible(psicologaId) },
+      where: { id: procesoId, ...PROCESO_LEGIBLE },
       select: { id: true, expedienteId: true, psicologaAsignadaId: true },
     });
     if (!proceso) {
@@ -93,30 +133,39 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
 
   async buscarAccesoUsuaria(
     usuariaId: string,
-    psicologaId: string,
   ): Promise<AccesoUsuariaPsicologia | null> {
     const usuaria = await this.prisma.usuaria.findFirst({
-      where: {
-        id: usuariaId,
-        expedientes: { some: expedienteAccesible(psicologaId) },
-      },
-      select: {
-        id: true,
-        expedientes: {
-          where: expedienteConProcesoDe(psicologaId),
-          select: { id: true, numero: true },
-          orderBy: [{ fecha: 'desc' }, { createdAt: 'desc' }],
-          take: 1,
-        },
-      },
+      where: { id: usuariaId, expedientes: { some: EXPEDIENTE_DE_PSICOLOGIA } },
+      select: { id: true },
     });
-    if (!usuaria) {
-      return null;
+    return usuaria ? { usuariaId: usuaria.id } : null;
+  }
+
+  async buscarExpedienteParaAbrir(
+    usuariaId: string,
+    ninoId: string | null,
+  ): Promise<ExpedienteParaAbrir> {
+    if (ninoId === null) {
+      const expediente = await this.prisma.expediente.findFirst({
+        where: { usuariaId, ...EXPEDIENTE_TOMADO },
+        select: { id: true, numero: true },
+        orderBy: [{ fecha: 'desc' }, { createdAt: 'desc' }],
+      });
+      return expediente ?? 'SIN_TOMAR';
     }
-    return {
-      usuariaId: usuaria.id,
-      expediente: usuaria.expedientes[0] ?? null,
-    };
+
+    const nino = await this.prisma.nino.findFirst({
+      where: { id: ninoId, expediente: { usuariaId } },
+      select: { expediente: { select: { id: true, numero: true } } },
+    });
+    if (!nino) {
+      return 'PERSONA_AJENA';
+    }
+    const tomado = await this.prisma.expediente.findFirst({
+      where: { id: nino.expediente.id, ...EXPEDIENTE_TOMADO },
+      select: { id: true },
+    });
+    return tomado ? nino.expediente : 'SIN_TOMAR';
   }
 
   async ninoPerteneceAExpediente(
@@ -131,21 +180,17 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
   }
 
   async abrir(params: AbrirProcesoParams): Promise<ProcesoAbierto> {
-    for (let intento = 1; ; intento += 1) {
-      try {
-        return await this.abrirEnTransaccion(params);
-      } catch (error) {
-        if (intento >= INTENTOS_MAXIMOS || !esReintentable(error)) {
-          throw error;
-        }
-      }
-    }
+    return this.conReintentos(() => this.abrirEnTransaccion(params));
   }
 
   async abrirNuevo(params: AbrirProcesoNuevoParams): Promise<ProcesoAbierto> {
+    return this.conReintentos(() => this.abrirNuevoEnTransaccion(params));
+  }
+
+  private async conReintentos<T>(operacion: () => Promise<T>): Promise<T> {
     for (let intento = 1; ; intento += 1) {
       try {
-        return await this.abrirNuevoEnTransaccion(params);
+        return await operacion();
       } catch (error) {
         if (intento >= INTENTOS_MAXIMOS || !esReintentable(error)) {
           throw error;
@@ -163,21 +208,22 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
           where: {
             id: params.expedienteId,
             usuariaId: params.usuariaId,
-            ...expedienteConProcesoDe(params.psicologaId),
+            ...EXPEDIENTE_TOMADO,
           },
           select: { id: true },
         });
         if (!expediente) {
           throw new ProcesoNoDisponibleError();
         }
+        const ninoConsecutivo = await consecutivoDeNino(
+          tx,
+          params.ninoId,
+          expediente.id,
+        );
 
-        // Cualquier atención sin cerrar de la usuaria, de cualquier psicóloga y en cualquier
-        // expediente. Sin fecha de inicio es un caso tomado que espera su primera cita.
+        // Sin fecha de inicio es un caso tomado que espera su primera cita: se atiende ese.
         const sinCerrar = await tx.atencionPsicologica.findFirst({
-          where: {
-            estado: { not: 'CIERRE' },
-            expediente: { usuariaId: params.usuariaId },
-          },
+          where: procesoAbiertoDePersona(params),
           select: { fechaInicio: true },
           orderBy: { fechaInicio: { sort: 'desc', nulls: 'last' } },
         });
@@ -186,29 +232,33 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
             ? new OtroProcesoActivoError()
             : new ReferenciaPendienteError();
         }
-        const referenciaSinTomar = await tx.referidoArea.findFirst({
-          where: {
-            area: 'PSICOLOGIA',
-            expediente: {
-              usuariaId: params.usuariaId,
-              ...EXPEDIENTE_SIN_TOMAR,
+        // Una referencia nueva de la usuaria se atiende desde la bandeja, no desde la ficha.
+        if (params.ninoId === null) {
+          const referenciaSinTomar = await tx.referidoArea.findFirst({
+            where: {
+              area: 'PSICOLOGIA',
+              expediente: {
+                usuariaId: params.usuariaId,
+                ...EXPEDIENTE_SIN_TOMAR,
+              },
             },
-          },
-          select: { id: true },
-        });
-        if (referenciaSinTomar) {
-          throw new ReferenciaPendienteError();
+            select: { id: true },
+          });
+          if (referenciaSinTomar) {
+            throw new ReferenciaPendienteError();
+          }
         }
 
-        const ultimo = await tx.atencionPsicologica.aggregate({
-          where: { expedienteId: expediente.id },
-          _max: { consecutivo: true },
-        });
         const ahora = new Date();
         const proceso = await tx.atencionPsicologica.create({
           data: {
             expedienteId: expediente.id,
-            consecutivo: (ultimo._max.consecutivo ?? 0) + 1,
+            ninoId: params.ninoId,
+            consecutivo: await siguienteConsecutivo(
+              tx,
+              expediente.id,
+              params.ninoId,
+            ),
             estado: 'INICIO',
             psicologaAsignadaId: params.psicologaId,
             tomadaEn: ahora,
@@ -240,6 +290,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
         return {
           procesoId: proceso.id,
           consecutivo: proceso.consecutivo,
+          ninoConsecutivo,
           citaId: cita.id,
         };
       },
@@ -260,6 +311,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
           },
           select: {
             id: true,
+            expedienteId: true,
             consecutivo: true,
             estado: true,
             _count: { select: { citas: true } },
@@ -271,15 +323,19 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
         if (proceso._count.citas > 0) {
           throw new ProcesoYaAbiertoError();
         }
+        const ninoConsecutivo = await consecutivoDeNino(
+          tx,
+          params.ninoId,
+          proceso.expedienteId,
+        );
 
-        // "Un solo proceso abierto por usuaria" cruza expedientes: la base no puede
-        // garantizarlo con un índice, así que se comprueba aquí, bajo aislamiento serializable.
+        // "Un solo proceso abierto por persona" cruza expedientes en el caso de la usuaria: la
+        // base no puede garantizarlo con un índice, así que se comprueba aquí, serializable.
         const otroAbierto = await tx.atencionPsicologica.findFirst({
           where: {
             id: { not: proceso.id },
-            estado: { not: 'CIERRE' },
             fechaInicio: { not: null },
-            expediente: { usuariaId: params.usuariaId },
+            ...procesoAbiertoDePersona(params),
           },
           select: { id: true },
         });
@@ -287,9 +343,21 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
           throw new OtroProcesoActivoError();
         }
 
+        // La persona se fija antes de la primera cita (la base lo exige). El caso se tomó en el
+        // lugar de la usuaria; si es para un hijo/a, toma el siguiente número de los suyos.
+        const consecutivo =
+          params.ninoId === null
+            ? proceso.consecutivo
+            : await siguienteConsecutivo(
+                tx,
+                proceso.expedienteId,
+                params.ninoId,
+              );
         await tx.atencionPsicologica.update({
           where: { id: proceso.id },
           data: {
+            ninoId: params.ninoId,
+            consecutivo,
             fechaInicio: new Date(),
             actualizadoPorId: params.psicologaId,
             version: { increment: 1 },
@@ -317,7 +385,8 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
 
         return {
           procesoId: proceso.id,
-          consecutivo: proceso.consecutivo,
+          consecutivo,
+          ninoConsecutivo,
           citaId: cita.id,
         };
       },

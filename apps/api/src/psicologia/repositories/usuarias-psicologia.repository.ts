@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  etiquetaProcesoPsicologia,
   nombreMunicipio,
   type FiltroUsuariasPsicologia,
   type ListaUsuariasPsicologia,
@@ -14,11 +15,13 @@ import type {
   ListarUsuariasPsicologiaParams,
 } from '../interfaces/usuarias-psicologia-repository.interface';
 import {
-  expedienteAccesible,
-  expedienteAccesibleSql,
-  expedienteConProcesoDe,
+  EXPEDIENTE_DE_PSICOLOGIA,
+  EXPEDIENTE_DE_PSICOLOGIA_SQL,
+  EXPEDIENTE_TOMADO,
+  procesoAbiertoDePersona,
   sinTomarSql,
 } from './acceso-expediente';
+import { hijoDeFicha } from './hijos-ficha.mapper';
 import { edad, nombreCompleto, SELECT_PERSONA } from './personas';
 
 /** Tope de referencias en la ficha: una usuaria tiene a lo más una por expediente. */
@@ -44,12 +47,12 @@ type ContadoresRow = { TODAS: number } & Record<
 >;
 
 /**
- * Una fila por usuaria con algún expediente que esta psicóloga puede ver. Procesos y
- * referencias se agregan por usuaria (no por expediente), y de los procesos solo cuentan los
- * suyos: lo que lleva otra psicóloga no se refleja ni en los contadores.
+ * Una fila por usuaria con algún expediente referido a Psicología. Procesos y referencias se
+ * agregan por usuaria (no por expediente) y cuentan los de toda el área, de ella y de sus
+ * hijos/as; solo "por agendar" es personal: es un caso que tomó esta psicóloga.
  */
 function cteLista(params: ListarUsuariasPsicologiaParams) {
-  const accesible = expedienteAccesibleSql(params.psicologaId);
+  const accesible = EXPEDIENTE_DE_PSICOLOGIA_SQL;
   return Prisma.sql`
     WITH lista AS (
       SELECT
@@ -86,11 +89,14 @@ function cteLista(params: ListarUsuariasPsicologiaParams) {
           count(*) FILTER (WHERE ap.estado <> 'CIERRE' AND ap."fechaInicio" IS NOT NULL)::int AS activos,
           count(*) FILTER (WHERE ap.estado = 'CIERRE' OR ap."fechaInicio" IS NOT NULL)::int AS total,
           -- Caso que tomé y todavía no agendo: sigue siendo una referencia por atender.
-          coalesce(bool_or(ap.estado <> 'CIERRE' AND ap."fechaInicio" IS NULL), FALSE) AS por_agendar,
+          coalesce(bool_or(
+            ap.estado <> 'CIERRE' AND ap."fechaInicio" IS NULL
+            AND ap."psicologaAsignadaId" = ${params.psicologaId}
+          ), FALSE) AS por_agendar,
           max(ap."updatedAt") AS ultima
         FROM "AtencionPsicologica" ap
         JOIN "Expediente" e ON e.id = ap."expedienteId"
-        WHERE e."usuariaId" = u.id AND ap."psicologaAsignadaId" = ${params.psicologaId}
+        WHERE e."usuariaId" = u.id AND ${accesible}
       ) p
       WHERE ${condicionBusqueda(params.busqueda)}
     )
@@ -138,6 +144,8 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
         expedienteNumero: fila.expedienteNumero,
         estadoProceso:
           fila.activos > 0 ? 'ACTIVO' : fila.total > 0 ? 'CERRADO' : null,
+        // Un proceso abierto por persona: cada uno es alguien de la familia en atención.
+        personasEnAtencion: fila.activos,
         referenciaPendiente: !fila.referenciaPendiente
           ? null
           : fila.sinTomar
@@ -155,8 +163,9 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
   async obtenerFicha(
     usuariaId: string,
     psicologaId: string,
+    ahora: Date,
   ): Promise<FichaUsuariaRepo | null> {
-    const accesible = expedienteAccesible(psicologaId);
+    const accesible = EXPEDIENTE_DE_PSICOLOGIA;
     const usuaria = await this.prisma.usuaria.findFirst({
       where: { id: usuariaId, expedientes: { some: accesible } },
       select: {
@@ -184,43 +193,92 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
       return null;
     }
 
-    const [referencias, expedientePropio, sinCerrar] = await Promise.all([
-      this.prisma.referidoArea.findMany({
-        where: { area: 'PSICOLOGIA', expediente: { usuariaId, ...accesible } },
-        select: {
-          id: true,
-          expedienteId: true,
-          createdAt: true,
-          motivo: true,
-          otorgadoPor: { select: { nombreCompleto: true } },
-          expediente: {
-            select: {
-              numero: true,
-              atencionesPsicologicas: {
-                where: { psicologaAsignadaId: { not: null } },
-                select: {
-                  referidoId: true,
-                  fechaInicio: true,
-                  estado: true,
-                  psicologaAsignadaId: true,
+    const [referencias, expedienteTomado, usuariaConProceso, ninos] =
+      await Promise.all([
+        this.prisma.referidoArea.findMany({
+          where: {
+            area: 'PSICOLOGIA',
+            expediente: { usuariaId, ...accesible },
+          },
+          select: {
+            id: true,
+            expedienteId: true,
+            createdAt: true,
+            motivo: true,
+            otorgadoPor: { select: { nombreCompleto: true } },
+            expediente: {
+              select: {
+                numero: true,
+                atencionesPsicologicas: {
+                  where: { psicologaAsignadaId: { not: null } },
+                  select: {
+                    referidoId: true,
+                    fechaInicio: true,
+                    estado: true,
+                    psicologaAsignadaId: true,
+                  },
                 },
               },
             },
           },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: LIMITE_REFERENCIAS,
-      }),
-      this.prisma.expediente.findFirst({
-        where: { usuariaId, ...expedienteConProcesoDe(psicologaId) },
-        select: { id: true },
-      }),
-      // De cualquier psicóloga: la regla "un solo proceso abierto por usuaria" es de toda el
-      // área. Solo se usa para el sí/no del botón, nunca se devuelve de quién es.
-      this.prisma.atencionPsicologica.count({
-        where: { estado: { not: 'CIERRE' }, expediente: { usuariaId } },
-      }),
-    ]);
+          orderBy: { createdAt: 'desc' },
+          take: LIMITE_REFERENCIAS,
+        }),
+        // El mismo expediente en el que `abrirNuevo` abriría el proceso de la usuaria.
+        this.prisma.expediente.findFirst({
+          where: { usuariaId, ...EXPEDIENTE_TOMADO },
+          select: {
+            id: true,
+            numero: true,
+            atencionesPsicologicas: {
+              where: { ninoId: null },
+              select: { consecutivo: true },
+              orderBy: { consecutivo: 'desc' },
+              take: 1,
+            },
+          },
+          orderBy: [{ fecha: 'desc' }, { createdAt: 'desc' }],
+        }),
+        // De cualquier psicóloga: "un solo proceso abierto por persona" es de toda el área. Solo
+        // se usa para el sí/no del botón de la usuaria; los hijos/as se abren cada uno aparte.
+        this.prisma.atencionPsicologica.findFirst({
+          where: procesoAbiertoDePersona({ usuariaId, ninoId: null }),
+          select: { id: true },
+        }),
+        this.prisma.nino.findMany({
+          where: { expedienteId: expediente.id },
+          orderBy: { consecutivo: 'asc' },
+          select: {
+            id: true,
+            consecutivo: true,
+            ...SELECT_PERSONA,
+            genero: true,
+            // Los de cualquier psicóloga: la lectura es de toda el área.
+            atencionesPsicologicas: {
+              select: {
+                id: true,
+                consecutivo: true,
+                estado: true,
+                fechaCierre: true,
+                psicologaAsignada: {
+                  select: { nombreCompleto: true, puesto: true },
+                },
+                citas: {
+                  where: { estado: 'PROGRAMADA', fechaHora: { gte: ahora } },
+                  select: { fechaHora: true },
+                  orderBy: { fechaHora: 'asc' },
+                  take: 1,
+                },
+              },
+              orderBy: { consecutivo: 'desc' },
+            },
+          },
+        }),
+      ]);
+
+    // Los hijos/as son del expediente de la ficha y ahí se abren sus procesos, si ya se tomó. Es
+    // el más reciente de los visibles: si está tomado, también es el tomado más reciente.
+    const expedienteFichaTomado = expedienteTomado?.id === expediente.id;
 
     const historial = referencias.map((referencia) => {
       const estado = estadoReferencia(
@@ -257,9 +315,17 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
           expediente.fechaEgresoAlbergue === null,
       },
       referencias: historial,
+      codigoProcesoNuevo: etiquetaProcesoPsicologia(
+        (expedienteTomado ?? expediente).numero,
+        (expedienteTomado?.atencionesPsicologicas[0]?.consecutivo ?? 0) + 1,
+        null,
+      ),
+      hijos: ninos.map((nino) =>
+        hijoDeFicha(nino, expediente.numero, expedienteFichaTomado),
+      ),
       puedeAbrirProceso:
-        expedientePropio !== null &&
-        sinCerrar === 0 &&
+        expedienteTomado !== null &&
+        usuariaConProceso === null &&
         historial.every((referencia) => referencia.estado !== 'SIN_TOMAR'),
     };
   }

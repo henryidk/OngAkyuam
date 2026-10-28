@@ -21,6 +21,14 @@ export const ETIQUETAS_ESTADO_CITA_PSICOLOGICA: Record<(typeof ESTADOS_CITA_PSIC
   REPROGRAMADA: 'Reprogramada',
 }
 
+/** Consultorio donde se atiende la sesión: se pide al registrar una sesión atendida. */
+export const CLINICAS_PSICOLOGIA = ['CLINICA_1', 'CLINICA_2'] as const
+
+export const ETIQUETAS_CLINICA_PSICOLOGIA: Record<(typeof CLINICAS_PSICOLOGIA)[number], string> = {
+  CLINICA_1: 'Clínica 1',
+  CLINICA_2: 'Clínica 2',
+}
+
 /** Estado del proceso de atención de una usuaria en psicología (independiente de cada cita). */
 export const ESTADOS_ATENCION_PSICOLOGICA = ['INICIO', 'SEGUIMIENTO', 'CIERRE'] as const
 
@@ -64,21 +72,30 @@ export const ETIQUETAS_MOTIVO_CIERRE_PSICOLOGIA: Record<(typeof MOTIVOS_CIERRE_P
 /**
  * Horario de atención del área, en minutos desde la medianoche de Guatemala — de aquí sale el
  * cálculo de huecos libres de la agenda. `diasLaborables` usa el día ISO (1 = lunes … 7 = domingo).
+ * Sin hueco de almuerzo a propósito: cada psicóloga maneja sus pausas sin que la agenda las imponga.
  */
 export const HORARIO_PSICOLOGIA = {
   diasLaborables: [1, 2, 3, 4, 5],
   inicioMin: 8 * 60,
   finMin: 17 * 60,
-  almuerzoInicioMin: 12 * 60,
-  almuerzoFinMin: 13 * 60,
   /** Un espacio más corto que esto no se ofrece como hueco libre. */
-  minimoMin: 45,
+  minimoMin: 30,
   /** Para el día de hoy los huecos arrancan en el siguiente múltiplo de estos minutos. */
   redondeoMin: 15,
 } as const
 
-/** Duraciones que ofrece el formulario de cita. La primera es la que viene seleccionada. */
-export const DURACIONES_CITA_PSICOLOGICA_MINUTOS = [45, 60, 90] as const
+/** Duraciones que ofrece el formulario de cita, de menor a mayor. */
+export const DURACIONES_CITA_PSICOLOGICA_MINUTOS = [30, 45, 60] as const
+export type DuracionCitaPsicologica = (typeof DURACIONES_CITA_PSICOLOGICA_MINUTOS)[number]
+
+/** La duración que viene seleccionada al programar una cita. */
+export const DURACION_CITA_PSICOLOGICA_POR_DEFECTO: DuracionCitaPsicologica = 45
+
+/** El selector de horario ofrece horas de inicio cada tantos minutos ("09:00", "09:30"…). */
+export const PASO_HORARIO_PSICOLOGIA_MIN = 30
+
+/** El selector de horario ofrece días hasta tantas semanas adelante (más lejos, "Otra fecha"). */
+export const SEMANAS_DISPONIBILIDAD_PSICOLOGIA = 8
 
 /** Filas por página de la lista de Usuarias y de las listas por cursor del rediseño. */
 export const USUARIAS_PSICOLOGIA_POR_PAGINA = 20
@@ -97,6 +114,19 @@ export const ETIQUETAS_FILTRO_PROCESOS_PSICOLOGIA: Record<(typeof FILTROS_PROCES
   SIN_PROXIMA: 'Sin próxima cita',
   CERRADOS: 'Cerrados',
 }
+
+/** De quién son las filas de Procesos y del historial de Consultas: solo lo mío o toda el área. */
+export const ALCANCES_PSICOLOGIA = ['MIOS', 'EQUIPO'] as const
+
+/** Resultados que cuenta el historial de Consultas: las sesiones que de verdad ocurrieron (o se perdieron). */
+export const ESTADOS_HISTORIAL_CONSULTAS_PSICOLOGIA = ['ATENDIDA', 'NO_ASISTIO'] as const
+
+export const BUSQUEDA_CONSULTAS_PSICOLOGIA_MIN = 3
+export const PAGINA_HISTORIAL_CONSULTAS_PSICOLOGIA = 25
+/** Rango máximo del historial: acota lo que puede barrer una sola búsqueda. */
+export const MAX_DIAS_RANGO_HISTORIAL_PSICOLOGIA = 366
+/** Tope de seguridad de Por registrar: en la práctica son unas pocas. */
+export const MAX_SESIONES_POR_REGISTRAR_PSICOLOGIA = 200
 
 export const FILTROS_USUARIAS_PSICOLOGIA = ['CON_ACTIVO', 'SIN_ACTIVO'] as const
 

@@ -32,7 +32,10 @@ import type {
 
 /**
  * Cadena anti-IDOR del módulo de psicología — existe una sola vez aquí y la comparten todos
- * los demás servicios del módulo (§7.1 del plan), en vez de reimplementarla cada uno.
+ * los demás servicios del módulo (§7.1 del plan), en vez de reimplementarla cada uno. Tres
+ * niveles (planpsicologiaequipo.md): LEER es de toda el área (`exigirLectura*`,
+ * `exigirAccesoUsuaria`); GESTIONAR un proceso es de su responsable (`exigirAccesoProceso`,
+ * `exigirAccesoCita`); REGISTRAR una sesión es de quien la atendió (`exigirAutoriaCita`).
  */
 @Injectable()
 export class AccesoPsicologiaService {
@@ -45,7 +48,7 @@ export class AccesoPsicologiaService {
     private readonly procesosRepository: IProcesosPsicologiaRepository,
   ) {}
 
-  /** El proceso existe y es de esta psicóloga; si no, el mismo 403 en ambos casos. */
+  /** El proceso existe y esta psicóloga es su responsable; si no, el mismo 403 en ambos casos. */
   async exigirAccesoProceso(
     procesoId: string,
     psicologaId: string,
@@ -61,9 +64,8 @@ export class AccesoPsicologiaService {
   }
 
   /**
-   * El proceso se puede LEER: es de esta psicóloga, o es el ya cerrado de una colega con una
-   * usuaria que ella también atiende o atendió. Nunca autoriza una escritura: para eso está
-   * `exigirAccesoProceso`.
+   * El proceso se puede LEER: es de un expediente referido a Psicología, lo lleve quien lo
+   * lleve. Nunca autoriza una escritura: para eso está `exigirAccesoProceso`.
    */
   async exigirLecturaProceso(
     procesoId: string,
@@ -80,17 +82,13 @@ export class AccesoPsicologiaService {
   }
 
   /**
-   * La usuaria tiene una referencia sin tomar o un proceso de esta psicóloga. Si solo la atiende
-   * otra psicóloga, el mismo 403 que si no existiera.
+   * La usuaria tiene algún expediente referido a Psicología. Si no, el mismo 403 que si no
+   * existiera. Solo autoriza leer su ficha; abrir un proceso se revalida aparte.
    */
   async exigirAccesoUsuaria(
     usuariaId: string,
-    psicologaId: string,
   ): Promise<AccesoUsuariaPsicologia> {
-    const acceso = await this.procesosRepository.buscarAccesoUsuaria(
-      usuariaId,
-      psicologaId,
-    );
+    const acceso = await this.procesosRepository.buscarAccesoUsuaria(usuariaId);
     if (!acceso) {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_USUARIA);
     }
@@ -130,11 +128,34 @@ export class AccesoPsicologiaService {
     return { ...referencia, procesoId: referencia.procesoId };
   }
 
+  /**
+   * La cita es de un proceso del que esta psicóloga es responsable: puede moverla. `mensaje`
+   * solo cambia cuando ya se sabe que puede leer la cita, así que no revela nada (sin IDOR).
+   */
   async exigirAccesoCita(
     citaId: string,
     psicologaId: string,
+    mensaje: string = MENSAJE_SIN_ACCESO_CITA,
   ): Promise<AccesoCitaPsicologica> {
     const acceso = await this.citasRepository.buscarAccesoCita(
+      citaId,
+      psicologaId,
+    );
+    if (!acceso) {
+      throw new ForbiddenException(mensaje);
+    }
+    return acceso;
+  }
+
+  /**
+   * Esta psicóloga atendió la cita y el proceso sigue abierto: puede registrar o corregir la
+   * sesión y subir su documento, aunque el proceso lo lleve otra.
+   */
+  async exigirAutoriaCita(
+    citaId: string,
+    psicologaId: string,
+  ): Promise<AccesoCitaPsicologica> {
+    const acceso = await this.citasRepository.buscarAutoriaCita(
       citaId,
       psicologaId,
     );
@@ -144,7 +165,7 @@ export class AccesoPsicologiaService {
     return acceso;
   }
 
-  /** Como `exigirLecturaProceso`, para lo que cuelga de una cita (el documento de la sesión). */
+  /** Como `exigirLecturaProceso`, para una cita y lo que cuelga de ella (el documento de la sesión). */
   async exigirLecturaCita(
     citaId: string,
     psicologaId: string,

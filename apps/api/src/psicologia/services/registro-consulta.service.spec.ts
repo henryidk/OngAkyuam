@@ -31,6 +31,8 @@ function crearCita(overrides: Partial<CitaResumen> = {}): CitaResumen {
     temas: null,
     intervencion: null,
     recomendaciones: null,
+    clinica: null,
+    enfoqueTerapeutico: null,
     borrador: false,
     reprogramadaDesdeId: null,
     atendidoPor: 'Psicóloga A',
@@ -62,6 +64,7 @@ describe('RegistroConsultaService', () => {
 
   beforeEach(() => {
     acceso = {
+      exigirAutoriaCita: jest.fn().mockResolvedValue(accesoCita),
       exigirAccesoCita: jest.fn().mockResolvedValue(accesoCita),
       exigirLecturaCita: jest
         .fn()
@@ -69,6 +72,7 @@ describe('RegistroConsultaService', () => {
     } as unknown as jest.Mocked<AccesoPsicologiaService>;
     citasRepository = {
       buscarAccesoCita: jest.fn(),
+      buscarAutoriaCita: jest.fn(),
       buscarLecturaCita: jest.fn(),
       buscarCitasSolapadas: jest.fn().mockResolvedValue([]),
       registrarConsulta: jest.fn().mockResolvedValue({
@@ -78,6 +82,7 @@ describe('RegistroConsultaService', () => {
       }),
       listarCitasEnRango: jest.fn(),
       obtenerDetalle: jest.fn(),
+      buscarUltimaClinica: jest.fn().mockResolvedValue(null),
     };
     documentosRepository = {
       crearDocumento: jest.fn(),
@@ -110,19 +115,59 @@ describe('RegistroConsultaService', () => {
     acuerdos: '',
     observaciones: '',
     motivoNoAsistencia: '',
+    clinica: 'CLINICA_2' as const,
+    enfoqueTerapeutico: '',
     borrador: false,
   };
 
   describe('registrarConsulta', () => {
     it('propaga el 403 del guard sin llegar al repositorio', async () => {
-      acceso.exigirAccesoCita.mockRejectedValue(
-        new ForbiddenException('No tiene acceso a este expediente'),
+      acceso.exigirAutoriaCita.mockRejectedValue(
+        new ForbiddenException('No tiene acceso a esta cita'),
       );
 
       await expect(
         service.registrarConsulta('cita-ajena', datosBase, contexto),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(citasRepository.registrarConsulta).not.toHaveBeenCalled();
+    });
+
+    it('guarda la clínica de una sesión atendida y el enfoque vacío como null', async () => {
+      await service.registrarConsulta('cita-1', datosBase, contexto);
+
+      expect(citasRepository.registrarConsulta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clinica: 'CLINICA_2',
+          enfoqueTerapeutico: null,
+        }),
+      );
+    });
+
+    it.each(['NO_ASISTIO', 'CANCELADA'] as const)(
+      'con resultado %s no guarda clínica aunque venga una',
+      async (estado) => {
+        await service.registrarConsulta(
+          'cita-1',
+          { ...datosBase, estado, motivoNoAsistencia: 'Motivo' },
+          contexto,
+        );
+
+        expect(citasRepository.registrarConsulta).toHaveBeenCalledWith(
+          expect.objectContaining({ estado, clinica: null }),
+        );
+      },
+    );
+
+    it('nunca deja el enfoque terapéutico en la auditoría', async () => {
+      await service.registrarConsulta(
+        'cita-1',
+        { ...datosBase, enfoqueTerapeutico: 'Centrado en el trauma' },
+        contexto,
+      );
+
+      expect(JSON.stringify(auditService.registrar.mock.calls)).not.toContain(
+        'trauma',
+      );
     });
 
     it('al finalizar (borrador: false), envía el estado elegido al repositorio', async () => {
@@ -241,6 +286,42 @@ describe('RegistroConsultaService', () => {
       });
     });
 
+    it('quien atendió sin ser la responsable registra la sesión sin pedir gestión', async () => {
+      acceso.exigirAccesoCita.mockRejectedValue(new ForbiddenException());
+
+      await service.registrarConsulta('cita-1', datosBase, contexto);
+
+      expect(acceso.exigirAutoriaCita).toHaveBeenCalledWith(
+        'cita-1',
+        'psicologa-a',
+      );
+      expect(acceso.exigirAccesoCita).not.toHaveBeenCalled();
+      expect(citasRepository.registrarConsulta).toHaveBeenCalled();
+    });
+
+    it('solo la responsable programa la próxima cita: a quien no lo es le responde 403 sin guardar', async () => {
+      acceso.exigirAccesoCita.mockRejectedValue(
+        new ForbiddenException(
+          'Solo la responsable del proceso puede programar la próxima cita',
+        ),
+      );
+
+      await expect(
+        service.registrarConsulta(
+          'cita-1',
+          { ...datosBase, siguiente: programar },
+          contexto,
+        ),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(acceso.exigirAccesoCita).toHaveBeenCalledWith(
+        'cita-1',
+        'psicologa-a',
+        'Solo la responsable del proceso puede programar la próxima cita',
+      );
+      expect(citasRepository.registrarConsulta).not.toHaveBeenCalled();
+      expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
     it('si la próxima cita se traslapa, avisa con 409 y no guarda nada', async () => {
       citasRepository.buscarCitasSolapadas.mockResolvedValue([crearCita()]);
 
@@ -341,7 +422,7 @@ describe('RegistroConsultaService', () => {
     });
 
     it('no sube nada a la cita de otra psicóloga', async () => {
-      acceso.exigirAccesoCita.mockRejectedValue(new ForbiddenException());
+      acceso.exigirAutoriaCita.mockRejectedValue(new ForbiddenException());
 
       await expect(
         service.subirDocumentoCita(
@@ -357,8 +438,8 @@ describe('RegistroConsultaService', () => {
     it('guarda un PDF real con una clave que no lleva el nombre del archivo', async () => {
       documentosRepository.crearDocumento.mockResolvedValue({
         id: 'doc-1',
-        tipo: 'FORMATO_ATENCION_PSICOLOGICA',
-        nombreArchivo: 'formato.pdf',
+        tipo: 'HOJA_EVOLUCION_PSICOLOGICA',
+        nombreArchivo: 'hoja-evolucion.pdf',
         tamanioBytes: PDF.length,
         createdAt: '2026-10-08T00:00:00.000Z',
       });
@@ -377,18 +458,19 @@ describe('RegistroConsultaService', () => {
     });
   });
 
-  describe('obtenerUrlDescargaDocumentoCita', () => {
+  describe('obtenerUrlDocumentoCita', () => {
     const documento = {
       id: 'doc-1',
       claveR2: 'clave-de-prueba',
       nombreArchivo: 'hoja.pdf',
+      mimeType: 'application/pdf',
     };
 
     it('rechaza con 403 a quien no puede leer la cita, sin firmar ninguna URL', async () => {
       acceso.exigirLecturaCita.mockRejectedValue(new ForbiddenException());
 
       await expect(
-        service.obtenerUrlDescargaDocumentoCita('cita-1', contexto),
+        service.obtenerUrlDocumentoCita('cita-1', contexto),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(acceso.exigirLecturaCita).toHaveBeenCalledWith(
         'cita-1',
@@ -398,10 +480,11 @@ describe('RegistroConsultaService', () => {
         documentosRepository.buscarDocumentoParaDescarga,
       ).not.toHaveBeenCalled();
       expect(objectStorage.generarUrlDescarga).not.toHaveBeenCalled();
+      expect(objectStorage.generarUrlVistaPrevia).not.toHaveBeenCalled();
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
 
-    it('entrega el documento del proceso cerrado de una colega y lo deja anotado', async () => {
+    it('abre en el navegador el documento del proceso cerrado de una colega y lo deja anotado', async () => {
       acceso.exigirLecturaCita.mockResolvedValue({
         ...accesoCita,
         propia: false,
@@ -409,15 +492,42 @@ describe('RegistroConsultaService', () => {
       documentosRepository.buscarDocumentoParaDescarga.mockResolvedValue(
         documento,
       );
-      objectStorage.generarUrlDescarga.mockResolvedValue('https://firmada');
+      objectStorage.generarUrlVistaPrevia.mockResolvedValue('https://firmada');
 
       await expect(
-        service.obtenerUrlDescargaDocumentoCita('cita-1', contexto),
+        service.obtenerUrlDocumentoCita('cita-1', contexto),
       ).resolves.toEqual({ url: 'https://firmada' });
+      expect(objectStorage.generarUrlVistaPrevia).toHaveBeenCalledWith(
+        'clave-de-prueba',
+        'application/pdf',
+      );
+      expect(objectStorage.generarUrlDescarga).not.toHaveBeenCalled();
+      expect(auditService.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'DOCUMENTO_CITA_PSICOLOGICA_VISTO',
+          detalles: { citaId: 'cita-1', deColega: true },
+        }),
+      );
+    });
+
+    it('un tipo fuera de la lista blanca nunca se muestra en el navegador: se descarga', async () => {
+      acceso.exigirLecturaCita.mockResolvedValue(accesoCita);
+      documentosRepository.buscarDocumentoParaDescarga.mockResolvedValue({
+        ...documento,
+        mimeType: 'text/html',
+      });
+      objectStorage.generarUrlDescarga.mockResolvedValue('https://firmada');
+
+      await service.obtenerUrlDocumentoCita('cita-1', contexto);
+
+      expect(objectStorage.generarUrlVistaPrevia).not.toHaveBeenCalled();
+      expect(objectStorage.generarUrlDescarga).toHaveBeenCalledWith(
+        'clave-de-prueba',
+        'hoja.pdf',
+      );
       expect(auditService.registrar).toHaveBeenCalledWith(
         expect.objectContaining({
           accion: 'DOCUMENTO_CITA_PSICOLOGICA_DESCARGADO',
-          detalles: { citaId: 'cita-1', deColega: true },
         }),
       );
     });

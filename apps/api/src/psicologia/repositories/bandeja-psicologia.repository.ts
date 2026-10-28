@@ -9,7 +9,6 @@ import {
   type CasoPorReasignarDto,
   type ExpedientePreviaTomaDto,
   type ReferenciaBandejaPsicologiaDto,
-  etiquetaProceso,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
@@ -22,7 +21,14 @@ import {
   EXPEDIENTE_SIN_TOMAR,
   PROCESO_POR_REASIGNAR,
 } from './acceso-expediente';
-import { edad, nombreCompleto, personasDelExpediente } from './personas';
+import { codigoProceso, SELECT_CODIGO_PROCESO } from './codigo-proceso';
+import {
+  edad,
+  nombreCompleto,
+  personasDelExpediente,
+  personasParaAbrir,
+  SELECT_PERSONA,
+} from './personas';
 
 /** Tope de seguridad de las dos colas: son listas de trabajo, no un historial. */
 const LIMITE_COLA = 200;
@@ -74,6 +80,16 @@ const SELECT_PREVIA_TOMA = {
     },
   },
 } satisfies Prisma.ReferidoAreaSelect;
+
+/** Un proceso que ya empezó y sigue abierto: su persona no puede abrir otro. */
+const PROCESO_EN_CURSO = {
+  estado: { not: 'CIERRE' },
+  fechaInicio: { not: null },
+} satisfies Prisma.AtencionPsicologicaWhereInput;
+
+const SELECT_QUIEN_ATIENDE = {
+  psicologaAsignada: { select: { nombreCompleto: true } },
+} satisfies Prisma.AtencionPsicologicaSelect;
 
 /** Caso que la psicóloga tomó y al que todavía no le agenda la primera cita. */
 export function casoPorAgendar(psicologaId: string) {
@@ -138,11 +154,53 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
         referidoId: true,
         tomadaEn: true,
         createdAt: true,
-        expediente: { select: SELECT_EXPEDIENTE_COLA },
+        expediente: {
+          select: {
+            ...SELECT_EXPEDIENTE_COLA,
+            ninos: {
+              select: {
+                id: true,
+                consecutivo: true,
+                ...SELECT_PERSONA,
+                atencionesPsicologicas: {
+                  where: PROCESO_EN_CURSO,
+                  select: SELECT_QUIEN_ATIENDE,
+                  take: 1,
+                },
+              },
+              orderBy: { consecutivo: 'asc' },
+            },
+          },
+        },
       },
       orderBy: { tomadaEn: 'asc' },
       take: LIMITE_COLA,
     });
+
+    // El proceso propio de la usuaria vive en cualquiera de sus expedientes.
+    const usuariaIds = atenciones.map(
+      (atencion) => atencion.expediente.usuaria.id,
+    );
+    const abiertosDeUsuarias =
+      usuariaIds.length === 0
+        ? []
+        : await this.prisma.atencionPsicologica.findMany({
+            where: {
+              ...PROCESO_EN_CURSO,
+              ninoId: null,
+              expediente: { usuariaId: { in: usuariaIds } },
+            },
+            select: {
+              ...SELECT_QUIEN_ATIENDE,
+              expediente: { select: { usuariaId: true } },
+            },
+          });
+    const abiertoDe = new Map(
+      abiertosDeUsuarias.map((proceso) => [
+        proceso.expediente.usuariaId,
+        proceso,
+      ]),
+    );
 
     return atenciones.map((atencion) => ({
       // No-null: el `where` ya exige `referidoId`.
@@ -152,7 +210,10 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
       usuariaId: atencion.expediente.usuaria.id,
       usuariaNombreCompleto: nombreCompleto(atencion.expediente.usuaria),
       tomadaEn: (atencion.tomadaEn ?? atencion.createdAt).toISOString(),
-      personas: personasDelExpediente(atencion.expediente),
+      personas: personasParaAbrir(
+        atencion.expediente,
+        abiertoDe.get(atencion.expediente.usuaria.id),
+      ),
     }));
   }
 
@@ -160,8 +221,8 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
     const atenciones = await this.prisma.atencionPsicologica.findMany({
       where: PROCESO_POR_REASIGNAR,
       select: {
+        ...SELECT_CODIGO_PROCESO,
         id: true,
-        consecutivo: true,
         estado: true,
         fechaInicio: true,
         psicologaAsignada: { select: { nombreCompleto: true } },
@@ -186,7 +247,7 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
           expediente.usuaria.municipioOtro,
         ),
         codigo: atencion.fechaInicio
-          ? etiquetaProceso(expediente.numero, atencion.consecutivo)
+          ? codigoProceso(expediente.numero, atencion)
           : null,
         etapa: atencion.estado,
         sesionesAtendidas: atencion._count.citas,
@@ -311,7 +372,12 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
             usuariaId: true,
             atencionesPsicologicas: {
               where: { psicologaAsignadaId: { not: null } },
-              select: { id: true, estado: true, psicologaAsignadaId: true },
+              select: {
+                id: true,
+                estado: true,
+                fechaInicio: true,
+                psicologaAsignadaId: true,
+              },
             },
           },
         },
@@ -322,11 +388,15 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
     }
 
     const tomadas = referido.expediente.atencionesPsicologicas;
-    const mia = tomadas.find(
+    const mias = tomadas.filter(
       (atencion) =>
         atencion.psicologaAsignadaId === psicologaId &&
         atencion.estado !== 'CIERRE',
     );
+    // Con un proceso por persona puede haber varios abiertos en el expediente: el caso tomado
+    // es el que todavía espera su primera cita.
+    const mia =
+      mias.find((atencion) => atencion.fechaInicio === null) ?? mias[0];
     return {
       referidoId: referido.id,
       expedienteId: referido.expediente.id,

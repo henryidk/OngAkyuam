@@ -15,6 +15,25 @@ export function etiquetaProceso(expedienteNumero: string, consecutivo: number): 
   return etiqueta('Proceso', expedienteNumero, consecutivo)
 }
 
+/** Número de un hijo/a dentro del expediente de la madre: "04-2026.01". Es estable: no cambia. */
+export function numeroPersona(expedienteNumero: string, ninoConsecutivo: number | null): string {
+  return ninoConsecutivo === null
+    ? expedienteNumero
+    : `${expedienteNumero}.${String(ninoConsecutivo).padStart(2, '0')}`
+}
+
+/**
+ * Proceso psicológico: cada persona del expediente (la usuaria y cada hijo/a) lleva sus propios
+ * procesos. "04-2026", "04-2026 · Proceso 2", "04-2026.01", "04-2026.01 · Proceso 2".
+ */
+export function etiquetaProcesoPsicologia(
+  expedienteNumero: string,
+  consecutivo: number,
+  ninoConsecutivo: number | null,
+): string {
+  return etiquetaProceso(numeroPersona(expedienteNumero, ninoConsecutivo), consecutivo)
+}
+
 /** Atención médica: "10-2026", "10-2026 · Atención 2". */
 export function etiquetaAtencion(expedienteNumero: string, consecutivo: number): string {
   return etiqueta('Atención', expedienteNumero, consecutivo)

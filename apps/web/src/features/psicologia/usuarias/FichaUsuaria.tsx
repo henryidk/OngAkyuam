@@ -25,7 +25,7 @@ import InsigniaReferencia from '../compartido/InsigniaReferencia'
 import { referenciaPendiente } from '../compartido/referencias'
 import { useReclamarCaso } from '../hooks/useReclamarCaso'
 import { RUTAS_PSICOLOGIA } from '../rutas'
-import type { ContextoFicha } from './contextoFicha'
+import type { ContextoFicha, PersonaPorAbrir } from './contextoFicha'
 
 const CLASE_BOTON_PRIMARIO =
   'inline-flex items-center rounded-md bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700'
@@ -81,7 +81,8 @@ export default function FichaUsuaria() {
   const { datos: ficha, error, recargar } = useRecurso(cargar)
   const { expediente: expedienteTs, error: errorExpedienteTs } = useExpedienteTs(ficha?.expediente.id)
   const { reclamandoId, error: errorReclamar, reclamar } = useReclamarCaso()
-  const [abriendoProceso, setAbriendoProceso] = useState(false)
+  const [porAbrir, setPorAbrir] = useState<PersonaPorAbrir | null>(null)
+  const [procesoRecienAbierto, setProcesoRecienAbierto] = useState<string | null>(null)
 
   useTituloPagina({
     titulo: ficha?.usuaria.nombreCompleto ?? 'Usuaria',
@@ -95,7 +96,13 @@ export default function FichaUsuaria() {
 
   const { usuaria, expediente, contadores, procesos, referencias } = ficha
   const pendiente = referenciaPendiente(referencias)
-  const contexto: ContextoFicha = { ficha, expedienteTs, errorExpedienteTs }
+  const contexto: ContextoFicha = {
+    ficha,
+    expedienteTs,
+    errorExpedienteTs,
+    abrirProceso: setPorAbrir,
+    procesoRecienAbierto,
+  }
 
   function tomar(referencia: ReferenciaHistorialPsicologiaDto) {
     void reclamar(referencia.referidoId, {
@@ -155,7 +162,16 @@ export default function FichaUsuaria() {
             </dl>
           )}
           {ficha.puedeAbrirProceso && (
-            <Button variante="secondary" tamano="md" onClick={() => setAbriendoProceso(true)}>
+            <Button
+              variante="secondary"
+              tamano="md"
+              onClick={() =>
+                setPorAbrir({
+                  persona: { ninoId: null, nombreCompleto: usuaria.nombreCompleto, edad: usuaria.edad },
+                  codigo: ficha.codigoProcesoNuevo,
+                })
+              }
+            >
               Abrir nuevo proceso
             </Button>
           )}
@@ -206,18 +222,20 @@ export default function FichaUsuaria() {
 
       <Outlet context={contexto} />
 
-      {abriendoProceso && (
+      {porAbrir && (
         <ModalProgramarCita
           destino={{
             tipo: 'NUEVO',
             usuariaId: usuaria.id,
             usuariaNombreCompleto: usuaria.nombreCompleto,
-            expedienteNumero: expediente.numero,
+            persona: porAbrir.persona,
+            codigo: porAbrir.codigo,
           }}
           fechaInicial={hoyGT()}
-          onCerrar={() => setAbriendoProceso(false)}
-          onGuardada={(_fecha, mensaje) => {
-            setAbriendoProceso(false)
+          onCerrar={() => setPorAbrir(null)}
+          onGuardada={(_fecha, mensaje, _citaId, procesoId) => {
+            setPorAbrir(null)
+            setProcesoRecienAbierto(procesoId)
             mostrar(mensaje)
             recargarResumen()
             void recargar()

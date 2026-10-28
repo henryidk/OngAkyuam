@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
-import { etiquetaProceso } from '@akyuam/shared';
 import type { CitaAgendaDto, ProcesoParaAgendarDto } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
@@ -15,12 +14,8 @@ import type {
   ProgramarCitaParams,
   RangoAgendaParams,
 } from '../interfaces/agenda-psicologia-repository.interface';
-import {
-  nombreCompleto,
-  personaAtendida,
-  personasDelExpediente,
-  SELECT_PERSONA,
-} from './personas';
+import { codigoProceso, SELECT_CODIGO_PROCESO } from './codigo-proceso';
+import { nombreCompleto, personaAtendida, SELECT_PERSONA } from './personas';
 
 /** Tope de seguridad: el servicio ya acota el rango a unas semanas. */
 const LIMITE_CITAS = 500;
@@ -59,8 +54,8 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         nino: { select: { id: true, ...SELECT_PERSONA } },
         atencion: {
           select: {
+            ...SELECT_CODIGO_PROCESO,
             id: true,
-            consecutivo: true,
             estado: true,
             expediente: {
               select: {
@@ -81,10 +76,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       return {
         id: cita.id,
         procesoId: atencion.id,
-        procesoCodigo: etiquetaProceso(
-          atencion.expediente.numero,
-          atencion.consecutivo,
-        ),
+        procesoCodigo: codigoProceso(atencion.expediente.numero, atencion),
         usuariaId: usuaria.id,
         usuariaNombreCompleto: nombreCompleto(usuaria),
         persona: personaAtendida(usuaria, cita.nino),
@@ -137,14 +129,11 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       select: {
         id: true,
         consecutivo: true,
+        nino: { select: { id: true, consecutivo: true, ...SELECT_PERSONA } },
         expediente: {
           select: {
             numero: true,
             usuaria: { select: { id: true, ...SELECT_PERSONA } },
-            ninos: {
-              select: { id: true, ...SELECT_PERSONA },
-              orderBy: { fechaNacimiento: 'asc' },
-            },
           },
         },
         // Todas las que siguen programadas, en la misma consulta: de ellas sale tanto la próxima
@@ -177,10 +166,11 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       );
       return {
         procesoId: proceso.id,
-        codigo: etiquetaProceso(expediente.numero, proceso.consecutivo),
+        codigo: codigoProceso(expediente.numero, proceso),
         usuariaId: expediente.usuaria.id,
         usuariaNombreCompleto: nombreCompleto(expediente.usuaria),
-        personas: personasDelExpediente(expediente),
+        // Toda cita del proceso es para su persona: no se ofrece elegir a otra.
+        personas: [personaAtendida(expediente.usuaria, proceso.nino)],
         proximaCita: proxima
           ? { id: proxima.id, fechaHora: proxima.fechaHora.toISOString() }
           : null,

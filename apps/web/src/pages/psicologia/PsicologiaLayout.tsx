@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { BarChart3, CalendarDays, HeartHandshake, Inbox, Users } from 'lucide-react'
+import { BarChart3, CalendarDays, ClipboardCheck, HeartHandshake, Inbox, Users } from 'lucide-react'
 import type { ResumenProcesosPsicologia } from '@akyuam/shared'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { obtenerResumenProcesos } from '../../features/psicologia/api/psicologia.api'
@@ -8,7 +8,8 @@ import { RUTAS_PSICOLOGIA } from '../../features/psicologia/rutas'
 import { crearSocketArea } from '../../lib/socket'
 
 // El detalle y el registro de una cita cuelgan de "/psicologia/citas", pero son parte de la
-// agenda: `rutasRelacionadas` mantiene resaltado su ítem ahí.
+// agenda: `rutasRelacionadas` mantiene resaltado su ítem ahí. Consultas no la lleva: si las dos
+// la tuvieran, se resaltarían ambas.
 const ITEMS_NAV: ItemNav[] = [
   { ruta: RUTAS_PSICOLOGIA.atencion(), etiqueta: 'Área de atención', fin: false, Icono: Inbox },
   {
@@ -18,6 +19,7 @@ const ITEMS_NAV: ItemNav[] = [
     rutasRelacionadas: ['/psicologia/citas'],
     Icono: CalendarDays,
   },
+  { ruta: RUTAS_PSICOLOGIA.consultas(), etiqueta: 'Consultas', fin: false, Icono: ClipboardCheck },
   { ruta: RUTAS_PSICOLOGIA.procesos(), etiqueta: 'Procesos', fin: false, Icono: HeartHandshake },
   { ruta: RUTAS_PSICOLOGIA.usuarias(), etiqueta: 'Usuarias', fin: false, Icono: Users },
   { ruta: RUTAS_PSICOLOGIA.reportes(), etiqueta: 'Reportes', fin: false, Icono: BarChart3 },
@@ -55,13 +57,9 @@ export default function PsicologiaLayout() {
     () => ({ resumen, recargarResumen, versionNovedades }),
     [resumen, recargarResumen, versionNovedades],
   )
-  // La insignia de la agenda suma lo que pide acción ahí: casos tomados sin primera cita y citas
-  // ya pasadas sin registrar.
-  const contadores = resumen && {
-    [RUTAS_PSICOLOGIA.atencion()]: resumen.referenciasSinTomar + resumen.casosPorReasignar,
-    [RUTAS_PSICOLOGIA.agenda()]: resumen.casosPorAgendar + resumen.citasSinRegistrar,
-    [RUTAS_PSICOLOGIA.procesos()]: resumen.procesos.ACTIVOS,
-  }
+  // Una sola insignia, la de lo que solo yo puedo resolver: mis sesiones por registrar. Varias
+  // a la vez compiten por la atención y ninguna se lee.
+  const contadores = resumen && { [RUTAS_PSICOLOGIA.consultas()]: resumen.sesionesPorRegistrar }
 
   return (
     <SidebarLayout

@@ -17,7 +17,7 @@ export class DocumentosCitaRepository implements IDocumentosCitaRepository {
     const documento = await this.prisma.documento.create({
       data: {
         expedienteId: params.expedienteId,
-        tipo: 'FORMATO_ATENCION_PSICOLOGICA',
+        tipo: 'HOJA_EVOLUCION_PSICOLOGICA',
         nombreArchivo: params.nombreArchivo,
         claveR2: params.claveR2,
         mimeType: params.mimeType,
@@ -41,7 +41,7 @@ export class DocumentosCitaRepository implements IDocumentosCitaRepository {
     return this.prisma.documento.findFirst({
       where: { citaPsicologicaId: citaId },
       orderBy: { createdAt: 'desc' },
-      select: { id: true, claveR2: true, nombreArchivo: true },
+      select: { id: true, claveR2: true, nombreArchivo: true, mimeType: true },
     });
   }
 }

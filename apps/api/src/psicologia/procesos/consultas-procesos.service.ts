@@ -10,7 +10,10 @@ import type {
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
-import { eventoAuditoria } from '../compartido/auditoria';
+import {
+  eventoAuditoria,
+  eventoBusquedaAuditoria,
+} from '../compartido/auditoria';
 import { MENSAJE_SIN_ACCESO_PROCESO } from '../compartido/mensajes';
 import { accionesDisponibles } from '../dominio/etapa-proceso';
 import { CONSULTAS_PROCESOS_REPOSITORY } from '../interfaces/consultas-procesos-repository.interface';
@@ -36,9 +39,9 @@ export function palabrasDeBusqueda(q: string | undefined): string[] {
 }
 
 /**
- * Lecturas de procesos. Las listas y los contadores son solo de la psicóloga que consulta; el
- * detalle y las sesiones se abren además sobre el proceso ya cerrado de una colega con una
- * usuaria que ella también atiende, siempre en solo lectura.
+ * Lecturas de procesos. La lista es de la psicóloga que consulta ("Míos") o de toda el área
+ * ("Del equipo"); el detalle y las sesiones se abren sobre cualquier proceso que el área puede
+ * leer, y el de una colega siempre en solo lectura.
  */
 @Injectable()
 export class ConsultasProcesosService {
@@ -49,18 +52,37 @@ export class ConsultasProcesosService {
     private readonly auditService: AuditService,
   ) {}
 
-  listar(
+  async listar(
     query: ListarProcesosPsicologiaQuery,
-    psicologaId: string,
+    contexto: ContextoAuditoria,
   ): Promise<ProcesosPsicologiaPaginados> {
-    return this.consultasRepository.listar({
-      psicologaId,
+    const pagina = await this.consultasRepository.listar({
+      psicologaId: contexto.usuarioId,
+      alcance: query.de,
       filtro: query.filtro,
       palabras: palabrasDeBusqueda(query.q),
       cursor: query.cursor,
       limite: PROCESOS_PSICOLOGIA_POR_PAGINA,
       ahora: new Date(),
     });
+
+    // Lo mío no se audita como lista (cada apertura sí); lo de las colegas, cada página.
+    if (query.de === 'EQUIPO') {
+      await this.auditService.registrar(
+        eventoBusquedaAuditoria(contexto, {
+          accion: 'PROCESOS_EQUIPO_PSICOLOGIA_CONSULTADOS',
+          entidad: 'AtencionPsicologica',
+          detalles: {
+            filtro: query.filtro,
+            conBusqueda: query.q !== undefined,
+            pagina: query.cursor ? 'siguiente' : 'primera',
+            resultados: pagina.items.length,
+          },
+        }),
+      );
+    }
+
+    return pagina;
   }
 
   /** Contadores de las tarjetas de Procesos y de los avisos del menú lateral. */
@@ -103,8 +125,8 @@ export class ConsultasProcesosService {
   }
 
   /**
-   * Las notas de sesión: la dueña del proceso, o quien retoma a la usuaria cuando el proceso de
-   * su colega ya está cerrado. Cada lectura queda auditada, y se anota si fue de una colega.
+   * Las notas de sesión: las lee toda el área (expediente referido a Psicología). Cada lectura
+   * queda auditada, y se anota si el proceso lo lleva otra psicóloga.
    */
   async sesiones(
     procesoId: string,

@@ -41,7 +41,7 @@ export interface IAgendaPsicologiaRepository {
   /**
    * Marca "no asistió" una cita que sigue programada y cuya hora ya llegó, en un proceso sin
    * cerrar. `false` si no cumplía eso (ya se registró, aún no ocurre): no se escribió nada.
-   * Se usa tras `exigirAccesoCita`.
+   * Se usa tras `exigirAutoriaCita`.
    */
   marcarNoAsistio(citaId: string, ahora: Date): Promise<boolean>;
   /**

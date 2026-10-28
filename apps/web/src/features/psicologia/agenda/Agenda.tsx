@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { CalendarDays, Plus } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowRight, CalendarDays, Plus } from 'lucide-react'
 import {
   formatFechaLargaGT,
   hoyGT,
@@ -24,17 +24,16 @@ import ConfirmarNoAsistio from '../citas/ConfirmarNoAsistio'
 import ModalProgramarCita, { type DestinoCita } from '../citas/ModalProgramarCita'
 import { useContextoPsicologia } from '../compartido/contexto'
 import { horaDeInstante } from '../compartido/horas'
+import { RUTAS_PSICOLOGIA } from '../rutas'
 import ColaPendientesDeAgendar from './ColaPendientesDeAgendar'
 import ControlSemana from './ControlSemana'
 import FilaCita from './FilaCita'
 import FilaHueco from './FilaHueco'
 import NavegadorSemana from './NavegadorSemana'
 import PanelPorAgendar from './PanelPorAgendar'
-import PanelSinRegistrar from './PanelSinRegistrar'
 import {
   citaPrincipal,
   citaYaEmpezo,
-  citasSinRegistrarFuera,
   diaDeCita,
   diasVisibles,
   fechaValida,
@@ -44,8 +43,6 @@ import {
   resumenDelDia,
 } from './semana'
 
-/** Lo más atrás que el servidor deja pedir de una vez: seis semanas. */
-const DIAS_VENTANA_ATRASADAS = 42
 const DIAS_SEMANA = 7
 
 interface ModalAbierto {
@@ -65,10 +62,9 @@ function minutoDe(hora: string): number {
 
 /**
  * Su trabajo es planificar el tiempo: a la izquierda la semana y el día abierto con sus citas y
- * sus tramos libres; a la derecha lo que pide atención (casos tomados sin primera cita, citas de
- * otros días que pasaron sin registro y procesos sin siguiente fecha). Cada pendiente aparece en
- * un solo lugar. Este componente solo orquesta: decide
- * qué semana y qué día se ven, y reparte datos.
+ * sus tramos libres; a la derecha lo que pide programar (casos tomados sin primera cita y procesos
+ * sin siguiente fecha). Las sesiones pasadas sin registrar viven en Consultas: aquí solo se avisa
+ * cuántas hay. Este componente solo orquesta: decide qué semana y qué día se ven, y reparte datos.
  */
 export default function Agenda() {
   useTituloPagina({ titulo: 'Agenda' })
@@ -76,7 +72,7 @@ export default function Agenda() {
   const { mostrar } = useToast()
   const { resumen, recargarResumen } = useContextoPsicologia()
 
-  const totalMenu = resumen?.citasSinRegistrar ?? 0
+  const porRegistrar = resumen?.sesionesPorRegistrar ?? 0
   const hoy = hoyGT()
   const diaPedido = fechaValida(searchParams.get('dia'))
   const semanaPedida = fechaValida(searchParams.get('semana'))
@@ -87,9 +83,6 @@ export default function Agenda() {
 
   const semana = useRecurso(useCallback(() => listarCitasAgenda({ desde: lunes, hasta: domingo }), [lunes, domingo]))
   const huecos = useRecurso(useCallback(() => listarHuecos(dia), [dia]))
-  const atrasadas = useRecurso(
-    useCallback(() => listarCitasAgenda({ desde: sumarDiasGT(hoy, -DIAS_VENTANA_ATRASADAS), hasta: hoy }), [hoy]),
-  )
   const porAgendar = useRecurso(listarPorAgendar)
   const procesos = useRecurso(listarProcesosParaAgendar)
 
@@ -135,10 +128,6 @@ export default function Agenda() {
     return [...citas, ...libres].sort((a, b) => a.minuto - b.minuto)
   }, [citasDelDia, huecos.datos])
 
-  // Las del día abierto ya están en la lista principal: en el panel van solo las demás, y el
-  // total se descuenta igual para que el número coincida con lo que se ve.
-  const sinRegistrar = useMemo(() => citasSinRegistrarFuera(dia, atrasadas.datos ?? []), [atrasadas.datos, dia])
-  const totalSinRegistrar = totalMenu - citasDelDia.filter((cita) => cita.sinRegistrar).length
   const sinProxima = useMemo(
     () => (procesos.datos ? procesosSinProximaCita(procesos.datos) : null),
     [procesos.datos],
@@ -161,7 +150,6 @@ export default function Agenda() {
   function recargarTodo() {
     void semana.recargar()
     void huecos.recargar()
-    void atrasadas.recargar()
     void porAgendar.recargar()
     void procesos.recargar()
     recargarResumen()
@@ -216,6 +204,16 @@ export default function Agenda() {
           </Button>
         </div>
       </div>
+
+      {porRegistrar > 0 && (
+        <Link
+          to={RUTAS_PSICOLOGIA.consultas()}
+          className="flex w-fit items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
+        >
+          {porRegistrar === 1 ? 'Tienes 1 sesión por registrar' : `Tienes ${porRegistrar} sesiones por registrar`}
+          <ArrowRight aria-hidden="true" className="h-4 w-4" />
+        </Link>
+      )}
 
       <NavegadorSemana
         dias={dias}
@@ -287,12 +285,6 @@ export default function Agenda() {
             error={porAgendar.error?.mensaje ?? null}
             resaltadoId={resaltadoId}
             onAgendar={(caso) => setModal({ destino: { tipo: 'PRIMERA', caso }, fecha: dia })}
-          />
-          <PanelSinRegistrar
-            citas={sinRegistrar}
-            total={totalSinRegistrar}
-            onVerDia={(elegido) => irA(elegido)}
-            onNoAsistio={setAMarcar}
           />
           <ColaPendientesDeAgendar
             procesos={sinProxima}

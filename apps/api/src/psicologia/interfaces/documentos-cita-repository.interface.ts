@@ -16,9 +16,10 @@ export interface DocumentoCitaParaDescarga {
   id: string;
   claveR2: string;
   nombreArchivo: string;
+  mimeType: string;
 }
 
-/** Documento (Formato General escaneado) de una cita puntual — segregado de las demás
+/** Documento (Hoja de evolución escaneada) de una cita puntual — segregado de las demás
  *  operaciones de cita porque `RegistroConsultaService` es su único consumidor (§7.2). */
 export interface IDocumentosCitaRepository {
   crearDocumento(params: CrearDocumentoCitaParams): Promise<DocumentoCitaDto>;

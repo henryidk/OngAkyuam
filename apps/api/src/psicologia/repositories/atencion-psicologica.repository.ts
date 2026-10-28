@@ -122,9 +122,10 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
     });
   }
 
+  /** El caso se toma en el lugar de la usuaria; si su primera cita es para un hijo/a, se renumera al abrirlo. */
   private async siguienteConsecutivo(expedienteId: string): Promise<number> {
     const { _max } = await this.prisma.atencionPsicologica.aggregate({
-      where: { expedienteId },
+      where: { expedienteId, ninoId: null },
       _max: { consecutivo: true },
     });
     return (_max.consecutivo ?? 0) + 1;

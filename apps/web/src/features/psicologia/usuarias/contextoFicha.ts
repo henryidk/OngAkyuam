@@ -1,5 +1,11 @@
 import { useOutletContext } from 'react-router-dom'
-import type { ExpedienteDetalleArea, FichaUsuariaPsicologiaDto } from '@akyuam/shared'
+import type { ExpedienteDetalleArea, FichaUsuariaPsicologiaDto, PersonaAtendidaDto } from '@akyuam/shared'
+
+/** Persona para la que se abre un proceso desde la ficha, con el código que tendrá. */
+export interface PersonaPorAbrir {
+  persona: PersonaAtendidaDto
+  codigo: string
+}
 
 /** Lo que `FichaUsuaria` comparte con sus pestañas. */
 export interface ContextoFicha {
@@ -10,6 +16,10 @@ export interface ContextoFicha {
    */
   expedienteTs: ExpedienteDetalleArea | null
   errorExpedienteTs: string | null
+  /** Abre el modal de la primera cita de esa persona; quien la agenda queda como responsable. */
+  abrirProceso: (porAbrir: PersonaPorAbrir) => void
+  /** Proceso recién abierto: su enlace toma el foco para seguir desde ahí. */
+  procesoRecienAbierto: string | null
 }
 
 export function useContextoFicha() {

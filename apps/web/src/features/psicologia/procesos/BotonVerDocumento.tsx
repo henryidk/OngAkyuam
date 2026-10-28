@@ -1,23 +1,32 @@
 import { useState } from 'react'
 import { useToast } from '../../../components/ui/Toast'
-import { dispararDescarga } from '../../../lib/documentos/archivoDocumento'
 import { extraerMensajeError } from '../../../lib/errors'
 import { obtenerUrlDocumentoCita } from '../api/psicologia.api'
 
 /**
- * Abre el documento adjunto a una sesión. El enlace se pide al momento: dura poco y el servidor
- * solo lo entrega a la psicóloga dueña del proceso.
+ * Abre en una pestaña nueva el documento adjunto a una sesión. El enlace se pide al momento:
+ * dura poco y el servidor solo lo entrega a quien puede leer la cita.
  */
 export default function BotonVerDocumento({ citaId, nombreArchivo }: { citaId: string; nombreArchivo: string }) {
   const { mostrar } = useToast()
   const [pidiendo, setPidiendo] = useState(false)
 
+  // La pestaña se abre dentro del clic (si se abriera después de esperar la URL, el navegador
+  // la bloquearía como ventana emergente) y se le asigna la URL firmada cuando llega.
   async function ver() {
     if (pidiendo) return
     setPidiendo(true)
+    const ventana = window.open('', '_blank')
     try {
-      dispararDescarga(await obtenerUrlDocumentoCita(citaId))
+      const url = await obtenerUrlDocumentoCita(citaId)
+      if (ventana) {
+        ventana.opener = null
+        ventana.location.replace(url)
+      } else {
+        mostrar('El navegador bloqueó la ventana. Permita las ventanas emergentes para este sitio.', 'error')
+      }
     } catch (err) {
+      ventana?.close()
       mostrar(extraerMensajeError(err), 'error')
     } finally {
       setPidiendo(false)

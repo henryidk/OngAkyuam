@@ -33,7 +33,8 @@ export const ETIQUETAS_ROL_CON_LOGIN: Record<RolConLoginAdministrable, string> =
 export const PUESTOS_POR_AREA: Record<Exclude<RolConLoginAdministrable, 'ADMINISTRACION'>, readonly string[]> = {
   JURIDICO: TIPOS_PERSONAL_JURIDICO,
   TRABAJO_SOCIAL: ['TRABAJADORA_SOCIAL'],
-  PSICOLOGIA: ['PSICOLOGA'],
+  // Practicante: mismos permisos que una psicóloga; el puesto solo la identifica en pantalla.
+  PSICOLOGIA: ['PSICOLOGA', 'PRACTICANTE'],
   MEDICA: ['DOCTORA'],
 }
 
@@ -42,5 +43,6 @@ export const ETIQUETAS_PUESTO: Record<string, string> = {
   PROCURADORA: 'Procuradora',
   TRABAJADORA_SOCIAL: 'Trabajadora social',
   PSICOLOGA: 'Psicóloga',
+  PRACTICANTE: 'Practicante',
   DOCTORA: 'Doctora',
 }

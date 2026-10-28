@@ -7,7 +7,7 @@ import BotonVerDocumento from './BotonVerDocumento'
 import { useContextoDetalle } from './contextoDetalle'
 import PieSesiones from './PieSesiones'
 
-/** Los formatos generales del proceso: salen de las mismas sesiones, no de una lista aparte. */
+/** Las hojas de evolución del proceso: salen de las mismas sesiones, no de una lista aparte. */
 export default function PestanaDocumentos() {
   const { sesiones } = useContextoDetalle()
 
@@ -21,7 +21,7 @@ export default function PestanaDocumentos() {
   return (
     <>
       <p className="text-[13px] text-gray-500">
-        Formatos generales adjuntados al registrar cada sesión. Solo tú puedes abrirlos desde aquí.
+        Hojas de evolución adjuntadas al registrar cada sesión. Solo tú puedes abrirlas desde aquí.
       </p>
       {conDocumento.length === 0 ? (
         <EmptyState

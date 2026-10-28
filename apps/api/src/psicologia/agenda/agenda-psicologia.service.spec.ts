@@ -61,7 +61,6 @@ describe('AgendaPsicologiaService', () => {
     service = new AgendaPsicologiaService(
       agendaRepository,
       citasRepository,
-      procesosRepository,
       crearAcceso(
         crearBandejaRepository(),
         procesosRepository,
@@ -121,8 +120,7 @@ describe('AgendaPsicologiaService', () => {
       await expect(
         service.huecos({ fecha: '2026-10-07' }, 'psicologa-a'),
       ).resolves.toEqual([
-        { desdeMin: 10 * 60 + 15, hastaMin: 12 * 60 },
-        { desdeMin: 13 * 60, hastaMin: 14 * 60 },
+        { desdeMin: 10 * 60 + 15, hastaMin: 14 * 60 },
         { desdeMin: 14 * 60 + 45, hastaMin: 17 * 60 },
       ]);
       expect(agendaRepository.listarOcupadas).toHaveBeenCalledWith({
@@ -132,13 +130,10 @@ describe('AgendaPsicologiaService', () => {
       });
     });
 
-    it('un día futuro ofrece la jornada completa menos el almuerzo', async () => {
+    it('un día futuro ofrece la jornada completa, sin pausa de almuerzo', async () => {
       await expect(
         service.huecos({ fecha: '2026-10-08' }, 'psicologa-a'),
-      ).resolves.toEqual([
-        { desdeMin: 8 * 60, hastaMin: 12 * 60 },
-        { desdeMin: 13 * 60, hastaMin: 17 * 60 },
-      ]);
+      ).resolves.toEqual([{ desdeMin: 8 * 60, hastaMin: 17 * 60 }]);
     });
 
     it('el fin de semana no ofrece huecos', async () => {
@@ -148,14 +143,66 @@ describe('AgendaPsicologiaService', () => {
     });
   });
 
+  describe('disponibilidad', () => {
+    it('solo ofrece días hábiles, desde hoy y hasta ocho semanas adelante', async () => {
+      const dias = await service.disponibilidad(
+        { desde: '2026-10-01', duracion: 45 },
+        'psicologa-a',
+      );
+      expect(dias[0].fecha).toBe('2026-10-07');
+      expect(dias.at(-1)?.fecha).toBe('2026-12-02');
+      expect(dias.map((dia) => dia.fecha)).not.toContain('2026-10-10');
+      expect(dias.map((dia) => dia.fecha)).not.toContain('2026-10-11');
+      expect(agendaRepository.listarOcupadas).toHaveBeenCalledTimes(1);
+      expect(agendaRepository.listarOcupadas).toHaveBeenCalledWith({
+        psicologaId: 'psicologa-a',
+        desde: new Date('2026-10-07T06:00:00.000Z'),
+        hasta: new Date('2026-12-03T05:59:59.999Z'),
+      });
+    });
+
+    it('hoy arranca en la siguiente media hora libre y descuenta las citas propias', async () => {
+      // Hoy 10:30–11:30 y mañana 08:00–09:00 de Guatemala.
+      agendaRepository.listarOcupadas.mockResolvedValue([
+        {
+          fechaHora: new Date('2026-10-07T16:30:00.000Z'),
+          duracionMinutos: 60,
+        },
+        {
+          fechaHora: new Date('2026-10-08T14:00:00.000Z'),
+          duracionMinutos: 60,
+        },
+      ]);
+      const [hoy, manana] = await service.disponibilidad(
+        { desde: '2026-10-07', duracion: 60 },
+        'psicologa-a',
+      );
+      expect(hoy.libres.slice(0, 3)).toEqual(['11:30', '12:00', '12:30']);
+      expect(hoy.libres).not.toContain('10:30');
+      expect(hoy.libres.at(-1)).toBe('16:00');
+      expect(manana.libres[0]).toBe('09:00');
+      expect(manana.libres).toContain('12:00');
+    });
+
+    it('un día más allá del límite no ofrece nada ni consulta la agenda', async () => {
+      await expect(
+        service.disponibilidad(
+          { desde: '2027-01-15', duracion: 30 },
+          'psicologa-a',
+        ),
+      ).resolves.toEqual([]);
+      expect(agendaRepository.listarOcupadas).not.toHaveBeenCalled();
+    });
+  });
+
   describe('marcar no asistió', () => {
-    it('rechaza con 403 la cita de otra psicóloga, sin tocarla ni auditar', async () => {
-      citasRepository.buscarAccesoCita.mockResolvedValue(null);
+    it('rechaza con 403 la cita que no atendió quien marca, sin tocarla ni auditar', async () => {
+      citasRepository.buscarAutoriaCita.mockResolvedValue(null);
 
       await expect(
         service.marcarNoAsistio(CITA_ID, contexto),
       ).rejects.toBeInstanceOf(ForbiddenException);
-      expect(citasRepository.buscarAccesoCita).toHaveBeenCalledWith(
+      expect(citasRepository.buscarAutoriaCita).toHaveBeenCalledWith(
         CITA_ID,
         'psicologa-a',
       );
@@ -228,22 +275,27 @@ describe('AgendaPsicologiaService', () => {
       expect(agendaRepository.programarCita).not.toHaveBeenCalled();
     });
 
-    it('rechaza con 400 a un niño que no es del expediente del proceso', async () => {
-      procesosRepository.ninoPerteneceAExpediente.mockResolvedValue(false);
+    it.each([
+      ['un hijo/a en el proceso de la usuaria', null, NINO_ID],
+      ['la usuaria en el proceso de un hijo/a', NINO_ID, null],
+      ['otro hijo/a en el proceso de un hijo/a', NINO_ID, 'otro-nino'],
+    ])(
+      'rechaza con 400 una cita para %s, sin crear nada',
+      async (_caso, ninoDelProceso, ninoDeLaCita) => {
+        procesosRepository.buscarAccesoProceso.mockResolvedValue(
+          procesoConAcceso({ ninoId: ninoDelProceso }),
+        );
 
-      await expect(
-        service.programarCita(
-          PROCESO_ID,
-          { ...DATOS_CITA, ninoId: NINO_ID },
-          contexto,
-        ),
-      ).rejects.toBeInstanceOf(BadRequestException);
-      expect(procesosRepository.ninoPerteneceAExpediente).toHaveBeenCalledWith(
-        NINO_ID,
-        EXPEDIENTE_ID,
-      );
-      expect(agendaRepository.programarCita).not.toHaveBeenCalled();
-    });
+        await expect(
+          service.programarCita(
+            PROCESO_ID,
+            { ...DATOS_CITA, ninoId: ninoDeLaCita },
+            contexto,
+          ),
+        ).rejects.toBeInstanceOf(BadRequestException);
+        expect(agendaRepository.programarCita).not.toHaveBeenCalled();
+      },
+    );
 
     it('avisa del traslape con 409 y su código, y no crea la cita', async () => {
       citasRepository.buscarCitasSolapadas.mockResolvedValue([
@@ -265,6 +317,10 @@ describe('AgendaPsicologiaService', () => {
     });
 
     it('con el traslape confirmado crea la cita para el niño y lo audita solo con ids', async () => {
+      procesosRepository.buscarAccesoProceso.mockResolvedValue(
+        procesoConAcceso({ ninoId: NINO_ID }),
+      );
+
       await expect(
         service.programarCita(
           PROCESO_ID,

@@ -12,12 +12,14 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import {
   agendarCitaPsicologicaSchema,
+  disponibilidadPsicologiaQuerySchema,
   huecosAgendaQuerySchema,
   moverCitaPsicologicaSchema,
   rangoFechasQuerySchema,
 } from '@akyuam/shared';
 import type {
   AgendarCitaPsicologicaInput,
+  DisponibilidadPsicologiaQuery,
   HuecosAgendaQuery,
   MoverCitaPsicologicaInput,
   RangoFechasQuery,
@@ -54,6 +56,15 @@ export class AgendaPsicologiaController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.agendaService.huecos(query, usuario.id);
+  }
+
+  @Get('agenda/disponibilidad')
+  disponibilidad(
+    @Query(new ZodValidationPipe(disponibilidadPsicologiaQuerySchema))
+    query: DisponibilidadPsicologiaQuery,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.agendaService.disponibilidad(query, usuario.id);
   }
 
   @Get('agenda/procesos')

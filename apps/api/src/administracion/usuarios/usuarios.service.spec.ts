@@ -318,6 +318,27 @@ describe('UsuariosService', () => {
       );
     });
 
+    it('una practicante de Psicología es un puesto válido del área', async () => {
+      await service.crear(
+        nuevaCuenta({ rol: 'PSICOLOGIA', puesto: 'PRACTICANTE' }),
+        contexto,
+      );
+
+      expect(usuariosRepository.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ puesto: 'PRACTICANTE', fichaPersonal: null }),
+      );
+    });
+
+    it('rechaza el puesto Practicante fuera de Psicología', async () => {
+      await expect(
+        service.crear(
+          nuevaCuenta({ rol: 'MEDICA', puesto: 'PRACTICANTE' }),
+          contexto,
+        ),
+      ).rejects.toThrow('Puesto inválido para esta área');
+      expect(usuariosRepository.crear).not.toHaveBeenCalled();
+    });
+
     it('enlaza la ficha existente elegida si está libre y coincide el puesto', async () => {
       usuariosRepository.buscarFichaPersonal.mockResolvedValue(ficha());
 

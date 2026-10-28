@@ -1,4 +1,6 @@
 import type {
+  AlcancePsicologia,
+  FilaProcesoPsicologia,
   FiltroProcesosPsicologia,
   ProcesoColegaPsicologiaResumen,
   ProcesoPsicologiaDetalle,
@@ -14,8 +16,10 @@ export const CONSULTAS_PROCESOS_REPOSITORY = Symbol(
 
 export interface ListarProcesosParams {
   psicologaId: string;
+  /** "Míos" o "Del equipo" (todo proceso del área con responsable). */
+  alcance: AlcancePsicologia;
   filtro: FiltroProcesosPsicologia;
-  /** Palabras ya limpias; cada una debe aparecer en el nombre o en el número de expediente. */
+  /** Palabras ya limpias; cada una debe aparecer en un nombre (usuaria o hijo/a) o en el número de expediente. */
   palabras: string[];
   cursor?: string;
   limite: number;
@@ -36,15 +40,15 @@ export type DetalleProcesoRepo = Omit<
 >;
 
 /**
- * Lecturas de procesos. Todas filtran en la propia consulta por quién pregunta: de un proceso
- * que no puede leer no sale ni una fila, aunque alguien olvide el guard de acceso. Las listas
- * de trabajo son solo de la dueña; el detalle y `listarDeColegas` admiten además el proceso
- * cerrado de una colega (ver `procesoLegible`).
+ * Lecturas de procesos. Todas filtran en la propia consulta: de un proceso que no se puede leer
+ * no sale ni una fila, aunque alguien olvide el guard de acceso. "Míos" es de la responsable;
+ * "Del equipo", el detalle y `listarDeColegas` valen para cualquier proceso que el área puede
+ * leer (ver `PROCESO_LEGIBLE`).
  */
 export interface IConsultasProcesosRepository {
   listar(
     params: ListarProcesosParams,
-  ): Promise<PaginaConCursorRepo<ProcesoPsicologiaResumen>>;
+  ): Promise<PaginaConCursorRepo<FilaProcesoPsicologia>>;
   /** Todos los procesos que esta psicóloga lleva o llevó de una usuaria, el más reciente primero. */
   listarDeUsuaria(
     usuariaId: string,
@@ -52,12 +56,13 @@ export interface IConsultasProcesosRepository {
     ahora: Date,
   ): Promise<ProcesoPsicologiaResumen[]>;
   /**
-   * Los procesos ya cerrados que otras psicólogas llevaron con una usuaria que esta también
-   * atiende o atendió, el más reciente primero. Vacío si no tiene ningún caso con ella.
+   * Los procesos, abiertos o cerrados, que otras psicólogas llevan o llevaron con una usuaria
+   * referida a Psicología (de ella o de sus hijos/as), el más reciente primero.
    */
   listarDeColegas(
     usuariaId: string,
     psicologaId: string,
+    ahora: Date,
   ): Promise<ProcesoColegaPsicologiaResumen[]>;
   resumen(psicologaId: string, ahora: Date): Promise<ResumenProcesosPsicologia>;
   /** `null` tanto si no existe como si esta psicóloga no puede leerlo. */

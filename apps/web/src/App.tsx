@@ -39,6 +39,7 @@ import Agenda from './features/psicologia/agenda/Agenda'
 import BandejaPsicologia from './features/psicologia/bandeja/BandejaPsicologia'
 import DetalleCita from './features/psicologia/citas/DetalleCita'
 import RegistroConsulta from './features/psicologia/citas/RegistroConsulta'
+import ConsultasPsicologia from './features/psicologia/consultas/PaginaConsultas'
 import Indicadores from './features/psicologia/indicadores/Indicadores'
 import ListaProcesosPsicologia from './features/psicologia/procesos/ListaProcesos'
 import DetalleProcesoPsicologia from './features/psicologia/procesos/DetalleProceso'
@@ -134,6 +135,7 @@ function App() {
             <Route index element={<Navigate to={RUTAS_PSICOLOGIA.atencion()} replace />} />
             <Route path="atencion" element={<BandejaPsicologia />} />
             <Route path="agenda" element={<Agenda />} />
+            <Route path="consultas" element={<ConsultasPsicologia />} />
             <Route path="procesos" element={<ListaProcesosPsicologia />} />
             <Route path="procesos/:procesoId" element={<DetalleProcesoPsicologia />}>
               <Route index element={<PestanaSesionesPsicologia />} />

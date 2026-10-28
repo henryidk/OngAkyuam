@@ -7,6 +7,7 @@ import {
   Injectable,
 } from '@nestjs/common';
 import {
+  mimeTypePermitido,
   parseLocalGT,
   type ConsultaRegistradaDto,
   type DocumentoCitaDto,
@@ -24,7 +25,10 @@ import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import { DOCUMENTOS_CITA_REPOSITORY } from '../interfaces/documentos-cita-repository.interface';
 import type { IDocumentosCitaRepository } from '../interfaces/documentos-cita-repository.interface';
-import { MENSAJE_SESION_NO_REGISTRABLE } from '../compartido/mensajes';
+import {
+  MENSAJE_SESION_NO_REGISTRABLE,
+  MENSAJE_SOLO_RESPONSABLE_PROGRAMA,
+} from '../compartido/mensajes';
 import { avisarTraslape } from '../compartido/traslape';
 import { AccesoPsicologiaService } from './acceso-psicologia.service';
 
@@ -64,7 +68,7 @@ export class RegistroConsultaService {
     datos: RegistroConsultaInput,
     contexto: ContextoAuditoria,
   ): Promise<ConsultaRegistradaDto> {
-    const acceso = await this.acceso.exigirAccesoCita(
+    const acceso = await this.acceso.exigirAutoriaCita(
       citaId,
       contexto.usuarioId,
     );
@@ -72,6 +76,12 @@ export class RegistroConsultaService {
     const siguiente = datos.borrador ? undefined : datos.siguiente;
     let proximaCita: { fechaHora: Date; duracionMinutos: number } | null = null;
     if (siguiente?.tipo === 'PROGRAMAR') {
+      // Registrar es de quien atendió; agendar en el proceso, solo de su responsable.
+      await this.acceso.exigirAccesoCita(
+        citaId,
+        contexto.usuarioId,
+        MENSAJE_SOLO_RESPONSABLE_PROGRAMA,
+      );
       proximaCita = {
         fechaHora: parseLocalGT(siguiente.fechaHora),
         duracionMinutos: siguiente.duracionMinutos,
@@ -93,6 +103,9 @@ export class RegistroConsultaService {
       acuerdos: vacioANulo(datos.acuerdos),
       observaciones: vacioANulo(datos.observaciones),
       motivoNoAsistencia: vacioANulo(datos.motivoNoAsistencia),
+      // La clínica es de la sesión que ocurrió: con inasistencia o cancelación no aplica.
+      clinica: datos.estado === 'ATENDIDA' ? datos.clinica : null,
+      enfoqueTerapeutico: vacioANulo(datos.enfoqueTerapeutico),
       borrador: datos.borrador,
       proximaCita,
     });
@@ -100,7 +113,7 @@ export class RegistroConsultaService {
       throw new ConflictException(MENSAJE_SESION_NO_REGISTRABLE);
     }
 
-    // Nunca temas/intervención/recomendaciones/motivoNoAsistencia en `detalles` — texto clínico
+    // Nunca temas/intervención/enfoque/recomendaciones/motivoNoAsistencia en `detalles` — texto clínico
     // libre, el audit log guarda IDs/enums, nunca texto libre personal.
     await this.auditService.registrar({
       usuarioId: contexto.usuarioId,
@@ -152,7 +165,7 @@ export class RegistroConsultaService {
       throw new BadRequestException(MENSAJES_ARCHIVO[motivo]);
     }
 
-    const acceso = await this.acceso.exigirAccesoCita(
+    const acceso = await this.acceso.exigirAutoriaCita(
       citaId,
       contexto.usuarioId,
     );
@@ -195,11 +208,11 @@ export class RegistroConsultaService {
     return documento;
   }
 
-  async obtenerUrlDescargaDocumentoCita(
+  async obtenerUrlDocumentoCita(
     citaId: string,
     contexto: ContextoAuditoria,
   ): Promise<{ url: string }> {
-    // Leer, no escribir: también vale el documento de un proceso cerrado de una colega.
+    // Leer, no escribir: vale el documento de cualquier proceso que el área puede leer.
     const cita = await this.acceso.exigirLecturaCita(
       citaId,
       contexto.usuarioId,
@@ -211,16 +224,26 @@ export class RegistroConsultaService {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_DOCUMENTO);
     }
 
-    const url = await this.objectStorage.generarUrlDescarga(
-      documento.claveR2,
-      documento.nombreArchivo,
-    );
+    // Se abre en el navegador en vez de descargarse. Un MIME fuera de la lista blanca actual
+    // (filas antiguas) nunca se muestra inline: solo se descarga.
+    const vistaPrevia = mimeTypePermitido(documento.mimeType);
+    const url = vistaPrevia
+      ? await this.objectStorage.generarUrlVistaPrevia(
+          documento.claveR2,
+          documento.mimeType,
+        )
+      : await this.objectStorage.generarUrlDescarga(
+          documento.claveR2,
+          documento.nombreArchivo,
+        );
 
     // Leer un archivo sensible se audita igual que subirlo (mismo criterio que jurídico).
     await this.auditService.registrar({
       usuarioId: contexto.usuarioId,
       username: contexto.username,
-      accion: 'DOCUMENTO_CITA_PSICOLOGICA_DESCARGADO',
+      accion: vistaPrevia
+        ? 'DOCUMENTO_CITA_PSICOLOGICA_VISTO'
+        : 'DOCUMENTO_CITA_PSICOLOGICA_DESCARGADO',
       entidad: 'Documento',
       entidadId: documento.id,
       ipAddress: contexto.ipAddress,

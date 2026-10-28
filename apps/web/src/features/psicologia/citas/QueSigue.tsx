@@ -1,17 +1,12 @@
-import {
-  DURACIONES_CITA_PSICOLOGICA_MINUTOS,
-  formatInstanteGT,
-  sumarDiasGT,
-  type CitaResumen,
-  type SiguientePasoSesion,
-} from '@akyuam/shared'
-import { CLASE_CAMPO, CLASE_ETIQUETA } from '../../juridico/compartido/campos'
+import { sumarDiasGT, type CitaResumen, type DuracionCitaPsicologica, type SiguientePasoSesion } from '@akyuam/shared'
+import AvisoTraslape from './AvisoTraslape'
+import ElegirHorario from './ElegirHorario'
 
 export interface EstadoQueSigue {
   tipo: SiguientePasoSesion['tipo']
   fecha: string
   hora: string
-  duracion: (typeof DURACIONES_CITA_PSICOLOGICA_MINUTOS)[number]
+  duracion: DuracionCitaPsicologica
 }
 
 interface QueSigueProps {
@@ -87,58 +82,19 @@ export default function QueSigue({ valor, onCambio, diaBase, conflicto }: QueSig
               )
             })}
           </div>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <label className={CLASE_ETIQUETA}>
-              Fecha
-              <input
-                type="date"
-                value={valor.fecha}
-                onChange={(evento) => onCambio({ ...valor, fecha: evento.target.value })}
-                className={CLASE_CAMPO}
-              />
-            </label>
-            <label className={CLASE_ETIQUETA}>
-              Hora
-              <input
-                type="time"
-                value={valor.hora}
-                onChange={(evento) => onCambio({ ...valor, hora: evento.target.value })}
-                className={CLASE_CAMPO}
-              />
-            </label>
-            <label className={CLASE_ETIQUETA}>
-              Duración
-              <select
-                value={valor.duracion}
-                onChange={(evento) => {
-                  const duracion = DURACIONES_CITA_PSICOLOGICA_MINUTOS.find(
-                    (minutos) => minutos === Number(evento.target.value),
-                  )
-                  if (duracion) onCambio({ ...valor, duracion })
-                }}
-                className={CLASE_CAMPO}
-              >
-                {DURACIONES_CITA_PSICOLOGICA_MINUTOS.map((minutos) => (
-                  <option key={minutos} value={minutos}>
-                    {minutos} minutos
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <ElegirHorario
+            fecha={valor.fecha}
+            hora={valor.hora}
+            duracion={valor.duracion}
+            onDuracion={(duracion) => onCambio({ ...valor, duracion })}
+            onCambio={(horario) => onCambio({ ...valor, ...horario })}
+          />
 
           {conflicto && (
-            <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              <p className="font-medium">Ya tienes una cita a esa hora:</p>
-              <ul className="mt-1 list-disc pl-4">
-                {conflicto.map((cita) => (
-                  <li key={cita.id}>
-                    {formatInstanteGT(cita.fechaHora)} · {cita.duracionMinutos} min
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-1">Cambia la hora o guarda de nuevo si es intencional. Todavía no se guardó nada.</p>
-            </div>
+            <AvisoTraslape
+              citas={conflicto}
+              accion="Cambia la hora o guarda de nuevo si es intencional. Todavía no se guardó nada."
+            />
           )}
         </div>
       )}

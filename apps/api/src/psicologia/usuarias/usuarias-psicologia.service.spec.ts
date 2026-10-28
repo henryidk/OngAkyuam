@@ -35,6 +35,8 @@ const FICHA: FichaUsuariaRepo = {
   },
   referencias: [],
   puedeAbrirProceso: false,
+  codigoProcesoNuevo: '05-2026 · Proceso 2',
+  hijos: [],
 };
 
 function proceso(
@@ -151,6 +153,7 @@ describe('UsuariasPsicologiaService', () => {
       expect(usuariasRepository.obtenerFicha).toHaveBeenCalledWith(
         USUARIA_ID,
         'psicologa-a',
+        expect.any(Date),
       );
       expect(consultasRepository.listarDeUsuaria).not.toHaveBeenCalled();
       expect(consultasRepository.listarDeColegas).not.toHaveBeenCalled();
@@ -170,16 +173,20 @@ describe('UsuariasPsicologiaService', () => {
       expect(ficha.contadores).toEqual({ enProceso: 1, cerrados: 2 });
     });
 
-    it('añade aparte los procesos cerrados de colegas, sin mezclarlos con los propios ni con sus contadores', async () => {
+    it('añade aparte los procesos de colegas, sin mezclarlos con los propios ni con sus contadores', async () => {
       consultasRepository.listarDeColegas.mockResolvedValue([
-        { ...proceso('CIERRE'), psicologa: 'Colega De Prueba' },
+        { ...proceso('SEGUIMIENTO'), psicologa: 'Colega De Prueba' },
       ]);
 
       const ficha = await service.obtener(USUARIA_ID, contexto);
 
+      // El mismo "ahora" para los dos: las próximas citas se calculan contra el mismo instante.
+      const [, , ahoraPropios] =
+        consultasRepository.listarDeUsuaria.mock.calls[0];
       expect(consultasRepository.listarDeColegas).toHaveBeenCalledWith(
         USUARIA_ID,
         'psicologa-a',
+        ahoraPropios,
       );
       expect(ficha.procesosDeColegas).toHaveLength(1);
       expect(ficha.procesos).toHaveLength(3);

@@ -22,12 +22,22 @@ import { RUTAS_PSICOLOGIA } from '../rutas'
 const ESPERA_BUSQUEDA_MS = 350
 const CLASE_PILDORA = 'inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium'
 
-const PILDORA_PROCESO: Record<NonNullable<FilaUsuariaPsicologia['estadoProceso']>, { etiqueta: string; clase: string }> = {
-  ACTIVO: { etiqueta: 'En proceso', clase: 'bg-[#f7f3fc] text-[#7346a5]' },
-  CERRADO: { etiqueta: 'Cerrado', clase: 'bg-[#e7f1ea] text-[#2f6b3f]' },
+/**
+ * Resumen de la familia, no de cada proceso (eso está en Procesos): cuántas personas del
+ * expediente, la usuaria y sus hijos/as, siguen en atención.
+ */
+function resumenAtencion(fila: FilaUsuariaPsicologia): { etiqueta: string; clase: string } | null {
+  if (fila.personasEnAtencion > 0) {
+    return {
+      etiqueta: fila.personasEnAtencion === 1 ? '1 persona en atención' : `${fila.personasEnAtencion} personas en atención`,
+      clase: 'bg-[#f7f3fc] text-[#7346a5]',
+    }
+  }
+  if (fila.estadoProceso === 'CERRADO') return { etiqueta: 'Cerrado', clase: 'bg-[#e7f1ea] text-[#2f6b3f]' }
+  return null
 }
 
-const COLUMNAS = ['Expediente', 'Usuaria', 'Edad', 'Procesos', 'Última actividad']
+const COLUMNAS = ['Expediente', 'Usuaria', 'Edad', 'Atención', 'Última actividad']
 
 function filtroDesdeUrl(valor: string | null): FiltroUsuariasPsicologia | undefined {
   return FILTROS_USUARIAS_PSICOLOGIA.find((filtro) => filtro === valor)
@@ -165,7 +175,7 @@ export default function ListaUsuarias() {
                 {!lista && cargando && <FilasEsqueleto />}
                 {lista?.filas.map((fila) => {
                   const rutaFicha = RUTAS_PSICOLOGIA.usuaria(fila.usuariaId)
-                  const pildora = fila.estadoProceso ? PILDORA_PROCESO[fila.estadoProceso] : null
+                  const pildora = resumenAtencion(fila)
                   return (
                     <tr
                       key={fila.usuariaId}

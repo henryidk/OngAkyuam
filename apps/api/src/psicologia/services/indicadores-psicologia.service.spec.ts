@@ -58,6 +58,7 @@ describe('IndicadoresPsicologiaService', () => {
       registrarConsulta: jest.fn(),
       listarCitasEnRango: jest.fn(),
       obtenerDetalle: jest.fn(),
+      buscarUltimaClinica: jest.fn().mockResolvedValue(null),
     };
     auditService = {
       registrar: jest.fn(),

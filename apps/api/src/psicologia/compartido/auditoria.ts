@@ -22,3 +22,23 @@ export function eventoAuditoria(
     ...evento,
   };
 }
+
+/** Una búsqueda o una lista no apunta a una sola entidad: no lleva `entidadId`. */
+type BusquedaPsicologia = Required<
+  Pick<RegistrarAuditoriaParams, 'accion' | 'entidad'>
+> &
+  Pick<RegistrarAuditoriaParams, 'detalles'>;
+
+/** Lo mismo para una búsqueda o una lista. Nunca se guarda el texto buscado: puede ser un nombre. */
+export function eventoBusquedaAuditoria(
+  contexto: ContextoAuditoria,
+  evento: BusquedaPsicologia,
+): RegistrarAuditoriaParams {
+  return {
+    usuarioId: contexto.usuarioId,
+    username: contexto.username,
+    ipAddress: contexto.ipAddress,
+    userAgent: contexto.userAgent,
+    ...evento,
+  };
+}

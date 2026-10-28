@@ -246,11 +246,20 @@ model Nino {
   apellidos       String
   fechaNacimiento DateTime      @db.Date
   genero          GeneroPersona
+  // Número estable del hijo/a dentro del expediente de su madre (04-2026.01, 04-2026.02). Lo
+  // asigna un trigger de la base al insertar (el valor enviado se ignora) y no se puede cambiar:
+  // ver la migración `psicologia_proceso_por_persona`.
+  consecutivo     Int           @default(0)
 
-  citasPsicologicas CitaPsicologica[]
-  citasMedicas      CitaMedicaPersona[]
-  consultasMedicas  ConsultaMedica[]
+  citasPsicologicas      CitaPsicologica[]
+  atencionesPsicologicas AtencionPsicologica[]
+  citasMedicas           CitaMedicaPersona[]
+  consultasMedicas       ConsultaMedica[]
 
+  @@unique([expedienteId, consecutivo])
+  // Destino de la llave compuesta de AtencionPsicologica: la base rechaza el proceso de un hijo/a
+  // de otro expediente.
+  @@unique([id, expedienteId])
   @@index([expedienteId])
 }
 
@@ -265,6 +274,7 @@ enum TipoDocumento {
   CONVENIO_INGRESO
   RECEPCION_BIENES
   FORMATO_ATENCION_PSICOLOGICA
+  HOJA_EVOLUCION_PSICOLOGICA
   CONVENIO_EGRESO
   ACCIONES_REALIZADAS
 }
@@ -293,7 +303,7 @@ model Documento {
 
   visibilidadAreas DocumentoVisibilidadArea[]
 
-  // Vínculo opcional al "Formato General" escaneado de una cita de psicología. SetNull (no
+  // Vínculo opcional a la "Hoja de evolución" escaneada de una cita de psicología. SetNull (no
   // Cascade): si se elimina la cita, el documento no debe desaparecer — sigue siendo parte
   // del expediente y de su propio ciclo de vida vía `expedienteId`.
   citaPsicologicaId String?
@@ -638,17 +648,23 @@ enum EstadoAtencionPsicologica {
 // escribir nada de este expediente (403 genérico, sin distinguir el motivo).
 model AtencionPsicologica {
   id                   String                    @id @default(uuid())
-  // Un expediente puede tener varios procesos (la usuaria regresa); la base solo deja uno sin
-  // cerrar a la vez (índice parcial "AtencionPsicologica_activa_uq", fuera del alcance de Prisma).
+  // Un expediente puede tener varios procesos por persona (la usuaria o un hijo/a regresa); la
+  // base solo deja uno sin cerrar por persona (índices parciales "AtencionPsicologica_activa_*",
+  // fuera del alcance de Prisma, igual que la unicidad del consecutivo).
   expedienteId         String
   expediente           Expediente                @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  // Persona del proceso: null = la usuaria; si no, un hijo/a de este mismo expediente. Un caso
+  // tomado que aún no tiene primera cita queda en null hasta que se elige a quién se atiende.
+  ninoId               String?
+  nino                 Nino?                     @relation(fields: [ninoId, expedienteId], references: [id, expedienteId], onDelete: NoAction)
   estado               EstadoAtencionPsicologica @default(INICIO)
   psicologaAsignadaId  String?
   psicologaAsignada    Usuario?                  @relation("AtencionPsicologicaAsignada", fields: [psicologaAsignadaId], references: [id])
   tomadaEn             DateTime?                 @db.Timestamptz(3)
   fechaInicio          DateTime?                 @db.Timestamptz(3)
   fechaCierre          DateTime?                 @db.Timestamptz(3)
-  // El código visible "P{consecutivo}-{numero de expediente}" se deriva, no se guarda.
+  // Consecutivo por persona. El código visible ("04-2026 · Proceso 2", o "04-2026.01" de un
+  // hijo/a) se deriva con etiquetaProcesoPsicologia, no se guarda.
   consecutivo          Int                       @default(1)
   motivoCierreCatalogo MotivoCierrePsicologia?
   // Texto de la psicóloga al cerrar (obligatorio si el motivo es OTRO). La app lo limita a 2000.
@@ -671,7 +687,8 @@ model AtencionPsicologica {
   cambiosEstado  CambioEstadoAtencion[]
   reasignaciones ReasignacionAtencionPsicologica[]
 
-  @@unique([expedienteId, consecutivo])
+  @@index([expedienteId])
+  @@index([ninoId])
   @@index([psicologaAsignadaId])
   @@index([referidoId])
 }
@@ -717,6 +734,12 @@ model CambioEstadoAtencion {
   @@index([atencionId])
 }
 
+// Consultorio donde se atendió la sesión.
+enum ClinicaPsicologia {
+  CLINICA_1
+  CLINICA_2
+}
+
 enum ModalidadCita {
   PRESENCIAL
   VIRTUAL
@@ -751,9 +774,11 @@ model CitaPsicologica {
   modalidad           ModalidadCita         @default(PRESENCIAL)
   lugar               String?
   motivo              String                @default("")
-  // Hijo/a que se atiende dentro del proceso de la madre; null = la usuaria.
+  // Copia de la persona del proceso (un trigger exige que coincida con `atencion.ninoId`); se
+  // conserva para no reescribir las consultas que filtran citas por persona.
   ninoId              String?
-  nino                Nino?                 @relation(fields: [ninoId], references: [id], onDelete: SetNull)
+  // NoAction: lo clínico no se borra con el hijo/a (solo cae junto con el expediente completo).
+  nino                Nino?                 @relation(fields: [ninoId], references: [id], onDelete: NoAction)
   tipo                TipoCitaPsicologica   @default(SEGUIMIENTO)
   duracionMinutos     Int                   @default(45)
   estado              EstadoCitaPsicologica @default(PROGRAMADA)
@@ -763,6 +788,10 @@ model CitaPsicologica {
   temas               String?               @db.Text
   intervencion        String?               @db.Text
   recomendaciones     String?               @db.Text
+  // Null en sesiones previas a que se pidiera o sin atender; la app la exige al registrar una
+  // sesión atendida.
+  clinica             ClinicaPsicologia?
+  enfoqueTerapeutico  String?               @db.Text
   borrador            Boolean               @default(false)
   reprogramadaDesdeId String?               @unique
   reprogramadaDesde   CitaPsicologica?      @relation("Reprogramacion", fields: [reprogramadaDesdeId], references: [id])
