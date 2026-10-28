@@ -74,16 +74,17 @@ export const NOMBRE_DOCUMENTO_MEDICO_MAX = 120
 export const DURACION_CITA_MEDICA_MIN = 30
 
 /**
- * Horario de la médica: horas de inicio de cita, en hora de Guatemala, de lunes a viernes
- * (mañana 08:00–12:00 y tarde 14:00–15:30, ambas inclusive como hora de inicio). Una lista
- * explícita en vez de una fórmula para que agregar o quitar una hora no toque código.
+ * Horario de la médica: horas de inicio de cita, en hora de Guatemala, de lunes a viernes.
+ * El área trabaja de 08:00 a 17:00: la primera cita empieza a las 08:00 y la última a las 16:30.
+ * Sin hueco de almuerzo a propósito: la médica maneja sus pausas sin que la agenda las imponga.
+ * Una lista explícita en vez de una fórmula para que agregar o quitar una hora no toque código.
  */
 export const HORARIO_MEDICINA = {
   /** Día ISO (1 = lunes … 7 = domingo). */
   diasLaborables: [1, 2, 3, 4, 5],
   horas: [
     '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '12:00',
-    '14:00', '14:30', '15:00', '15:30',
+    '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
   ],
 } as const
 

@@ -124,7 +124,7 @@ describe('ProgramacionCitaService', () => {
 
   it.each([
     ['en el pasado', '2026-10-13T09:00'],
-    ['fuera del horario', '2026-10-15T13:00'],
+    ['fuera del horario', '2026-10-15T17:00'],
     ['en fin de semana', '2026-10-17T09:00'],
   ])('un inicio %s responde 400', async (_caso, inicio) => {
     await expect(
