@@ -423,7 +423,7 @@ model ProcesoJuridico {
   situacion           SituacionProcesoJuridico  @default(ACTIVO)
   formaFinalizacion   FormaFinalizacionProceso?
   detalleFinalizacion String?                   @db.VarChar(300)
-  numeroJudicial      String?                   @db.VarChar(60)
+  numeroJudicial      String?                   @db.VarChar(250)
   organoJudicial      String?                   @db.VarChar(160)
   contraparte         String?                   @db.VarChar(160)
   // "Vincular con proceso anterior" (ej. la ejecución de una pensión ya fijada).

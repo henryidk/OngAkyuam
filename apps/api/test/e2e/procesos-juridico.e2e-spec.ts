@@ -90,8 +90,8 @@ describe('Jurídico · procesos: No. judicial, cartera, búsqueda y cierre (e2e)
   }
 
   async function listarProcesos(query: Record<string, string>) {
-    const respuesta = await pedir('get', '/api/juridico/procesos')
-      .query(query)
+    const respuesta = await pedir('post', '/api/juridico/procesos/busqueda')
+      .send(query)
       .expect(200);
     return respuesta.body as ProcesosPaginados;
   }
@@ -244,8 +244,8 @@ describe('Jurídico · procesos: No. judicial, cartera, búsqueda y cierre (e2e)
       expect(procesos.items[0].codigo).toBe(termino);
 
       const audiencias = (
-        await pedir('get', '/api/juridico/audiencias')
-          .query({ q: termino })
+        await pedir('post', '/api/juridico/audiencias/busqueda')
+          .send({ q: termino })
           .expect(200)
       ).body as AudienciasPaginadas;
       expect(audiencias.items.map((a) => a.id)).toEqual([audiencia.id]);
@@ -318,8 +318,8 @@ describe('Jurídico · procesos: No. judicial, cartera, búsqueda y cierre (e2e)
     });
 
     it('una cartera que no existe → 400', async () => {
-      await pedir('get', '/api/juridico/procesos')
-        .query({ cartera: 'OTRA' })
+      await pedir('post', '/api/juridico/procesos/busqueda')
+        .send({ cartera: 'OTRA' })
         .expect(400);
     });
   });

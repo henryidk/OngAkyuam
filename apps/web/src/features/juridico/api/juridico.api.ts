@@ -10,8 +10,8 @@ import type {
   ExpedienteDetalleArea,
   FichaUsuariaJuridicoDto,
   FinalizarProcesoInput,
-  ListarProcesosQuery,
-  ListarUsuariasJuridicoQuery,
+  BuscarProcesosInput,
+  BuscarUsuariasJuridicoInput,
   ListaUsuariasJuridico,
   PersonalDto,
   ProcesoDetalle,
@@ -41,8 +41,9 @@ export function obtenerResumen() {
   return api.get<ResumenProcesos>('/juridico/procesos/resumen').then((res) => res.data)
 }
 
-export function listarProcesos(query: Partial<ListarProcesosQuery>) {
-  return api.get<ProcesosPaginados>('/juridico/procesos', { params: query }).then((res) => res.data)
+/** POST de solo lectura: el texto buscado puede ser el nombre de una usuaria y no debe ir en la URL. */
+export function listarProcesos(datos: BuscarProcesosInput) {
+  return api.post<ProcesosPaginados>('/juridico/procesos/busqueda', datos).then((res) => res.data)
 }
 
 export function obtenerProceso(procesoId: string) {
@@ -132,8 +133,9 @@ export function listarBandeja() {
 
 // ---- Usuarias ----
 
-export function listarUsuarias(query: Partial<ListarUsuariasJuridicoQuery>) {
-  return api.get<ListaUsuariasJuridico>('/juridico/usuarias', { params: query }).then((res) => res.data)
+/** POST de solo lectura: el texto buscado es un nombre, DPI o expediente y no debe ir en la URL. */
+export function listarUsuarias(datos: BuscarUsuariasJuridicoInput) {
+  return api.post<ListaUsuariasJuridico>('/juridico/usuarias/busqueda', datos).then((res) => res.data)
 }
 
 export function obtenerFichaUsuaria(usuariaId: string) {

@@ -54,8 +54,17 @@ export default function FilaAudiencia({ audiencia, vista, onAccion }: FilaAudien
         </Link>
         {audiencia.descripcion && <p className="mt-0.5 max-w-[180px] text-xs text-gray-500">{audiencia.descripcion}</p>}
       </td>
-      <td className="whitespace-nowrap px-3 py-3 font-mono text-[13px] text-gray-700">
-        {audiencia.numeroJudicial ?? <span className="font-sans text-xs text-gray-400">Sin No. judicial</span>}
+      <td className="px-3 py-3">
+        {audiencia.numeroJudicial ? (
+          <p
+            title={audiencia.numeroJudicial}
+            className="line-clamp-3 min-w-[180px] max-w-[240px] text-[13px] leading-snug break-words text-gray-700"
+          >
+            {audiencia.numeroJudicial}
+          </p>
+        ) : (
+          <span className="whitespace-nowrap text-xs text-gray-400">Sin No. judicial</span>
+        )}
       </td>
       <td className="whitespace-nowrap px-3 py-3 text-sm text-gray-900 tabular-nums">
         {formatFechaGT(audiencia.fecha)}

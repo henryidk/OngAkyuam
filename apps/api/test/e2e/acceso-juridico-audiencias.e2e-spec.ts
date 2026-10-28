@@ -31,7 +31,7 @@ const ID = randomUUID();
 // Todos los endpoints de audiencias. Con otro rol, el RolesGuard responde 403 antes de leer
 // parámetros o cuerpo, así que basta un id cualquiera.
 const ENDPOINTS: [Metodo, string][] = [
-  ['get', '/api/juridico/audiencias'],
+  ['post', '/api/juridico/audiencias/busqueda'],
   ['get', '/api/juridico/audiencias/disponibilidad'],
   ['get', `/api/juridico/procesos/${ID}/audiencias`],
   ['post', `/api/juridico/procesos/${ID}/audiencias`],
@@ -130,8 +130,24 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
 
     it('sin sesión responde 401', async () => {
       await request(app.getHttpServer())
-        .get('/api/juridico/audiencias')
+        .post('/api/juridico/audiencias/busqueda')
         .expect(401);
+    });
+
+    it('la búsqueda ya no se acepta por GET con el texto en la URL', async () => {
+      await pedir(
+        'get',
+        '/api/juridico/audiencias?q=Maria',
+        sesionJuridico,
+      ).expect(404);
+    });
+
+    it('sin token CSRF responde 403', async () => {
+      await request(app.getHttpServer())
+        .post('/api/juridico/audiencias/busqueda')
+        .set('Cookie', sesionJuridico.cookie)
+        .send({ q: 'Maria' })
+        .expect(403);
     });
   });
 
@@ -205,8 +221,8 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
     });
 
     it('no aparece en la sección Audiencias ni en la disponibilidad', async () => {
-      const lista = await pedir('get', '/api/juridico/audiencias')
-        .query({ q: ajeno.expediente.numero })
+      const lista = await pedir('post', '/api/juridico/audiencias/busqueda')
+        .send({ q: ajeno.expediente.numero })
         .expect(200);
       expect(lista.body).toMatchObject({ items: [], total: 0 });
 
@@ -262,8 +278,8 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
       ).toBe(1);
 
       const lista = (
-        await pedir('get', '/api/juridico/audiencias')
-          .query({ q: expediente.numero })
+        await pedir('post', '/api/juridico/audiencias/busqueda')
+          .send({ q: expediente.numero })
           .expect(200)
       ).body as AudienciasPaginadas;
       expect(lista.items).toHaveLength(1);
@@ -403,8 +419,8 @@ describe('Jurídico · acceso a audiencias (e2e)', () => {
         }),
       );
       const lista = (
-        await pedir('get', '/api/juridico/audiencias', sesionPropia)
-          .query({ q: expediente.numero, mias: 'true' })
+        await pedir('post', '/api/juridico/audiencias/busqueda', sesionPropia)
+          .send({ q: expediente.numero, mias: true })
           .expect(200)
       ).body as AudienciasPaginadas;
       expect(lista.items).toHaveLength(1);

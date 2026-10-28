@@ -8,6 +8,7 @@ import {
   MAX_PROCESOS_POR_LOTE,
   MOTIVOS_ABANDONO_PROCESO,
   normalizarTipoActuacion,
+  PROCESOS_PAGE_SIZE,
   PROCESOS_PAGE_SIZE_MAXIMO,
   SITUACIONES_PROCESO_JURIDICO,
   TIPOS_PERSONAL_JURIDICO,
@@ -180,19 +181,21 @@ export const BUSQUEDA_MAX = 80
 export const LARGO_MINIMO_BUSQUEDA_PROCESOS = 3
 
 /**
- * Query de `GET /juridico/procesos`: la lista de trabajo, siempre solo procesos en trámite.
- * Los suspendidos, finalizados y abandonados se consultan en la ficha de cada usuaria.
+ * Cuerpo de `POST /juridico/procesos/busqueda`: la lista de trabajo, siempre solo procesos en trámite.
+ * Los suspendidos, finalizados y abandonados se consultan en la ficha de cada usuaria. Va en el
+ * cuerpo y no en la URL porque `q` puede ser el nombre de una usuaria.
  */
-export const listarProcesosQuerySchema = z.object({
+export const buscarProcesosSchema = z.object({
   q: z.string().trim().max(BUSQUEDA_MAX).optional(),
   /** Solo los procesos donde la cuenta actual es la abogada o la procuradora asignada. */
   mios: booleanoQuerySchema.optional(),
   /** Iniciados este año, de seguimiento (de un año anterior) o todos (planaudiencias.md §8.2). */
   cartera: z.enum(CARTERAS_JURIDICO).default('TODOS'),
   page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(PROCESOS_PAGE_SIZE_MAXIMO).default(20),
+  pageSize: z.coerce.number().int().min(1).max(PROCESOS_PAGE_SIZE_MAXIMO).default(PROCESOS_PAGE_SIZE),
 })
-export type ListarProcesosQuery = z.infer<typeof listarProcesosQuerySchema>
+export type BuscarProcesosInput = z.input<typeof buscarProcesosSchema>
+export type BuscarProcesosDatos = z.output<typeof buscarProcesosSchema>
 
 // ---- Área de atención (bandeja de referencias) ----
 
@@ -210,12 +213,14 @@ export const ETIQUETAS_FILTRO_USUARIAS_JURIDICO: Record<FiltroUsuariasJuridico, 
 /** Igual que la lista de Trabajo Social: un nombre necesita 3 letras; DPI y expediente van completos. */
 export const LARGO_MINIMO_BUSQUEDA_USUARIAS = 3
 
-export const listarUsuariasJuridicoQuerySchema = z.object({
+/** Cuerpo de `POST /juridico/usuarias/busqueda`: va en el cuerpo porque `q` es un nombre, DPI o expediente. */
+export const buscarUsuariasJuridicoSchema = z.object({
   filtro: z.enum(FILTROS_USUARIAS_JURIDICO).optional(),
   q: z.string().trim().max(BUSQUEDA_MAX).optional(),
   pagina: z.coerce.number().int().min(1).default(1),
 })
-export type ListarUsuariasJuridicoQuery = z.infer<typeof listarUsuariasJuridicoQuerySchema>
+export type BuscarUsuariasJuridicoInput = z.input<typeof buscarUsuariasJuridicoSchema>
+export type BuscarUsuariasJuridicoDatos = z.output<typeof buscarUsuariasJuridicoSchema>
 
 // ---- DTOs de respuesta (mismo criterio que ExpedienteResumenArea/ExpedienteDetalleArea:
 // una sola forma consumida tanto por el backend al construir la respuesta como por el

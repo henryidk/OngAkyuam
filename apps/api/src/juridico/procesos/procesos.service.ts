@@ -8,7 +8,7 @@ import {
 import {
   anioCalendarioGT,
   type EditarDatosProcesoInput,
-  type ListarProcesosQuery,
+  type BuscarProcesosDatos,
   type ProcesoDetalle,
   type ProcesosPaginados,
   type ResumenProcesos,
@@ -49,7 +49,7 @@ export class ProcesosService {
 
   // Listado y resumen no reciben ids: el filtro de acceso va dentro de la propia consulta.
   listar(
-    query: ListarProcesosQuery,
+    query: BuscarProcesosDatos,
     usuarioId: string,
   ): Promise<ProcesosPaginados> {
     return this.procesosRepository.listar({

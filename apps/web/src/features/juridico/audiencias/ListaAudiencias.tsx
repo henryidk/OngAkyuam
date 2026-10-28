@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
   LARGO_MINIMO_BUSQUEDA_PROCESOS,
   hoyGT,
-  listarAudienciasQuerySchema,
+  buscarAudienciasSchema,
   type AccionAudiencia,
   type AudienciaFilaDto,
   type AudienciasPaginadas,
   type VistaAudiencias,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import Button from '../../../components/ui/Button'
 import { listarAudiencias } from '../api/audiencias.api'
 import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista } from '../compartido/EstadosVista'
+import Paginacion from '../compartido/Paginacion'
 import { useRecurso } from '../compartido/useRecurso'
 import { RUTAS_JURIDICO } from '../rutas'
 import type { ModalAudiencia } from './caso'
@@ -58,6 +58,14 @@ function Pestanas({ vista, pendientes, onElegir }: { vista: VistaAudiencias; pen
   )
 }
 
+/** "Mostrando 21–40 de 85 audiencias". */
+function textoConteo(pagina: number, pageSize: number, total: number, enPagina: number): string {
+  const audiencias = `${total} ${total === 1 ? 'audiencia' : 'audiencias'}`
+  if (enPagina === 0) return audiencias
+  const desde = (pagina - 1) * pageSize + 1
+  return `Mostrando ${desde}–${desde + enPagina - 1} de ${audiencias}`
+}
+
 /**
  * Agenda de audiencias de todo el equipo. Pestaña, responsable, rango y página viven en la URL;
  * el texto buscado no, para que el nombre de una usuaria no quede en el historial del navegador.
@@ -69,6 +77,7 @@ export default function ListaAudiencias() {
   const filtros = useMemo(() => leerFiltros(params, hoyGT()), [params])
   const [modal, setModal] = useState<ModalAudiencia | null>(null)
 
+  const tablaRef = useRef<HTMLElement>(null)
   const [texto, setTexto] = useState('')
   const [busqueda, setBusqueda] = useState('')
   const cambiar = useCallback(
@@ -89,7 +98,7 @@ export default function ListaAudiencias() {
 
   const query = useMemo(() => queryDesdeFiltros(filtros, busqueda), [filtros, busqueda])
   // Un rango editado a mano (más de un año, invertido) se explica aquí en vez de pedirlo.
-  const validacion = listarAudienciasQuerySchema.safeParse(query)
+  const validacion = buscarAudienciasSchema.safeParse(query)
   const errorRango = validacion.success ? null : (validacion.error.issues[0]?.message ?? 'Revise el rango de fechas')
   const cargar = useCallback(
     () => (errorRango ? Promise.resolve(VACIO) : listarAudiencias(query)),
@@ -103,7 +112,13 @@ export default function ListaAudiencias() {
     recargarResumen()
   }, [recargar, recargarResumen])
 
-  const totalPaginas = datos ? Math.max(1, Math.ceil(datos.total / datos.pageSize)) : 1
+  // Una página que ya no existe (se registraron resultados, o la URL quedó vieja) lleva a la última.
+  const ultimaPagina = datos ? Math.max(1, Math.ceil(datos.total / datos.pageSize)) : 1
+  const fueraDeRango = Boolean(datos && datos.items.length === 0 && datos.total > 0 && filtros.page > ultimaPagina)
+  useEffect(() => {
+    if (fueraDeRango) cambiar({ page: ultimaPagina })
+  }, [fueraDeRango, ultimaPagina, cambiar])
+
   const textoCorto = texto.trim().length > 0 && texto.trim().length < LARGO_MINIMO_BUSQUEDA_PROCESOS
 
   return (
@@ -120,7 +135,7 @@ export default function ListaAudiencias() {
       {error && !datos ? (
         <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="las audiencias" onReintentar={() => void recargar()} />
       ) : (
-        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
+        <section ref={tablaRef} className="scroll-mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
           <TablaAudiencias items={datos?.items ?? null} vista={filtros.vista} atenuada={cargando && Boolean(datos)} onAccion={onAccion} />
           {datos && datos.items.length === 0 && !errorRango && (
             <div className="px-4 py-8 text-center text-sm text-gray-500">
@@ -136,19 +151,20 @@ export default function ListaAudiencias() {
               )}
             </div>
           )}
-          {datos && totalPaginas > 1 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3.5 text-[13px] text-gray-500">
-              <span className="tabular-nums">
-                {datos.total} {datos.total === 1 ? 'audiencia' : 'audiencias'} · página {datos.page} de {totalPaginas}
-              </span>
-              <div className="flex gap-2">
-                <Button variante="secondary" disabled={datos.page <= 1} onClick={() => cambiar({ page: datos.page - 1 })}>
-                  Anterior
-                </Button>
-                <Button variante="secondary" disabled={datos.page >= totalPaginas} onClick={() => cambiar({ page: datos.page + 1 })}>
-                  Siguiente
-                </Button>
-              </div>
+          {datos && datos.total > datos.pageSize && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3 text-[13px] text-gray-500">
+              <span className="tabular-nums">{textoConteo(datos.page, datos.pageSize, datos.total, datos.items.length)}</span>
+              <Paginacion
+                etiqueta="Paginación de audiencias"
+                pagina={datos.page}
+                pageSize={datos.pageSize}
+                total={datos.total}
+                onCambiar={(page) => {
+                  cambiar({ page })
+                  // Los botones están al pie: sin esto se vería el final de la página nueva.
+                  tablaRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+                }}
+              />
             </div>
           )}
         </section>

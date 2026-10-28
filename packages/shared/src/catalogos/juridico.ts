@@ -129,6 +129,8 @@ export const ACCIONES_PROCESO = ['FINALIZAR', 'SUSPENDER', 'ABANDONAR', 'REACTIV
 export const DIAS_ALERTA_INACTIVIDAD = 60
 export const MAX_PROCESOS_POR_LOTE = 15
 export const CONCURRENCIA_SUBIDA = 2
+/** Filas por página de la lista de Procesos: el No. judicial puede ocupar hasta 3 líneas por fila. */
+export const PROCESOS_PAGE_SIZE = 15
 export const PROCESOS_PAGE_SIZE_MAXIMO = 50
 export const USUARIAS_JURIDICO_POR_PAGINA = 20
 

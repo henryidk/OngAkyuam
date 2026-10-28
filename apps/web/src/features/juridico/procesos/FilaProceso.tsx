@@ -106,7 +106,14 @@ export default function FilaProceso({ proceso, hoy, onAsignarNumero, onAgendar }
       </td>
       <td className="px-4 py-3 align-top">
         {proceso.numeroJudicial ? (
-          <p className="whitespace-nowrap font-mono text-[13px] text-gray-900">{proceso.numeroJudicial}</p>
+          // Suele traer el juzgado o la fiscalía junto al número: se parte en líneas con un ancho
+          // acotado y, si es muy largo, se recorta a 3 líneas (completo en el title y en el detalle).
+          <p
+            title={proceso.numeroJudicial}
+            className="line-clamp-3 min-w-[200px] max-w-[260px] text-[13px] leading-snug break-words text-gray-900"
+          >
+            {proceso.numeroJudicial}
+          </p>
         ) : (
           <BotonFila onClick={onAsignarNumero}>
             Agregar<span className="sr-only"> número judicial</span>

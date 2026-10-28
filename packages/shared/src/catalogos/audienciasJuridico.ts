@@ -77,7 +77,8 @@ export const CARTERAS_JURIDICO = ['TODOS', 'ANIO', 'SEGUIMIENTO'] as const
 export const DESCRIPCION_AUDIENCIA_MAX = 80
 export const OBSERVACIONES_AUDIENCIA_MAX = 4000
 export const MOTIVO_AUDIENCIA_MAX = 300
-export const NUMERO_JUDICIAL_MAX = 60
+/** Las abogadas anotan el juzgado o la fiscalía junto al número (ej. "Juzgado de Paz Civil… 16033-2025-00927"). */
+export const NUMERO_JUDICIAL_MAX = 250
 /** Una audiencia se agenda como máximo a 3 años: más allá casi seguro es un error de captura. */
 export const ANIOS_MAXIMOS_AGENDA_AUDIENCIA = 3
 /** El Historial exige un rango de fechas de hasta un año, para no traer todo de una vez. */

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Headers,
   HttpCode,
   HttpStatus,
@@ -20,15 +21,15 @@ import {
   agendarAudienciaSchema,
   cambiarResponsableAudienciaSchema,
   disponibilidadAudienciasQuerySchema,
+  buscarAudienciasSchema,
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
-  listarAudienciasQuerySchema,
   observacionesAudienciaSchema,
   registrarResultadoAudienciaSchema,
   reprogramarAudienciaSchema,
   type AgendarAudienciaInput,
+  type BuscarAudienciasDatos,
   type CambiarResponsableAudienciaInput,
   type DisponibilidadAudienciasQuery,
-  type ListarAudienciasQuery,
   type ObservacionesAudienciaInput,
   type RegistrarResultadoAudienciaInput,
   type ReprogramarAudienciaInput,
@@ -58,10 +59,18 @@ export class AudienciasController {
     private readonly resultadoService: ResultadoAudienciasService,
   ) {}
 
-  @Get('audiencias')
+  /**
+   * Agenda del equipo. Es POST de solo lectura porque `q` puede ser el nombre de una sobreviviente:
+   * en el cuerpo no queda en logs de acceso ni en el historial del navegador.
+   */
+  @Post('audiencias/busqueda')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   listar(
-    @Query(new ZodValidationPipe(listarAudienciasQuerySchema))
-    query: ListarAudienciasQuery,
+    @Body(new ZodValidationPipe(buscarAudienciasSchema))
+    query: BuscarAudienciasDatos,
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.agendaService.listar(query, usuario.id);

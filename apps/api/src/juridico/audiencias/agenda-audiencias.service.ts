@@ -7,7 +7,7 @@ import {
   type AudienciasPaginadas,
   type DisponibilidadAudienciasDto,
   type DisponibilidadAudienciasQuery,
-  type ListarAudienciasQuery,
+  type BuscarAudienciasDatos,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
 import { RELOJ, type IReloj } from '../../common/reloj';
@@ -29,7 +29,7 @@ export class AgendaAudienciasService {
   ) {}
 
   async listar(
-    query: ListarAudienciasQuery,
+    query: BuscarAudienciasDatos,
     usuarioId: string,
   ): Promise<AudienciasPaginadas> {
     const { items, total } = await this.agendaRepository.listar({

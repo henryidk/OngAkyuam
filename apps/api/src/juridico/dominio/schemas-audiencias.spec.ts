@@ -2,7 +2,7 @@ import {
   agendarAudienciaSchema,
   asignarNumeroJudicialSchema,
   fechaHoraLocalSchema,
-  listarAudienciasQuerySchema,
+  buscarAudienciasSchema,
   registrarResultadoAudienciaSchema,
   reprogramarAudienciaSchema,
 } from '@akyuam/shared';
@@ -122,7 +122,7 @@ describe('schemas de audiencias de Jurídico (planaudiencias.md §5 y §7.2)', (
     });
   });
 
-  it('asignar No. judicial: no acepta vacío ni más de 60 caracteres', () => {
+  it('asignar No. judicial: no acepta vacío ni más de 250 caracteres', () => {
     expect(
       asignarNumeroJudicialSchema.safeParse({
         numeroJudicial: '  ',
@@ -131,19 +131,29 @@ describe('schemas de audiencias de Jurídico (planaudiencias.md §5 y §7.2)', (
     ).toBe(false);
     expect(
       asignarNumeroJudicialSchema.safeParse({
-        numeroJudicial: 'x'.repeat(61),
+        numeroJudicial: 'x'.repeat(251),
         version: 1,
       }).success,
     ).toBe(false);
+    // Lo que de verdad capturan: el juzgado o la fiscalía junto al número, a veces en dos líneas.
+    expect(
+      asignarNumeroJudicialSchema.parse({
+        numeroJudicial:
+          'Fiscalía de la Mujer del Ministerio Público Cobán, A.V.\nMP: 0003-2025-1199',
+        version: 1,
+      }).numeroJudicial,
+    ).toBe(
+      'Fiscalía de la Mujer del Ministerio Público Cobán, A.V. MP: 0003-2025-1199',
+    );
     expect(
       asignarNumeroJudicialSchema.parse({ numeroJudicial: 'C-01', version: 1 })
         .confirmarNumeroRepetido,
     ).toBe(false);
   });
 
-  describe('listarAudienciasQuerySchema', () => {
+  describe('buscarAudienciasSchema', () => {
     it('por defecto muestra las próximas sin rango de fechas', () => {
-      expect(listarAudienciasQuerySchema.parse({})).toEqual({
+      expect(buscarAudienciasSchema.parse({})).toEqual({
         vista: 'proximas',
         page: 1,
       });
@@ -151,7 +161,7 @@ describe('schemas de audiencias de Jurídico (planaudiencias.md §5 y §7.2)', (
 
     it('el Historial exige Desde y Hasta', () => {
       expect(
-        listarAudienciasQuerySchema.safeParse({ vista: 'historial' }).success,
+        buscarAudienciasSchema.safeParse({ vista: 'historial' }).success,
       ).toBe(false);
     });
 
@@ -162,7 +172,7 @@ describe('schemas de audiencias de Jurídico (planaudiencias.md §5 y §7.2)', (
       ['2026-05-10', '2026-05-09', false], // al revés
     ])('Historial %p → %p: válido = %p', (desde, hasta, valido) => {
       expect(
-        listarAudienciasQuerySchema.safeParse({
+        buscarAudienciasSchema.safeParse({
           vista: 'historial',
           desde,
           hasta,
@@ -171,9 +181,7 @@ describe('schemas de audiencias de Jurídico (planaudiencias.md §5 y §7.2)', (
     });
 
     it('"mias" llega como texto en la query', () => {
-      expect(listarAudienciasQuerySchema.parse({ mias: 'false' }).mias).toBe(
-        false,
-      );
+      expect(buscarAudienciasSchema.parse({ mias: 'false' }).mias).toBe(false);
     });
   });
 });

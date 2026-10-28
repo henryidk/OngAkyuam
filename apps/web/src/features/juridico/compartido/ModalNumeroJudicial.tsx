@@ -82,9 +82,9 @@ export default function ModalNumeroJudicial({ proceso, onCerrar, onHecho, onConf
     >
       <label className={CLASE_ETIQUETA}>
         <span>No. de expediente judicial</span>
-        <input
-          type="text"
+        <textarea
           autoFocus
+          rows={3}
           maxLength={NUMERO_JUDICIAL_MAX}
           value={numero}
           onChange={(evento) => {
@@ -93,8 +93,12 @@ export default function ModalNumeroJudicial({ proceso, onCerrar, onHecho, onConf
             setRepetido(null)
             setError(null)
           }}
-          className={`${CLASE_CAMPO} font-mono`}
+          placeholder="Ej. Juzgado de Paz Civil, Familia y Trabajo de Cobán 16033-2025-00927"
+          className={`${CLASE_CAMPO} resize-none`}
         />
+        <span className="block text-right font-normal text-gray-400 tabular-nums">
+          {numero.length} / {NUMERO_JUDICIAL_MAX}
+        </span>
       </label>
       <p className="text-xs text-gray-500">
         {actual

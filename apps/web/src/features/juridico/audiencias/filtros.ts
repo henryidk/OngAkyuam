@@ -4,7 +4,7 @@ import {
   fechaReporteSchema,
   sumarDiasGT,
   type EstadoAudiencia,
-  type ListarAudienciasQuery,
+  type BuscarAudienciasInput,
   type VistaAudiencias,
 } from '@akyuam/shared'
 
@@ -50,7 +50,7 @@ export function leerFiltros(params: URLSearchParams, hoy: string): FiltrosAudien
 }
 
 /** Lo que se pide al servidor. Rango y estado solo aplican al Historial. */
-export function queryDesdeFiltros(filtros: FiltrosAudiencias, q: string): Partial<ListarAudienciasQuery> {
+export function queryDesdeFiltros(filtros: FiltrosAudiencias, q: string): BuscarAudienciasInput {
   const historial = filtros.vista === 'historial'
   return {
     vista: filtros.vista,

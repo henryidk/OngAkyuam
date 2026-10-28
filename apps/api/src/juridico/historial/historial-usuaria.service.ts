@@ -2,7 +2,7 @@ import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
   USUARIAS_JURIDICO_POR_PAGINA,
   type FichaUsuariaJuridicoDto,
-  type ListarUsuariasJuridicoQuery,
+  type BuscarUsuariasJuridicoDatos,
   type ListaUsuariasJuridico,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
@@ -27,7 +27,7 @@ export class HistorialUsuariaService {
   ) {}
 
   async listar(
-    query: ListarUsuariasJuridicoQuery,
+    query: BuscarUsuariasJuridicoDatos,
     contexto: ContextoAuditoria,
   ): Promise<ListaUsuariasJuridico> {
     const busqueda = interpretarBusqueda(query.q);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Users } from 'lucide-react'
 import {
@@ -10,11 +10,11 @@ import {
   type FiltroUsuariasJuridico,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import Button from '../../../components/ui/Button'
 import EmptyState from '../../../components/ui/EmptyState'
 import { rangoEdadCorto } from '../../trabajo-social/usuarias/filaUsuaria'
 import { listarUsuarias } from '../api/juridico.api'
 import { ErrorVista } from '../compartido/EstadosVista'
+import Paginacion from '../compartido/Paginacion'
 import { useRecurso } from '../compartido/useRecurso'
 import { RUTAS_JURIDICO } from '../rutas'
 
@@ -31,6 +31,14 @@ function filtroDesdeUrl(valor: string | null): FiltroUsuariasJuridico | undefine
   return FILTROS_USUARIAS_JURIDICO.find((filtro) => filtro === valor)
 }
 
+/** "Mostrando 21–40 de 57 usuarias". */
+function textoConteo(pagina: number, porPagina: number, total: number, enPagina: number): string {
+  const usuarias = `${total} ${total === 1 ? 'usuaria' : 'usuarias'}`
+  if (enPagina === 0) return usuarias
+  const desde = (pagina - 1) * porPagina + 1
+  return `Mostrando ${desde}–${desde + enPagina - 1} de ${usuarias}`
+}
+
 /**
  * Usuarias que Trabajo Social refirió a Jurídico. Filtro y página viven en la URL; el término
  * buscado no, para que un nombre o DPI no quede en el historial del navegador.
@@ -42,6 +50,7 @@ export default function ListaUsuarias() {
   const filtro = filtroDesdeUrl(params.get('filtro'))
   const pagina = Math.max(1, Number(params.get('pagina')) || 1)
 
+  const tablaRef = useRef<HTMLElement>(null)
   const [texto, setTexto] = useState('')
   const [busqueda, setBusqueda] = useState('')
 
@@ -87,7 +96,22 @@ export default function ListaUsuarias() {
     )
   }
 
-  const totalPaginas = lista ? Math.max(1, Math.ceil(lista.total / lista.porPagina)) : 1
+  // Una página que ya no existe (la URL quedó vieja o cambió el filtro) lleva a la última.
+  const ultimaPagina = lista ? Math.max(1, Math.ceil(lista.total / lista.porPagina)) : 1
+  const fueraDeRango = Boolean(lista && lista.filas.length === 0 && lista.total > 0 && pagina > ultimaPagina)
+  useEffect(() => {
+    if (!fueraDeRango) return
+    setParams(
+      (actual) => {
+        const siguiente = new URLSearchParams(actual)
+        if (ultimaPagina > 1) siguiente.set('pagina', String(ultimaPagina))
+        else siguiente.delete('pagina')
+        return siguiente
+      },
+      { replace: true },
+    )
+  }, [fueraDeRango, ultimaPagina, setParams])
+
   const textoCorto = texto.trim().length > 0 && texto.trim().length < LARGO_MINIMO_BUSQUEDA_USUARIAS
   const chips: { valor: FiltroUsuariasJuridico | null; etiqueta: string; total: number | undefined }[] = [
     { valor: null, etiqueta: 'Todas', total: lista?.contadores.TODAS },
@@ -142,7 +166,7 @@ export default function ListaUsuarias() {
       {error && !lista ? (
         <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="la lista de usuarias" onReintentar={() => void recargar()} />
       ) : (
-        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
+        <section ref={tablaRef} className="scroll-mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
@@ -209,23 +233,20 @@ export default function ListaUsuarias() {
             </div>
           )}
 
-          {lista && totalPaginas > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 text-xs text-gray-500">
-              <span className="tabular-nums">
-                Página {lista.pagina} de {totalPaginas} · {lista.total} usuarias
-              </span>
-              <div className="flex gap-2">
-                <Button variante="secondary" disabled={pagina <= 1} onClick={() => actualizarParams({ pagina: pagina - 1 })}>
-                  Anterior
-                </Button>
-                <Button
-                  variante="secondary"
-                  disabled={pagina >= totalPaginas}
-                  onClick={() => actualizarParams({ pagina: pagina + 1 })}
-                >
-                  Siguiente
-                </Button>
-              </div>
+          {lista && lista.total > lista.porPagina && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3 text-[13px] text-gray-500">
+              <span className="tabular-nums">{textoConteo(lista.pagina, lista.porPagina, lista.total, lista.filas.length)}</span>
+              <Paginacion
+                etiqueta="Paginación de usuarias"
+                pagina={lista.pagina}
+                pageSize={lista.porPagina}
+                total={lista.total}
+                onCambiar={(nueva) => {
+                  actualizarParams({ pagina: nueva })
+                  // Los botones están al pie: sin esto se vería el final de la página nueva.
+                  tablaRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+                }}
+              />
             </div>
           )}
         </section>

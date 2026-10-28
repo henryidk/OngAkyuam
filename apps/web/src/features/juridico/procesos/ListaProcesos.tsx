@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import {
@@ -10,7 +10,6 @@ import {
   type ProcesoResumen,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import Button from '../../../components/ui/Button'
 import Switch from '../../../components/ui/Switch'
 import { useToast } from '../../../components/ui/Toast'
 import { listarProcesos } from '../api/juridico.api'
@@ -23,6 +22,7 @@ import FilaProceso from './FilaProceso'
 import FiltroCartera from './FiltroCartera'
 import { carteraAUrl, carteraDesdeUrl, opcionesCartera } from './formato'
 import ModalNumeroJudicial from '../compartido/ModalNumeroJudicial'
+import Paginacion from '../compartido/Paginacion'
 
 const ESPERA_BUSQUEDA_MS = 350
 const COLUMNAS = ['No. interno', 'Usuaria', 'Tipo de proceso', 'No. judicial', 'Próxima audiencia', 'Avance', 'Última actuación']
@@ -50,6 +50,14 @@ function textoVacio(conBusqueda: boolean, cartera: CarteraJuridico): string {
   return 'No hay procesos en curso.'
 }
 
+/** "18 procesos en curso" o, con varias páginas, "Mostrando 16–30 de 57 procesos en curso". */
+function textoConteo(pagina: number, pageSize: number, total: number, enPagina: number): string {
+  const procesos = `${total} ${total === 1 ? 'proceso' : 'procesos'} en curso`
+  if (total <= pageSize || enPagina === 0) return procesos
+  const desde = (pagina - 1) * pageSize + 1
+  return `Mostrando ${desde}–${desde + enPagina - 1} de ${procesos}`
+}
+
 /**
  * Lista de trabajo: solo procesos en trámite. "Solo asignados a mí", el año de inicio y la página
  * viven en la URL;
@@ -62,6 +70,7 @@ export default function ListaProcesos() {
   const cartera = carteraDesdeUrl(params.get('cartera'))
   const pagina = Math.max(1, Number(params.get('page')) || 1)
 
+  const tablaRef = useRef<HTMLElement>(null)
   const [texto, setTexto] = useState('')
   const [busqueda, setBusqueda] = useState('')
 
@@ -127,7 +136,22 @@ export default function ListaProcesos() {
     )
   }
 
-  const totalPaginas = datos ? Math.max(1, Math.ceil(datos.total / datos.pageSize)) : 1
+  // Una página que ya no existe (otra persona finalizó procesos, o la URL quedó vieja) lleva a la última.
+  const ultimaPagina = datos ? Math.max(1, Math.ceil(datos.total / datos.pageSize)) : 1
+  const fueraDeRango = Boolean(datos && datos.items.length === 0 && datos.total > 0 && pagina > ultimaPagina)
+  useEffect(() => {
+    if (!fueraDeRango) return
+    setParams(
+      (actual) => {
+        const siguiente = new URLSearchParams(actual)
+        if (ultimaPagina > 1) siguiente.set('page', String(ultimaPagina))
+        else siguiente.delete('page')
+        return siguiente
+      },
+      { replace: true },
+    )
+  }, [fueraDeRango, ultimaPagina, setParams])
+
   const textoCorto = texto.trim().length > 0 && texto.trim().length < LARGO_MINIMO_BUSQUEDA_PROCESOS
 
   return (
@@ -162,7 +186,7 @@ export default function ListaProcesos() {
       {error && !datos ? (
         <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="los procesos" onReintentar={() => void recargar()} />
       ) : (
-        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
+        <section ref={tablaRef} className="scroll-mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1080px] text-left">
               <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
@@ -197,24 +221,20 @@ export default function ListaProcesos() {
               {textoVacio(Boolean(busqueda), cartera)}
             </p>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3.5 text-[13px] text-gray-500">
-            <span className="tabular-nums">
-              {datos ? `${datos.total} ${datos.total === 1 ? 'proceso' : 'procesos'} en curso` : ' '}
-              {datos && totalPaginas > 1 && ` · página ${datos.page} de ${totalPaginas}`}
-            </span>
-            {datos && totalPaginas > 1 ? (
-              <div className="flex gap-2">
-                <Button variante="secondary" disabled={datos.page <= 1} onClick={() => actualizarParams({ page: datos.page - 1 })}>
-                  Anterior
-                </Button>
-                <Button
-                  variante="secondary"
-                  disabled={datos.page >= totalPaginas}
-                  onClick={() => actualizarParams({ page: datos.page + 1 })}
-                >
-                  Siguiente
-                </Button>
-              </div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3 text-[13px] text-gray-500">
+            <span className="tabular-nums">{datos ? textoConteo(datos.page, datos.pageSize, datos.total, datos.items.length) : ' '}</span>
+            {datos && datos.total > datos.pageSize ? (
+              <Paginacion
+                etiqueta="Paginación de procesos"
+                pagina={datos.page}
+                pageSize={datos.pageSize}
+                total={datos.total}
+                onCambiar={(pagina) => {
+                  actualizarParams({ page: pagina })
+                  // Los botones están al pie: sin esto se vería el final de la página nueva.
+                  tablaRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
+                }}
+              />
             ) : (
               <span>Los procesos nuevos se registran desde la ficha de la usuaria.</span>
             )}

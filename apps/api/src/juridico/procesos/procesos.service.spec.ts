@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { listarProcesosQuerySchema } from '@akyuam/shared';
+import { buscarProcesosSchema } from '@akyuam/shared';
 import type { AsignacionPersonalService } from '../compartido/asignacion-personal.service';
 import type { IBitacoraRepository } from '../interfaces/bitacora-repository.interface';
 import type { ICarpetasRepository } from '../interfaces/documentos-proceso-repository.interface';
@@ -43,7 +43,7 @@ describe('ProcesosService', () => {
   describe('listar', () => {
     it('"Solo asignados a mí" filtra por la cuenta que consulta', async () => {
       await service.listar(
-        listarProcesosQuerySchema.parse({ mios: 'true' }),
+        buscarProcesosSchema.parse({ mios: 'true' }),
         CUENTA_ID,
       );
 
@@ -53,7 +53,7 @@ describe('ProcesosService', () => {
     });
 
     it('sin el filtro no restringe por asignación', async () => {
-      await service.listar(listarProcesosQuerySchema.parse({}), CUENTA_ID);
+      await service.listar(buscarProcesosSchema.parse({}), CUENTA_ID);
 
       expect(procesosRepository.listar).toHaveBeenCalledWith(
         expect.objectContaining({ asignadosAUsuarioId: undefined }),
@@ -62,7 +62,7 @@ describe('ProcesosService', () => {
 
     it('mios=false tampoco restringe', async () => {
       await service.listar(
-        listarProcesosQuerySchema.parse({ mios: 'false' }),
+        buscarProcesosSchema.parse({ mios: 'false' }),
         CUENTA_ID,
       );
 
@@ -74,7 +74,7 @@ describe('ProcesosService', () => {
 
   describe('cartera', () => {
     it('sin filtro pide todas, con el año en curso de Guatemala', async () => {
-      await service.listar(listarProcesosQuerySchema.parse({}), CUENTA_ID);
+      await service.listar(buscarProcesosSchema.parse({}), CUENTA_ID);
 
       expect(procesosRepository.listar).toHaveBeenCalledWith(
         expect.objectContaining({ cartera: 'TODOS', anioActual: 2026 }),
@@ -83,7 +83,7 @@ describe('ProcesosService', () => {
 
     it('pasa la cartera elegida', async () => {
       await service.listar(
-        listarProcesosQuerySchema.parse({ cartera: 'SEGUIMIENTO' }),
+        buscarProcesosSchema.parse({ cartera: 'SEGUIMIENTO' }),
         CUENTA_ID,
       );
 
@@ -93,9 +93,7 @@ describe('ProcesosService', () => {
     });
 
     it('rechaza una cartera que no existe', () => {
-      expect(() =>
-        listarProcesosQuerySchema.parse({ cartera: 'OTRA' }),
-      ).toThrow();
+      expect(() => buscarProcesosSchema.parse({ cartera: 'OTRA' })).toThrow();
     });
 
     it('el 31/12 a las 21:00 de Guatemala sigue siendo el año que termina, aunque en UTC ya es el siguiente', async () => {

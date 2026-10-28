@@ -1,15 +1,19 @@
 import {
+  Body,
   Controller,
   Get,
+  Header,
+  HttpCode,
+  HttpStatus,
   Param,
   ParseUUIDPipe,
-  Query,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
-  listarUsuariasJuridicoQuerySchema,
-  type ListarUsuariasJuridicoQuery,
+  buscarUsuariasJuridicoSchema,
+  type BuscarUsuariasJuridicoDatos,
 } from '@akyuam/shared';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -25,14 +29,17 @@ import { HistorialUsuariaService } from './historial-usuaria.service';
 export class HistorialUsuariaController {
   constructor(private readonly historialService: HistorialUsuariaService) {}
 
-  // Con límite: junto a la paginación, evita recorrer la base de usuarias a fuerza de
-  // búsquedas o de pasar páginas.
-  @Get()
+  // POST de solo lectura: `q` es un nombre, DPI o expediente y en el cuerpo no queda en logs de
+  // acceso ni en el historial del navegador. Con límite: junto a la paginación, evita recorrer la
+  // base de usuarias a fuerza de búsquedas o de pasar páginas.
+  @Post('busqueda')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
   @UseGuards(LimitePorUsuarioGuard)
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   listar(
-    @Query(new ZodValidationPipe(listarUsuariasJuridicoQuerySchema))
-    query: ListarUsuariasJuridicoQuery,
+    @Body(new ZodValidationPipe(buscarUsuariasJuridicoSchema))
+    query: BuscarUsuariasJuridicoDatos,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.historialService.listar(query, contexto);

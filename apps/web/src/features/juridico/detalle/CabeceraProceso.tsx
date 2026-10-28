@@ -29,7 +29,7 @@ interface CabeceraProcesoProps {
   onAbandonar: () => void
 }
 
-/** El No. judicial va junto al No. interno: sin él, el botón para agregarlo es lo primero que se ve. */
+/** Sin No. judicial, el botón para agregarlo va junto al No. interno; ya capturado, va en su propia línea. */
 function NumeroJudicial({ numero, onEditar }: { numero: string | null; onEditar: () => void }) {
   if (!numero) {
     return (
@@ -43,23 +43,21 @@ function NumeroJudicial({ numero, onEditar }: { numero: string | null; onEditar:
       </button>
     )
   }
+  // Suele traer el juzgado o la fiscalía junto al número: va en su propia línea y se parte si no cabe.
   return (
-    <span className="inline-flex min-w-0 items-center gap-2">
-      <span className="text-gray-300" aria-hidden="true">
-        ·
-      </span>
-      <span className="whitespace-nowrap text-[13px] text-gray-500">No. judicial</span>
-      <span className="break-all font-mono text-sm text-gray-900">{numero}</span>
+    <p className="flex items-start gap-2 text-sm">
+      <span className="whitespace-nowrap text-gray-500">No. judicial</span>
+      <span className="min-w-0 break-words text-gray-900">{numero}</span>
       <button
         type="button"
         onClick={onEditar}
         aria-label="Corregir No. judicial"
         title="Corregir No. judicial"
-        className="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-brand-700"
+        className="shrink-0 rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-brand-700"
       >
         <Pencil size={13} aria-hidden="true" />
       </button>
-    </span>
+    </p>
   )
 }
 
@@ -122,7 +120,7 @@ export default function CabeceraProceso({
         <div className="min-w-0 flex-1 basis-[300px] space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-mono text-sm text-gray-700">{proceso.codigo}</span>
-            <NumeroJudicial numero={proceso.numeroJudicial} onEditar={onNumeroJudicial} />
+            {!proceso.numeroJudicial && <NumeroJudicial numero={null} onEditar={onNumeroJudicial} />}
             <EtiquetaEstado estado={proceso.estadoVisible} />
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
               {ETIQUETAS_CATEGORIA_PROCESO[CATEGORIA_POR_TIPO_PROCESO[proceso.tipo]]}
@@ -138,6 +136,7 @@ export default function CabeceraProceso({
             </Link>{' '}
             · Expediente {proceso.expedienteNumero}
           </p>
+          {proceso.numeroJudicial && <NumeroJudicial numero={proceso.numeroJudicial} onEditar={onNumeroJudicial} />}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {onAgendar && (

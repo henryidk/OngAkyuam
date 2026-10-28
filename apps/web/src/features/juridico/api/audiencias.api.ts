@@ -8,7 +8,7 @@ import type {
   DisponibilidadAudienciasDto,
   DisponibilidadAudienciasQuery,
   DocumentoProcesoDto,
-  ListarAudienciasQuery,
+  BuscarAudienciasInput,
   ObservacionesAudienciaInput,
   RegistrarResultadoAudienciaInput,
   ReprogramarAudienciaInput,
@@ -19,8 +19,9 @@ import { api } from '../../../lib/api'
 
 // ---- Consultas ----
 
-export function listarAudiencias(query: Partial<ListarAudienciasQuery>) {
-  return api.get<AudienciasPaginadas>('/juridico/audiencias', { params: query }).then((res) => res.data)
+/** POST de solo lectura: el texto buscado puede ser el nombre de una usuaria y no debe ir en la URL. */
+export function listarAudiencias(datos: BuscarAudienciasInput) {
+  return api.post<AudienciasPaginadas>('/juridico/audiencias/busqueda', datos).then((res) => res.data)
 }
 
 /** Lo que ya tiene la responsable ese día, para avisar antes de chocar con otra audiencia. */

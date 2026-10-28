@@ -29,7 +29,16 @@ const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNod
         ? `${ETIQUETAS_FORMA_FINALIZACION[fila.formaFinalizacion]} · ${formatFechaGT(fila.fechaCierre)}`
         : '—',
   },
-  { titulo: 'No. judicial', valor: (fila) => fila.numeroJudicial ?? '—' },
+  {
+    titulo: 'No. judicial',
+    // La tabla no parte líneas; este texto largo (juzgado + número) sí, con ancho acotado.
+    valor: (fila) =>
+      fila.numeroJudicial ? (
+        <span className="block min-w-[200px] max-w-[260px] whitespace-normal break-words">{fila.numeroJudicial}</span>
+      ) : (
+        '—'
+      ),
+  },
   { titulo: 'Cartera', valor: (fila) => fila.cartera || '—' },
   { titulo: 'Próxima audiencia', valor: (fila) => fechaHora(fila.proximaAudiencia) },
   { titulo: 'Última realizada', valor: (fila) => fechaHora(fila.ultimaAudienciaRealizada) },

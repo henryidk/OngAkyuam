@@ -142,10 +142,10 @@ export type AsignarNumeroJudicialInput = z.infer<typeof asignarNumeroJudicialSch
 // ---- Consultas ----
 
 /**
- * `GET /juridico/audiencias`. El Historial exige Desde y Hasta (máximo un año); Próximas y
- * Pendientes no los necesitan.
+ * Cuerpo de `POST /juridico/audiencias/busqueda`. Va en el cuerpo porque `q` puede ser el nombre de
+ * una usuaria. El Historial exige Desde y Hasta (máximo un año); Próximas y Pendientes no los necesitan.
  */
-export const listarAudienciasQuerySchema = z
+export const buscarAudienciasSchema = z
   .object({
     vista: z.enum(VISTAS_AUDIENCIAS).default('proximas'),
     q: z.string().trim().max(BUSQUEDA_MAX).optional(),
@@ -170,7 +170,8 @@ export const listarAudienciasQuerySchema = z
       ctx.addIssue({ code: 'custom', path: ['hasta'], message: 'El rango puede ser de hasta un año' })
     }
   })
-export type ListarAudienciasQuery = z.infer<typeof listarAudienciasQuerySchema>
+export type BuscarAudienciasInput = z.input<typeof buscarAudienciasSchema>
+export type BuscarAudienciasDatos = z.output<typeof buscarAudienciasSchema>
 
 /** `GET /juridico/audiencias/disponibilidad`: lo que ya tiene esa abogada ese día. */
 export const disponibilidadAudienciasQuerySchema = z.object({

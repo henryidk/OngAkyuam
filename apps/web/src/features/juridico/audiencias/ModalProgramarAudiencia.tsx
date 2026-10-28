@@ -192,12 +192,13 @@ export default function ModalProgramarAudiencia({ caso, anterior, onCerrar, onHe
       {pideNumeroJudicial && (
         <label className={CLASE_ETIQUETA}>
           <span>No. judicial (opcional, si ya lo tiene)</span>
-          <input
-            type="text"
+          <textarea
+            rows={2}
             maxLength={NUMERO_JUDICIAL_MAX}
             value={numeroJudicial}
             onChange={(evento) => alCambiar(setNumeroJudicial)(evento.target.value)}
-            className={`${CLASE_CAMPO} font-mono`}
+            placeholder="Juzgado o fiscalía y número de expediente"
+            className={`${CLASE_CAMPO} resize-none`}
           />
         </label>
       )}

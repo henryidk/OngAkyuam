@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Header,
   Headers,
   HttpCode,
   HttpStatus,
@@ -9,19 +10,18 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
   asignarNumeroJudicialSchema,
+  buscarProcesosSchema,
   crearProcesosEnLoteSchema,
   editarDatosProcesoSchema,
-  listarProcesosQuerySchema,
   type AsignarNumeroJudicialInput,
+  type BuscarProcesosDatos,
   type CrearProcesosEnLoteInput,
   type EditarDatosProcesoInput,
-  type ListarProcesosQuery,
 } from '@akyuam/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -45,13 +45,21 @@ export class ProcesosController {
     private readonly numeroJudicialService: NumeroJudicialService,
   ) {}
 
-  @Get('procesos')
+  /**
+   * Lista de trabajo. Es POST de solo lectura porque `q` puede ser el nombre de una sobreviviente:
+   * en el cuerpo no queda en logs de acceso ni en el historial del navegador.
+   */
+  @Post('procesos/busqueda')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   listar(
-    @Query(new ZodValidationPipe(listarProcesosQuerySchema))
-    query: ListarProcesosQuery,
+    @Body(new ZodValidationPipe(buscarProcesosSchema))
+    datos: BuscarProcesosDatos,
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    return this.procesosService.listar(query, usuario.id);
+    return this.procesosService.listar(datos, usuario.id);
   }
 
   // Antes que `procesos/:procesoId`: si no, "resumen" se leería como un id.
