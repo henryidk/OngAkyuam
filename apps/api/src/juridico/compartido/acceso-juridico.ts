@@ -31,11 +31,10 @@ export function esProcesoActivo(proceso: {
   return proceso.fase !== 'FINALIZADO' && proceso.situacion !== 'ABANDONADO';
 }
 
-/** Referencia que Jurídico todavía no atendió ni devolvió. */
+/** Referencia que Jurídico todavía no atendió. */
 export const REFERENCIA_PENDIENTE = {
   area: 'JURIDICO',
   atendidoEn: null,
-  devueltoEn: null,
 } satisfies Prisma.ReferidoAreaWhereInput;
 
 /** "" (sin seleccionar todavía) -> null para la base de datos. */

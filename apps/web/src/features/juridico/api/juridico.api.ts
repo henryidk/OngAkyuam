@@ -2,10 +2,8 @@ import type {
   ReporteProcesosJuridico,
   ReporteProcesosJuridicoQuery,
   InicioJuridicoDto,
-  BandejaJuridicoQuery,
   CarpetaDto,
   CrearProcesosEnLoteInput,
-  DevolverReferenciaInput,
   DocumentoProcesoDto,
   EditarDatosProcesoInput,
   EntradaBitacoraDto,
@@ -128,12 +126,8 @@ export function subirDocumentoActuacion(
 
 // ---- Área de atención ----
 
-export function listarBandeja(vista: BandejaJuridicoQuery['vista']) {
-  return api.get<ReferenciaBandejaDto[]>('/juridico/bandeja', { params: { vista } }).then((res) => res.data)
-}
-
-export function devolverReferencia(referidoId: string, datos: DevolverReferenciaInput) {
-  return api.post<void>(`/juridico/bandeja/${referidoId}/devolucion`, datos).then(() => undefined)
+export function listarBandeja() {
+  return api.get<ReferenciaBandejaDto[]>('/juridico/bandeja').then((res) => res.data)
 }
 
 // ---- Usuarias ----

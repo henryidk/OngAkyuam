@@ -52,7 +52,7 @@ export class InicioJuridicoService {
       tieneFicha,
       novedadesTs,
     ] = await Promise.all([
-      this.referenciasRepository.listar('pendientes'),
+      this.referenciasRepository.listar(),
       this.inicioRepository.indicadores(anio),
       this.inicioRepository.enTramitePorTipo(),
       this.inicioRepository.colaProcesos(

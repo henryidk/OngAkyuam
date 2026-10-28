@@ -135,7 +135,7 @@ describe('RegistroProcesosService', () => {
     expect(registroRepository.crearLote).not.toHaveBeenCalled();
   });
 
-  it('409 si la referencia ya fue atendida o devuelta', async () => {
+  it('409 si la referencia ya fue atendida', async () => {
     procesosRepository.buscarExpedienteConAcceso.mockResolvedValue(
       expedienteConAcceso({ referenciaPendiente: false }),
     );

@@ -24,8 +24,6 @@ function referencia(indice: number): ReferenciaBandejaDto {
     motivo: 'Motivo de prueba',
     referidoEn: '2026-10-01T15:00:00.000Z',
     referidoPor: 'Trabajadora social',
-    devueltoEn: null,
-    motivoDevolucion: null,
     edad: 30,
     municipio: null,
     regresa: false,
@@ -51,7 +49,6 @@ describe('InicioJuridicoService', () => {
     referenciasRepository = {
       listar: jest.fn().mockResolvedValue([]),
       buscarPendientePorExpediente: jest.fn(),
-      devolver: jest.fn(),
     };
     service = new InicioJuridicoService(
       inicioRepository,
@@ -86,7 +83,7 @@ describe('InicioJuridicoService', () => {
 
     const inicio = await service.obtener(CUENTA_ID);
 
-    expect(referenciasRepository.listar).toHaveBeenCalledWith('pendientes');
+    expect(referenciasRepository.listar).toHaveBeenCalledWith();
     expect(inicio.referenciasNuevas.items).toEqual([
       {
         referidoId: REFERIDO_ID,

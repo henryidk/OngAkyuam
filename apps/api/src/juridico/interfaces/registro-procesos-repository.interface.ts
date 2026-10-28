@@ -29,7 +29,7 @@ export interface CrearLoteParams {
 /** La referencia indicada no es de este expediente, no es de Jurídico o ya no está pendiente. */
 export class ReferenciaNoPendienteError extends Error {
   constructor() {
-    super('La referencia ya fue atendida o devuelta');
+    super('La referencia ya fue atendida');
   }
 }
 

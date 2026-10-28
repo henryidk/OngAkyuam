@@ -8,11 +8,9 @@ import {
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import Tabs from '../../../components/ui/Tabs'
-import { useToast } from '../../../components/ui/Toast'
 import { extraerMensajeError } from '../../../lib/errors'
 import { rangoEdadCorto } from '../../trabajo-social/usuarias/filaUsuaria'
 import { obtenerExpedienteTs, obtenerFichaUsuaria } from '../api/juridico.api'
-import ModalDevolver from '../bandeja/ModalDevolver'
 import { ErrorVista, Esqueleto } from '../compartido/EstadosVista'
 import { fechaDeInstante, iniciales } from '../compartido/formato'
 import { useRecurso } from '../compartido/useRecurso'
@@ -73,8 +71,6 @@ export default function FichaUsuaria() {
   const cargar = useCallback(() => obtenerFichaUsuaria(usuariaId!), [usuariaId])
   const { datos: ficha, error, recargar } = useRecurso(cargar)
   const { expediente: expedienteTs, error: errorExpedienteTs } = useExpedienteTs(ficha?.expediente.id)
-  const [devolviendo, setDevolviendo] = useState(false)
-  const { mostrar } = useToast()
 
   useTituloPagina({
     titulo: ficha?.usuaria.nombreCompleto ?? 'Usuaria',
@@ -161,33 +157,16 @@ export default function FichaUsuaria() {
               Referida por {pendiente.referidoPor}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setDevolviendo(true)} className={CLASE_BOTON_SECUNDARIO}>
-              Devolver a Trabajo Social
-            </button>
-            <Link
-              to={RUTAS_JURIDICO.registrar({ expedienteId: pendiente.expedienteId, referidoId: pendiente.referidoId })}
-              className={CLASE_BOTON_PRIMARIO}
-            >
-              Atender referencia
-            </Link>
-          </div>
+          <Link
+            to={RUTAS_JURIDICO.registrar({ expedienteId: pendiente.expedienteId, referidoId: pendiente.referidoId })}
+            className={CLASE_BOTON_PRIMARIO}
+          >
+            Atender referencia
+          </Link>
         </div>
       )}
 
       <Outlet context={contexto} />
-
-      {devolviendo && pendiente && (
-        <ModalDevolver
-          referencia={pendiente}
-          onCerrar={() => setDevolviendo(false)}
-          onDevuelta={() => {
-            setDevolviendo(false)
-            mostrar('Referencia devuelta a Trabajo Social')
-            void recargar()
-          }}
-        />
-      )}
     </div>
   )
 }

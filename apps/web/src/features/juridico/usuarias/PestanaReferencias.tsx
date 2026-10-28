@@ -5,7 +5,6 @@ import { useContextoFicha } from './contextoFicha'
 const ESTADO: Record<EstadoReferenciaJuridico, { etiqueta: string; clase: string }> = {
   PENDIENTE: { etiqueta: 'Pendiente', clase: 'bg-[#fef3c7] text-[#b45309]' },
   ATENDIDA: { etiqueta: 'Atendida', clase: 'bg-[#dcfce7] text-[#15803d]' },
-  DEVUELTA: { etiqueta: 'Devuelta', clase: 'bg-[#f3f4f6] text-[#374151]' },
 }
 
 export default function PestanaReferencias() {
@@ -28,11 +27,6 @@ export default function PestanaReferencias() {
                 <p className="text-xs text-gray-500">
                   Expediente {referencia.expedienteNumero} · por {referencia.referidoPor}
                 </p>
-                {referencia.estado === 'DEVUELTA' && referencia.motivoDevolucion && (
-                  <p className="text-xs text-gray-600">
-                    <strong className="font-semibold">Devuelta:</strong> {referencia.motivoDevolucion}
-                  </p>
-                )}
               </div>
               <span
                 className={`justify-self-start rounded-full px-2.5 py-0.5 text-xs font-medium sm:justify-self-end ${ESTADO[referencia.estado].clase}`}

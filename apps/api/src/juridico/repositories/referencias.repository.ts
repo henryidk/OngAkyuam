@@ -5,17 +5,13 @@ import {
   fechaColumnaISO,
   nombreMunicipio,
   type ReferenciaBandejaDto,
-  type VistaBandejaJuridico,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   PROCESO_CON_ACCESO,
   REFERENCIA_PENDIENTE,
 } from '../compartido/acceso-juridico';
-import type {
-  DevolverReferenciaParams,
-  IReferenciasRepository,
-} from '../interfaces/referencias-repository.interface';
+import type { IReferenciasRepository } from '../interfaces/referencias-repository.interface';
 import { nombreCompleto } from './mapeo-proceso';
 
 const INCLUDE_REFERENCIA = {
@@ -59,8 +55,6 @@ function mapearReferencia(
     motivo: referencia.motivo,
     referidoEn: referencia.createdAt.toISOString(),
     referidoPor: referencia.otorgadoPor.nombreCompleto,
-    devueltoEn: referencia.devueltoEn?.toISOString() ?? null,
-    motivoDevolucion: referencia.motivoDevolucion,
     edad: edadEnAniosGT(fechaColumnaISO(usuaria.fechaNacimiento)),
     municipio: nombreMunicipio(usuaria.municipio, usuaria.municipioOtro),
     atendidaAntes,
@@ -71,20 +65,11 @@ function mapearReferencia(
 export class ReferenciasRepository implements IReferenciasRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listar(vista: VistaBandejaJuridico): Promise<ReferenciaBandejaDto[]> {
-    const consulta: Pick<Prisma.ReferidoAreaFindManyArgs, 'where' | 'orderBy'> =
-      vista === 'pendientes'
-        ? {
-            where: REFERENCIA_PENDIENTE,
-            // Las más antiguas primero: nadie espera más que quien llegó antes.
-            orderBy: { createdAt: 'asc' },
-          }
-        : {
-            where: { area: 'JURIDICO', devueltoEn: { not: null } },
-            orderBy: { devueltoEn: 'desc' },
-          };
+  async listar(): Promise<ReferenciaBandejaDto[]> {
     const referencias = await this.prisma.referidoArea.findMany({
-      ...consulta,
+      where: REFERENCIA_PENDIENTE,
+      // Las más antiguas primero: nadie espera más que quien llegó antes.
+      orderBy: { createdAt: 'asc' },
       include: INCLUDE_REFERENCIA,
     });
     return this.conHistorial(referencias);
@@ -134,27 +119,5 @@ export class ReferenciasRepository implements IReferenciasRepository {
         conProcesos.has(referencia.expediente.usuaria.id),
       ),
     );
-  }
-
-  async devolver(
-    params: DevolverReferenciaParams,
-  ): Promise<{ expedienteId: string } | null> {
-    // El "sigue pendiente" va en el WHERE del UPDATE: si dos personas actúan a la vez sobre
-    // la misma referencia, solo una la cambia.
-    const { count } = await this.prisma.referidoArea.updateMany({
-      where: { ...REFERENCIA_PENDIENTE, id: params.referidoId },
-      data: {
-        devueltoEn: new Date(),
-        motivoDevolucion: params.motivo,
-        devueltoPorId: params.devueltoPorId,
-      },
-    });
-    if (count !== 1) {
-      return null;
-    }
-    return this.prisma.referidoArea.findUnique({
-      where: { id: params.referidoId },
-      select: { expedienteId: true },
-    });
   }
 }

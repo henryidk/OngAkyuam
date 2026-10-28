@@ -196,20 +196,6 @@ export type ListarProcesosQuery = z.infer<typeof listarProcesosQuerySchema>
 
 // ---- Área de atención (bandeja de referencias) ----
 
-export const VISTAS_BANDEJA_JURIDICO = ['pendientes', 'devueltas'] as const
-export const bandejaJuridicoQuerySchema = z.object({
-  vista: z.enum(VISTAS_BANDEJA_JURIDICO).default('pendientes'),
-})
-export type BandejaJuridicoQuery = z.infer<typeof bandejaJuridicoQuerySchema>
-export type VistaBandejaJuridico = BandejaJuridicoQuery['vista']
-
-export const MOTIVO_DEVOLUCION_MAX = 500
-
-export const devolverReferenciaSchema = z.object({
-  motivo: z.string().trim().min(1, 'Requerido').max(MOTIVO_DEVOLUCION_MAX),
-})
-export type DevolverReferenciaInput = z.infer<typeof devolverReferenciaSchema>
-
 // ---- Usuarias (lista y ficha) ----
 
 export const FILTROS_USUARIAS_JURIDICO = ['REFERENCIA_NUEVA', 'CON_ACTIVOS', 'SIN_ACTIVOS'] as const
@@ -376,8 +362,6 @@ export interface ReferenciaBandejaDto {
   motivo: string | null
   referidoEn: string
   referidoPor: string
-  devueltoEn: string | null
-  motivoDevolucion: string | null
   /** Años cumplidos, en hora de Guatemala. */
   edad: number
   /** Nombre del municipio (o el escrito a mano si es de fuera de Alta Verapaz). */
@@ -395,7 +379,7 @@ export interface ProcesoActivoPorTipo {
 export interface RegistroContextoDto {
   expediente: { id: string; numero: string }
   usuaria: UsuariaReferidaDto
-  /** La referencia de Trabajo Social si sigue pendiente; `null` si ya se atendió o se devolvió. */
+  /** La referencia de Trabajo Social si sigue pendiente; `null` si ya se atendió. */
   referencia: ReferenciaBandejaDto | null
   /** Procesos sin finalizar de la usuaria: alimentan el aviso "Ya tiene uno activo". */
   activosPorTipo: ProcesoActivoPorTipo[]
@@ -456,7 +440,7 @@ export interface ContadoresUsuariaJuridico {
   cerrados: number
 }
 
-export const ESTADOS_REFERENCIA_JURIDICO = ['PENDIENTE', 'ATENDIDA', 'DEVUELTA'] as const
+export const ESTADOS_REFERENCIA_JURIDICO = ['PENDIENTE', 'ATENDIDA'] as const
 export type EstadoReferenciaJuridico = (typeof ESTADOS_REFERENCIA_JURIDICO)[number]
 
 export interface ReferenciaHistorialDto {
@@ -467,7 +451,6 @@ export interface ReferenciaHistorialDto {
   referidoPor: string
   motivo: string | null
   estado: EstadoReferenciaJuridico
-  motivoDevolucion: string | null
 }
 
 /** `GET /juridico/usuarias/:id` — encabezado de la ficha y todo lo que Jurídico lleva de la usuaria. */
