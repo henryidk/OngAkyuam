@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type { AreaAtencion } from '@akyuam/shared';
 import { ResolveresEstadoArea } from './resolveres-estado-area';
 
 /**
@@ -50,15 +51,29 @@ export class ConsultaListaTs {
   }
 
   /**
+   * Por cada área, la condición "referido a esa área y el área lo tiene activo", con la regla
+   * que aporta su estrategia. La comparten el estado de la usuaria y el conteo por área de
+   * Inicio, así ambos cuentan lo mismo.
+   */
+  condicionesAreaActiva(
+    columnaExpedienteId: Prisma.Sql,
+  ): { area: AreaAtencion; condicion: Prisma.Sql }[] {
+    return this.resolveresEstado.todos().map((resolver) => ({
+      area: resolver.area,
+      condicion: Prisma.sql`(
+        EXISTS (SELECT 1 FROM "ReferidoArea" r WHERE r."expedienteId" = ${columnaExpedienteId} AND r.area::text = ${resolver.area})
+        AND ${resolver.condicionActivaSql(columnaExpedienteId)}
+      )`,
+    }));
+  }
+
+  /**
    * La regla de `combinarEstadoTs` en SQL, con la condición "área activa" que aporta la
    * estrategia de cada área — agregar un área no toca esta consulta.
    */
   expresionEstadoTs(columnaExpedienteId: Prisma.Sql): Prisma.Sql {
-    const areasActivas = this.resolveresEstado.todos().map(
-      (resolver) => Prisma.sql`(
-        EXISTS (SELECT 1 FROM "ReferidoArea" r WHERE r."expedienteId" = ${columnaExpedienteId} AND r.area::text = ${resolver.area})
-        AND ${resolver.condicionActivaSql(columnaExpedienteId)}
-      )`,
+    const areasActivas = this.condicionesAreaActiva(columnaExpedienteId).map(
+      ({ condicion }) => condicion,
     );
     return Prisma.sql`CASE
       WHEN NOT EXISTS (SELECT 1 FROM "ReferidoArea" r WHERE r."expedienteId" = ${columnaExpedienteId}) THEN 'SIN_REFERIR'

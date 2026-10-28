@@ -2,45 +2,16 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   diasDesdeFechaGT,
   fechaColumnaISO,
-  finMesGT,
-  inicioMesGT,
-  mesActualGT,
   type BandejaTs,
-  type NovedadArea,
 } from '@akyuam/shared';
-import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
-import {
-  ACCIONES_NOVEDAD_AREA,
-  describirEvento,
-} from '../eventos/plantillas-eventos';
 import { BANDEJA_REPOSITORY } from './interfaces/bandeja-repository.interface';
-import type {
-  IBandejaRepository,
-  NovedadRow,
-} from './interfaces/bandeja-repository.interface';
+import type { IBandejaRepository } from './interfaces/bandeja-repository.interface';
 
 /** Filas visibles por cola; el resto se ve en Usuarias con el filtro correspondiente. */
 export const FILAS_POR_COLA = 5;
-export const LIMITE_NOVEDADES = 10;
 
 function nombreCompleto(fila: { nombres: string; apellidos: string }): string {
   return `${fila.nombres} ${fila.apellidos}`;
-}
-
-function aNovedad(fila: NovedadRow): NovedadArea | null {
-  const evento = describirEvento(fila.accion, fila.detalles);
-  if (!evento?.area) {
-    return null;
-  }
-  return {
-    id: fila.id,
-    area: evento.area,
-    expedienteId: fila.expedienteId,
-    usuariaId: fila.usuariaId,
-    nombreCompleto: nombreCompleto(fila),
-    texto: evento.texto,
-    createdAt: fila.createdAt.toISOString(),
-  };
 }
 
 @Injectable()
@@ -52,34 +23,17 @@ export class BandejaService {
 
   // Sin auditoría de lectura: la bandeja se refresca sola por socket y cada refresco sería un
   // evento; lo sensible (abrir una ficha, una bitácora, un documento) ya se audita al abrirlo.
-  async obtener(contexto: ContextoAuditoria): Promise<BandejaTs> {
-    const { anio, mes } = mesActualGT();
-    const [
-      pendientesReferir,
-      documentosPendientes,
-      enAlbergue,
-      recientes,
-      novedades,
-      resumenMes,
-    ] = await Promise.all([
+  // Global: todo el personal de Trabajo Social ve el mismo tablero, sin filtrar por quien
+  // registró o refirió el caso.
+  async obtener(): Promise<BandejaTs> {
+    const [indicadores, pendientesReferir, enAlbergue] = await Promise.all([
+      this.bandejaRepository.indicadores(),
       this.bandejaRepository.pendientesReferir(FILAS_POR_COLA),
-      this.bandejaRepository.documentosPendientes(FILAS_POR_COLA),
       this.bandejaRepository.enAlbergue(FILAS_POR_COLA),
-      this.bandejaRepository.recientes(FILAS_POR_COLA),
-      this.bandejaRepository.novedades(
-        contexto.usuarioId,
-        ACCIONES_NOVEDAD_AREA,
-        LIMITE_NOVEDADES,
-      ),
-      this.bandejaRepository.resumenMes({
-        anio,
-        mes,
-        inicio: inicioMesGT(anio, mes),
-        fin: finMesGT(anio, mes),
-      }),
     ]);
 
     return {
+      indicadores,
       pendientesReferir: {
         total: pendientesReferir.total,
         filas: pendientesReferir.filas.map((fila) => ({
@@ -89,16 +43,6 @@ export class BandejaService {
           nombreCompleto: nombreCompleto(fila),
           tipoRegistro: fila.tipoRegistro,
           createdAt: fila.casoCreadoEn.toISOString(),
-        })),
-      },
-      documentosPendientes: {
-        total: documentosPendientes.total,
-        filas: documentosPendientes.filas.map((fila) => ({
-          expedienteId: fila.expedienteId,
-          usuariaId: fila.usuariaId,
-          numeroExpediente: fila.numero,
-          nombreCompleto: nombreCompleto(fila),
-          tiposFaltantes: fila.faltantes,
         })),
       },
       enAlbergue: {
@@ -120,16 +64,6 @@ export class BandejaService {
           };
         }),
       },
-      recientes: recientes.map((fila) => ({
-        expedienteId: fila.expedienteId,
-        usuariaId: fila.usuariaId,
-        numeroExpediente: fila.numero,
-        nombreCompleto: nombreCompleto(fila),
-        areas: fila.areas,
-        estado: fila.estado,
-      })),
-      novedades: novedades.flatMap((fila) => aNovedad(fila) ?? []),
-      resumenMes,
     };
   }
 }

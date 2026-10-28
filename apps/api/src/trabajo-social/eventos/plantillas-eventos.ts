@@ -137,11 +137,6 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
         : 'Jurídico finalizó un proceso';
     },
   },
-  REFERENCIA_JURIDICO_DEVUELTA: {
-    area: 'JURIDICO',
-    destacado: true,
-    texto: () => 'Jurídico devolvió la referencia a Trabajo Social',
-  },
   ABANDONO_REGISTRADO: {
     area: 'JURIDICO',
     destacado: false,
@@ -174,11 +169,6 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
 
 /** Todas las acciones visibles en la bitácora. */
 export const ACCIONES_BITACORA = Object.keys(PLANTILLAS);
-
-/** Solo las que hizo un área: son las "Novedades de las áreas" de la bandeja. */
-export const ACCIONES_NOVEDAD_AREA = Object.entries(PLANTILLAS)
-  .filter(([, plantilla]) => plantilla.area !== null)
-  .map(([accion]) => accion);
 
 export function describirEvento(
   accion: string,

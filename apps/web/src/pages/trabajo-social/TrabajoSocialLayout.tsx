@@ -26,13 +26,12 @@ export function useContextoTrabajoSocial() {
 
 export default function TrabajoSocialLayout() {
   const { bandeja, error, recargar } = useBandeja()
-  const pendientes = (bandeja?.pendientesReferir.total ?? 0) + (bandeja?.documentosPendientes.total ?? 0)
 
   return (
     <SidebarLayout
       items={ITEMS_NAV}
       subtitulo="Trabajo social"
-      contadores={{ [RUTA_INICIO]: pendientes }}
+      contadores={{ [RUTA_INICIO]: bandeja?.pendientesReferir.total ?? 0 }}
       outletContext={{ bandeja, error, recargar } satisfies ContextoTrabajoSocial}
     />
   )

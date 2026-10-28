@@ -1,8 +1,4 @@
-import {
-  ACCIONES_BITACORA,
-  ACCIONES_NOVEDAD_AREA,
-  describirEvento,
-} from './plantillas-eventos';
+import { ACCIONES_BITACORA, describirEvento } from './plantillas-eventos';
 
 describe('plantillas de eventos', () => {
   it('arma el texto con las etiquetas del catálogo', () => {
@@ -44,13 +40,6 @@ describe('plantillas de eventos', () => {
       expect(describirEvento(accion, {})).toBeNull();
       expect(ACCIONES_BITACORA).not.toContain(accion);
     }
-  });
-
-  it('las novedades son solo acciones de un área', () => {
-    expect(ACCIONES_NOVEDAD_AREA).toContain('PROCESOS_JURIDICOS_CREADOS_LOTE');
-    expect(ACCIONES_NOVEDAD_AREA).toContain('ATENCION_PSICOLOGICA_TOMADA');
-    expect(ACCIONES_NOVEDAD_AREA).not.toContain('EXPEDIENTE_REFERIDO');
-    expect(ACCIONES_NOVEDAD_AREA).not.toContain('USUARIA_ACTUALIZADA');
   });
 
   it('describe el cambio de datos personales con etiquetas de campo, sin repetirlas', () => {
