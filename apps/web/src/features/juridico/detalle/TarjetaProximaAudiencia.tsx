@@ -1,11 +1,8 @@
-import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { hoyGT, type AccionAudiencia, type ProcesoDetalle } from '@akyuam/shared'
+import { hoyGT, type ProcesoDetalle } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
-import { useToast } from '../../../components/ui/Toast'
-import { extraerMensajeError } from '../../../lib/errors'
-import { listarAudienciasProceso } from '../api/audiencias.api'
 import type { ModalAudiencia } from '../audiencias/caso'
+import { useAccionProximaAudiencia } from '../audiencias/useAccionProximaAudiencia'
 import { formatHora12 } from '../compartido/hora12'
 import { RUTAS_JURIDICO } from '../rutas'
 import { bloqueFecha, textoCuando } from './formatoBitacora'
@@ -20,35 +17,14 @@ interface TarjetaProximaAudienciaProps {
  * resultado, la tarjeta lo dice en ámbar y ofrece registrarlo; si no, ofrece reprogramarla.
  */
 export default function TarjetaProximaAudiencia({ proceso, abrirAudiencia }: TarjetaProximaAudienciaProps) {
-  const { mostrar } = useToast()
-  const [cargando, setCargando] = useState(false)
+  const { abrir, cargandoId } = useAccionProximaAudiencia(abrirAudiencia)
   const proxima = proceso.proximaAudiencia
   if (!proxima) return null
 
   const programada = proceso.audienciasProgramadas.find((audiencia) => audiencia.id === proxima.id)
   const pendiente = proxima.estadoVisible === 'PENDIENTE_RESULTADO'
-  const accion: AccionAudiencia = pendiente ? 'REGISTRAR_RESULTADO' : 'REPROGRAMAR'
   const { mes, dia, diaSemana } = bloqueFecha(proxima.fecha)
   const cuando = textoCuando(proxima.fecha, hoyGT())
-
-  // La cabecera trae lo justo para mostrarla; el modal necesita la audiencia completa con sus
-  // acciones vigentes, así que se pide al abrirlo (y el backend vuelve a validar al guardar).
-  async function abrir() {
-    setCargando(true)
-    try {
-      const audiencias = await listarAudienciasProceso(proceso.id)
-      const audiencia = audiencias.find((item) => item.id === proxima!.id)
-      if (audiencia?.accionesDisponibles.includes(accion)) {
-        abrirAudiencia({ tipo: accion, audiencia })
-      } else {
-        mostrar('La audiencia cambió mientras tanto. Revise la pestaña Audiencias.', 'info')
-      }
-    } catch (error) {
-      mostrar(extraerMensajeError(error), 'error')
-    } finally {
-      setCargando(false)
-    }
-  }
 
   return (
     <section
@@ -77,7 +53,7 @@ export default function TarjetaProximaAudiencia({ proceso, abrirAudiencia }: Tar
         {programada && <p className="text-[13px] text-gray-600">Responsable: {programada.responsable.nombre}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <Button variante="secondary" tamano="md" onClick={() => void abrir()} cargando={cargando}>
+        <Button variante="secondary" tamano="md" onClick={() => void abrir(proceso.id, proxima)} cargando={cargandoId === proxima.id}>
           {pendiente ? 'Registrar resultado' : 'Reprogramar'}
         </Button>
         <Link

@@ -15,6 +15,7 @@ import { useToast } from '../../../components/ui/Toast'
 import { listarProcesos } from '../api/juridico.api'
 import { casoDesdeProceso, type ModalAudiencia } from '../audiencias/caso'
 import ModalesAudiencia from '../audiencias/ModalesAudiencia'
+import { useAccionProximaAudiencia } from '../audiencias/useAccionProximaAudiencia'
 import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista } from '../compartido/EstadosVista'
 import { useRecurso } from '../compartido/useRecurso'
@@ -25,7 +26,20 @@ import ModalNumeroJudicial from '../compartido/ModalNumeroJudicial'
 import Paginacion from '../compartido/Paginacion'
 
 const ESPERA_BUSQUEDA_MS = 350
-const COLUMNAS = ['No. interno', 'Usuaria', 'Tipo de proceso', 'No. judicial', 'Próxima audiencia', 'Avance', 'Última actuación']
+/**
+ * Tabla de ancho fijo: las columnas de contenido corto tienen su ancho y "Tipo de proceso" y
+ * "No. judicial" se reparten el resto por igual. Sin esto el tipo se quedaba con todo el espacio
+ * sobrante y el juzgado se partía en tres líneas.
+ */
+const COLUMNAS: { titulo: string; ancho: string }[] = [
+  { titulo: 'No. interno', ancho: 'w-[120px]' },
+  { titulo: 'Usuaria', ancho: 'w-[230px]' },
+  { titulo: 'Tipo de proceso', ancho: '' },
+  { titulo: 'No. judicial', ancho: '' },
+  // Puede ser una audiencia ya pasada que falta registrar: por eso no dice "Próxima".
+  { titulo: 'Audiencia', ancho: 'w-[210px]' },
+  { titulo: 'Última actuación', ancho: 'w-[150px]' },
+]
 
 function FilasEsqueleto() {
   return (
@@ -33,7 +47,7 @@ function FilasEsqueleto() {
       {Array.from({ length: 5 }, (_, indice) => (
         <tr key={indice} className="border-t border-gray-100">
           {COLUMNAS.map((columna) => (
-            <td key={columna} className="px-4 py-3">
+            <td key={columna.titulo} className="px-4 py-3">
               <div className="h-4 animate-pulse rounded bg-gray-100" />
             </td>
           ))}
@@ -102,6 +116,7 @@ export default function ListaProcesos() {
   const { mostrar } = useToast()
   const [modalAudiencia, setModalAudiencia] = useState<ModalAudiencia | null>(null)
   const [asignandoNumero, setAsignandoNumero] = useState<ProcesoResumen | null>(null)
+  const accionAudiencia = useAccionProximaAudiencia(setModalAudiencia)
   const trasCambios = useCallback(() => {
     void recargar()
     recargarResumen()
@@ -188,16 +203,16 @@ export default function ListaProcesos() {
       ) : (
         <section ref={tablaRef} className="scroll-mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1080px] text-left">
+            <table className="w-full min-w-[1120px] table-fixed text-left">
               <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
                 <tr>
                   {COLUMNAS.map((columna, indice) => (
                     <th
-                      key={columna}
+                      key={columna.titulo}
                       scope="col"
-                      className={`whitespace-nowrap px-4 py-2.5 font-medium ${indice === 0 ? 'sticky left-0 z-10 bg-gray-50' : ''}`}
+                      className={`whitespace-nowrap px-4 py-2.5 font-medium ${columna.ancho} ${indice === 0 ? 'sticky left-0 z-10 bg-gray-50' : ''}`}
                     >
-                      {columna}
+                      {columna.titulo}
                     </th>
                   ))}
                 </tr>
@@ -209,8 +224,12 @@ export default function ListaProcesos() {
                     key={proceso.id}
                     proceso={proceso}
                     hoy={hoy}
+                    abriendoAudiencia={Boolean(proceso.proximaAudiencia) && accionAudiencia.cargandoId === proceso.proximaAudiencia?.id}
                     onAsignarNumero={() => setAsignandoNumero(proceso)}
                     onAgendar={() => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) })}
+                    onAccionAudiencia={() => {
+                      if (proceso.proximaAudiencia) void accionAudiencia.abrir(proceso.id, proceso.proximaAudiencia)
+                    }}
                   />
                 ))}
               </tbody>

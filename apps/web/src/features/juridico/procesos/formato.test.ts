@@ -21,7 +21,7 @@ describe('textoProximaAudiencia', () => {
 
   it('una vencida sin resultado se marca como pendiente', () => {
     expect(textoProximaAudiencia(proxima('2026-10-13', 'PENDIENTE_RESULTADO'), HOY)).toEqual({
-      aviso: 'Pendiente de resultado',
+      aviso: 'Falta registrar resultado',
       pendiente: true,
     })
   })

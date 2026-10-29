@@ -7,15 +7,15 @@ import {
 } from '@akyuam/shared'
 
 export interface TextoProximaAudiencia {
-  /** "Hoy", "Mañana", "En 7 días" o "Pendiente de resultado". */
+  /** "Hoy", "Mañana", "En 7 días" o "Falta registrar resultado". */
   aviso: string
   /** Ya pasó y nadie registró qué ocurrió: se pinta en ámbar. */
   pendiente: boolean
 }
 
-/** El aviso bajo la fecha en la columna Próxima audiencia; `hoy` es la fecha de Guatemala ("YYYY-MM-DD"). */
+/** El aviso bajo la fecha en la columna Audiencia; `hoy` es la fecha de Guatemala ("YYYY-MM-DD"). */
 export function textoProximaAudiencia(proxima: ProximaAudienciaDto, hoy: string): TextoProximaAudiencia {
-  if (proxima.estadoVisible === 'PENDIENTE_RESULTADO') return { aviso: 'Pendiente de resultado', pendiente: true }
+  if (proxima.estadoVisible === 'PENDIENTE_RESULTADO') return { aviso: 'Falta registrar resultado', pendiente: true }
   const dias = diasEntreFechasGT(hoy, proxima.fecha)
   if (proxima.estadoVisible === 'HOY' || dias <= 0) return { aviso: 'Hoy', pendiente: false }
   if (dias === 1) return { aviso: 'Mañana', pendiente: false }
