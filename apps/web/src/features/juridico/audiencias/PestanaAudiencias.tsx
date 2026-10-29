@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { AccionAudiencia, AudienciaDetalleDto, DocumentoProcesoDto } from '@akyuam/shared'
 import { useToast } from '../../../components/ui/Toast'
@@ -9,10 +9,12 @@ import { useContextoDetalle } from '../detalle/contextoDetalle'
 import ModalActualizarDocumento from '../documentos/ModalActualizarDocumento'
 import { useAbrirDocumento } from '../documentos/useAbrirDocumento'
 import { admiteAudiencias } from './caso'
+import { agruparReprogramaciones } from './reprogramaciones'
 import TarjetaAudiencia from './TarjetaAudiencia'
 
 /**
- * Pestaña Audiencias del proceso: línea de tiempo de la más reciente a la más antigua. Se agenda
+ * Pestaña Audiencias del proceso: línea de tiempo de la más reciente a la más antigua, con cada
+ * audiencia reprogramada en una sola tarjeta (`agruparReprogramaciones`). Se agenda
  * desde la cabecera; los modales los pinta el detalle, así ambos comparten el mismo flujo.
  */
 export default function PestanaAudiencias() {
@@ -39,6 +41,7 @@ export default function PestanaAudiencias() {
     [abrirAudiencia],
   )
   const puedeAgendar = admiteAudiencias(proceso)
+  const grupos = useMemo(() => (datos ? agruparReprogramaciones(datos) : []), [datos])
 
   if (error && !datos) {
     return <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="las audiencias" onReintentar={() => void recargar()} />
@@ -67,11 +70,12 @@ export default function PestanaAudiencias() {
 
       {datos && datos.length > 0 && (
         <ol aria-label="Audiencias del proceso" className={cargando ? 'opacity-60' : undefined}>
-          {datos.map((audiencia) => (
+          {grupos.map(({ audiencia, anteriores }) => (
             <TarjetaAudiencia
               key={audiencia.id}
               audiencia={audiencia}
-              resaltada={audiencia.id === resaltadaId}
+              anteriores={anteriores}
+              resaltadaId={resaltadaId}
               onAccion={onAccion}
               onVerDocumento={(documento) => void ver(documento)}
               onActualizarDocumento={setActualizar}

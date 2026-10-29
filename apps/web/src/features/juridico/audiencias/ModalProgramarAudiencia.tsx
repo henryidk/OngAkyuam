@@ -137,7 +137,8 @@ export default function ModalProgramarAudiencia({ caso, anterior, onCerrar, onHe
         </select>
       </label>
 
-      <div className="grid grid-cols-2 gap-3">
+      {/* La hora ocupa lo que necesita (hora, minutos y a. m./p. m.) y la fecha toma el resto. */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
         <label className={CLASE_ETIQUETA}>
           <span>Fecha</span>
           <input type="date" min={hoyGT()} value={fecha} onChange={(evento) => alCambiar(setFecha)(evento.target.value)} className={CLASE_CAMPO} />

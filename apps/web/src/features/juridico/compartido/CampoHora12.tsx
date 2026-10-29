@@ -1,9 +1,15 @@
 import { useId, useState } from 'react'
-import { CLASE_CAMPO } from './campos'
 import { ETIQUETAS_PERIODO, aHora12, aHora24, type Periodo } from './hora12'
 
 const HORAS = Array.from({ length: 12 }, (_, indice) => String(indice + 1))
 const PERIODOS: Periodo[] = ['AM', 'PM']
+/**
+ * Mismo aspecto que CLASE_CAMPO, pero con ancho fijo para que "12" o "45" se lean completos: el
+ * relleno y la flecha nativa ocupan casi todo el selector, y repartido a partes iguales en una
+ * columna angosta solo dejaba ver el primer dígito.
+ */
+const CLASE_SELECTOR =
+  'w-[4.5rem] flex-none rounded-md border border-gray-300 bg-white px-2 py-2 text-sm tabular-nums focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 interface CampoHora12Props {
   etiqueta: string
@@ -51,7 +57,7 @@ export default function CampoHora12({ etiqueta, valor, onCambiar, pasoMinutos }:
           aria-label="Hora"
           value={hora}
           onChange={(evento) => cambiar({ hora: evento.target.value })}
-          className={`${CLASE_CAMPO} min-w-0 flex-1 tabular-nums`}
+          className={CLASE_SELECTOR}
         >
           <option value="">--</option>
           {HORAS.map((opcion) => (
@@ -67,7 +73,7 @@ export default function CampoHora12({ etiqueta, valor, onCambiar, pasoMinutos }:
           aria-label="Minutos"
           value={minutos}
           onChange={(evento) => cambiar({ minutos: evento.target.value })}
-          className={`${CLASE_CAMPO} min-w-0 flex-1 tabular-nums`}
+          className={CLASE_SELECTOR}
         >
           {opcionesMinutos.map((opcion) => (
             <option key={opcion} value={opcion}>

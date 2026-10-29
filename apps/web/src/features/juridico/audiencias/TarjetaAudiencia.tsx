@@ -1,5 +1,6 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { Repeat } from 'lucide-react'
 import {
   ETIQUETAS_ORIGEN_CANCELACION,
   type AccionAudiencia,
@@ -11,26 +12,111 @@ import { RUTAS_JURIDICO } from '../rutas'
 import EtiquetaEstadoAudiencia from './EtiquetaEstadoAudiencia'
 import BarraAccionesAudiencia from './BarraAccionesAudiencia'
 import { textoEnlazada } from './formato'
+import type { FechaAnterior } from './reprogramaciones'
 
 const CLASE_ENLACE = 'font-medium text-brand-700 hover:underline'
 
+/** Con más fechas anteriores que estas, el resto queda plegado tras un botón. */
+const ANTERIORES_VISIBLES = 1
+const LIMITE_SIN_PLEGAR = 2
+
+interface HistorialFechasProps {
+  anteriores: FechaAnterior[]
+  resaltadaId: string | null
+  onVerDocumento: (documento: DocumentoProcesoDto) => void
+  onActualizarDocumento: (documento: DocumentoProcesoDto) => void
+}
+
+/**
+ * Las fechas que tuvo la audiencia antes de la vigente, de la más reciente a la más antigua: hacia
+ * dónde se movió, el motivo y los documentos que se subieron en esa fecha.
+ */
+function HistorialFechas({ anteriores, resaltadaId, onVerDocumento, onActualizarDocumento }: HistorialFechasProps) {
+  const indiceResaltada = anteriores.findIndex((anterior) => anterior.audiencia.id === resaltadaId)
+  const [desplegado, setDesplegado] = useState(indiceResaltada >= ANTERIORES_VISIBLES)
+  // Si se llega por enlace a una fecha plegada, se despliega para mostrarla.
+  useEffect(() => {
+    if (indiceResaltada >= ANTERIORES_VISIBLES) setDesplegado(true)
+  }, [indiceResaltada])
+
+  const plegable = anteriores.length > LIMITE_SIN_PLEGAR
+  const visibles = plegable && !desplegado ? anteriores.slice(0, ANTERIORES_VISIBLES) : anteriores
+  const ocultas = anteriores.length - visibles.length
+
+  return (
+    <div className="mt-3 border-t border-gray-100 pt-3">
+      <ul aria-label="Fechas anteriores" className="space-y-1">
+        {visibles.map(({ audiencia, sentido }) => (
+          <li
+            key={audiencia.id}
+            className={`-mx-2 rounded-lg px-2 py-1.5 text-[13px] text-gray-700 ${audiencia.id === resaltadaId ? 'bg-brand-50' : ''}`}
+          >
+            <p className="flex flex-wrap items-center gap-x-1.5">
+              <Repeat size={13} aria-hidden="true" className="shrink-0 text-gray-400" />
+              <span className="font-medium text-gray-900">{sentido === 'ADELANTO' ? 'Se adelantó' : 'Se pospuso'}</span>
+              <span className="text-gray-500">
+                · antes: <span className="tabular-nums line-through decoration-gray-300">{textoEnlazada(audiencia)}</span>
+              </span>
+            </p>
+            {audiencia.motivo && (
+              <p className="mt-0.5 pl-[19px]">
+                <span className="font-medium text-gray-900">Motivo:</span> {audiencia.motivo}
+              </p>
+            )}
+            {audiencia.documentos.length > 0 && (
+              <div className="mt-2 pl-[19px]">
+                <DocumentosAdjuntos
+                  documentos={audiencia.documentos}
+                  onVer={onVerDocumento}
+                  onActualizar={onActualizarDocumento}
+                />
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+      {plegable && (
+        <button
+          type="button"
+          onClick={() => setDesplegado((actual) => !actual)}
+          aria-expanded={desplegado}
+          className="mt-1 text-[13px] font-medium text-brand-700 hover:underline"
+        >
+          {desplegado
+            ? 'Ver menos fechas'
+            : `Ver ${ocultas} ${ocultas === 1 ? 'fecha anterior' : 'fechas anteriores'} más`}
+        </button>
+      )}
+    </div>
+  )
+}
+
 interface TarjetaAudienciaProps {
   audiencia: AudienciaDetalleDto
-  /** Se llegó desde el chip de un documento: se enfoca y se marca. */
-  resaltada: boolean
+  /** Fechas que la audiencia tuvo antes de reprogramarse, de la más reciente a la más antigua. */
+  anteriores: FechaAnterior[]
+  /** Audiencia a la que se llegó por enlace (`?audiencia=`): su tarjeta se enfoca y se marca. */
+  resaltadaId: string | null
   onAccion: (accion: AccionAudiencia, audiencia: AudienciaDetalleDto) => void
   onVerDocumento: (documento: DocumentoProcesoDto) => void
   onActualizarDocumento: (documento: DocumentoProcesoDto) => void
 }
 
-/** Un punto de la línea de tiempo: estado, reprogramaciones enlazadas, observaciones y documentos. */
+/**
+ * Un punto de la línea de tiempo: la fecha vigente con su estado, observaciones y documentos, y
+ * debajo las fechas que tuvo antes de reprogramarse.
+ */
 export default function TarjetaAudiencia({
   audiencia,
-  resaltada,
+  anteriores,
+  resaltadaId,
   onAccion,
   onVerDocumento,
   onActualizarDocumento,
 }: TarjetaAudienciaProps) {
+  const resaltada =
+    resaltadaId !== null &&
+    (audiencia.id === resaltadaId || anteriores.some((anterior) => anterior.audiencia.id === resaltadaId))
   const ref = useRef<HTMLLIElement>(null)
   useEffect(() => {
     // `nearest`: si ya está a la vista no mueve nada (con `center` se desplazaba todo el layout).
@@ -80,7 +166,8 @@ export default function TarjetaAudiencia({
               </Link>
             </p>
           )}
-          {audiencia.reprogramadaDesde && (
+          {/* Si la fecha anterior está en el historial de esta misma tarjeta, ya se ve abajo. */}
+          {audiencia.reprogramadaDesde && anteriores.length === 0 && (
             <p>
               Nueva fecha de la audiencia del{' '}
               <Link to={enlace(audiencia.reprogramadaDesde.id)} className={`${CLASE_ENLACE} tabular-nums`}>
@@ -109,6 +196,15 @@ export default function TarjetaAudiencia({
               onActualizar={onActualizarDocumento}
             />
           </div>
+        )}
+
+        {anteriores.length > 0 && (
+          <HistorialFechas
+            anteriores={anteriores}
+            resaltadaId={resaltadaId}
+            onVerDocumento={onVerDocumento}
+            onActualizarDocumento={onActualizarDocumento}
+          />
         )}
 
         <BarraAccionesAudiencia audiencia={audiencia} onAccion={onAccion} />
