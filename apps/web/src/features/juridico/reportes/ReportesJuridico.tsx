@@ -32,19 +32,18 @@ function plural(cantidad: number, singular: string, varios: string) {
 /** Reportes de Jurídico: procesos con desgloses, vista previa y Excel. */
 export default function ReportesJuridico() {
   const [filtros, setFiltros] = useState<ReporteProcesosJuridicoQuery>(filtrosIniciales)
-  const [abogadas, setAbogadas] = useState<PersonalDto[]>([])
+  const [personal, setPersonal] = useState<PersonalDto[]>([])
   const [descargando, setDescargando] = useState(false)
   const [errorDescarga, setErrorDescarga] = useState<string | null>(null)
 
-  // Activas primero; si la lista falla, el filtro queda en "Todas" y el reporte sigue funcionando.
+  // Activas primero; si la lista falla, el filtro queda en "Todo el personal" y el reporte sigue funcionando.
   useEffect(() => {
     let cancelado = false
     listarPersonalJuridico()
-      .then((personal) => {
+      .then((lista) => {
         if (cancelado) return
-        const lista = personal.filter((persona) => persona.tipo === 'ABOGADA')
         lista.sort((a, b) => Number(b.activo) - Number(a.activo) || a.nombre.localeCompare(b.nombre, 'es'))
-        setAbogadas(lista)
+        setPersonal(lista)
       })
       .catch(() => undefined)
     return () => {
@@ -80,7 +79,7 @@ export default function ReportesJuridico() {
       <FiltrosReporteJuridico
         filtros={filtros}
         onCambiar={setFiltros}
-        abogadas={abogadas}
+        personal={personal}
         onDescargar={() => void descargar()}
         descargando={descargando}
         puedeDescargar={filtrosValidos !== null && hayProcesos && !cargando}
@@ -145,7 +144,7 @@ export default function ReportesJuridico() {
             <EmptyState
               Icono={FileSpreadsheet}
               titulo="No hay procesos con estos filtros"
-              descripcion="Prueba con otro rango de fechas, estado o abogada."
+              descripcion="Prueba con otro rango de fechas, estado o responsable."
             />
           </div>
         )}

@@ -12,126 +12,149 @@ import {
   armarDesgloses,
   COLUMNAS_PROCESOS,
   ReporteProcesosService,
+  textoAvance,
+  textoResponsables,
 } from './reporte-procesos.service';
 
-const ANIO = 2026;
-
-// Datos ficticios: nombres inventados.
+// Datos ficticios: nombres, teléfono y lugares inventados.
 function proceso(overrides: Partial<FilaProcesoRow> = {}): FilaProcesoRow {
   return {
     numero: 1,
     consecutivo: 2,
     expedienteNumero: '05-2026',
     numeroJudicial: null,
-    fechaInicio: '2026-03-02',
-    fechaCierre: null,
     tipo: 'FIJACION_PENSION_ALIMENTICIA',
-    estado: 'EN_TRAMITE',
-    abierto: true,
-    formaFinalizacion: null,
     abogada: 'Abogada Ficticia',
+    procuradora: null,
     nombres: 'Ana Prueba',
     apellidos: 'Ficticia',
-    proximaAudiencia: null,
-    ultimaAudienciaRealizada: null,
+    telefono: '5555-0000',
+    edad: 31,
+    grupoEtnico: 'MAYA_QECHI',
+    municipio: 'COBAN',
+    departamentoOtro: null,
+    municipioOtro: null,
+    ubicacionGeografica: 'Aldea Ficticia',
+    tipologias: ['FISICA', 'PSICOLOGICA'],
+    ultimoAvanceEn: null,
+    ultimoAvanceTipo: null,
+    ultimoAvanceContenido: null,
     ...overrides,
   };
 }
 
 describe('aFilaReporte', () => {
-  it('arma la fila con expediente, número de proceso y cartera del año', () => {
-    expect(aFilaReporte(proceso(), ANIO)).toEqual({
+  it('arma la fila con el No. interno del proceso y los datos que registró Trabajo Social', () => {
+    expect(aFilaReporte(proceso())).toEqual({
       numero: 1,
-      expedienteNumero: '05-2026',
-      numeroProceso: 2,
+      numeroInterno: '05-2026 · Proceso 2',
       usuaria: 'Ana Prueba Ficticia',
+      telefono: '5555-0000',
       tipo: 'FIJACION_PENSION_ALIMENTICIA',
-      fechaInicio: '2026-03-02',
-      abogada: 'Abogada Ficticia',
-      estado: 'EN_TRAMITE',
-      formaFinalizacion: null,
-      fechaCierre: null,
       numeroJudicial: null,
-      cartera: '2026',
-      proximaAudiencia: null,
-      ultimaAudienciaRealizada: null,
+      ultimoAvance: null,
+      abogada: 'Abogada Ficticia',
+      procuradora: null,
+      grupoEtnico: expect.any(String) as unknown,
+      edad: 31,
+      tipologia: 'Física, Psicológica',
+      procedencia: 'Aldea Ficticia, Cobán, Alta Verapaz',
     });
   });
 
-  it('un proceso de un año anterior que sigue abierto es de seguimiento', () => {
-    expect(
-      aFilaReporte(proceso({ fechaInicio: '2024-11-30' }), ANIO).cartera,
-    ).toBe('Seguimiento (2024)');
-  });
-
-  it('un proceso de un año anterior ya cerrado no tiene cartera', () => {
-    const fila = aFilaReporte(
-      proceso({ fechaInicio: '2024-11-30', abierto: false }),
-      ANIO,
+  it('el primer proceso del expediente lleva solo el número de expediente', () => {
+    expect(aFilaReporte(proceso({ consecutivo: 1 })).numeroInterno).toBe(
+      '05-2026',
     );
-    expect(fila.cartera).toBe('');
   });
 
-  it('las audiencias se muestran con fecha y hora de Guatemala, aunque crucen la medianoche UTC', () => {
+  it('la procedencia de fuera de Alta Verapaz usa lo escrito a mano y omite lo vacío', () => {
+    const fila = aFilaReporte(
+      proceso({
+        municipio: null,
+        departamentoOtro: 'Petén',
+        municipioOtro: 'Sayaxché',
+        ubicacionGeografica: '  ',
+      }),
+    );
+    expect(fila.procedencia).toBe('Sayaxché, Petén');
+  });
+
+  it('la fecha del último avance es la de Guatemala, aunque cruce la medianoche UTC', () => {
     const fila = aFilaReporte(
       proceso({
         // 21/10/2026 20:30 en Guatemala = 22/10/2026 02:30 UTC.
-        proximaAudiencia: new Date('2026-10-22T02:30:00.000Z'),
-        ultimaAudienciaRealizada: new Date('2026-09-01T15:00:00.000Z'),
+        ultimoAvanceEn: new Date('2026-10-22T02:30:00.000Z'),
+        ultimoAvanceTipo: 'Memorial',
+        ultimoAvanceContenido: 'Se presentó el memorial',
       }),
-      ANIO,
     );
-    expect(fila.proximaAudiencia).toEqual({
+    expect(fila.ultimoAvance).toEqual({
       fecha: '2026-10-21',
-      hora: '20:30',
-    });
-    expect(fila.ultimaAudienciaRealizada).toEqual({
-      fecha: '2026-09-01',
-      hora: '09:00',
+      tipo: 'Memorial',
+      contenido: 'Se presentó el memorial',
     });
   });
+});
 
-  it('la forma y la fecha de cierre solo se muestran si el proceso está finalizado', () => {
-    const datosCierre = {
-      formaFinalizacion: 'SENTENCIA',
-      fechaCierre: '2026-09-01',
-    } as const;
+describe('textoAvance y textoResponsables', () => {
+  it('el avance lleva fecha, tipo y contenido; sin avance, vacío', () => {
+    expect(
+      textoAvance({
+        fecha: '2026-10-20',
+        tipo: 'Memorial',
+        contenido: 'Se presentó',
+      }),
+    ).toBe('20/10/2026 · Memorial: Se presentó');
+    expect(
+      textoAvance({ fecha: '2026-10-20', tipo: 'Memorial', contenido: '' }),
+    ).toBe('20/10/2026 · Memorial');
+    expect(textoAvance(null)).toBe('');
+  });
 
+  it('nombra a quien esté asignada, con su cargo', () => {
     expect(
-      aFilaReporte(proceso({ ...datosCierre, estado: 'FINALIZADO' }), ANIO),
-    ).toMatchObject(datosCierre);
+      textoResponsables({
+        abogada: 'Abogada Ficticia',
+        procuradora: 'Procuradora Ficticia',
+      }),
+    ).toBe('Abogada Ficticia (abogada), Procuradora Ficticia (procuradora)');
     expect(
-      aFilaReporte(proceso({ ...datosCierre, estado: 'SUSPENDIDO' }), ANIO),
-    ).toMatchObject({ formaFinalizacion: null, fechaCierre: null });
+      textoResponsables({ abogada: null, procuradora: 'Procuradora Ficticia' }),
+    ).toBe('Procuradora Ficticia (procuradora)');
+    expect(textoResponsables({ abogada: null, procuradora: null })).toBe('');
   });
 });
 
 describe('aFilaHoja', () => {
-  it('tiene una celda por columna, con etiquetas y vacíos en lugar de null', () => {
+  it('tiene una celda por columna, en el orden pedido y con vacíos en lugar de null', () => {
     const celdas = aFilaHoja(
       aFilaReporte(
         proceso({
-          estado: 'FINALIZADO',
-          abierto: false,
-          formaFinalizacion: 'CONVENIO',
-          fechaCierre: '2026-09-01',
-          abogada: null,
-          ultimaAudienciaRealizada: new Date('2026-08-10T16:30:00.000Z'),
+          telefono: null,
+          numeroJudicial: 'Juzgado Ficticio 01-2026',
+          ultimoAvanceEn: new Date('2026-10-20T16:00:00.000Z'),
+          ultimoAvanceTipo: 'Memorial',
+          ultimoAvanceContenido: 'Se presentó',
         }),
-        ANIO,
       ),
     );
 
     expect(celdas).toHaveLength(COLUMNAS_PROCESOS.length);
-    expect(celdas.slice(0, 3)).toEqual([1, '05-2026', 2]);
-    expect(celdas[6]).toBe('');
-    expect(celdas[7]).toBe('Finalizado');
-    expect(celdas[8]).toBe('Convenio');
-    expect(celdas[9]).toBe('2026-09-01');
-    expect(celdas[10]).toBe('');
-    expect(celdas[11]).toBe('2026');
-    expect(celdas[12]).toBe('');
-    expect(celdas[13]).toBe('10/08/2026 10:30');
+    expect(celdas).toEqual([
+      1,
+      '05-2026 · Proceso 2',
+      'Ana Prueba Ficticia',
+      '',
+      expect.any(String),
+      'Juzgado Ficticio 01-2026',
+      '20/10/2026 · Memorial: Se presentó',
+      'Abogada Ficticia (abogada)',
+      expect.any(String),
+      31,
+      'Física, Psicológica',
+      'Aldea Ficticia, Cobán, Alta Verapaz',
+    ]);
   });
 });
 
@@ -200,7 +223,7 @@ describe('ReporteProcesosService', () => {
     desde: '2026-01-01',
     hasta: '2026-10-05',
     estado: 'FINALIZADO',
-    abogadaId: ABOGADA_ID,
+    responsableId: ABOGADA_ID,
     tipo: 'DIVORCIO_MUTUO_ACUERDO',
   } as const;
 
@@ -237,7 +260,7 @@ describe('ReporteProcesosService', () => {
     service = crearServicio();
   });
 
-  it('traduce los filtros: cartera con rango, estado, abogada y tipo concretos', async () => {
+  it('traduce los filtros: cartera con rango, estado, responsable y tipo concretos', async () => {
     await service.vistaPrevia(query, contexto);
 
     expect(repositorio.conteos).toHaveBeenCalledWith({
@@ -245,12 +268,12 @@ describe('ReporteProcesosService', () => {
       anioActual: 2026,
       rango: { desde: '2026-01-01', hasta: '2026-10-05' },
       estado: 'FINALIZADO',
-      abogadaId: ABOGADA_ID,
+      responsableId: ABOGADA_ID,
       tipo: 'DIVORCIO_MUTUO_ACUERDO',
     });
   });
 
-  it('en "Año en curso" ignora el rango; "Todos", sin abogada y sin tipo se traducen a null', async () => {
+  it('en "Año en curso" ignora el rango; "Todos", sin responsable y sin tipo se traducen a null', async () => {
     await service.vistaPrevia(
       {
         cartera: 'ANIO',
@@ -266,7 +289,7 @@ describe('ReporteProcesosService', () => {
       anioActual: 2026,
       rango: null,
       estado: null,
-      abogadaId: null,
+      responsableId: null,
       tipo: null,
     });
   });
@@ -303,7 +326,7 @@ describe('ReporteProcesosService', () => {
           desde: '2026-01-01',
           hasta: '2026-10-05',
           estado: 'FINALIZADO',
-          abogadaId: ABOGADA_ID,
+          responsableId: ABOGADA_ID,
           tipo: 'DIVORCIO_MUTUO_ACUERDO',
         },
       }),

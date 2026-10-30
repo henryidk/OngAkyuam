@@ -17,7 +17,7 @@ export function useReporteProcesos(filtros: ReporteProcesosJuridicoQuery | null)
   const desde = filtros?.desde
   const hasta = filtros?.hasta
   const estado = filtros?.estado
-  const abogadaId = filtros?.abogadaId
+  const responsableId = filtros?.responsableId
   const tipo = filtros?.tipo
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export function useReporteProcesos(filtros: ReporteProcesosJuridicoQuery | null)
     let cancelado = false
     setCargando(true)
     setError(null)
-    obtenerReporteProcesos({ cartera, desde, hasta, estado, abogadaId, tipo })
+    obtenerReporteProcesos({ cartera, desde, hasta, estado, responsableId, tipo })
       .then((datos) => {
         if (!cancelado) setReporte(datos)
       })
@@ -40,7 +40,7 @@ export function useReporteProcesos(filtros: ReporteProcesosJuridicoQuery | null)
     return () => {
       cancelado = true
     }
-  }, [cartera, desde, hasta, estado, abogadaId, tipo])
+  }, [cartera, desde, hasta, estado, responsableId, tipo])
 
   return { reporte, cargando, error }
 }

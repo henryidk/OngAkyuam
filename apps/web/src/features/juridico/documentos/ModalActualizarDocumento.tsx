@@ -99,7 +99,7 @@ export default function ModalActualizarDocumento({ procesoId, documento, onCerra
           <TriangleAlert size={16} aria-hidden="true" className="mt-0.5 shrink-0" />
           <span>
             El archivo actual se borrará de forma permanente y no se podrá recuperar. Se conservan el nombre, la carpeta y
-            su vínculo con la audiencia o actuación.
+            su vínculo con la audiencia o avance.
           </span>
         </p>
       </div>

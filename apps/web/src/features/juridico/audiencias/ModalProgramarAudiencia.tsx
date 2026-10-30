@@ -16,6 +16,7 @@ import { agendarAudiencia, reprogramarAudiencia } from '../api/audiencias.api'
 import CampoHora12 from '../compartido/CampoHora12'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../compartido/campos'
 import { formatHora12 } from '../compartido/hora12'
+import OpcionesPersonal from '../compartido/OpcionesPersonal'
 import { usePersonalJuridico } from '../compartido/usePersonalJuridico'
 import { useEnvio } from '../detalle/useEnvio'
 import AgendaDelDia from './AgendaDelDia'
@@ -50,7 +51,7 @@ function primerError(resultado: { success: boolean; error?: { issues: { message:
  */
 export default function ModalProgramarAudiencia({ caso, anterior, onCerrar, onHecho, onConflicto }: ModalProgramarAudienciaProps) {
   const modo = anterior?.modo ?? 'AGENDAR'
-  const { abogadas, cargando: cargandoPersonal, error: errorPersonal } = usePersonalJuridico()
+  const { responsables, cargando: cargandoPersonal, error: errorPersonal } = usePersonalJuridico()
   const [responsableId, setResponsableId] = useState(caso.responsableId ?? '')
   const [fecha, setFecha] = useState('')
   const [hora, setHora] = useState('')
@@ -63,7 +64,7 @@ export default function ModalProgramarAudiencia({ caso, anterior, onCerrar, onHe
   const propiaId = modo === 'REPROGRAMAR' ? anterior?.audiencia.id : undefined
   const choque = disponibilidad.ocupadas && hora ? audienciaEnHora(disponibilidad.ocupadas, hora, propiaId) : undefined
   // La responsable inicial puede ya no estar activa: entonces se elige otra.
-  const responsableValida = abogadas.some((abogada) => abogada.id === responsableId)
+  const responsableValida = responsables.some((persona) => persona.id === responsableId)
   const pideNumeroJudicial = modo !== 'REPROGRAMAR' && !caso.numeroJudicial
 
   function guardar() {
@@ -128,12 +129,8 @@ export default function ModalProgramarAudiencia({ caso, anterior, onCerrar, onHe
           onChange={(evento) => alCambiar(setResponsableId)(evento.target.value)}
           className={CLASE_CAMPO}
         >
-          <option value="">{cargandoPersonal ? 'Cargando…' : 'Elija la abogada…'}</option>
-          {abogadas.map((abogada) => (
-            <option key={abogada.id} value={abogada.id}>
-              {abogada.nombre}
-            </option>
-          ))}
+          <option value="">{cargandoPersonal ? 'Cargando…' : 'Elija la responsable…'}</option>
+          <OpcionesPersonal personal={responsables} />
         </select>
       </label>
 

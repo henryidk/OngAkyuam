@@ -1,47 +1,67 @@
 import type { ReactNode } from 'react'
-import {
-  ETIQUETAS_FORMA_FINALIZACION,
-  ETIQUETAS_TIPO_PROCESO_JURIDICO,
-  formatFechaGT,
-  type FechaHoraAudienciaReporte,
-  type FilaReporteJuridico,
-} from '@akyuam/shared'
-import EtiquetaEstado from '../compartido/EtiquetaEstado'
+import { ETIQUETAS_TIPO_PROCESO_JURIDICO, formatFechaGT, type FilaReporteJuridico } from '@akyuam/shared'
 
-function fechaHora(audiencia: FechaHoraAudienciaReporte | null): string {
-  return audiencia ? `${formatFechaGT(audiencia.fecha)} ${audiencia.hora}` : '—'
+/** La tabla no parte líneas; los textos largos sí, con ancho acotado. */
+function TextoLargo({ children, ancho }: { children: ReactNode; ancho: string }) {
+  return <span className={`block whitespace-normal break-words ${ancho}`}>{children}</span>
 }
 
-/** Mismas columnas y orden que el Excel; forma y fecha de cierre van juntas en pantalla. */
+function Responsables({ fila }: { fila: FilaReporteJuridico }) {
+  const personas = [
+    { rol: 'Abogada', nombre: fila.abogada },
+    { rol: 'Procuradora', nombre: fila.procuradora },
+  ].filter((persona) => persona.nombre)
+  if (personas.length === 0) return <span className="text-gray-400">Sin asignar</span>
+  return (
+    <span className="block space-y-0.5">
+      {personas.map((persona) => (
+        <span key={persona.rol} className="block">
+          {persona.nombre} <span className="text-[11px] text-gray-500">· {persona.rol}</span>
+        </span>
+      ))}
+    </span>
+  )
+}
+
+/** Mismas columnas y orden que el Excel. */
 const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNode }[] = [
   { titulo: 'No.', valor: (fila) => fila.numero },
-  { titulo: 'No. expediente', valor: (fila) => fila.expedienteNumero },
-  { titulo: 'No. proceso', valor: (fila) => fila.numeroProceso },
-  { titulo: 'Usuaria', valor: (fila) => fila.usuaria },
-  { titulo: 'Tipo de proceso', valor: (fila) => ETIQUETAS_TIPO_PROCESO_JURIDICO[fila.tipo] },
-  { titulo: 'Fecha inicio', valor: (fila) => formatFechaGT(fila.fechaInicio) },
-  { titulo: 'Abogada', valor: (fila) => fila.abogada ?? '—' },
-  { titulo: 'Estado', valor: (fila) => <EtiquetaEstado estado={fila.estado} /> },
+  { titulo: 'No. expediente', valor: (fila) => fila.numeroInterno },
+  { titulo: 'Nombre de la usuaria', valor: (fila) => fila.usuaria },
+  { titulo: 'Teléfono', valor: (fila) => fila.telefono ?? '—' },
   {
-    titulo: 'Forma · cierre',
-    valor: (fila) =>
-      fila.formaFinalizacion && fila.fechaCierre
-        ? `${ETIQUETAS_FORMA_FINALIZACION[fila.formaFinalizacion]} · ${formatFechaGT(fila.fechaCierre)}`
-        : '—',
+    titulo: 'Tipo de proceso',
+    valor: (fila) => <TextoLargo ancho="min-w-[180px] max-w-[240px]">{ETIQUETAS_TIPO_PROCESO_JURIDICO[fila.tipo]}</TextoLargo>,
   },
   {
-    titulo: 'No. judicial',
-    // La tabla no parte líneas; este texto largo (juzgado + número) sí, con ancho acotado.
+    titulo: 'No. expediente juzgado',
     valor: (fila) =>
-      fila.numeroJudicial ? (
-        <span className="block min-w-[200px] max-w-[260px] whitespace-normal break-words">{fila.numeroJudicial}</span>
+      fila.numeroJudicial ? <TextoLargo ancho="min-w-[200px] max-w-[260px]">{fila.numeroJudicial}</TextoLargo> : '—',
+  },
+  {
+    titulo: 'Avance en el trámite',
+    valor: (fila) =>
+      fila.ultimoAvance ? (
+        <TextoLargo ancho="min-w-[240px] max-w-[320px]">
+          <span className="block text-[11px] text-gray-500">
+            {formatFechaGT(fila.ultimoAvance.fecha)} · {fila.ultimoAvance.tipo}
+          </span>
+          <span className="line-clamp-3" title={fila.ultimoAvance.contenido}>
+            {fila.ultimoAvance.contenido}
+          </span>
+        </TextoLargo>
       ) : (
-        '—'
+        <span className="text-gray-400">Sin avances</span>
       ),
   },
-  { titulo: 'Cartera', valor: (fila) => fila.cartera || '—' },
-  { titulo: 'Próxima audiencia', valor: (fila) => fechaHora(fila.proximaAudiencia) },
-  { titulo: 'Última realizada', valor: (fila) => fechaHora(fila.ultimaAudienciaRealizada) },
+  { titulo: 'Responsable', valor: (fila) => <Responsables fila={fila} /> },
+  { titulo: 'Etnia', valor: (fila) => fila.grupoEtnico },
+  { titulo: 'Edad', valor: (fila) => fila.edad },
+  { titulo: 'Tipo de violencia', valor: (fila) => fila.tipologia || '—' },
+  {
+    titulo: 'Procedencia',
+    valor: (fila) => (fila.procedencia ? <TextoLargo ancho="min-w-[180px] max-w-[240px]">{fila.procedencia}</TextoLargo> : '—'),
+  },
 ]
 
 export default function TablaReporteJuridico({ filas }: { filas: FilaReporteJuridico[] }) {
@@ -59,7 +79,7 @@ export default function TablaReporteJuridico({ filas }: { filas: FilaReporteJuri
         </thead>
         <tbody>
           {filas.map((fila) => (
-            <tr key={fila.numero} className="border-t border-gray-100 text-gray-700">
+            <tr key={fila.numero} className="border-t border-gray-100 align-top text-gray-700">
               {COLUMNAS.map((columna) => (
                 <td key={columna.titulo} className="px-3 py-2.5 tabular-nums">
                   {columna.valor(fila)}

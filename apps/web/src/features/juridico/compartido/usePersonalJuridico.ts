@@ -27,6 +27,8 @@ export function usePersonalJuridico() {
     return {
       abogadas: activas.filter((persona) => persona.tipo === 'ABOGADA'),
       procuradoras: activas.filter((persona) => persona.tipo === 'PROCURADORA'),
+      /** Quienes pueden ser responsables de una audiencia: abogadas y procuradoras. */
+      responsables: activas,
       cargando: personal === null && error === null,
       error,
     }

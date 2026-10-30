@@ -69,7 +69,7 @@ export class PersonalRepository implements IPersonalRepository {
       where: {
         id: params.id,
         area: params.area,
-        tipo: params.tipo,
+        tipo: { in: [...params.tipos] },
         activo: true,
       },
       select: { id: true, nombre: true },

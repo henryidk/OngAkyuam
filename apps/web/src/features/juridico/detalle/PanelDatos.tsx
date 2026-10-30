@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
+import { UserPlus } from 'lucide-react'
 import {
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
   editarDatosProcesoSchema,
@@ -72,7 +73,7 @@ function FormularioAsignacion({
 
   return (
     <section className={`${CLASE_TARJETA} border-2 border-brand-600 p-[15px] ring-4 ring-brand-50`}>
-      <h3 className="mb-3 text-sm font-semibold text-gray-900">Cambiar asignación</h3>
+      <h3 className="mb-3 text-sm font-semibold text-gray-900">Equipo responsable</h3>
       <form
         onSubmit={(evento) => {
           evento.preventDefault()
@@ -129,11 +130,60 @@ function Fila({ etiqueta, children }: { etiqueta: string; children: ReactNode })
   )
 }
 
-const SIN_ASIGNAR = <span className="text-gray-500">Sin asignar</span>
+function iniciales(nombre: string): string {
+  return nombre
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((parte) => parte[0]?.toUpperCase())
+    .join('')
+}
+
+/** Una persona del equipo con sus iniciales; si falta, un botón punteado para asignarla. */
+function MiembroEquipo({
+  cargo,
+  persona,
+  onAsignar,
+}: {
+  cargo: 'Abogada' | 'Procuradora'
+  persona: PersonalAsignado | null
+  onAsignar: () => void
+}) {
+  if (!persona) {
+    return (
+      <li>
+        <button
+          type="button"
+          onClick={onAsignar}
+          className="flex w-full items-center gap-2.5 rounded-lg border border-dashed border-gray-300 px-2.5 py-2 text-left text-[13px] text-gray-600 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700"
+        >
+          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gray-100">
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+          </span>
+          Asignar {cargo.toLowerCase()}
+        </button>
+      </li>
+    )
+  }
+  return (
+    <li className="flex items-center gap-2.5 px-2.5 py-1">
+      <span
+        aria-hidden="true"
+        className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700"
+      >
+        {iniciales(persona.nombre)}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[13px] font-medium text-gray-900">{persona.nombre}</span>
+        <span className="block text-xs text-gray-500">{cargo}</span>
+      </span>
+    </li>
+  )
+}
 
 /**
  * Datos del proceso. El No. interno y el No. judicial (con su acción) ya están en la cabecera: aquí
- * no se repiten. La asignación se cambia dentro de la misma tarjeta.
+ * no se repiten. El equipo (abogada y procuradora) se asigna dentro de la misma tarjeta.
  */
 export default function PanelDatos({ proceso, onGuardado, onConflicto }: PanelDatosProps) {
   const [editando, setEditando] = useState(false)
@@ -146,7 +196,7 @@ export default function PanelDatos({ proceso, onGuardado, onConflicto }: PanelDa
         onCancelar={() => setEditando(false)}
         onGuardado={() => {
           setEditando(false)
-          onGuardado('Asignación actualizada')
+          onGuardado('Equipo responsable actualizado')
         }}
       />
     )
@@ -154,10 +204,21 @@ export default function PanelDatos({ proceso, onGuardado, onConflicto }: PanelDa
 
   return (
     <section className={`${CLASE_TARJETA} border border-gray-200 px-[18px] py-4`}>
-      <h3 className="mb-3 text-sm font-semibold text-gray-900">Datos del proceso</h3>
+      <div className="mb-2 flex items-baseline justify-between gap-3">
+        <h3 className="text-sm font-semibold text-gray-900">Equipo responsable</h3>
+        {(proceso.abogada || proceso.procuradora) && (
+          <button type="button" onClick={() => setEditando(true)} className={CLASE_ACCION}>
+            Cambiar
+          </button>
+        )}
+      </div>
+      <ul className="-mx-2.5 space-y-1.5">
+        <MiembroEquipo cargo="Abogada" persona={proceso.abogada} onAsignar={() => setEditando(true)} />
+        <MiembroEquipo cargo="Procuradora" persona={proceso.procuradora} onAsignar={() => setEditando(true)} />
+      </ul>
+
+      <h3 className="mb-3 mt-4 border-t border-gray-100 pt-4 text-sm font-semibold text-gray-900">Datos del proceso</h3>
       <dl className="space-y-2.5">
-        <Fila etiqueta="Abogada">{proceso.abogada?.nombre ?? SIN_ASIGNAR}</Fila>
-        <Fila etiqueta="Procuradora">{proceso.procuradora?.nombre ?? SIN_ASIGNAR}</Fila>
         <Fila etiqueta="Inicio">
           <span className="tabular-nums">{formatFechaGT(proceso.fechaInicio)}</span>
         </Fila>
@@ -177,9 +238,6 @@ export default function PanelDatos({ proceso, onGuardado, onConflicto }: PanelDa
           </Fila>
         )}
       </dl>
-      <button type="button" onClick={() => setEditando(true)} className={`${CLASE_ACCION} mt-3`}>
-        Cambiar asignación
-      </button>
     </section>
   )
 }

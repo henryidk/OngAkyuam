@@ -1,6 +1,7 @@
 import { Search } from 'lucide-react'
 import { BUSQUEDA_MAX, ESTADOS_AUDIENCIA, ETIQUETAS_ESTADO_AUDIENCIA, type EstadoAudiencia } from '@akyuam/shared'
 import Switch from '../../../components/ui/Switch'
+import OpcionesPersonal from '../compartido/OpcionesPersonal'
 import { usePersonalJuridico } from '../compartido/usePersonalJuridico'
 import type { FiltrosAudiencias as Filtros } from './filtros'
 
@@ -15,7 +16,7 @@ interface FiltrosAudienciasProps {
 }
 
 export default function FiltrosAudiencias({ filtros, texto, onTexto, onCambiar }: FiltrosAudienciasProps) {
-  const { abogadas, cargando } = usePersonalJuridico()
+  const { responsables, cargando } = usePersonalJuridico()
   const historial = filtros.vista === 'historial'
 
   return (
@@ -43,11 +44,7 @@ export default function FiltrosAudiencias({ filtros, texto, onTexto, onCambiar }
           className={CLASE_CONTROL}
         >
           <option value="">Todas</option>
-          {abogadas.map((abogada) => (
-            <option key={abogada.id} value={abogada.id}>
-              {abogada.nombre}
-            </option>
-          ))}
+          <OpcionesPersonal personal={responsables} />
         </select>
       </label>
 

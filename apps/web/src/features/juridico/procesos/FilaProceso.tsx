@@ -165,7 +165,7 @@ export default function FilaProceso({
         <p className="text-sm leading-5 text-gray-900">{ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.tipo]}</p>
         <p className="mt-0.5 text-xs leading-4 text-gray-500">
           {ETIQUETAS_CATEGORIA_PROCESO[CATEGORIA_POR_TIPO_PROCESO[proceso.tipo]]} ·{' '}
-          {proceso.abogada?.nombre ?? 'Sin abogada asignada'}
+          {[proceso.abogada?.nombre, proceso.procuradora?.nombre].filter(Boolean).join(' y ') || 'Sin equipo asignado'}
         </p>
       </td>
       <td className="px-4 py-3 align-top">
@@ -191,7 +191,7 @@ export default function FilaProceso({
         />
       </td>
       <td className="px-4 py-3 align-top">
-        {/* La cabecera ya dice "Última actuación": aquí solo la fecha. */}
+        {/* La cabecera ya dice "Último avance": aquí solo la fecha. */}
         <p className="whitespace-nowrap text-sm leading-5 text-gray-700 tabular-nums">{fechaDeInstante(proceso.ultimaActuacionEn)}</p>
         {alerta && <p className="mt-0.5 text-xs leading-4 font-medium text-[#8a5a14]">● {alerta}</p>}
       </td>

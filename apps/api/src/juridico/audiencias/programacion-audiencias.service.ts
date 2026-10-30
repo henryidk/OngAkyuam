@@ -70,7 +70,7 @@ export class ProgramacionAudienciasService {
     }
     const inicio = parseLocalGT(datos.fechaHora);
     exigirHorarioAgenda(inicio, this.reloj.ahora());
-    const responsable = await this.asignacion.exigirAbogada(
+    const responsable = await this.asignacion.exigirResponsableAudiencia(
       datos.responsableId,
     );
 
@@ -165,7 +165,7 @@ export class ProgramacionAudienciasService {
     if (datos.responsableId === audiencia.responsable.id) {
       return;
     }
-    const responsable = await this.asignacion.exigirAbogada(
+    const responsable = await this.asignacion.exigirResponsableAudiencia(
       datos.responsableId,
     );
 
@@ -220,6 +220,6 @@ export class ProgramacionAudienciasService {
   ): Promise<PersonalAsignado> {
     return responsableId === audiencia.responsable.id
       ? Promise.resolve(audiencia.responsable)
-      : this.asignacion.exigirAbogada(responsableId);
+      : this.asignacion.exigirResponsableAudiencia(responsableId);
   }
 }

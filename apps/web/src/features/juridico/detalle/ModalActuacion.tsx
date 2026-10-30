@@ -24,7 +24,7 @@ export default function ModalActuacion({ proceso, onCerrar, onHecho, onConflicto
   const { enviando, error, enviar } = useEnvio(onConflicto)
   const cola = useColaActuacion(proceso.id)
 
-  const terminar = () => onHecho('Actuación registrada')
+  const terminar = () => onHecho('Avance registrado')
 
   function guardar() {
     const validado = registrarActuacionSchema.safeParse({ tipo, contenido })
@@ -60,7 +60,7 @@ export default function ModalActuacion({ proceso, onCerrar, onHecho, onConflicto
 
   return (
     <MarcoModalAudiencia
-      titulo="Registrar actuación"
+      titulo="Registrar avance"
       subtitulo={`Queda en la bitácora del proceso ${proceso.codigo} con su nombre y la fecha.`}
       onCerrar={cerrar}
       pie={
@@ -82,13 +82,13 @@ export default function ModalActuacion({ proceso, onCerrar, onHecho, onConflicto
     >
       {guardado ? (
         <p role="status" className="text-sm font-medium text-gray-900">
-          Actuación guardada. {subiendo ? 'Subiendo documentos…' : 'Revise los documentos antes de cerrar.'}
+          Avance guardado. {subiendo ? 'Subiendo documentos…' : 'Revise los documentos antes de cerrar.'}
         </p>
       ) : (
         <>
           <div className="space-y-1">
             <label className={CLASE_ETIQUETA}>
-              <span>Tipo de actuación</span>
+              <span>Tipo de avance</span>
               <input
                 type="text"
                 value={tipo}

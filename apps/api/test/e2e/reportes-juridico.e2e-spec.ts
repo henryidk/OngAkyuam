@@ -4,7 +4,6 @@ import type { Rol, Usuario } from '@prisma/client';
 import {
   anioCalendarioGT,
   fechaCalendarioGT,
-  horaGT,
   type FilaPoblacionJuridico,
   type ReportePoblacionJuridico,
   type ReporteProcesosJuridico,
@@ -20,7 +19,6 @@ import {
   crearExpediente,
   crearProceso,
   crearUsuario,
-  instanteFuturo,
   sesionDe,
   type Sesion,
 } from './fixtures';
@@ -275,9 +273,16 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
   });
 
   describe('B · procesos', () => {
-    it('trae totales, cartera y audiencias, y filtra por cartera y tipo', async () => {
+    it('trae totales, responsables y el último avance, y filtra por responsable, cartera y tipo', async () => {
       const abogada = await crearAbogada(prisma);
-      const { expediente } = await expedienteConProcesos([
+      const procuradora = await prisma.personal.create({
+        data: {
+          area: 'JURIDICO',
+          tipo: 'PROCURADORA',
+          nombre: `${MARCA} Procuradora ${randomInt(1e9)}`,
+        },
+      });
+      const { expediente, usuaria } = await expedienteConProcesos([
         { fechaInicio: hoy },
         { fechaInicio: `${anio - 2}-03-01` },
       ]);
@@ -290,34 +295,37 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
         data: { abogadaId: abogada.id },
       });
       await prisma.procesoJuridico.update({
+        where: { id: procesos[0].id },
+        data: { procuradoraId: procuradora.id },
+      });
+      await prisma.procesoJuridico.update({
         where: { id: procesos[1].id },
         data: { tipo: 'DIVORCIO_MUTUO_ACUERDO' },
       });
-      const proxima = instanteFuturo();
-      const realizada = new Date('2025-02-03T15:30:00.000Z');
-      await prisma.audienciaJuridica.create({
+      // El avance a mano es el que cuenta, aunque después haya una entrada del sistema.
+      await prisma.notaAvanceProceso.create({
         data: {
           procesoId: procesos[0].id,
-          responsableId: abogada.id,
-          inicio: proxima,
-          creadoPorId: juridico.id,
+          tipo: 'Memorial',
+          contenido: 'Dato ficticio',
+          registradoPorId: juridico.id,
+          createdAt: new Date('2025-02-03T15:30:00.000Z'),
         },
       });
-      await prisma.audienciaJuridica.create({
+      await prisma.notaAvanceProceso.create({
         data: {
           procesoId: procesos[0].id,
-          responsableId: abogada.id,
-          inicio: realizada,
-          estado: 'REALIZADA',
-          resultadoEn: new Date('2025-02-03T17:00:00.000Z'),
-          observaciones: 'Dato ficticio',
-          creadoPorId: juridico.id,
+          tipo: 'Sistema',
+          contenido: 'Cambio de estado',
+          esSistema: true,
+          registradoPorId: juridico.id,
+          createdAt: new Date('2025-02-04T15:30:00.000Z'),
         },
       });
 
       const todos = (
         await pedir(
-          `/api/juridico/reportes/procesos?cartera=TODOS&desde=2000-01-01&hasta=${hoy}&abogadaId=${abogada.id}`,
+          `/api/juridico/reportes/procesos?cartera=TODOS&desde=2000-01-01&hasta=${hoy}&responsableId=${abogada.id}`,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
 
@@ -328,31 +336,47 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       });
       const [antiguo, nuevo] = todos.vistaPrevia;
       expect(antiguo).toMatchObject({
-        numeroProceso: 2,
-        cartera: `Seguimiento (${anio - 2})`,
-        proximaAudiencia: null,
+        numeroInterno: `${expediente.numero} · Proceso 2`,
+        tipo: 'DIVORCIO_MUTUO_ACUERDO',
+        ultimoAvance: null,
+        abogada: abogada.nombre,
+        procuradora: null,
       });
       expect(nuevo).toMatchObject({
-        expedienteNumero: expediente.numero,
-        numeroProceso: 1,
-        cartera: String(anio),
-        proximaAudiencia: {
-          fecha: fechaCalendarioGT(proxima),
-          hora: horaGT(proxima),
+        numeroInterno: expediente.numero,
+        usuaria: `${usuaria.nombres} ${usuaria.apellidos}`,
+        ultimoAvance: {
+          fecha: '2025-02-03',
+          tipo: 'Memorial',
+          contenido: 'Dato ficticio',
         },
-        ultimaAudienciaRealizada: { fecha: '2025-02-03', hora: '09:30' },
+        abogada: abogada.nombre,
+        procuradora: procuradora.nombre,
+        tipologia: 'Psicológica',
       });
+
+      // La procuradora solo ve el proceso que tiene asignado.
+      const deProcuradora = (
+        await pedir(
+          `/api/juridico/reportes/procesos?cartera=TODOS&desde=2000-01-01&hasta=${hoy}&responsableId=${procuradora.id}`,
+        ).expect(200)
+      ).body as ReporteProcesosJuridico;
+      expect(deProcuradora.vistaPrevia.map((f) => f.numeroInterno)).toEqual([
+        expediente.numero,
+      ]);
 
       const seguimiento = (
         await pedir(
-          `/api/juridico/reportes/procesos?cartera=SEGUIMIENTO&abogadaId=${abogada.id}`,
+          `/api/juridico/reportes/procesos?cartera=SEGUIMIENTO&responsableId=${abogada.id}`,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
-      expect(seguimiento.vistaPrevia.map((f) => f.numeroProceso)).toEqual([2]);
+      expect(seguimiento.vistaPrevia.map((f) => f.numeroInterno)).toEqual([
+        `${expediente.numero} · Proceso 2`,
+      ]);
 
       const porTipo = (
         await pedir(
-          `/api/juridico/reportes/procesos?cartera=ANIO&abogadaId=${abogada.id}&tipo=DIVORCIO_MUTUO_ACUERDO`,
+          `/api/juridico/reportes/procesos?cartera=ANIO&responsableId=${abogada.id}&tipo=DIVORCIO_MUTUO_ACUERDO`,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
       expect(porTipo.totales.procesos).toBe(0);
@@ -361,7 +385,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
     it('el Excel se descarga sin caché, con un nombre sin datos personales, y se audita', async () => {
       const abogada = await crearAbogada(prisma);
       const respuesta = await pedir(
-        `/api/juridico/reportes/procesos.xlsx?cartera=SEGUIMIENTO&abogadaId=${abogada.id}`,
+        `/api/juridico/reportes/procesos.xlsx?cartera=SEGUIMIENTO&responsableId=${abogada.id}`,
       ).expect(200);
 
       expect(respuesta.headers['content-type']).toContain(TIPO_XLSX);
@@ -376,7 +400,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       expect(evento?.detalles).toMatchObject({
         reporte: 'PROCESOS_JURIDICOS',
         cartera: 'SEGUIMIENTO',
-        abogadaId: abogada.id,
+        responsableId: abogada.id,
         filas: 0,
       });
     });

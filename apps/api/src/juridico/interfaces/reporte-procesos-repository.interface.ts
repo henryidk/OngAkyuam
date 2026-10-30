@@ -1,6 +1,9 @@
 import type {
   EstadoVisibleProceso,
   FormaFinalizacionProceso,
+  GRUPOS_ETNICOS,
+  MUNICIPIOS_ALTA_VERAPAZ,
+  TIPOLOGIAS_DELITO,
   TipoProcesoJuridico,
 } from '@akyuam/shared';
 import type { FiltroCarteraReporte } from '../compartido/sql';
@@ -12,8 +15,8 @@ export const REPORTE_PROCESOS_REPOSITORY = Symbol(
 export interface FiltroReporteProcesos extends FiltroCarteraReporte {
   /** null = todos los estados. */
   estado: EstadoVisibleProceso | null;
-  /** null = todas las abogadas, incluidos los procesos sin abogada. */
-  abogadaId: string | null;
+  /** Abogada o procuradora del proceso; null = todo el personal, incluidos los procesos sin asignar. */
+  responsableId: string | null;
   /** null = todos los tipos. */
   tipo: TipoProcesoJuridico | null;
 }
@@ -24,20 +27,24 @@ export interface FilaProcesoRow {
   consecutivo: number;
   expedienteNumero: string;
   numeroJudicial: string | null;
-  fechaInicio: string;
-  fechaCierre: string | null;
   tipo: TipoProcesoJuridico;
-  estado: EstadoVisibleProceso;
-  /** Ni finalizado ni abandonado: decide la columna Cartera. */
-  abierto: boolean;
-  formaFinalizacion: FormaFinalizacionProceso | null;
   abogada: string | null;
+  procuradora: string | null;
   nombres: string;
   apellidos: string;
-  /** Inicio de la audiencia programada más cercana. */
-  proximaAudiencia: Date | null;
-  /** Inicio de la última audiencia con resultado "Realizada". */
-  ultimaAudienciaRealizada: Date | null;
+  telefono: string | null;
+  /** Años cumplidos al iniciar el proceso. */
+  edad: number;
+  grupoEtnico: (typeof GRUPOS_ETNICOS)[number];
+  municipio: (typeof MUNICIPIOS_ALTA_VERAPAZ)[number] | null;
+  departamentoOtro: string | null;
+  municipioOtro: string | null;
+  ubicacionGeografica: string | null;
+  tipologias: (typeof TIPOLOGIAS_DELITO)[number][];
+  /** El último avance registrado por una persona; las entradas del sistema no cuentan. */
+  ultimoAvanceEn: Date | null;
+  ultimoAvanceTipo: string | null;
+  ultimoAvanceContenido: string | null;
 }
 
 /** Cuántos procesos hay por (estado, forma, tipo); el servicio arma cada desglose. */

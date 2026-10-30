@@ -25,7 +25,8 @@ export interface EditarPersonalParams {
 export interface BuscarActivoParams {
   id: string;
   area: Rol;
-  tipo: string;
+  /** Cualquiera de estos cargos. */
+  tipos: readonly string[];
 }
 
 export interface IPersonalRepository {

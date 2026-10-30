@@ -3,6 +3,7 @@ import { cambiarResponsableAudienciaSchema, formatFechaGT } from '@akyuam/shared
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import { cambiarResponsableAudiencia } from '../api/audiencias.api'
 import { CLASE_CAMPO, CLASE_ETIQUETA } from '../compartido/campos'
+import OpcionesPersonal from '../compartido/OpcionesPersonal'
 import { usePersonalJuridico } from '../compartido/usePersonalJuridico'
 import { useEnvio } from '../detalle/useEnvio'
 import AgendaDelDia from './AgendaDelDia'
@@ -12,12 +13,12 @@ import { useDisponibilidad } from './useDisponibilidad'
 
 /** Cambia quién va a la audiencia, sin moverla: avisa si la nueva responsable ya tiene esa hora. */
 export default function ModalResponsableAudiencia({ audiencia, onCerrar, onHecho, onConflicto }: PropsModalAudiencia) {
-  const { abogadas, cargando, error: errorPersonal } = usePersonalJuridico()
+  const { responsables, cargando, error: errorPersonal } = usePersonalJuridico()
   const [responsableId, setResponsableId] = useState('')
   const { enviando, error, setError, enviar } = useEnvio(onConflicto)
   const disponibilidad = useDisponibilidad(responsableId, audiencia.fecha)
   const choque = disponibilidad.ocupadas ? audienciaEnHora(disponibilidad.ocupadas, audiencia.hora, audiencia.id) : undefined
-  const otras = abogadas.filter((abogada) => abogada.id !== audiencia.responsable.id)
+  const otras = responsables.filter((persona) => persona.id !== audiencia.responsable.id)
 
   function confirmar() {
     const validado = cambiarResponsableAudienciaSchema.safeParse({ responsableId, version: audiencia.version })
@@ -54,12 +55,8 @@ export default function ModalResponsableAudiencia({ audiencia, onCerrar, onHecho
           }}
           className={CLASE_CAMPO}
         >
-          <option value="">{cargando ? 'Cargando…' : 'Elija la abogada…'}</option>
-          {otras.map((abogada) => (
-            <option key={abogada.id} value={abogada.id}>
-              {abogada.nombre}
-            </option>
-          ))}
+          <option value="">{cargando ? 'Cargando…' : 'Elija la responsable…'}</option>
+          <OpcionesPersonal personal={otras} />
         </select>
       </label>
       {responsableId && <AgendaDelDia {...disponibilidad} />}

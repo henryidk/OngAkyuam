@@ -1,6 +1,7 @@
 import { Download } from 'lucide-react'
 import type { FiltroEstadoReporteJuridico, PersonalDto, ReporteProcesosJuridicoQuery } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
+import OpcionesPersonal from '../compartido/OpcionesPersonal'
 
 const OPCIONES_ESTADO: { valor: FiltroEstadoReporteJuridico; etiqueta: string }[] = [
   { valor: 'TODOS', etiqueta: 'Todos' },
@@ -16,8 +17,8 @@ const CLASES_CAMPO =
 interface FiltrosReporteJuridicoProps {
   filtros: ReporteProcesosJuridicoQuery
   onCambiar: (filtros: ReporteProcesosJuridicoQuery) => void
-  /** Activas e inactivas: un reporte de años anteriores puede necesitar a quien ya no está. */
-  abogadas: PersonalDto[]
+  /** Abogadas y procuradoras, activas e inactivas: un reporte de años anteriores puede necesitar a quien ya no está. */
+  personal: PersonalDto[]
   onDescargar: () => void
   descargando: boolean
   puedeDescargar: boolean
@@ -26,7 +27,7 @@ interface FiltrosReporteJuridicoProps {
 export default function FiltrosReporteJuridico({
   filtros,
   onCambiar,
-  abogadas,
+  personal,
   onDescargar,
   descargando,
   puedeDescargar,
@@ -70,18 +71,14 @@ export default function FiltrosReporteJuridico({
         </select>
       </label>
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-gray-600">Abogada</span>
+        <span className="mb-1 block text-xs font-medium text-gray-600">Responsable</span>
         <select
-          value={filtros.abogadaId ?? ''}
-          onChange={(event) => onCambiar({ ...filtros, abogadaId: event.target.value || undefined })}
+          value={filtros.responsableId ?? ''}
+          onChange={(event) => onCambiar({ ...filtros, responsableId: event.target.value || undefined })}
           className={CLASES_CAMPO}
         >
-          <option value="">Todas</option>
-          {abogadas.map((abogada) => (
-            <option key={abogada.id} value={abogada.id}>
-              {abogada.activo ? abogada.nombre : `${abogada.nombre} (inactiva)`}
-            </option>
-          ))}
+          <option value="">Todo el personal</option>
+          <OpcionesPersonal personal={personal} />
         </select>
       </label>
       <Button

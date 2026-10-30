@@ -38,7 +38,7 @@ const COLUMNAS: { titulo: string; ancho: string }[] = [
   { titulo: 'No. judicial', ancho: '' },
   // Puede ser una audiencia ya pasada que falta registrar: por eso no dice "Próxima".
   { titulo: 'Audiencia', ancho: 'w-[210px]' },
-  { titulo: 'Última actuación', ancho: 'w-[150px]' },
+  { titulo: 'Último avance', ancho: 'w-[150px]' },
 ]
 
 function FilasEsqueleto() {

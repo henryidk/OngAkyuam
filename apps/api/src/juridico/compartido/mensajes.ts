@@ -18,7 +18,7 @@ export const MENSAJE_PERSONAL_INEXISTENTE =
 export const MENSAJE_REFERENCIA_NO_PENDIENTE = 'La referencia ya fue atendida';
 export const MENSAJE_CARPETA_DUPLICADA = 'Ya existe una carpeta con ese nombre';
 export const MENSAJE_SIN_ACCESO_AUDIENCIA = 'No tiene acceso a esta audiencia';
-export const MENSAJE_SIN_ACCESO_ACTUACION = 'No tiene acceso a esta actuación';
+export const MENSAJE_SIN_ACCESO_ACTUACION = 'No tiene acceso a este avance';
 export const MENSAJE_CONFLICTO_VERSION_AUDIENCIA =
   'Otra persona modificó esta audiencia. Recargue para ver la versión actual';
 export const MENSAJE_ACCION_AUDIENCIA_NO_DISPONIBLE =

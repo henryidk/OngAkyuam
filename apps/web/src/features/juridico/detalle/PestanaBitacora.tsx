@@ -58,7 +58,7 @@ function Actuacion({
         >
           <Paperclip size={13} aria-hidden="true" />
           Adjuntar documento
-          <span className="sr-only"> a la actuación «{entrada.tipo}»</span>
+          <span className="sr-only"> al avance «{entrada.tipo}»</span>
         </button>
       </div>
     </li>
@@ -115,8 +115,8 @@ export default function PestanaBitacora() {
         <EmptyState
           Icono={NotebookPen}
           titulo="La bitácora está vacía"
-          descripcion="Registre aquí cada actuación: escritos, audiencias, notificaciones y seguimiento."
-          accion={<Button onClick={abrirActuacion}>Registrar actuación</Button>}
+          descripcion="Registre aquí cada avance: escritos, audiencias, notificaciones y seguimiento."
+          accion={<Button onClick={abrirActuacion}>Registrar avance</Button>}
         />
       ) : (
         <section aria-label="Bitácora del proceso" className={CLASE_TARJETA}>
@@ -127,7 +127,7 @@ export default function PestanaBitacora() {
               className="flex w-full cursor-text items-center gap-2.5 rounded-lg border border-gray-300 bg-gray-50 px-3.5 py-2.5 text-left text-sm text-gray-500 hover:border-gray-400 hover:bg-white"
             >
               <PenLine size={16} aria-hidden="true" className="shrink-0" />
-              <span className="truncate">¿Qué se hizo en el proceso? Registrar una actuación…</span>
+              <span className="truncate">¿Qué se hizo en el proceso? Registrar un avance…</span>
             </button>
           </div>
 

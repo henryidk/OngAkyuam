@@ -8,6 +8,9 @@ const MENSAJES: Record<TipoPersonalJuridico, string> = {
   PROCURADORA: 'La procuradora seleccionada no existe o no está activa',
 };
 
+export const MENSAJE_RESPONSABLE_AUDIENCIA_INVALIDA =
+  'La responsable seleccionada no existe o no está activa';
+
 /**
  * Confirma contra `Personal` (existe, es de Jurídico, tiene el cargo correcto y está activa)
  * antes de guardar una asignación, en vez de depender solo de la llave foránea: así el error
@@ -24,35 +27,35 @@ export class AsignacionPersonalService {
     abogadaId: string | null,
     procuradoraId: string | null,
   ): Promise<void> {
-    await this.validarCargo(abogadaId, 'ABOGADA');
-    await this.validarCargo(procuradoraId, 'PROCURADORA');
-  }
-
-  /** La responsable de una audiencia: siempre una abogada activa de Jurídico. */
-  exigirAbogada(id: string): Promise<PersonalAsignado> {
-    return this.exigirCargo(id, 'ABOGADA');
-  }
-
-  private async validarCargo(
-    id: string | null,
-    tipo: TipoPersonalJuridico,
-  ): Promise<void> {
-    if (id) {
-      await this.exigirCargo(id, tipo);
+    if (abogadaId) {
+      await this.exigir(abogadaId, ['ABOGADA'], MENSAJES.ABOGADA);
+    }
+    if (procuradoraId) {
+      await this.exigir(procuradoraId, ['PROCURADORA'], MENSAJES.PROCURADORA);
     }
   }
 
-  private async exigirCargo(
+  /** La responsable de una audiencia: una abogada o una procuradora activa de Jurídico. */
+  exigirResponsableAudiencia(id: string): Promise<PersonalAsignado> {
+    return this.exigir(
+      id,
+      ['ABOGADA', 'PROCURADORA'],
+      MENSAJE_RESPONSABLE_AUDIENCIA_INVALIDA,
+    );
+  }
+
+  private async exigir(
     id: string,
-    tipo: TipoPersonalJuridico,
+    tipos: TipoPersonalJuridico[],
+    mensaje: string,
   ): Promise<PersonalAsignado> {
     const personal = await this.personalRepository.buscarActivo({
       id,
       area: 'JURIDICO',
-      tipo,
+      tipos,
     });
     if (!personal) {
-      throw new BadRequestException(MENSAJES[tipo]);
+      throw new BadRequestException(mensaje);
     }
     return personal;
   }

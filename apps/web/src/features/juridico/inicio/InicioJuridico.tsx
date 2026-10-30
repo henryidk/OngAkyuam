@@ -124,7 +124,7 @@ function Indicadores({ inicio }: { inicio: InicioJuridicoDto }) {
         destino={RUTAS_JURIDICO.procesos()}
       />
       <Indicador
-        etiqueta={`Sin actuación en ${DIAS_ALERTA_INACTIVIDAD} días`}
+        etiqueta={`Sin avances en ${DIAS_ALERTA_INACTIVIDAD} días`}
         valor={requierenAtencion.total}
         detalle={requierenAtencion.total === 0 ? 'Todos tienen movimiento reciente' : 'En trámite, sin movimiento'}
         destino={RUTAS_JURIDICO.procesos()}
@@ -226,7 +226,7 @@ function SinMovimiento({ cola }: { cola: InicioJuridicoDto['requierenAtencion'] 
   return (
     <Seccion
       titulo="Procesos sin movimiento"
-      ayuda={`En trámite y sin ninguna actuación en ${DIAS_ALERTA_INACTIVIDAD} días o más. El más olvidado va primero.`}
+      ayuda={`En trámite y sin ningún avance en ${DIAS_ALERTA_INACTIVIDAD} días o más. El más olvidado va primero.`}
     >
       {cola.items.map((proceso) => (
         <FilaProcesoInicio
@@ -244,7 +244,7 @@ function MisProcesos({ cola }: { cola: NonNullable<InicioJuridicoDto['misProceso
   return (
     <Seccion
       titulo="Mis procesos en trámite"
-      ayuda="Donde figuras como abogada o procuradora. El de actuación más reciente va primero."
+      ayuda="Donde figuras como abogada o procuradora. El de avance más reciente va primero."
       enlace={
         cola.total > cola.items.length
           ? { texto: `Ver los ${cola.total}`, destino: RUTAS_JURIDICO.procesos({ mios: true }) }

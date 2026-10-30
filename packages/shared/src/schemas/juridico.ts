@@ -146,10 +146,10 @@ export const registrarActuacionSchema = z.object({
     .pipe(
       z
         .string()
-        .min(1, 'Escriba el tipo de actuación')
+        .min(1, 'Escriba el tipo de avance')
         .max(LARGO_MAXIMO_TIPO_ACTUACION, `Máximo ${LARGO_MAXIMO_TIPO_ACTUACION} caracteres`),
     ),
-  contenido: z.string().trim().min(1, 'Describa la actuación').max(CONTENIDO_BITACORA_MAX),
+  contenido: z.string().trim().min(1, 'Describa el avance').max(CONTENIDO_BITACORA_MAX),
 })
 export type RegistrarActuacionInput = z.infer<typeof registrarActuacionSchema>
 
@@ -583,8 +583,11 @@ function validarRangoCartera(
 export const reporteProcesosJuridicoQuerySchema = filtroCarteraReporteSchema
   .extend({
     estado: z.enum(FILTROS_ESTADO_REPORTE_JURIDICO).default('TODOS'),
-    /** Sin valor = todas las abogadas, incluidos los procesos sin abogada asignada. */
-    abogadaId: z.uuid().optional(),
+    /**
+     * Abogada o procuradora asignada al proceso. Sin valor = todo el personal, incluidos los
+     * procesos sin nadie asignado.
+     */
+    responsableId: z.uuid().optional(),
     /** Sin valor = todos los tipos de proceso. */
     tipo: z.enum(TIPOS_PROCESO_JURIDICO).optional(),
   })
@@ -595,33 +598,37 @@ export type ReporteProcesosJuridicoQuery = z.infer<typeof reporteProcesosJuridic
 export const reportePoblacionJuridicoQuerySchema = filtroCarteraReporteSchema.superRefine(validarRangoCartera)
 export type ReportePoblacionJuridicoQuery = z.infer<typeof reportePoblacionJuridicoQuerySchema>
 
-/** Fecha de calendario y hora de Guatemala de una audiencia, ya convertidas. */
-export interface FechaHoraAudienciaReporte {
+/** El avance más reciente que registró una persona (no las entradas automáticas del sistema). */
+export interface AvanceReporte {
+  /** Fecha de calendario de Guatemala en que se registró. */
   fecha: string
-  hora: string
+  tipo: string
+  contenido: string
 }
 
-/** Una fila del reporte B = un proceso, para la coordinación del trabajo diario. */
+/**
+ * Una fila del reporte B = un proceso, para la coordinación del trabajo diario. Los datos de la
+ * usuaria (teléfono, etnia, edad, tipología, procedencia) los registra Trabajo Social.
+ */
 export interface FilaReporteJuridico {
   /** Correlativo del reporte, no se guarda en la base. */
   numero: number
-  /** No. de caso del expediente: "05-2026". */
-  expedienteNumero: string
-  /** Consecutivo del proceso dentro del expediente: 1, 2… */
-  numeroProceso: number
+  /** No. interno del proceso: "05-2026" o, desde el segundo, "05-2026 · Proceso 2". */
+  numeroInterno: string
   usuaria: string
+  telefono: string | null
   tipo: TipoProcesoJuridico
-  fechaInicio: string
-  abogada: string | null
-  estado: EstadoVisibleProceso
-  formaFinalizacion: FormaFinalizacionProceso | null
-  fechaCierre: string | null
   numeroJudicial: string | null
-  /** "2026", "Seguimiento (2024)" o "" si empezó antes y ya se cerró (`etiquetaCartera`). */
-  cartera: string
-  /** La programada más cercana, aunque ya haya pasado sin resultado. */
-  proximaAudiencia: FechaHoraAudienciaReporte | null
-  ultimaAudienciaRealizada: FechaHoraAudienciaReporte | null
+  ultimoAvance: AvanceReporte | null
+  abogada: string | null
+  procuradora: string | null
+  grupoEtnico: string
+  /** Años cumplidos al iniciar el proceso. */
+  edad: number
+  /** Tipología del delito del expediente: "Física, Psicológica". */
+  tipologia: string
+  /** "Aldea Chicoj, San Pedro Carchá, Alta Verapaz": lo que se haya registrado, de lo particular a lo general. */
+  procedencia: string
 }
 
 /** `GET /juridico/reportes/procesos`: totales, desgloses y las primeras filas. */

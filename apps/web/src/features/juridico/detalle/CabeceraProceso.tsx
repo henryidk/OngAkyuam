@@ -61,13 +61,13 @@ function NumeroJudicial({ numero, onEditar }: { numero: string | null; onEditar:
   )
 }
 
-/** "Inició el 21/10/2026 · última actuación hoy" o, ya cerrado, "· finalizó el 23/10/2026". */
+/** "Inició el 21/10/2026 · último avance hoy" o, ya cerrado, "· finalizó el 23/10/2026". */
 function textoTrayectoria(proceso: ProcesoDetalle): string {
   const inicio = `Inició el ${formatFechaGT(proceso.fechaInicio)}`
   if (proceso.estadoVisible === 'FINALIZADO' && proceso.fechaCierre) {
     return `${inicio} · finalizó el ${formatFechaGT(proceso.fechaCierre)}`
   }
-  return `${inicio} · última actuación ${textoDiaRelativo(proceso.ultimaActuacionEn)}`
+  return `${inicio} · último avance ${textoDiaRelativo(proceso.ultimaActuacionEn)}`
 }
 
 /** Cerrar o pausar va en el menú: es poco frecuente y no debe competir con el trabajo diario. */
@@ -145,7 +145,7 @@ export default function CabeceraProceso({
             </Button>
           )}
           <Button tamano="md" onClick={onActuacion}>
-            Registrar actuación
+            Registrar avance
           </Button>
           {menu.length > 0 && <MenuAcciones opciones={menu} etiqueta="Más acciones del proceso" boton="borde" />}
         </div>

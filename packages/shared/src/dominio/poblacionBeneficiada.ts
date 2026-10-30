@@ -33,3 +33,12 @@ export function lugarParaReporte(lugar: LugarUsuaria): { departamento: string; m
 export function etiquetasTipologia(tipologias: readonly (typeof TIPOLOGIAS_DELITO)[number][]): string {
   return tipologias.map((tipologia) => ETIQUETAS_TIPOLOGIA_DELITO[tipologia]).join(', ')
 }
+
+/**
+ * Procedencia en una sola celda, de lo particular a lo general: "Aldea Chicoj, San Pedro Carchá,
+ * Alta Verapaz". Omite lo que no se registró.
+ */
+export function procedenciaParaReporte(lugar: LugarUsuaria & { ubicacionGeografica: string | null }): string {
+  const { departamento, municipio } = lugarParaReporte(lugar)
+  return [lugar.ubicacionGeografica?.trim(), municipio, departamento].filter(Boolean).join(', ')
+}

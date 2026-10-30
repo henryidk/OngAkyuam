@@ -121,7 +121,7 @@ describe('ProgramacionAudienciasService', () => {
       sinEscrituras();
     });
 
-    it('400 si la responsable no es una abogada activa', async () => {
+    it('400 si la responsable no es una abogada ni procuradora activa', async () => {
       await expect(
         service.agendar(
           PROCESO_ID,
@@ -132,7 +132,7 @@ describe('ProgramacionAudienciasService', () => {
       expect(personal.buscarActivo).toHaveBeenCalledWith({
         id: NUEVA_ID,
         area: 'JURIDICO',
-        tipo: 'ABOGADA',
+        tipos: ['ABOGADA', 'PROCURADORA'],
       });
       sinEscrituras();
     });
@@ -369,7 +369,7 @@ describe('ProgramacionAudienciasService', () => {
       );
     });
 
-    it('una responsable distinta debe ser abogada activa', async () => {
+    it('una responsable distinta debe ser abogada o procuradora activa', async () => {
       await service.reprogramar(
         AUDIENCIA_ID,
         reprogramacion({ responsableId: OTRA_ABOGADA_ID }),

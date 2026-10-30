@@ -7,15 +7,17 @@ import {
   ETIQUETAS_CATEGORIA_PROCESO,
   ETIQUETAS_ESTADO_VISIBLE,
   ETIQUETAS_FORMA_FINALIZACION,
+  ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
-  etiquetaCartera,
+  etiquetaProceso,
+  etiquetasTipologia,
   fechaCalendarioGT,
   FILAS_VISTA_PREVIA_REPORTE,
   formatFechaGT,
   FORMAS_FINALIZACION_PROCESO,
-  horaGT,
+  procedenciaParaReporte,
+  type AvanceReporte,
   type ConteoReporte,
-  type FechaHoraAudienciaReporte,
   type FilaReporteJuridico,
   type ReporteProcesosJuridico,
   type ReporteProcesosJuridicoQuery,
@@ -50,7 +52,7 @@ function aFiltro(
   return {
     ...aFiltroCartera(query, anioActual),
     estado: query.estado === 'TODOS' ? null : query.estado,
-    abogadaId: query.abogadaId ?? null,
+    responsableId: query.responsableId ?? null,
     tipo: query.tipo ?? null,
   };
 }
@@ -61,43 +63,37 @@ function detallesAuditoria(filtro: FiltroReporteProcesos) {
     reporte: 'PROCESOS_JURIDICOS',
     ...detallesCartera(filtro),
     estado: filtro.estado ?? 'TODOS',
-    abogadaId: filtro.abogadaId,
+    responsableId: filtro.responsableId,
     tipo: filtro.tipo,
   };
 }
 
-function fechaHoraAudiencia(
-  inicio: Date | null,
-): FechaHoraAudienciaReporte | null {
-  return inicio
-    ? { fecha: fechaCalendarioGT(inicio), hora: horaGT(inicio) }
+function ultimoAvance(row: FilaProcesoRow): AvanceReporte | null {
+  return row.ultimoAvanceEn
+    ? {
+        fecha: fechaCalendarioGT(row.ultimoAvanceEn),
+        tipo: row.ultimoAvanceTipo ?? '',
+        contenido: row.ultimoAvanceContenido ?? '',
+      }
     : null;
 }
 
-export function aFilaReporte(
-  row: FilaProcesoRow,
-  anioActual: number,
-): FilaReporteJuridico {
-  // La forma y la fecha de cierre solo describen un proceso finalizado.
-  const finalizado = row.estado === 'FINALIZADO';
+/** Lugar, etnia y tipología con las mismas funciones que los reportes de población. */
+export function aFilaReporte(row: FilaProcesoRow): FilaReporteJuridico {
   return {
     numero: row.numero,
-    expedienteNumero: row.expedienteNumero,
-    numeroProceso: row.consecutivo,
+    numeroInterno: etiquetaProceso(row.expedienteNumero, row.consecutivo),
     usuaria: `${row.nombres} ${row.apellidos}`,
+    telefono: row.telefono,
     tipo: row.tipo,
-    fechaInicio: row.fechaInicio,
-    abogada: row.abogada,
-    estado: row.estado,
-    formaFinalizacion: finalizado ? row.formaFinalizacion : null,
-    fechaCierre: finalizado ? row.fechaCierre : null,
     numeroJudicial: row.numeroJudicial,
-    cartera: etiquetaCartera(
-      { fechaInicio: row.fechaInicio, abierto: row.abierto },
-      anioActual,
-    ),
-    proximaAudiencia: fechaHoraAudiencia(row.proximaAudiencia),
-    ultimaAudienciaRealizada: fechaHoraAudiencia(row.ultimaAudienciaRealizada),
+    ultimoAvance: ultimoAvance(row),
+    abogada: row.abogada,
+    procuradora: row.procuradora,
+    grupoEtnico: ETIQUETAS_GRUPO_ETNICO[row.grupoEtnico],
+    edad: row.edad,
+    tipologia: etiquetasTipologia(row.tipologias),
+    procedencia: procedenciaParaReporte(row),
   };
 }
 
@@ -153,47 +149,55 @@ export function armarDesgloses(
   return { estado, formaFinalizacion, categoria };
 }
 
-/** Columnas del Excel, en el mismo orden que la vista previa (planaudiencias.md §8.6, B). */
+/** Columnas del Excel, en el orden que pidió Jurídico; la vista previa usa el mismo. */
 export const COLUMNAS_PROCESOS: ColumnaHoja[] = [
   { titulo: 'No.', ancho: 6, tipo: 'numero' },
-  { titulo: 'No. expediente', ancho: 14, tipo: 'texto' },
-  { titulo: 'No. proceso', ancho: 10, tipo: 'numero' },
-  { titulo: 'Usuaria', ancho: 32, tipo: 'texto' },
+  { titulo: 'No. expediente', ancho: 20, tipo: 'texto' },
+  { titulo: 'Nombre de la usuaria', ancho: 32, tipo: 'texto' },
+  { titulo: 'Teléfono', ancho: 14, tipo: 'texto' },
   { titulo: 'Tipo de proceso', ancho: 34, tipo: 'texto' },
-  { titulo: 'Fecha de inicio', ancho: 12, tipo: 'fecha' },
-  { titulo: 'Abogada', ancho: 26, tipo: 'texto' },
-  { titulo: 'Estado', ancho: 12, tipo: 'texto' },
-  { titulo: 'Forma de finalización', ancho: 16, tipo: 'texto' },
-  { titulo: 'Fecha de cierre', ancho: 12, tipo: 'fecha' },
-  { titulo: 'No. judicial', ancho: 20, tipo: 'texto' },
-  { titulo: 'Cartera', ancho: 18, tipo: 'texto' },
-  { titulo: 'Próxima audiencia', ancho: 17, tipo: 'texto' },
-  { titulo: 'Última audiencia realizada', ancho: 17, tipo: 'texto' },
+  { titulo: 'No. expediente juzgado', ancho: 40, tipo: 'texto' },
+  { titulo: 'Avance en el trámite del proceso', ancho: 60, tipo: 'texto' },
+  { titulo: 'Responsable', ancho: 36, tipo: 'texto' },
+  { titulo: 'Etnia', ancho: 16, tipo: 'texto' },
+  { titulo: 'Edad', ancho: 6, tipo: 'numero' },
+  { titulo: 'Tipo de violencia', ancho: 28, tipo: 'texto' },
+  { titulo: 'Procedencia', ancho: 36, tipo: 'texto' },
 ];
 
-/** "21/10/2026 09:30": texto, porque la columna de fecha de Excel no lleva hora. */
-function celdaAudiencia(audiencia: FechaHoraAudienciaReporte | null): string {
-  return audiencia ? `${formatFechaGT(audiencia.fecha)} ${audiencia.hora}` : '';
+/** "20/10/2026 · Memorial de evacuación: se presentó…": fecha, tipo y lo que se escribió. */
+export function textoAvance(avance: AvanceReporte | null): string {
+  if (!avance) return '';
+  const encabezado = `${formatFechaGT(avance.fecha)} · ${avance.tipo}`;
+  return avance.contenido ? `${encabezado}: ${avance.contenido}` : encabezado;
+}
+
+/** "Ana López (abogada), Rosa Caal (procuradora)": quien esté asignada. */
+export function textoResponsables(
+  fila: Pick<FilaReporteJuridico, 'abogada' | 'procuradora'>,
+): string {
+  return [
+    fila.abogada && `${fila.abogada} (abogada)`,
+    fila.procuradora && `${fila.procuradora} (procuradora)`,
+  ]
+    .filter(Boolean)
+    .join(', ');
 }
 
 export function aFilaHoja(fila: FilaReporteJuridico): ValorCeldaHoja[] {
   return [
     fila.numero,
-    fila.expedienteNumero,
-    fila.numeroProceso,
+    fila.numeroInterno,
     fila.usuaria,
+    fila.telefono ?? '',
     ETIQUETAS_TIPO_PROCESO_JURIDICO[fila.tipo],
-    fila.fechaInicio,
-    fila.abogada ?? '',
-    ETIQUETAS_ESTADO_VISIBLE[fila.estado],
-    fila.formaFinalizacion
-      ? ETIQUETAS_FORMA_FINALIZACION[fila.formaFinalizacion]
-      : '',
-    fila.fechaCierre,
     fila.numeroJudicial ?? '',
-    fila.cartera,
-    celdaAudiencia(fila.proximaAudiencia),
-    celdaAudiencia(fila.ultimaAudienciaRealizada),
+    textoAvance(fila.ultimoAvance),
+    textoResponsables(fila),
+    fila.grupoEtnico,
+    fila.edad,
+    fila.tipologia,
+    fila.procedencia,
   ];
 }
 
@@ -236,7 +240,7 @@ export class ReporteProcesosService {
         ...personas,
       },
       desgloses: armarDesgloses(conteos),
-      vistaPrevia: filas.map((fila) => aFilaReporte(fila, filtro.anioActual)),
+      vistaPrevia: filas.map(aFilaReporte),
     };
   }
 
@@ -249,9 +253,7 @@ export class ReporteProcesosService {
     const contenido = await this.exportador.generar({
       nombreHoja: 'Procesos jurídicos',
       columnas: COLUMNAS_PROCESOS,
-      filas: filas.map((fila) =>
-        aFilaHoja(aFilaReporte(fila, filtro.anioActual)),
-      ),
+      filas: filas.map((fila) => aFilaHoja(aFilaReporte(fila))),
     });
 
     await this.auditService.registrar({
