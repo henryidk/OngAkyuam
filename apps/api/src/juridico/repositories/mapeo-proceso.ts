@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import {
   anioCalendarioGT,
+  anioDeFecha,
   esDeSeguimiento,
   fechaCalendarioGT,
   fechaColumnaISO,
@@ -20,6 +21,7 @@ export const INCLUDE_RESUMEN = {
   expediente: {
     select: {
       numero: true,
+      fecha: true,
       usuaria: { select: { id: true, nombres: true, apellidos: true } },
     },
   },
@@ -69,6 +71,7 @@ export function mapearResumen(
 ): ProcesoResumen {
   const estado = { fase: proceso.fase, situacion: proceso.situacion };
   const fechaInicio = fechaColumnaISO(proceso.fechaInicio);
+  const anioExpediente = anioDeFecha(fechaColumnaISO(proceso.expediente.fecha));
   return {
     id: proceso.id,
     codigo: etiquetaProceso(proceso.expediente.numero, proceso.consecutivo),
@@ -97,8 +100,9 @@ export function mapearResumen(
       proceso.ultimaActuacionEn,
       ahora,
     ),
+    anioExpediente,
     esSeguimiento: esDeSeguimiento(
-      { fechaInicio, abierto: esProcesoActivo(proceso) },
+      { anioExpediente, abierto: esProcesoActivo(proceso) },
       anioCalendarioGT(ahora),
     ),
     proximaAudiencia: proximaAudiencia(proceso.audiencias[0], ahora),

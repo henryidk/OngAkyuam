@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ProximaAudienciaDto } from '@akyuam/shared'
-import { carteraAUrl, carteraDesdeUrl, opcionesCartera, textoProximaAudiencia } from './formato'
+import { anioDesdeUrl, opcionesCarpetas, textoProximaAudiencia } from './formato'
 
 const HOY = '2026-10-20'
 
@@ -27,31 +27,57 @@ describe('textoProximaAudiencia', () => {
   })
 })
 
-describe('cartera en la URL', () => {
-  it('ida y vuelta, con "Todos" sin parámetro', () => {
-    expect(carteraAUrl('TODOS')).toBeNull()
-    expect(carteraAUrl('ANIO')).toBe('anio')
-    expect(carteraDesdeUrl('anio')).toBe('ANIO')
-    expect(carteraDesdeUrl('seguimiento')).toBe('SEGUIMIENTO')
+describe('anioDesdeUrl', () => {
+  it('lee el año de la carpeta', () => {
+    expect(anioDesdeUrl('2014')).toBe(2014)
   })
 
-  it('un valor desconocido o ausente es "Todos"', () => {
-    expect(carteraDesdeUrl(null)).toBe('TODOS')
-    expect(carteraDesdeUrl('2024')).toBe('TODOS')
+  it('un valor ausente, inválido o fuera de rango es "Todos"', () => {
+    expect(anioDesdeUrl(null)).toBeNull()
+    expect(anioDesdeUrl('')).toBeNull()
+    expect(anioDesdeUrl('seguimiento')).toBeNull()
+    expect(anioDesdeUrl('1850')).toBeNull()
+    expect(anioDesdeUrl('2014.5')).toBeNull()
   })
 })
 
-describe('opcionesCartera', () => {
-  it('etiqueta el año en curso y toma los totales del resumen', () => {
-    const opciones = opcionesCartera(2026, { enTramite: 42, enTramitePorCartera: { anio: 30, seguimiento: 12 } })
-    expect(opciones.map((opcion) => [opcion.etiqueta, opcion.total])).toEqual([
-      ['Todos', 42],
-      ['Año en curso 2026', 30],
-      ['Seguimiento', 12],
+describe('opcionesCarpetas', () => {
+  const resumen = {
+    enTramite: 42,
+    enTramitePorAnio: [
+      { anio: 2025, total: 12 },
+      { anio: 2014, total: 2 },
+      { anio: 2026, total: 28 },
+    ],
+  }
+
+  it('ordena de la más reciente a la más antigua con los totales del resumen', () => {
+    const opciones = opcionesCarpetas(2026, resumen, { anioElegido: null, conTotales: true })
+    expect(opciones.todos).toBe(42)
+    expect(opciones.carpetas.map((c) => [c.anio, c.total, c.esAnioActual])).toEqual([
+      [2026, 28, true],
+      [2025, 12, false],
+      [2014, 2, false],
     ])
   })
 
-  it('sin resumen no inventa números', () => {
-    expect(opcionesCartera(2026, null).every((opcion) => opcion.total === null)).toBe(true)
+  it('el año en curso y el elegido aparecen aunque no tengan procesos', () => {
+    const opciones = opcionesCarpetas(2027, resumen, { anioElegido: 2010, conTotales: true })
+    expect(opciones.carpetas.map((c) => [c.anio, c.total])).toEqual([
+      [2027, 0],
+      [2026, 28],
+      [2025, 12],
+      [2014, 2],
+      [2010, 0],
+    ])
+  })
+
+  it('con la lista acotada o sin resumen no inventa números', () => {
+    const acotada = opcionesCarpetas(2026, resumen, { anioElegido: null, conTotales: false })
+    expect(acotada.todos).toBeNull()
+    expect(acotada.carpetas.every((c) => c.total === null)).toBe(true)
+    expect(opcionesCarpetas(2026, null, { anioElegido: null, conTotales: true }).carpetas).toEqual([
+      { anio: 2026, total: null, esAnioActual: true },
+    ])
   })
 })

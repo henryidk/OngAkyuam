@@ -8,6 +8,7 @@ import {
   type ErrorNumeroJudicialRepetido,
   type ProcesoDetalle,
   type ProcesosPaginados,
+  type ResumenProcesos,
 } from '@akyuam/shared';
 import request from 'supertest';
 import type { App } from 'supertest/types';
@@ -42,7 +43,7 @@ function numeroJudicialFicticio(): string {
   return `E2E-${randomUUID().slice(0, 8)}`;
 }
 
-describe('Jurídico · procesos: No. judicial, cartera, búsqueda y cierre (e2e)', () => {
+describe('Jurídico · procesos: No. judicial, carpetas por año, búsqueda y cierre (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let juridico: Usuario;
@@ -270,58 +271,77 @@ describe('Jurídico · procesos: No. judicial, cartera, búsqueda y cierre (e2e)
     });
   });
 
-  describe('cartera', () => {
-    it('el filtro en SQL coincide con esSeguimiento de cada fila (misma regla en ambos lados)', async () => {
-      const anio = anioActualGT();
+  describe('carpetas por año del expediente', () => {
+    /** Expediente referido a Jurídico registrado en `anio` (la fixture los crea en 2026). */
+    async function expedienteDelAnio(anio: number) {
       const { expediente } = await expedienteReferido();
-      const casos = [
-        { fechaInicio: `${anio}-01-01`, situacion: 'ACTIVO' },
-        { fechaInicio: `${anio - 1}-12-31`, situacion: 'ACTIVO' },
-        { fechaInicio: `${anio - 2}-06-15`, situacion: 'ACTIVO' },
-      ] as const;
-      const ids: string[] = [];
-      for (const [i, caso] of casos.entries()) {
-        const proceso = await crearProceso(prisma, expediente.id, juridico.id, {
-          consecutivo: i + 1,
-          fechaInicio: new Date(caso.fechaInicio),
-          situacion: caso.situacion,
-        });
-        ids.push(proceso.id);
-      }
-
-      const todos = await listarProcesos({ q: expediente.numero });
-      const anioActual = await listarProcesos({
-        q: expediente.numero,
-        cartera: 'ANIO',
+      await prisma.expediente.update({
+        where: { id: expediente.id },
+        data: { fecha: new Date(`${anio}-07-15`) },
       });
-      const seguimiento = await listarProcesos({
-        q: expediente.numero,
-        cartera: 'SEGUIMIENTO',
+      return expediente;
+    }
+
+    it('un proceso que se retoma este año sobre un expediente antiguo va en la carpeta de ese año', async () => {
+      const anio = anioActualGT();
+      const anioAntiguo = anio - 12;
+      const expediente = await expedienteDelAnio(anioAntiguo);
+      const proceso = await crearProceso(prisma, expediente.id, juridico.id, {
+        consecutivo: 1,
+        fechaInicio: new Date(`${anio}-01-02`),
+        situacion: 'ACTIVO',
       });
 
-      expect(todos.items.map((p) => p.id).sort()).toEqual([...ids].sort());
-      expect(seguimiento.items.map((p) => p.id).sort()).toEqual(
-        todos.items
-          .filter((p) => p.esSeguimiento)
-          .map((p) => p.id)
-          .sort(),
-      );
-      expect(anioActual.items.map((p) => p.id).sort()).toEqual(
-        todos.items
-          .filter((p) => !p.esSeguimiento)
-          .map((p) => p.id)
-          .sort(),
-      );
-      expect(seguimiento.items.map((p) => p.id).sort()).toEqual(
-        [ids[1], ids[2]].sort(),
-      );
+      const enSuCarpeta = await listarProcesos({
+        q: expediente.numero,
+        anio: String(anioAntiguo),
+      });
+      const enEsteAnio = await listarProcesos({
+        q: expediente.numero,
+        anio: String(anio),
+      });
+
+      expect(enSuCarpeta.items.map((p) => p.id)).toEqual([proceso.id]);
+      expect(enSuCarpeta.items[0]).toMatchObject({
+        anioExpediente: anioAntiguo,
+        esSeguimiento: true,
+      });
+      expect(enEsteAnio.items).toEqual([]);
     });
 
-    it('una cartera que no existe → 400', async () => {
-      await pedir('post', '/api/juridico/procesos/busqueda')
-        .send({ cartera: 'OTRA' })
-        .expect(400);
+    it('el resumen cuenta los procesos en trámite de cada carpeta, del año más reciente al más antiguo', async () => {
+      const anioAntiguo = anioActualGT() - 11;
+      const expediente = await expedienteDelAnio(anioAntiguo);
+      await crearProceso(prisma, expediente.id, juridico.id, {
+        consecutivo: 1,
+        fechaInicio: new Date(`${anioAntiguo}-08-01`),
+        situacion: 'ACTIVO',
+      });
+
+      const resumen = (
+        await pedir('get', '/api/juridico/procesos/resumen').expect(200)
+      ).body as ResumenProcesos;
+
+      const anios = resumen.enTramitePorAnio.map((carpeta) => carpeta.anio);
+      expect(anios).toContain(anioAntiguo);
+      expect(anios).toEqual([...anios].sort((a, b) => b - a));
+      expect(resumen.aniosExpedientes).toContain(anioAntiguo);
+      expect(
+        resumen.enTramitePorAnio.reduce(
+          (suma, carpeta) => suma + carpeta.total,
+          0,
+        ),
+      ).toBe(resumen.enTramite);
     });
+
+    it.each(['OTRA', '1989'])(
+      'un año que no es válido → 400 (%p)',
+      async (anio) => {
+        await pedir('post', '/api/juridico/procesos/busqueda')
+          .send({ anio })
+          .expect(400);
+      },
+    );
   });
 
   describe('cerrar un proceso cancela sus audiencias programadas', () => {

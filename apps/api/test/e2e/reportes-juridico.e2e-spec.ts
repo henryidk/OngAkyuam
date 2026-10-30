@@ -31,10 +31,10 @@ const OTROS_ROLES: Rol[] = [
 ];
 
 const RUTAS = [
-  '/api/juridico/reportes/procesos?cartera=ANIO',
-  '/api/juridico/reportes/procesos.xlsx?cartera=ANIO',
-  '/api/juridico/reportes/poblacion-beneficiada?cartera=ANIO',
-  '/api/juridico/reportes/poblacion-beneficiada.xlsx?cartera=ANIO',
+  '/api/juridico/reportes/procesos?anio=2026',
+  '/api/juridico/reportes/procesos.xlsx?anio=2026',
+  '/api/juridico/reportes/poblacion-beneficiada?anio=2026',
+  '/api/juridico/reportes/poblacion-beneficiada.xlsx?anio=2026',
 ];
 
 const TIPO_XLSX =
@@ -99,15 +99,23 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
     return casos;
   }
 
-  /** Expediente referido a Jurídico con procesos en las fechas dadas. */
+  /**
+   * Expediente referido a Jurídico, registrado en `fechaExpediente` (por defecto el 1 de enero de
+   * este año: define su carpeta), con procesos en las fechas dadas.
+   */
   async function expedienteConProcesos(
     procesos: { fechaInicio: string; cerrado?: boolean }[],
+    fechaExpediente = `${anio}-01-01`,
   ) {
     const { expediente, usuaria } = await crearExpediente(
       prisma,
       trabajoSocial.id,
       ['JURIDICO'],
     );
+    await prisma.expediente.update({
+      where: { id: expediente.id },
+      data: { fecha: new Date(fechaExpediente) },
+    });
     for (const [indice, proceso] of procesos.entries()) {
       const creado = await crearProceso(prisma, expediente.id, juridico.id, {
         consecutivo: indice + 1,
@@ -144,11 +152,12 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       },
     );
 
-    it('en "Todos" exige el rango de fechas', async () => {
-      await pedir('/api/juridico/reportes/procesos?cartera=TODOS').expect(400);
+    it('sin carpeta exige el rango de fechas, y un año fuera de rango no se acepta', async () => {
+      await pedir('/api/juridico/reportes/procesos').expect(400);
       await pedir(
-        '/api/juridico/reportes/poblacion-beneficiada?cartera=TODOS&desde=2026-05-01&hasta=2026-04-01',
+        '/api/juridico/reportes/poblacion-beneficiada?desde=2026-05-01&hasta=2026-04-01',
       ).expect(400);
+      await pedir('/api/juridico/reportes/procesos?anio=1989').expect(400);
     });
   });
 
@@ -169,21 +178,20 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       },
     );
 
-    it('separa la cartera del año, la de seguimiento y los casos ya cerrados', async () => {
-      const anterior = `${anio - 2}-06-10`;
-      const seguimiento = await expedienteConProcesos([
-        { fechaInicio: anterior },
-      ]);
-      const cerrado = await expedienteConProcesos([
-        { fechaInicio: anterior, cerrado: true },
-      ]);
-      // Su primer proceso es de hace dos años: sigue siendo de seguimiento aunque tenga uno nuevo.
-      const conProcesoNuevo = await expedienteConProcesos([
-        { fechaInicio: anterior, cerrado: true },
-        { fechaInicio: hoy },
-      ]);
+    it('cada carpeta trae los expedientes de su año, sigan abiertos o no y aunque se retomen después', async () => {
+      const anioAntiguo = anio - 12;
+      const expedienteAntiguo = `${anioAntiguo}-07-15`;
+      // Expediente de hace 12 años con un proceso que se retomó este año.
+      const retomado = await expedienteConProcesos(
+        [{ fechaInicio: hoy }],
+        expedienteAntiguo,
+      );
+      const antiguoCerrado = await expedienteConProcesos(
+        [{ fechaInicio: expedienteAntiguo, cerrado: true }],
+        expedienteAntiguo,
+      );
       const delAnio = await expedienteConProcesos([{ fechaInicio: hoy }]);
-      // Referido a Jurídico sin proceso todavía: entra con la fecha del referido (hoy).
+      // Referido a Jurídico sin proceso todavía: va en la carpeta del año de su expediente.
       const sinProceso = await expedienteConProcesos([]);
       // Nunca referido a Jurídico: aunque tenga proceso, no es de este módulo.
       const noReferido = await crearExpediente(prisma, trabajoSocial.id, [
@@ -193,25 +201,23 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
         fechaInicio: new Date(hoy),
       });
 
-      const delAnioExcel = await casosEnExcel('cartera=ANIO');
-      const seguimientoExcel = await casosEnExcel('cartera=SEGUIMIENTO');
+      const antiguoExcel = await casosEnExcel(`anio=${anioAntiguo}`);
+      const delAnioExcel = await casosEnExcel(`anio=${anio}`);
       const numero = (caso: { expediente: { numero: string } }) =>
         caso.expediente.numero;
 
+      expect(antiguoExcel).toEqual(
+        expect.arrayContaining([numero(retomado), numero(antiguoCerrado)]),
+      );
       expect(delAnioExcel).toEqual(
         expect.arrayContaining([numero(delAnio), numero(sinProceso)]),
       );
-      expect(seguimientoExcel).toEqual(
-        expect.arrayContaining([numero(seguimiento), numero(conProcesoNuevo)]),
-      );
-      for (const fuera of [seguimiento, conProcesoNuevo, cerrado]) {
+      for (const fuera of [delAnio, sinProceso, noReferido]) {
+        expect(antiguoExcel).not.toContain(numero(fuera));
+      }
+      for (const fuera of [retomado, antiguoCerrado, noReferido]) {
         expect(delAnioExcel).not.toContain(numero(fuera));
       }
-      for (const fuera of [delAnio, sinProceso, cerrado]) {
-        expect(seguimientoExcel).not.toContain(numero(fuera));
-      }
-      expect(delAnioExcel).not.toContain(numero(noReferido));
-      expect(seguimientoExcel).not.toContain(numero(noReferido));
     });
 
     it('la edad es la que tenía al "Día" y la vista previa trae las 13 columnas', async () => {
@@ -235,7 +241,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       });
 
       const respuesta = await pedir(
-        `/api/juridico/reportes/poblacion-beneficiada?cartera=TODOS&desde=${dia}&hasta=${dia}`,
+        `/api/juridico/reportes/poblacion-beneficiada?desde=${dia}&hasta=${dia}`,
       ).expect(200);
       const reporte = respuesta.body as ReportePoblacionJuridico;
       const fila = reporte.vistaPrevia.find(
@@ -264,7 +270,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       });
       expect(evento?.detalles).toMatchObject({
         reporte: 'POBLACION_JURIDICO',
-        cartera: 'TODOS',
+        anio: null,
         desde: dia,
         hasta: dia,
       });
@@ -273,7 +279,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
   });
 
   describe('B · procesos', () => {
-    it('trae totales, responsables y el último avance, y filtra por responsable, cartera y tipo', async () => {
+    it('trae totales, responsables y el último avance, y filtra por responsable, carpeta y tipo', async () => {
       const abogada = await crearAbogada(prisma);
       const procuradora = await prisma.personal.create({
         data: {
@@ -325,7 +331,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
 
       const todos = (
         await pedir(
-          `/api/juridico/reportes/procesos?cartera=TODOS&desde=2000-01-01&hasta=${hoy}&responsableId=${abogada.id}`,
+          `/api/juridico/reportes/procesos?desde=2000-01-01&hasta=${hoy}&responsableId=${abogada.id}`,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
 
@@ -358,40 +364,41 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       // La procuradora solo ve el proceso que tiene asignado.
       const deProcuradora = (
         await pedir(
-          `/api/juridico/reportes/procesos?cartera=TODOS&desde=2000-01-01&hasta=${hoy}&responsableId=${procuradora.id}`,
+          `/api/juridico/reportes/procesos?desde=2000-01-01&hasta=${hoy}&responsableId=${procuradora.id}`,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
       expect(deProcuradora.vistaPrevia.map((f) => f.numeroInterno)).toEqual([
         expediente.numero,
       ]);
 
-      const seguimiento = (
+      // Los dos procesos van en la carpeta del expediente, aunque uno empezó hace dos años.
+      const porTipo = (
         await pedir(
-          `/api/juridico/reportes/procesos?cartera=SEGUIMIENTO&responsableId=${abogada.id}`,
+          `/api/juridico/reportes/procesos?anio=${anio}&responsableId=${abogada.id}&tipo=DIVORCIO_MUTUO_ACUERDO`,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
-      expect(seguimiento.vistaPrevia.map((f) => f.numeroInterno)).toEqual([
+      expect(porTipo.vistaPrevia.map((f) => f.numeroInterno)).toEqual([
         `${expediente.numero} · Proceso 2`,
       ]);
 
-      const porTipo = (
+      const otraCarpeta = (
         await pedir(
-          `/api/juridico/reportes/procesos?cartera=ANIO&responsableId=${abogada.id}&tipo=DIVORCIO_MUTUO_ACUERDO`,
+          `/api/juridico/reportes/procesos?anio=${anio - 2}&responsableId=${abogada.id}`,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
-      expect(porTipo.totales.procesos).toBe(0);
+      expect(otraCarpeta.totales.procesos).toBe(0);
     });
 
     it('el Excel se descarga sin caché, con un nombre sin datos personales, y se audita', async () => {
       const abogada = await crearAbogada(prisma);
       const respuesta = await pedir(
-        `/api/juridico/reportes/procesos.xlsx?cartera=SEGUIMIENTO&responsableId=${abogada.id}`,
+        `/api/juridico/reportes/procesos.xlsx?anio=${anio}&responsableId=${abogada.id}`,
       ).expect(200);
 
       expect(respuesta.headers['content-type']).toContain(TIPO_XLSX);
       expect(respuesta.headers['cache-control']).toBe('no-store');
       expect(respuesta.headers['content-disposition']).toBe(
-        `attachment; filename="procesos-juridicos_seguimiento_${hoy}.xlsx"`,
+        `attachment; filename="procesos-juridicos_${anio}.xlsx"`,
       );
       const evento = await prisma.auditLog.findFirst({
         where: { usuarioId: juridico.id, accion: 'REPORTE_JURIDICO_EXPORTADO' },
@@ -399,7 +406,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       });
       expect(evento?.detalles).toMatchObject({
         reporte: 'PROCESOS_JURIDICOS',
-        cartera: 'SEGUIMIENTO',
+        anio,
         responsableId: abogada.id,
         filas: 0,
       });

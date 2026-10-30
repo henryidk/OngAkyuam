@@ -15,7 +15,7 @@ import type {
 
 /**
  * Expedientes referidos a Jurídico (la misma regla de acceso del módulo), cada uno con su
- * "Día" y si sigue abierto, ya filtrados por cartera:
+ * "Día" y si sigue abierto, ya filtrados por año (carpeta del expediente o rango sobre el "Día"):
  * - "Día" = inicio del primer proceso; sin procesos, la fecha del referido en Guatemala.
  * - Abierto = algún proceso ni finalizado ni abandonado; sin procesos cuenta como abierto
  *   (la usuaria espera ser atendida).
@@ -23,7 +23,7 @@ import type {
 function cteExpedientes(filtro: FiltroReportePoblacionJuridico): Prisma.Sql {
   return Prisma.sql`
     expedientes AS (
-      SELECT e.id, e.numero, e."createdAt", e."tipologiaDelito", e."usuariaId",
+      SELECT e.id, e.numero, e.fecha, e."createdAt", e."tipologiaDelito", e."usuariaId",
              COALESCE(min(p."fechaInicio"), ${fechaCalendarioGTSql(Prisma.sql`r."createdAt"`)}) AS dia,
              CASE WHEN count(p.id) = 0 THEN true ELSE bool_or(${PROCESO_ABIERTO_SQL}) END AS abierto
       FROM "ReferidoArea" r
@@ -34,7 +34,7 @@ function cteExpedientes(filtro: FiltroReportePoblacionJuridico): Prisma.Sql {
     ),
     enCartera AS (
       SELECT x.* FROM expedientes x
-      WHERE ${carteraReporteSql(filtro, { fechaInicio: Prisma.sql`x.dia`, abierto: Prisma.sql`x.abierto` })}
+      WHERE ${carteraReporteSql(filtro, { fechaExpediente: Prisma.sql`x.fecha`, fechaInicio: Prisma.sql`x.dia` })}
     )`;
 }
 

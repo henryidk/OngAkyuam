@@ -1,7 +1,6 @@
 import {
-  CARTERAS_JURIDICO,
+  anioExpedienteSchema,
   diasEntreFechasGT,
-  type CarteraJuridico,
   type ProximaAudienciaDto,
   type ResumenProcesos,
 } from '@akyuam/shared'
@@ -22,31 +21,46 @@ export function textoProximaAudiencia(proxima: ProximaAudienciaDto, hoy: string)
   return { aviso: `En ${dias} días`, pendiente: false }
 }
 
-/** El filtro por años vive en la URL como `cartera=anio|seguimiento`; sin parámetro es "Todos". */
-export function carteraDesdeUrl(valor: string | null): CarteraJuridico {
-  const mayusculas = valor?.toUpperCase()
-  return CARTERAS_JURIDICO.find((cartera) => cartera === mayusculas) ?? 'TODOS'
+/** La carpeta elegida vive en la URL como `anio=2014`; sin parámetro (o uno inválido) es "Todos". */
+export function anioDesdeUrl(valor: string | null): number | null {
+  if (!valor) return null
+  const anio = anioExpedienteSchema.safeParse(valor)
+  return anio.success ? anio.data : null
 }
 
-export function carteraAUrl(cartera: CarteraJuridico): string | null {
-  return cartera === 'TODOS' ? null : cartera.toLowerCase()
-}
-
-export interface OpcionCartera {
-  valor: CarteraJuridico
-  etiqueta: string
+export interface Carpeta {
+  anio: number
   /** `null` si no hay resumen o si la lista está acotada (búsqueda o "Solo asignados a mí"). */
   total: number | null
+  esAnioActual: boolean
 }
 
-/** "Todos · Año en curso 2026 · Seguimiento": los totales son de todos los procesos en curso. */
-export function opcionesCartera(
-  anio: number,
-  resumen: Pick<ResumenProcesos, 'enTramite' | 'enTramitePorCartera'> | null,
-): OpcionCartera[] {
-  return [
-    { valor: 'TODOS', etiqueta: 'Todos', total: resumen?.enTramite ?? null },
-    { valor: 'ANIO', etiqueta: `Año en curso ${anio}`, total: resumen?.enTramitePorCartera.anio ?? null },
-    { valor: 'SEGUIMIENTO', etiqueta: 'Seguimiento', total: resumen?.enTramitePorCartera.seguimiento ?? null },
-  ]
+export interface OpcionesCarpetas {
+  /** Total de la opción "Todos". */
+  todos: number | null
+  /** Una carpeta por año con procesos en curso, de la más reciente a la más antigua. */
+  carpetas: Carpeta[]
+}
+
+/**
+ * Carpetas por año del expediente. El año en curso siempre aparece (aunque esté vacío, es donde
+ * entra el trabajo nuevo) y también el elegido en la URL, para que el chip activo nunca desaparezca.
+ */
+export function opcionesCarpetas(
+  anioActual: number,
+  resumen: Pick<ResumenProcesos, 'enTramite' | 'enTramitePorAnio'> | null,
+  { anioElegido, conTotales }: { anioElegido: number | null; conTotales: boolean },
+): OpcionesCarpetas {
+  const totales = new Map((resumen?.enTramitePorAnio ?? []).map(({ anio, total }) => [anio, total]))
+  const anios = new Set([anioActual, ...totales.keys(), ...(anioElegido === null ? [] : [anioElegido])])
+  return {
+    todos: conTotales ? (resumen?.enTramite ?? null) : null,
+    carpetas: [...anios]
+      .sort((a, b) => b - a)
+      .map((anio) => ({
+        anio,
+        total: conTotales && resumen ? (totales.get(anio) ?? 0) : null,
+        esAnioActual: anio === anioActual,
+      })),
+  }
 }

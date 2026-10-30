@@ -1,7 +1,6 @@
-import type { CarteraJuridico } from '@akyuam/shared';
 import type { FiltroCarteraReporte } from '../compartido/sql';
 
-// Lo que comparten los dos reportes de Jurídico (planaudiencias.md §8.6): el filtro Cartera,
+// Lo que comparten los dos reportes de Jurídico (planaudiencias.md §8.6): el filtro de año,
 // cómo se audita y cómo se nombra el archivo.
 
 export interface ArchivoReporte {
@@ -10,47 +9,43 @@ export interface ArchivoReporte {
   tipoContenido: string;
 }
 
-/** Los campos de cartera que traen los dos queries de reporte. */
+/** Los campos de año que traen los dos queries de reporte. */
 export interface QueryCarteraReporte {
-  cartera: CarteraJuridico;
+  anio?: number;
   desde?: string;
   hasta?: string;
 }
 
-/** Desde/Hasta solo aplican en "Todos" (el schema los exige ahí); en las otras se ignoran. */
+/** Desde/Hasta solo aplican sin año (el schema los exige ahí); con una carpeta se ignoran. */
 export function aFiltroCartera(
   query: QueryCarteraReporte,
-  anioActual: number,
 ): FiltroCarteraReporte {
+  if (query.anio !== undefined) {
+    return { anio: query.anio, rango: null };
+  }
   const conRango =
-    query.cartera === 'TODOS' && query.desde && query.hasta
+    query.desde && query.hasta
       ? { desde: query.desde, hasta: query.hasta }
       : null;
-  return { cartera: query.cartera, anioActual, rango: conRango };
+  return { anio: null, rango: conRango };
 }
 
 /** Solo filtros, nunca datos de personas: va a `AuditLog.detalles`. */
 export function detallesCartera(filtro: FiltroCarteraReporte) {
   return {
-    cartera: filtro.cartera,
-    anio: filtro.anioActual,
+    anio: filtro.anio,
     desde: filtro.rango?.desde ?? null,
     hasta: filtro.rango?.hasta ?? null,
   };
 }
 
 /**
- * Parte del nombre del archivo que dice qué se descargó: "2026", "seguimiento_2026-10-19" (es la
- * foto de hoy) o el rango. Nunca datos de una persona.
+ * Parte del nombre del archivo que dice qué se descargó: la carpeta ("2014") o el rango. Nunca
+ * datos de una persona.
  */
-export function sufijoArchivo(
-  filtro: FiltroCarteraReporte,
-  hoy: string,
-): string {
-  if (filtro.rango) {
-    return `${filtro.rango.desde}_${filtro.rango.hasta}`;
+export function sufijoArchivo(filtro: FiltroCarteraReporte): string {
+  if (filtro.anio !== null) {
+    return String(filtro.anio);
   }
-  return filtro.cartera === 'SEGUIMIENTO'
-    ? `seguimiento_${hoy}`
-    : String(filtro.anioActual);
+  return filtro.rango ? `${filtro.rango.desde}_${filtro.rango.hasta}` : 'todos';
 }

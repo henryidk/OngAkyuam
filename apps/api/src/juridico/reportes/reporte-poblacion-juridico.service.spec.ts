@@ -5,7 +5,7 @@ import type {
   FilaPoblacionJuridicoRow,
   IReportePoblacionJuridicoRepository,
 } from '../interfaces/reporte-poblacion-juridico-repository.interface';
-import { contexto, relojFijo } from '../pruebas/dobles';
+import { contexto } from '../pruebas/dobles';
 import {
   aFilaHojaPoblacion,
   aFilaPoblacionJuridico,
@@ -92,12 +92,11 @@ describe('ReportePoblacionJuridicoService', () => {
   let exportador: jest.Mocked<IExportadorHojaCalculo>;
   let auditService: jest.Mocked<Pick<AuditService, 'registrar'>>;
 
-  function crearServicio(ahora?: Date) {
+  function crearServicio() {
     return new ReportePoblacionJuridicoService(
       repositorio,
       exportador,
       auditService as unknown as AuditService,
-      relojFijo(ahora),
     );
   }
 
@@ -115,14 +114,10 @@ describe('ReportePoblacionJuridicoService', () => {
   });
 
   it('la vista previa trae totales y filas, y audita solo los filtros', async () => {
-    const reporte = await crearServicio().vistaPrevia(
-      { cartera: 'SEGUIMIENTO' },
-      contexto,
-    );
+    const reporte = await crearServicio().vistaPrevia({ anio: 2014 }, contexto);
 
     expect(repositorio.totales).toHaveBeenCalledWith({
-      cartera: 'SEGUIMIENTO',
-      anioActual: 2026,
+      anio: 2014,
       rango: null,
     });
     expect(reporte.totales).toEqual({ expedientes: 4, usuarias: 3 });
@@ -132,8 +127,7 @@ describe('ReportePoblacionJuridicoService', () => {
         accion: 'REPORTE_CONSULTADO',
         detalles: {
           reporte: 'POBLACION_JURIDICO',
-          cartera: 'SEGUIMIENTO',
-          anio: 2026,
+          anio: 2014,
           desde: null,
           hasta: null,
         },
@@ -144,21 +138,24 @@ describe('ReportePoblacionJuridicoService', () => {
     expect(auditado).not.toContain('0000000000000');
   });
 
-  it('el año en curso es el de Guatemala, no el de UTC', async () => {
-    // 01/01/2027 03:00 UTC = 31/12/2026 21:00 en Guatemala.
-    await crearServicio(new Date('2027-01-01T03:00:00.000Z')).vistaPrevia(
-      { cartera: 'ANIO' },
+  it('con una carpeta se ignora el rango y el archivo se nombra con el año', async () => {
+    const archivo = await crearServicio().exportar(
+      { anio: 2014, desde: '2026-01-01', hasta: '2026-06-30' },
       contexto,
     );
 
-    expect(repositorio.totales).toHaveBeenCalledWith(
-      expect.objectContaining({ anioActual: 2026 }),
+    expect(repositorio.filas).toHaveBeenCalledWith(
+      { anio: 2014, rango: null },
+      null,
+    );
+    expect(archivo.nombreArchivo).toBe(
+      'poblacion-beneficiada-juridico_2014.xlsx',
     );
   });
 
   it('el Excel trae todas las filas, audita el export y el nombre no lleva datos personales', async () => {
     const archivo = await crearServicio().exportar(
-      { cartera: 'TODOS', desde: '2026-01-01', hasta: '2026-06-30' },
+      { desde: '2026-01-01', hasta: '2026-06-30' },
       contexto,
     );
 

@@ -20,6 +20,7 @@ function fila(parcial: Partial<ProcesoConResumen> = {}): ProcesoConResumen {
     procuradora: null,
     expediente: {
       numero: '05-2026',
+      fecha: new Date('2026-03-02T00:00:00.000Z'),
       usuaria: { id: 'u-1', nombres: 'Usuaria', apellidos: 'Ficticia' },
     },
     audiencias: [],
@@ -28,52 +29,73 @@ function fila(parcial: Partial<ProcesoConResumen> = {}): ProcesoConResumen {
 }
 
 describe('mapearResumen', () => {
-  describe('esSeguimiento', () => {
+  /** El mismo proceso ficticio sobre un expediente registrado en `fecha` ("YYYY-MM-DD"). */
+  function deExpediente(
+    fecha: string,
+    parcial: Partial<ProcesoConResumen> = {},
+  ): ProcesoConResumen {
+    return fila({
+      expediente: {
+        numero: `05-${fecha.slice(0, 4)}`,
+        fecha: new Date(`${fecha}T00:00:00.000Z`),
+        usuaria: { id: 'u-1', nombres: 'Usuaria', apellidos: 'Ficticia' },
+      },
+      ...parcial,
+    });
+  }
+
+  describe('carpeta del año del expediente', () => {
+    it('va en el año del expediente, no en el de inicio del proceso', () => {
+      const resumen = mapearResumen(
+        deExpediente('2014-07-15', {
+          fechaInicio: new Date('2026-03-02T00:00:00.000Z'),
+        }),
+        AHORA,
+      );
+      expect(resumen.anioExpediente).toBe(2014);
+    });
+
     it.each([
-      ['empezó este año', '2026-01-01', 'EN_PROCESO', 'ACTIVO', false],
+      ['expediente de este año', '2026-01-01', 'EN_PROCESO', 'ACTIVO', false],
       [
-        'empezó antes y sigue en trámite',
+        'expediente de un año anterior y sigue en trámite',
         '2025-12-31',
         'EN_PROCESO',
         'ACTIVO',
         true,
       ],
       [
-        'empezó antes y está suspendido',
-        '2024-05-10',
+        'expediente de un año anterior y está suspendido',
+        '2014-05-10',
         'EN_PROCESO',
         'SUSPENDIDO',
         true,
       ],
       [
-        'empezó antes pero ya finalizó',
+        'expediente de un año anterior pero ya finalizó',
         '2025-06-01',
         'FINALIZADO',
         'ACTIVO',
         false,
       ],
       [
-        'empezó antes pero se abandonó',
+        'expediente de un año anterior pero se abandonó',
         '2025-06-01',
         'EN_PROCESO',
         'ABANDONADO',
         false,
       ],
-    ] as const)('%s → %s', (_caso, inicio, fase, situacion, esperado) => {
+    ] as const)('%s → %s', (_caso, fecha, fase, situacion, esperado) => {
       const resumen = mapearResumen(
-        fila({
-          fechaInicio: new Date(`${inicio}T00:00:00.000Z`),
-          fase,
-          situacion,
-        }),
+        deExpediente(fecha, { fase, situacion }),
         AHORA,
       );
       expect(resumen.esSeguimiento).toBe(esperado);
     });
 
-    it('el 31/12 a las 21:00 de Guatemala (ya 1/1 en UTC) un proceso de ese año aún no es de seguimiento', () => {
+    it('el 31/12 a las 21:00 de Guatemala (ya 1/1 en UTC) un expediente de ese año aún no es de seguimiento', () => {
       const resumen = mapearResumen(
-        fila({ fechaInicio: new Date('2026-12-01T00:00:00.000Z') }),
+        deExpediente('2026-12-01'),
         new Date('2027-01-01T03:00:00.000Z'),
       );
       expect(resumen.esSeguimiento).toBe(false);

@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import {
   ACCIONES_AUDIENCIA,
-  CARTERAS_JURIDICO,
   DESCRIPCION_AUDIENCIA_MAX,
   DIAS_MAXIMOS_HISTORIAL_AUDIENCIAS,
   ESTADOS_AUDIENCIA,
@@ -33,13 +32,11 @@ export const estadoAudienciaSchema = z.enum(ESTADOS_AUDIENCIA)
 export const estadoVisibleAudienciaSchema = z.enum(ESTADOS_VISIBLES_AUDIENCIA)
 export const origenCancelacionAudienciaSchema = z.enum(ORIGENES_CANCELACION_AUDIENCIA)
 export const resultadoAudienciaSchema = z.enum(RESULTADOS_AUDIENCIA)
-export const carteraJuridicoSchema = z.enum(CARTERAS_JURIDICO)
 
 export type EstadoAudiencia = z.infer<typeof estadoAudienciaSchema>
 export type EstadoVisibleAudiencia = z.infer<typeof estadoVisibleAudienciaSchema>
 export type OrigenCancelacionAudiencia = z.infer<typeof origenCancelacionAudienciaSchema>
 export type ResultadoAudiencia = z.infer<typeof resultadoAudienciaSchema>
-export type CarteraJuridico = z.infer<typeof carteraJuridicoSchema>
 export type AccionAudiencia = (typeof ACCIONES_AUDIENCIA)[number]
 export type VistaAudiencias = (typeof VISTAS_AUDIENCIAS)[number]
 

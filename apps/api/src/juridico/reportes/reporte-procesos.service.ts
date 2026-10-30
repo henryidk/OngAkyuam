@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  anioCalendarioGT,
   CATEGORIA_POR_TIPO_PROCESO,
   CATEGORIAS_PROCESO_JURIDICO,
   ESTADOS_VISIBLES_PROCESO,
@@ -23,7 +22,6 @@ import {
   type ReporteProcesosJuridicoQuery,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
-import { RELOJ, type IReloj } from '../../common/reloj';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { EXPORTADOR_HOJA_CALCULO } from '../../common/hoja-calculo/exportador-hoja-calculo.interface';
 import type {
@@ -45,12 +43,9 @@ import {
   type ArchivoReporte,
 } from './cartera-reporte';
 
-function aFiltro(
-  query: ReporteProcesosJuridicoQuery,
-  anioActual: number,
-): FiltroReporteProcesos {
+function aFiltro(query: ReporteProcesosJuridicoQuery): FiltroReporteProcesos {
   return {
-    ...aFiltroCartera(query, anioActual),
+    ...aFiltroCartera(query),
     estado: query.estado === 'TODOS' ? null : query.estado,
     responsableId: query.responsableId ?? null,
     tipo: query.tipo ?? null,
@@ -209,14 +204,13 @@ export class ReporteProcesosService {
     @Inject(EXPORTADOR_HOJA_CALCULO)
     private readonly exportador: IExportadorHojaCalculo,
     private readonly auditService: AuditService,
-    @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
   async vistaPrevia(
     query: ReporteProcesosJuridicoQuery,
     contexto: ContextoAuditoria,
   ): Promise<ReporteProcesosJuridico> {
-    const filtro = aFiltro(query, this.anioActual());
+    const filtro = aFiltro(query);
     const [filas, conteos, personas] = await Promise.all([
       this.repositorio.filas(filtro, FILAS_VISTA_PREVIA_REPORTE),
       this.repositorio.conteos(filtro),
@@ -248,7 +242,7 @@ export class ReporteProcesosService {
     query: ReporteProcesosJuridicoQuery,
     contexto: ContextoAuditoria,
   ): Promise<ArchivoReporte> {
-    const filtro = aFiltro(query, this.anioActual());
+    const filtro = aFiltro(query);
     const filas = await this.repositorio.filas(filtro, null);
     const contenido = await this.exportador.generar({
       nombreHoja: 'Procesos jurídicos',
@@ -268,13 +262,8 @@ export class ReporteProcesosService {
 
     return {
       contenido,
-      nombreArchivo: `procesos-juridicos_${sufijoArchivo(filtro, fechaCalendarioGT(this.reloj.ahora()))}.${this.exportador.extension}`,
+      nombreArchivo: `procesos-juridicos_${sufijoArchivo(filtro)}.${this.exportador.extension}`,
       tipoContenido: this.exportador.tipoContenido,
     };
-  }
-
-  /** Año en curso en Guatemala: separa la cartera del año de la de seguimiento. */
-  private anioActual(): number {
-    return anioCalendarioGT(this.reloj.ahora());
   }
 }

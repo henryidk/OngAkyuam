@@ -14,13 +14,16 @@ import {
   TIPOS_PERSONAL_JURIDICO,
   TIPOS_PROCESO_JURIDICO,
 } from '../catalogos/juridico.js'
-import { CARTERAS_JURIDICO } from '../catalogos/audienciasJuridico.js'
+import { ANIO_EXPEDIENTE_MAXIMO, ANIO_EXPEDIENTE_MINIMO } from '../catalogos/audienciasJuridico.js'
 import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
 import type { AudienciaProgramadaDto, ProximaAudienciaDto } from './audienciasJuridico.js'
 import type { TipoDocumento } from './documentos.js'
 import type { TipoRegistro } from './registroUsuaria.js'
 import { booleanoQuerySchema, fechaReporteSchema } from './query.js'
 import type { ConteoReporte } from './trabajoSocial.js'
+
+/** Carpeta: año del expediente ("05-2014" → 2014). Sin valor = todos los años. */
+export const anioExpedienteSchema = z.coerce.number().int().min(ANIO_EXPEDIENTE_MINIMO).max(ANIO_EXPEDIENTE_MAXIMO)
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -189,8 +192,8 @@ export const buscarProcesosSchema = z.object({
   q: z.string().trim().max(BUSQUEDA_MAX).optional(),
   /** Solo los procesos donde la cuenta actual es la abogada o la procuradora asignada. */
   mios: booleanoQuerySchema.optional(),
-  /** Iniciados este año, de seguimiento (de un año anterior) o todos (planaudiencias.md §8.2). */
-  cartera: z.enum(CARTERAS_JURIDICO).default('TODOS'),
+  /** Carpeta del año del expediente; sin valor, todos los años. */
+  anio: anioExpedienteSchema.optional(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(PROCESOS_PAGE_SIZE_MAXIMO).default(PROCESOS_PAGE_SIZE),
 })
@@ -256,7 +259,9 @@ export interface ProcesoResumen {
   fechaCierre: string | null
   ultimaActuacionEn: string
   requiereAtencion: boolean
-  /** Empezó en un año anterior y sigue abierto (`esDeSeguimiento`): chip "Seguimiento · 2024". */
+  /** Año del expediente: la carpeta en la que va el proceso ("05-2014" → 2014). */
+  anioExpediente: number
+  /** El expediente es de un año anterior y el proceso sigue abierto (`esDeSeguimiento`): chip "Seguimiento · 2014". */
   esSeguimiento: boolean
   /** `null` si no tiene ninguna audiencia programada. */
   proximaAudiencia: ProximaAudienciaDto | null
@@ -348,8 +353,10 @@ export interface ResumenProcesos {
   finalizadosPorForma: Record<FormaFinalizacionProceso, number>
   abandonados: number
   requierenAtencion: number
-  /** Desglose de `enTramite` (la lista de trabajo) para el filtro Cartera. */
-  enTramitePorCartera: { anio: number; seguimiento: number }
+  /** Desglose de `enTramite` (la lista de trabajo) por carpeta, del año más reciente al más antiguo. */
+  enTramitePorAnio: { anio: number; total: number }[]
+  /** Años de los expedientes referidos a Jurídico (cualquier estado), para el filtro de Reportes. */
+  aniosExpedientes: number[]
   /** Audiencias que ya pasaron sin resultado: insignia del menú Audiencias. */
   audienciasPendientes: number
 }
@@ -552,12 +559,12 @@ export const FILTROS_ESTADO_REPORTE_JURIDICO = ['TODOS', ...ESTADOS_VISIBLES_PRO
 export type FiltroEstadoReporteJuridico = (typeof FILTROS_ESTADO_REPORTE_JURIDICO)[number]
 
 /**
- * Filtro Cartera de los dos reportes (planaudiencias.md §8.6). "Año en curso" y "Seguimiento"
- * se calculan contra el año de hoy en Guatemala; solo "Todos" usa Desde/Hasta, y ahí son
- * obligatorios. Se comparan contra la fecha de inicio (del proceso o del expediente), inclusive.
+ * Filtro de año de los dos reportes: la carpeta de un año (año del expediente) o, sin año, todos
+ * los años entre Desde y Hasta, que ahí son obligatorios y se comparan contra la fecha de inicio
+ * (del proceso o del expediente), inclusive.
  */
 const filtroCarteraReporteSchema = z.object({
-  cartera: z.enum(CARTERAS_JURIDICO).default('TODOS'),
+  anio: anioExpedienteSchema.optional(),
   desde: fechaReporteSchema.optional(),
   hasta: fechaReporteSchema.optional(),
 })
@@ -566,7 +573,7 @@ function validarRangoCartera(
   query: z.infer<typeof filtroCarteraReporteSchema>,
   contexto: z.RefinementCtx,
 ): void {
-  if (query.cartera !== 'TODOS') return
+  if (query.anio !== undefined) return
   if (!query.desde) contexto.addIssue({ code: 'custom', message: 'Indique la fecha "Desde"', path: ['desde'] })
   if (!query.hasta) contexto.addIssue({ code: 'custom', message: 'Indique la fecha "Hasta"', path: ['hasta'] })
   // "YYYY-MM-DD" se ordena igual como texto que como fecha.

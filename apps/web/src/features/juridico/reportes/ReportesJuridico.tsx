@@ -12,17 +12,28 @@ import EmptyState from '../../../components/ui/EmptyState'
 import { guardarArchivo } from '../../../lib/archivos'
 import { descargarReporteProcesos, listarPersonalJuridico } from '../api/juridico.api'
 import { CLASES_BARRA, CLASES_BARRA_FORMA } from '../compartido/colores'
+import { useContextoJuridico } from '../compartido/contexto'
 import FiltrosReporteJuridico from './FiltrosReporteJuridico'
 import TablaReporteJuridico from './TablaReporteJuridico'
 import { useReporteProcesos } from './useReporteProcesos'
 
 /**
- * Por defecto, del 1 de enero del año en curso hasta hoy (hora de Guatemala). El selector de
- * cartera llega con el rediseño de la pantalla (F10); mientras tanto, "Todos" con rango.
+ * Por defecto, todos los años con los procesos iniciados del 1 de enero del año en curso hasta hoy
+ * (hora de Guatemala). Al elegir una carpeta (año del expediente) el rango ya no aplica.
  */
 function filtrosIniciales(): ReporteProcesosJuridicoQuery {
   const hoy = hoyGT()
-  return { cartera: 'TODOS', desde: `${hoy.slice(0, 4)}-01-01`, hasta: hoy, estado: 'TODOS' }
+  return { desde: `${hoy.slice(0, 4)}-01-01`, hasta: hoy, estado: 'TODOS' }
+}
+
+/** "Carpeta 2014" o "15/01/2026 – 30/10/2026": lo mismo que usa el nombre del Excel. */
+function tituloPeriodo(filtros: ReporteProcesosJuridicoQuery): string {
+  if (filtros.anio) return `Expedientes de ${filtros.anio}`
+  return `${formatFechaGT(filtros.desde || hoyGT())} – ${formatFechaGT(filtros.hasta || hoyGT())}`
+}
+
+function nombreArchivo(filtros: ReporteProcesosJuridicoQuery): string {
+  return `procesos-juridicos_${filtros.anio ?? `${filtros.desde}_${filtros.hasta}`}.xlsx`
 }
 
 function plural(cantidad: number, singular: string, varios: string) {
@@ -34,6 +45,7 @@ export default function ReportesJuridico() {
   const [filtros, setFiltros] = useState<ReporteProcesosJuridicoQuery>(filtrosIniciales)
   const [personal, setPersonal] = useState<PersonalDto[]>([])
   const [descargando, setDescargando] = useState(false)
+  const { resumen } = useContextoJuridico()
   const [errorDescarga, setErrorDescarga] = useState<string | null>(null)
 
   // Activas primero; si la lista falla, el filtro queda en "Todo el personal" y el reporte sigue funcionando.
@@ -65,7 +77,7 @@ export default function ReportesJuridico() {
     setErrorDescarga(null)
     try {
       const contenido = await descargarReporteProcesos(filtrosValidos)
-      guardarArchivo(contenido, `procesos-juridicos_${filtrosValidos.desde}_${filtrosValidos.hasta}.xlsx`)
+      guardarArchivo(contenido, nombreArchivo(filtrosValidos))
     } catch {
       // La respuesta de error llega como Blob, no como JSON: se muestra un mensaje genérico.
       setErrorDescarga('No se pudo generar el Excel. Intente de nuevo.')
@@ -80,6 +92,7 @@ export default function ReportesJuridico() {
         filtros={filtros}
         onCambiar={setFiltros}
         personal={personal}
+        anios={resumen?.aniosExpedientes ?? []}
         onDescargar={() => void descargar()}
         descargando={descargando}
         puedeDescargar={filtrosValidos !== null && hayProcesos && !cargando}
@@ -121,7 +134,7 @@ export default function ReportesJuridico() {
       >
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-4">
           <h2 className="text-[15px] font-semibold text-gray-900">
-            Procesos jurídicos · {formatFechaGT(filtros.desde || hoyGT())} – {formatFechaGT(filtros.hasta || hoyGT())}
+            Procesos jurídicos · {tituloPeriodo(filtros)}
           </h2>
           {reporte && (
             <p className="text-[13px] text-gray-500">
@@ -144,7 +157,11 @@ export default function ReportesJuridico() {
             <EmptyState
               Icono={FileSpreadsheet}
               titulo="No hay procesos con estos filtros"
-              descripcion="Prueba con otro rango de fechas, estado o responsable."
+              descripcion={
+                filtros.anio
+                  ? 'Prueba con otro año, estado o responsable.'
+                  : 'Prueba con otro rango de fechas, estado o responsable.'
+              }
             />
           </div>
         )}

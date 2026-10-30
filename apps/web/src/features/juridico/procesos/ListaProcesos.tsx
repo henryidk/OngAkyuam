@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Search } from 'lucide-react'
+import { FolderOpen, Search } from 'lucide-react'
 import {
   BUSQUEDA_MAX,
   LARGO_MINIMO_BUSQUEDA_PROCESOS,
   anioActualGT,
   hoyGT,
-  type CarteraJuridico,
   type ProcesoResumen,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
@@ -20,8 +19,8 @@ import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista } from '../compartido/EstadosVista'
 import { useRecurso } from '../compartido/useRecurso'
 import FilaProceso from './FilaProceso'
-import FiltroCartera from './FiltroCartera'
-import { carteraAUrl, carteraDesdeUrl, opcionesCartera } from './formato'
+import FiltroCarpetas from './FiltroCarpetas'
+import { anioDesdeUrl, opcionesCarpetas, type Carpeta } from './formato'
 import ModalNumeroJudicial from '../compartido/ModalNumeroJudicial'
 import Paginacion from '../compartido/Paginacion'
 
@@ -75,11 +74,46 @@ function FilasEsqueleto() {
   )
 }
 
-function textoVacio(conBusqueda: boolean, cartera: CarteraJuridico): string {
-  if (conBusqueda) return 'Ningún proceso en curso coincide con la búsqueda.'
-  if (cartera === 'ANIO') return 'No hay procesos en curso iniciados este año.'
-  if (cartera === 'SEGUIMIENTO') return 'No hay procesos en curso de años anteriores.'
-  return 'No hay procesos en curso.'
+function textoVacio(conBusqueda: boolean, anio: number | null): string {
+  if (conBusqueda) {
+    return anio === null
+      ? 'Ningún proceso en curso coincide con la búsqueda.'
+      : `Ningún proceso en curso de la carpeta ${anio} coincide con la búsqueda.`
+  }
+  return anio === null ? 'No hay procesos en curso.' : `No hay procesos en curso en la carpeta ${anio}.`
+}
+
+/**
+ * Separador de carpeta en "Todos": la lista viene ordenada por año del expediente, así que cada
+ * cambio de año abre una carpeta nueva, como los separadores de un archivo físico.
+ */
+function SeparadorCarpeta({ carpeta, onVerSolo }: { carpeta: Carpeta; onVerSolo: () => void }) {
+  return (
+    <tr className="border-t border-gray-200 bg-brand-50/60">
+      <th scope="rowgroup" colSpan={COLUMNAS.length} className="p-0 text-left font-normal">
+        {/* Fijo a la izquierda: al desplazar la tabla de lado el año sigue a la vista. */}
+        <div className="sticky left-0 inline-flex items-center gap-2 px-4 py-2">
+          <FolderOpen size={16} aria-hidden="true" className="text-brand-600" />
+          <span className="text-[13px] font-semibold text-gray-900">
+            Expedientes de <span className="tabular-nums">{carpeta.anio}</span>
+          </span>
+          {carpeta.esAnioActual && <span className="text-xs text-gray-500">(este año)</span>}
+          {carpeta.total !== null && (
+            <span className="text-xs text-gray-500 tabular-nums">
+              · {carpeta.total} {carpeta.total === 1 ? 'proceso en curso' : 'procesos en curso'}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={onVerSolo}
+            className="ml-2 rounded text-xs font-medium text-brand-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          >
+            Ver solo {carpeta.anio}
+          </button>
+        </div>
+      </th>
+    </tr>
+  )
 }
 
 /** "18 procesos en curso" o, con varias páginas, "Mostrando 16–30 de 57 procesos en curso". */
@@ -91,15 +125,15 @@ function textoConteo(pagina: number, pageSize: number, total: number, enPagina: 
 }
 
 /**
- * Lista de trabajo: solo procesos en trámite. "Solo asignados a mí", el año de inicio y la página
- * viven en la URL;
+ * Lista de trabajo: solo procesos en trámite. "Solo asignados a mí", la carpeta (año del
+ * expediente) y la página viven en la URL;
  * el término buscado no, para que el nombre de una usuaria no quede en el historial del navegador.
  */
 export default function ListaProcesos() {
   useTituloPagina({ titulo: 'Procesos' })
   const [params, setParams] = useSearchParams()
   const mios = params.get('mios') === 'true'
-  const cartera = carteraDesdeUrl(params.get('cartera'))
+  const anio = anioDesdeUrl(params.get('anio'))
   const pagina = Math.max(1, Number(params.get('page')) || 1)
 
   const tablaRef = useRef<HTMLElement>(null)
@@ -125,8 +159,8 @@ export default function ListaProcesos() {
   }, [siguienteBusqueda, busqueda, setParams])
 
   const cargar = useCallback(
-    () => listarProcesos({ q: busqueda || undefined, mios: mios || undefined, cartera, page: pagina }),
-    [busqueda, mios, cartera, pagina],
+    () => listarProcesos({ q: busqueda || undefined, mios: mios || undefined, anio: anio ?? undefined, page: pagina }),
+    [busqueda, mios, anio, pagina],
   )
   const { datos, error, cargando, recargar } = useRecurso(cargar)
 
@@ -141,10 +175,12 @@ export default function ListaProcesos() {
   }, [recargar, recargarResumen])
 
   // Los totales del resumen cuentan todos los procesos en curso: con la lista acotada no cuadrarían.
-  const opciones = opcionesCartera(anioActualGT(), mios || busqueda ? null : resumen)
+  const opciones = opcionesCarpetas(anioActualGT(), resumen, { anioElegido: anio, conTotales: !mios && !busqueda })
+  const carpetaDe = (anioExpediente: number): Carpeta =>
+    opciones.carpetas.find((carpeta) => carpeta.anio === anioExpediente) ?? { anio: anioExpediente, total: null, esAnioActual: false }
   const hoy = hoyGT()
 
-  function actualizarParams(cambios: { mios?: boolean; cartera?: CarteraJuridico; page?: number }) {
+  function actualizarParams(cambios: { mios?: boolean; anio?: number | null; page?: number }) {
     setParams(
       (actual) => {
         const siguiente = new URLSearchParams(actual)
@@ -153,10 +189,9 @@ export default function ListaProcesos() {
           else siguiente.delete('mios')
           siguiente.delete('page')
         }
-        if (cambios.cartera !== undefined) {
-          const valor = carteraAUrl(cambios.cartera)
-          if (valor) siguiente.set('cartera', valor)
-          else siguiente.delete('cartera')
+        if (cambios.anio !== undefined) {
+          if (cambios.anio !== null) siguiente.set('anio', String(cambios.anio))
+          else siguiente.delete('anio')
           siguiente.delete('page')
         }
         if (cambios.page !== undefined) {
@@ -204,12 +239,12 @@ export default function ListaProcesos() {
             className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
           />
         </label>
-        <FiltroCartera opciones={opciones} activa={cartera} onCambiar={(valor) => actualizarParams({ cartera: valor })} />
         <div className="flex items-center gap-2 text-[13px] text-gray-700 sm:ml-auto">
           <Switch encendido={mios} onChange={(valor) => actualizarParams({ mios: valor })} ariaLabel="Solo asignados a mí" />
           <span aria-hidden="true">Solo asignados a mí</span>
         </div>
       </div>
+      <FiltroCarpetas opciones={opciones} activa={anio} onCambiar={(valor) => actualizarParams({ anio: valor })} />
       <p className="text-[13px] text-gray-500">
         {textoCorto
           ? `Escribe al menos ${LARGO_MINIMO_BUSQUEDA_PROCESOS} caracteres.`
@@ -244,25 +279,32 @@ export default function ListaProcesos() {
               </thead>
               <tbody className={cargando && datos ? 'opacity-60' : undefined}>
                 {!datos && <FilasEsqueleto />}
-                {datos?.items.map((proceso) => (
-                  <FilaProceso
-                    key={proceso.id}
-                    proceso={proceso}
-                    hoy={hoy}
-                    abriendoAudiencia={Boolean(proceso.proximaAudiencia) && accionAudiencia.cargandoId === proceso.proximaAudiencia?.id}
-                    onAsignarNumero={() => setAsignandoNumero(proceso)}
-                    onAgendar={() => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) })}
-                    onAccionAudiencia={() => {
-                      if (proceso.proximaAudiencia) void accionAudiencia.abrir(proceso.id, proceso.proximaAudiencia)
-                    }}
-                  />
+                {datos?.items.map((proceso, indice) => (
+                  <Fragment key={proceso.id}>
+                    {anio === null && proceso.anioExpediente !== datos.items[indice - 1]?.anioExpediente && (
+                      <SeparadorCarpeta
+                        carpeta={carpetaDe(proceso.anioExpediente)}
+                        onVerSolo={() => actualizarParams({ anio: proceso.anioExpediente })}
+                      />
+                    )}
+                    <FilaProceso
+                      proceso={proceso}
+                      hoy={hoy}
+                      abriendoAudiencia={Boolean(proceso.proximaAudiencia) && accionAudiencia.cargandoId === proceso.proximaAudiencia?.id}
+                      onAsignarNumero={() => setAsignandoNumero(proceso)}
+                      onAgendar={() => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) })}
+                      onAccionAudiencia={() => {
+                        if (proceso.proximaAudiencia) void accionAudiencia.abrir(proceso.id, proceso.proximaAudiencia)
+                      }}
+                    />
+                  </Fragment>
                 ))}
               </tbody>
             </table>
           </div>
           {datos && datos.items.length === 0 && (
             <p className="px-4 py-6 text-center text-sm text-gray-500">
-              {textoVacio(Boolean(busqueda), cartera)}
+              {textoVacio(Boolean(busqueda), anio)}
             </p>
           )}
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3 text-[13px] text-gray-500">

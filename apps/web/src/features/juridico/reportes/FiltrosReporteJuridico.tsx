@@ -19,6 +19,8 @@ interface FiltrosReporteJuridicoProps {
   onCambiar: (filtros: ReporteProcesosJuridicoQuery) => void
   /** Abogadas y procuradoras, activas e inactivas: un reporte de años anteriores puede necesitar a quien ya no está. */
   personal: PersonalDto[]
+  /** Años de los expedientes de Jurídico, del más reciente al más antiguo (las carpetas de la lista). */
+  anios: number[]
   onDescargar: () => void
   descargando: boolean
   puedeDescargar: boolean
@@ -28,6 +30,7 @@ export default function FiltrosReporteJuridico({
   filtros,
   onCambiar,
   personal,
+  anios,
   onDescargar,
   descargando,
   puedeDescargar,
@@ -35,25 +38,52 @@ export default function FiltrosReporteJuridico({
   return (
     <section className="flex flex-wrap items-end gap-4 rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-gray-600">Desde</span>
-        <input
-          type="date"
-          value={filtros.desde ?? ''}
-          max={filtros.hasta}
-          onChange={(event) => onCambiar({ ...filtros, desde: event.target.value })}
+        <span className="mb-1 block text-xs font-medium text-gray-600">Año del expediente</span>
+        <select
+          value={filtros.anio ?? ''}
+          onChange={(event) => onCambiar({ ...filtros, anio: event.target.value ? Number(event.target.value) : undefined })}
           className={CLASES_CAMPO}
-        />
+        >
+          <option value="">Todos los años (por fechas)</option>
+          {/* La carpeta elegida se conserva aunque el resumen todavía no haya cargado. */}
+          {[...new Set([...anios, ...(filtros.anio ? [filtros.anio] : [])])]
+            .sort((a, b) => b - a)
+            .map((anio) => (
+              <option key={anio} value={anio}>
+                Carpeta {anio}
+              </option>
+            ))}
+        </select>
       </label>
-      <label className="block">
-        <span className="mb-1 block text-xs font-medium text-gray-600">Hasta</span>
-        <input
-          type="date"
-          value={filtros.hasta ?? ''}
-          min={filtros.desde}
-          onChange={(event) => onCambiar({ ...filtros, hasta: event.target.value })}
-          className={CLASES_CAMPO}
-        />
-      </label>
+      {filtros.anio ? (
+        // Una carpeta incluye todos sus procesos, sin importar cuándo empezaron: las fechas no aplican.
+        <p className="max-w-[260px] self-center pt-4 text-xs text-gray-500">
+          Incluye todos los procesos de los expedientes de {filtros.anio}, sin importar la fecha de inicio.
+        </p>
+      ) : (
+        <>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-gray-600">Desde</span>
+            <input
+              type="date"
+              value={filtros.desde ?? ''}
+              max={filtros.hasta}
+              onChange={(event) => onCambiar({ ...filtros, desde: event.target.value })}
+              className={CLASES_CAMPO}
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-gray-600">Hasta</span>
+            <input
+              type="date"
+              value={filtros.hasta ?? ''}
+              min={filtros.desde}
+              onChange={(event) => onCambiar({ ...filtros, hasta: event.target.value })}
+              className={CLASES_CAMPO}
+            />
+          </label>
+        </>
+      )}
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-gray-600">Estado</span>
         <select

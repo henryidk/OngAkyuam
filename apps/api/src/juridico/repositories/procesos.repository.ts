@@ -21,8 +21,9 @@ import {
 import {
   EN_TRAMITE_SQL,
   PROCESO_CON_ACCESO_SQL,
+  anioDeFechaSql,
   asignadoASql,
-  carteraSql,
+  carpetaAnioSql,
   escaparLike,
   numeroInternoSql,
 } from '../compartido/sql';
@@ -59,11 +60,10 @@ function tiposQueCoinciden(texto: string): TipoProcesoJuridico[] {
 
 function condicionesListado(params: ListarProcesosParams): Prisma.Sql {
   // La lista de trabajo solo muestra procesos en trámite.
-  const condiciones: Prisma.Sql[] = [
-    PROCESO_CON_ACCESO_SQL,
-    EN_TRAMITE_SQL,
-    carteraSql(params.cartera, params.anioActual),
-  ];
+  const condiciones: Prisma.Sql[] = [PROCESO_CON_ACCESO_SQL, EN_TRAMITE_SQL];
+  if (params.anio !== undefined) {
+    condiciones.push(carpetaAnioSql(params.anio));
+  }
 
   if (params.asignadosAUsuarioId) {
     condiciones.push(asignadoASql(params.asignadosAUsuarioId));
@@ -99,8 +99,6 @@ interface FilaResumen {
   finalizados: bigint;
   abandonados: bigint;
   requierenAtencion: bigint;
-  enTramiteAnio: bigint;
-  enTramiteSeguimiento: bigint;
   audienciasPendientes: bigint;
   convenio: bigint;
   sentencia: bigint;
@@ -177,12 +175,14 @@ export class ProcesosRepository implements IProcesosRepository {
       WHERE ${condiciones}
     `;
 
+    // Agrupado por carpeta (año del expediente, el más reciente primero) para que la vista "Todos"
+    // pueda separar los años; dentro de cada año, los más nuevos primero.
     // Filtro, orden y paginación en la base (el código "05-2026 · Proceso 2" no es una columna, así
     // que la búsqueda necesita SQL); los datos de cada fila se cargan después por id.
     const [filas, conteo] = await Promise.all([
       this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
         SELECT p.id ${desde}
-        ORDER BY p."createdAt" DESC, p.id
+        ORDER BY ${anioDeFechaSql(Prisma.sql`e.fecha`)} DESC, p."createdAt" DESC, p.id
         LIMIT ${params.pageSize} OFFSET ${(params.page - 1) * params.pageSize}
       `),
       this.prisma.$queryRaw<{ total: bigint }[]>(
@@ -201,9 +201,12 @@ export class ProcesosRepository implements IProcesosRepository {
     };
   }
 
-  async resumen(anioActual: number): Promise<ResumenProcesos> {
-    // Todos los contadores en una sola pasada (count FILTER), nunca una consulta por tarjeta.
-    const [fila] = await this.prisma.$queryRaw<FilaResumen[]>(Prisma.sql`
+  async resumen(): Promise<ResumenProcesos> {
+    const anioExpediente = anioDeFechaSql(Prisma.sql`e.fecha`);
+    // Todos los contadores en una sola pasada (count FILTER), nunca una consulta por tarjeta; las
+    // carpetas, en dos consultas agrupadas aparte (una fila por año).
+    const [[fila], porAnio, anios] = await Promise.all([
+      this.prisma.$queryRaw<FilaResumen[]>(Prisma.sql`
       SELECT
         (SELECT count(*) FROM "ReferidoArea" r
           WHERE r.area = 'JURIDICO' AND r."atendidoEn" IS NULL
@@ -216,12 +219,6 @@ export class ProcesosRepository implements IProcesosRepository {
         count(*) FILTER (
           WHERE ${EN_TRAMITE_SQL} AND p."ultimaActuacionEn" < ${limiteInactividad()}
         ) AS "requierenAtencion",
-        count(*) FILTER (
-          WHERE ${EN_TRAMITE_SQL} AND ${carteraSql('ANIO', anioActual)}
-        ) AS "enTramiteAnio",
-        count(*) FILTER (
-          WHERE ${EN_TRAMITE_SQL} AND ${carteraSql('SEGUIMIENTO', anioActual)}
-        ) AS "enTramiteSeguimiento",
         (SELECT count(*) FROM "AudienciaJuridica" a
           JOIN "ProcesoJuridico" p ON p.id = a."procesoId"
           WHERE a.estado = 'PROGRAMADA' AND a.inicio <= now() AND ${PROCESO_CON_ACCESO_SQL}
@@ -232,7 +229,24 @@ export class ProcesosRepository implements IProcesosRepository {
         count(*) FILTER (WHERE p."formaFinalizacion" = 'OTROS') AS otros
       FROM "ProcesoJuridico" p
       WHERE ${PROCESO_CON_ACCESO_SQL}
-    `);
+    `),
+      this.prisma.$queryRaw<{ anio: number; total: bigint }[]>(Prisma.sql`
+        SELECT ${anioExpediente} AS anio, count(*) AS total
+        FROM "ProcesoJuridico" p
+        JOIN "Expediente" e ON e.id = p."expedienteId"
+        WHERE ${PROCESO_CON_ACCESO_SQL} AND ${EN_TRAMITE_SQL}
+        GROUP BY 1
+        ORDER BY 1 DESC
+      `),
+      // Los reportes también cuentan expedientes sin proceso: todos los referidos a Jurídico.
+      this.prisma.$queryRaw<{ anio: number }[]>(Prisma.sql`
+        SELECT DISTINCT ${anioExpediente} AS anio
+        FROM "ReferidoArea" r
+        JOIN "Expediente" e ON e.id = r."expedienteId"
+        WHERE r.area = 'JURIDICO'
+        ORDER BY 1 DESC
+      `),
+    ]);
 
     const porForma: Record<FormaFinalizacionProceso, bigint> = {
       CONVENIO: fila.convenio,
@@ -255,10 +269,11 @@ export class ProcesosRepository implements IProcesosRepository {
       ) as Record<FormaFinalizacionProceso, number>,
       abandonados: Number(fila.abandonados),
       requierenAtencion: Number(fila.requierenAtencion),
-      enTramitePorCartera: {
-        anio: Number(fila.enTramiteAnio),
-        seguimiento: Number(fila.enTramiteSeguimiento),
-      },
+      enTramitePorAnio: porAnio.map((carpeta) => ({
+        anio: carpeta.anio,
+        total: Number(carpeta.total),
+      })),
+      aniosExpedientes: anios.map((carpeta) => carpeta.anio),
       audienciasPendientes: Number(fila.audienciasPendientes),
     };
   }

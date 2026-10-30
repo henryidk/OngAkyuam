@@ -1,11 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  anioCalendarioGT,
   calcularRangoEdad,
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_RANGO_EDAD,
   etiquetasTipologia,
-  fechaCalendarioGT,
   FILAS_VISTA_PREVIA_REPORTE,
   lugarParaReporte,
   type FilaPoblacionJuridico,
@@ -13,7 +11,6 @@ import {
   type ReportePoblacionJuridicoQuery,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
-import { RELOJ, type IReloj } from '../../common/reloj';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { EXPORTADOR_HOJA_CALCULO } from '../../common/hoja-calculo/exportador-hoja-calculo.interface';
 import type {
@@ -105,7 +102,6 @@ export class ReportePoblacionJuridicoService {
     @Inject(EXPORTADOR_HOJA_CALCULO)
     private readonly exportador: IExportadorHojaCalculo,
     private readonly auditService: AuditService,
-    @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
   async vistaPrevia(
@@ -156,18 +152,16 @@ export class ReportePoblacionJuridicoService {
       detalles: { ...detallesAuditoria(filtro), filas: filas.length },
     });
 
-    const ahora = this.reloj.ahora();
     return {
       contenido,
-      nombreArchivo: `poblacion-beneficiada-juridico_${sufijoArchivo(filtro, fechaCalendarioGT(ahora))}.${this.exportador.extension}`,
+      nombreArchivo: `poblacion-beneficiada-juridico_${sufijoArchivo(filtro)}.${this.exportador.extension}`,
       tipoContenido: this.exportador.tipoContenido,
     };
   }
 
-  /** El año en curso es el de Guatemala: separa la cartera del año de la de seguimiento. */
   private aFiltro(
     query: ReportePoblacionJuridicoQuery,
   ): FiltroReportePoblacionJuridico {
-    return aFiltroCartera(query, anioCalendarioGT(this.reloj.ahora()));
+    return aFiltroCartera(query);
   }
 }

@@ -1,9 +1,5 @@
 import { Prisma } from '@prisma/client';
-import {
-  GUATEMALA_TZ,
-  separarNumeroInterno,
-  type CarteraJuridico,
-} from '@akyuam/shared';
+import { GUATEMALA_TZ, separarNumeroInterno } from '@akyuam/shared';
 
 /** `%` y `_` son comodines de LIKE: lo que escribe la persona se busca literal. */
 export function escaparLike(texto: string): string {
@@ -39,48 +35,40 @@ END)`;
 /** Ni finalizado ni abandonado, igual que `esProcesoActivo()`. */
 export const PROCESO_ABIERTO_SQL = Prisma.sql`(p.fase <> 'FINALIZADO' AND p.situacion <> 'ABANDONADO')`;
 
-/** 1 de enero de `anio`: `fechaInicio` es una fecha de calendario, se compara como `date`. */
-function inicioDeAnioSql(anio: number): Prisma.Sql {
-  return Prisma.sql`make_date(${anio}::int, 1, 1)`;
-}
-
-/** Columnas sobre las que se evalúa la cartera: las de un proceso o las de un expediente. */
+/** Columnas sobre las que se filtra por año: las de un proceso o las de un expediente. */
 export interface ColumnasCarteraSql {
-  /** Fecha de calendario (`date`) de inicio. */
+  /** Fecha de calendario (`date`) del expediente: define la carpeta. */
+  fechaExpediente: Prisma.Sql;
+  /** Fecha de calendario (`date`) de inicio: la que se compara con Desde/Hasta. */
   fechaInicio: Prisma.Sql;
-  /** Expresión booleana: sigue abierto. */
-  abierto: Prisma.Sql;
 }
 
 const COLUMNAS_CARTERA_PROCESO: ColumnasCarteraSql = {
+  fechaExpediente: Prisma.sql`e.fecha`,
   fechaInicio: Prisma.sql`p."fechaInicio"`,
-  abierto: PROCESO_ABIERTO_SQL,
 };
 
-/**
- * La misma regla que `carteraDe()` de shared: del año si empezó en `anioActual`; de
- * seguimiento si empezó antes y sigue abierto. Por defecto, sobre el proceso `p`.
- */
-export function carteraSql(
-  cartera: CarteraJuridico,
-  anioActual: number,
-  columnas: ColumnasCarteraSql = COLUMNAS_CARTERA_PROCESO,
-): Prisma.Sql {
-  switch (cartera) {
-    case 'ANIO':
-      return Prisma.sql`${columnas.fechaInicio} >= ${inicioDeAnioSql(anioActual)}`;
-    case 'SEGUIMIENTO':
-      return Prisma.sql`(${columnas.abierto} AND ${columnas.fechaInicio} < ${inicioDeAnioSql(anioActual)})`;
-    case 'TODOS':
-      return Prisma.sql`TRUE`;
-  }
+/** Año de una fecha de calendario (`date`), igual que `anioDeFecha()` de shared. */
+export function anioDeFechaSql(fecha: Prisma.Sql): Prisma.Sql {
+  return Prisma.sql`EXTRACT(YEAR FROM ${fecha})::int`;
 }
 
-/** Filtro de cartera de los reportes: además, en "Todos" la fecha de inicio cae en el rango. */
+/**
+ * La carpeta `anio`: el expediente se registró ese año ("05-2014" → 2014). Se compara como rango
+ * de fechas, no con EXTRACT, para que pueda usar un índice sobre la fecha. Por defecto, sobre `e`.
+ */
+export function carpetaAnioSql(
+  anio: number,
+  fechaExpediente: Prisma.Sql = COLUMNAS_CARTERA_PROCESO.fechaExpediente,
+): Prisma.Sql {
+  return Prisma.sql`(${fechaExpediente} >= make_date(${anio}::int, 1, 1) AND ${fechaExpediente} < make_date(${anio}::int + 1, 1, 1))`;
+}
+
+/** Filtro de año de los reportes: una carpeta o, sin año, todos los años dentro del rango. */
 export interface FiltroCarteraReporte {
-  cartera: CarteraJuridico;
-  anioActual: number;
-  /** Solo en "Todos": "YYYY-MM-DD", inclusive. */
+  /** null = todos los años. */
+  anio: number | null;
+  /** Solo sin año: "YYYY-MM-DD", inclusive. */
   rango: { desde: string; hasta: string } | null;
 }
 
@@ -88,10 +76,12 @@ export function carteraReporteSql(
   filtro: FiltroCarteraReporte,
   columnas: ColumnasCarteraSql = COLUMNAS_CARTERA_PROCESO,
 ): Prisma.Sql {
-  const porRango = filtro.rango
-    ? Prisma.sql`AND ${columnas.fechaInicio} BETWEEN ${filtro.rango.desde}::date AND ${filtro.rango.hasta}::date`
-    : Prisma.empty;
-  return Prisma.sql`(${carteraSql(filtro.cartera, filtro.anioActual, columnas)} ${porRango})`;
+  if (filtro.anio !== null) {
+    return carpetaAnioSql(filtro.anio, columnas.fechaExpediente);
+  }
+  return filtro.rango
+    ? Prisma.sql`(${columnas.fechaInicio} BETWEEN ${filtro.rango.desde}::date AND ${filtro.rango.hasta}::date)`
+    : Prisma.sql`TRUE`;
 }
 
 /**

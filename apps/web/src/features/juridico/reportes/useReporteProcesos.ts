@@ -13,7 +13,7 @@ export function useReporteProcesos(filtros: ReporteProcesosJuridicoQuery | null)
   const [cargando, setCargando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const cartera = filtros?.cartera
+  const anio = filtros?.anio
   const desde = filtros?.desde
   const hasta = filtros?.hasta
   const estado = filtros?.estado
@@ -21,13 +21,15 @@ export function useReporteProcesos(filtros: ReporteProcesosJuridicoQuery | null)
   const tipo = filtros?.tipo
 
   useEffect(() => {
-    if (!cartera || !estado) {
+    if (!estado) {
       return
     }
     let cancelado = false
     setCargando(true)
     setError(null)
-    obtenerReporteProcesos({ cartera, desde, hasta, estado, responsableId, tipo })
+    // Con carpeta el rango no aplica: no se envía, para que la consulta sea solo por año.
+    const periodo = anio ? { anio } : { desde, hasta }
+    obtenerReporteProcesos({ ...periodo, estado, responsableId, tipo })
       .then((datos) => {
         if (!cancelado) setReporte(datos)
       })
@@ -40,7 +42,7 @@ export function useReporteProcesos(filtros: ReporteProcesosJuridicoQuery | null)
     return () => {
       cancelado = true
     }
-  }, [cartera, desde, hasta, estado, responsableId, tipo])
+  }, [anio, desde, hasta, estado, responsableId, tipo])
 
   return { reporte, cargando, error }
 }

@@ -125,7 +125,7 @@ export default function CabeceraProceso({
             <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
               {ETIQUETAS_CATEGORIA_PROCESO[CATEGORIA_POR_TIPO_PROCESO[proceso.tipo]]}
             </span>
-            {proceso.esSeguimiento && <ChipSeguimiento fechaInicio={proceso.fechaInicio} />}
+            {proceso.esSeguimiento && <ChipSeguimiento anio={proceso.anioExpediente} />}
           </div>
           <h2 className="text-[22px] font-semibold tracking-tight text-pretty text-gray-900">
             {ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.tipo]}

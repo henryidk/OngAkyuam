@@ -5,7 +5,7 @@ import type {
   FilaProcesoRow,
   IReporteProcesosRepository,
 } from '../interfaces/reporte-procesos-repository.interface';
-import { ABOGADA_ID, contexto, relojFijo } from '../pruebas/dobles';
+import { ABOGADA_ID, contexto } from '../pruebas/dobles';
 import {
   aFilaHoja,
   aFilaReporte,
@@ -219,7 +219,6 @@ describe('ReporteProcesosService', () => {
   let service: ReporteProcesosService;
 
   const query = {
-    cartera: 'TODOS',
     desde: '2026-01-01',
     hasta: '2026-10-05',
     estado: 'FINALIZADO',
@@ -227,12 +226,11 @@ describe('ReporteProcesosService', () => {
     tipo: 'DIVORCIO_MUTUO_ACUERDO',
   } as const;
 
-  function crearServicio(ahora?: Date) {
+  function crearServicio() {
     return new ReporteProcesosService(
       repositorio,
       exportador,
       auditService as unknown as AuditService,
-      relojFijo(ahora),
     );
   }
 
@@ -260,12 +258,11 @@ describe('ReporteProcesosService', () => {
     service = crearServicio();
   });
 
-  it('traduce los filtros: cartera con rango, estado, responsable y tipo concretos', async () => {
+  it('traduce los filtros: todos los años con rango, estado, responsable y tipo concretos', async () => {
     await service.vistaPrevia(query, contexto);
 
     expect(repositorio.conteos).toHaveBeenCalledWith({
-      cartera: 'TODOS',
-      anioActual: 2026,
+      anio: null,
       rango: { desde: '2026-01-01', hasta: '2026-10-05' },
       estado: 'FINALIZADO',
       responsableId: ABOGADA_ID,
@@ -273,10 +270,10 @@ describe('ReporteProcesosService', () => {
     });
   });
 
-  it('en "Año en curso" ignora el rango; "Todos", sin responsable y sin tipo se traducen a null', async () => {
+  it('con una carpeta ignora el rango; "Todos", sin responsable y sin tipo se traducen a null', async () => {
     await service.vistaPrevia(
       {
-        cartera: 'ANIO',
+        anio: 2014,
         desde: '2020-01-01',
         hasta: '2020-12-31',
         estado: 'TODOS',
@@ -285,25 +282,12 @@ describe('ReporteProcesosService', () => {
     );
 
     expect(repositorio.conteos).toHaveBeenCalledWith({
-      cartera: 'ANIO',
-      anioActual: 2026,
+      anio: 2014,
       rango: null,
       estado: null,
       responsableId: null,
       tipo: null,
     });
-  });
-
-  it('el año en curso es el de Guatemala: el 1 de enero UTC todavía es 31 de diciembre allá', async () => {
-    // 01/01/2027 03:00 UTC = 31/12/2026 21:00 en Guatemala.
-    await crearServicio(new Date('2027-01-01T03:00:00.000Z')).vistaPrevia(
-      { cartera: 'ANIO', estado: 'TODOS' },
-      contexto,
-    );
-
-    expect(repositorio.conteos).toHaveBeenCalledWith(
-      expect.objectContaining({ anioActual: 2026 }),
-    );
   });
 
   it('la vista previa trae totales y audita solo los filtros', async () => {
@@ -321,8 +305,7 @@ describe('ReporteProcesosService', () => {
         entidad: 'Reporte',
         detalles: {
           reporte: 'PROCESOS_JURIDICOS',
-          cartera: 'TODOS',
-          anio: 2026,
+          anio: null,
           desde: '2026-01-01',
           hasta: '2026-10-05',
           estado: 'FINALIZADO',
@@ -354,19 +337,12 @@ describe('ReporteProcesosService', () => {
     );
   });
 
-  it('el nombre del archivo dice la cartera: año o seguimiento con la fecha de hoy', async () => {
-    const anio = await service.exportar(
-      { cartera: 'ANIO', estado: 'TODOS' },
-      contexto,
-    );
-    const seguimiento = await service.exportar(
-      { cartera: 'SEGUIMIENTO', estado: 'TODOS' },
+  it('el nombre del archivo dice la carpeta descargada', async () => {
+    const archivo = await service.exportar(
+      { anio: 2014, estado: 'TODOS' },
       contexto,
     );
 
-    expect(anio.nombreArchivo).toBe('procesos-juridicos_2026.xlsx');
-    expect(seguimiento.nombreArchivo).toBe(
-      'procesos-juridicos_seguimiento_2026-10-19.xlsx',
-    );
+    expect(archivo.nombreArchivo).toBe('procesos-juridicos_2014.xlsx');
   });
 });

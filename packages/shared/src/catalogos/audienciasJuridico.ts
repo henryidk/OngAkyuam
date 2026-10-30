@@ -69,10 +69,12 @@ export const ACCIONES_AUDIENCIA = [
 export const VISTAS_AUDIENCIAS = ['proximas', 'pendientes', 'historial'] as const
 
 /**
- * Cartera de Procesos y Reportes (§8.6): del año en curso, de seguimiento (empezó en un año
- * anterior y sigue abierto) o todos.
+ * Carpetas de Procesos y Reportes: cada proceso va en la del año de su expediente ("05-2014" →
+ * 2014), aunque se haya abierto o retomado años después. El año va en la URL: es un valor de
+ * catálogo, no identifica a nadie.
  */
-export const CARTERAS_JURIDICO = ['TODOS', 'ANIO', 'SEGUIMIENTO'] as const
+export const ANIO_EXPEDIENTE_MINIMO = 1990
+export const ANIO_EXPEDIENTE_MAXIMO = 2100
 
 export const DESCRIPCION_AUDIENCIA_MAX = 80
 export const OBSERVACIONES_AUDIENCIA_MAX = 4000

@@ -8,7 +8,6 @@ import {
   formatFechaGT,
   type ProcesoResumen,
 } from '@akyuam/shared'
-import ChipSeguimiento from '../compartido/ChipSeguimiento'
 import { fechaDeInstante, textoAlerta } from '../compartido/formato'
 import { formatHora12 } from '../compartido/hora12'
 import { textoCuando } from '../detalle/formatoBitacora'
@@ -165,11 +164,6 @@ export default function FilaProceso({
             <span className="rounded bg-gray-100 px-1.5 text-[11px] font-medium text-gray-600">Iniciado</span>
           )}
         </p>
-        {proceso.esSeguimiento && (
-          <div className="mt-1.5">
-            <ChipSeguimiento fechaInicio={proceso.fechaInicio} />
-          </div>
-        )}
       </td>
       <td className="px-4 py-3.5 align-top">
         <p className="text-sm leading-5 font-medium text-gray-900">{proceso.usuaria.nombreCompleto}</p>

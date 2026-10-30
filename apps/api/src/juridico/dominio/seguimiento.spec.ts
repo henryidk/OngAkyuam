@@ -1,44 +1,37 @@
-import {
-  anioDeFecha,
-  carteraDe,
-  esDeSeguimiento,
-  etiquetaCartera,
-} from '@akyuam/shared';
+import { anioDeFecha, esDeSeguimiento } from '@akyuam/shared';
 
 const ANIO = 2026;
 
-describe('cartera de Jurídico (planaudiencias.md §2 y §8.6)', () => {
+describe('carpetas por año de Jurídico', () => {
   it('lee el año de la fecha de calendario sin pasar por Date', () => {
     expect(anioDeFecha('2025-12-31')).toBe(2025);
     expect(anioDeFecha('2026-01-01')).toBe(2026);
   });
 
-  it('el 31/12 del año anterior y abierto es seguimiento; el 01/01 no lo es', () => {
+  it('un expediente de un año anterior con el proceso abierto es seguimiento', () => {
+    expect(esDeSeguimiento({ anioExpediente: 2014, abierto: true }, ANIO)).toBe(
+      true,
+    );
+    expect(esDeSeguimiento({ anioExpediente: 2025, abierto: true }, ANIO)).toBe(
+      true,
+    );
+  });
+
+  it('un expediente de este año no es seguimiento, aunque el proceso siga abierto', () => {
+    expect(esDeSeguimiento({ anioExpediente: 2026, abierto: true }, ANIO)).toBe(
+      false,
+    );
+  });
+
+  it('un proceso ya cerrado no es seguimiento', () => {
     expect(
-      esDeSeguimiento({ fechaInicio: '2025-12-31', abierto: true }, ANIO),
-    ).toBe(true);
-    expect(
-      esDeSeguimiento({ fechaInicio: '2026-01-01', abierto: true }, ANIO),
+      esDeSeguimiento({ anioExpediente: 2014, abierto: false }, ANIO),
     ).toBe(false);
   });
 
-  it('un proceso de un año anterior ya cerrado no es seguimiento', () => {
-    expect(
-      esDeSeguimiento({ fechaInicio: '2024-03-10', abierto: false }, ANIO),
-    ).toBe(false);
-  });
-
-  it.each([
-    [{ fechaInicio: '2026-05-02', abierto: true }, 'ANIO', '2026'],
-    [{ fechaInicio: '2026-05-02', abierto: false }, 'ANIO', '2026'],
-    [
-      { fechaInicio: '2024-03-10', abierto: true },
-      'SEGUIMIENTO',
-      'Seguimiento (2024)',
-    ],
-    [{ fechaInicio: '2024-03-10', abierto: false }, null, ''],
-  ])('%p → %p / %p', (datos, cartera, etiqueta) => {
-    expect(carteraDe(datos, ANIO)).toBe(cartera);
-    expect(etiquetaCartera(datos, ANIO)).toBe(etiqueta);
+  it('el proceso abierto en 2026 que sigue en 2027 pasa a ser seguimiento, sin cambiar de carpeta', () => {
+    const proceso = { anioExpediente: 2026, abierto: true };
+    expect(esDeSeguimiento(proceso, 2026)).toBe(false);
+    expect(esDeSeguimiento(proceso, 2027)).toBe(true);
   });
 });

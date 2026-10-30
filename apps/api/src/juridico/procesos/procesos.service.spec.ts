@@ -7,7 +7,6 @@ import {
   crearAcceso,
   crearAuditService,
   crearProcesosRepository,
-  relojFijo,
 } from '../pruebas/dobles';
 import { ProcesosService } from './procesos.service';
 
@@ -17,7 +16,7 @@ describe('ProcesosService', () => {
   let procesosRepository: ReturnType<typeof crearProcesosRepository>;
   let service: ProcesosService;
 
-  function crearService(ahora?: Date): ProcesosService {
+  function crearService(): ProcesosService {
     return new ProcesosService(
       procesosRepository,
       {} as IBitacoraRepository,
@@ -25,7 +24,6 @@ describe('ProcesosService', () => {
       crearAcceso(procesosRepository),
       {} as AsignacionPersonalService,
       crearAuditService(),
-      relojFijo(ahora),
     );
   }
 
@@ -72,37 +70,31 @@ describe('ProcesosService', () => {
     });
   });
 
-  describe('cartera', () => {
-    it('sin filtro pide todas, con el año en curso de Guatemala', async () => {
+  describe('carpetas por año', () => {
+    it('sin filtro pide todos los años', async () => {
       await service.listar(buscarProcesosSchema.parse({}), CUENTA_ID);
 
       expect(procesosRepository.listar).toHaveBeenCalledWith(
-        expect.objectContaining({ cartera: 'TODOS', anioActual: 2026 }),
+        expect.objectContaining({ anio: undefined }),
       );
     });
 
-    it('pasa la cartera elegida', async () => {
+    it('pasa la carpeta elegida (viene como texto en la URL)', async () => {
       await service.listar(
-        buscarProcesosSchema.parse({ cartera: 'SEGUIMIENTO' }),
+        buscarProcesosSchema.parse({ anio: '2014' }),
         CUENTA_ID,
       );
 
       expect(procesosRepository.listar).toHaveBeenCalledWith(
-        expect.objectContaining({ cartera: 'SEGUIMIENTO' }),
+        expect.objectContaining({ anio: 2014 }),
       );
     });
 
-    it('rechaza una cartera que no existe', () => {
-      expect(() => buscarProcesosSchema.parse({ cartera: 'OTRA' })).toThrow();
-    });
-
-    it('el 31/12 a las 21:00 de Guatemala sigue siendo el año que termina, aunque en UTC ya es el siguiente', async () => {
-      procesosRepository.resumen.mockResolvedValue(
-        {} as Awaited<ReturnType<typeof procesosRepository.resumen>>,
-      );
-      await crearService(new Date('2027-01-01T03:00:00.000Z')).resumen();
-
-      expect(procesosRepository.resumen).toHaveBeenCalledWith(2026);
-    });
+    it.each(['OTRA', '1989', '2101', '2014.5'])(
+      'rechaza un año que no es válido: %p',
+      (anio) => {
+        expect(() => buscarProcesosSchema.parse({ anio })).toThrow();
+      },
+    );
   });
 });
