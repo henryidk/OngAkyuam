@@ -32,13 +32,31 @@ const ESPERA_BUSQUEDA_MS = 350
  * sobrante y el juzgado se partía en tres líneas.
  */
 const COLUMNAS: { titulo: string; ancho: string }[] = [
-  { titulo: 'No. interno', ancho: 'w-[120px]' },
-  { titulo: 'Usuaria', ancho: 'w-[230px]' },
+  { titulo: 'No. interno', ancho: 'w-[136px]' },
+  { titulo: 'Usuaria', ancho: 'w-[200px]' },
   { titulo: 'Tipo de proceso', ancho: '' },
   { titulo: 'No. judicial', ancho: '' },
+  { titulo: 'Último avance', ancho: 'w-[136px]' },
   // Puede ser una audiencia ya pasada que falta registrar: por eso no dice "Próxima".
-  { titulo: 'Audiencia', ancho: 'w-[210px]' },
-  { titulo: 'Último avance', ancho: 'w-[150px]' },
+  { titulo: 'Audiencia', ancho: 'w-[186px]' },
+  // Sin encabezado propio: comparte el de "Audiencia" (ver ENCABEZADOS).
+  { titulo: 'Acción de audiencia', ancho: 'w-[184px]' },
+  // La flecha que indica que la fila abre el detalle.
+  { titulo: 'Abrir', ancho: 'w-10' },
+]
+
+/**
+ * Lo que ya pasó a la izquierda (último avance) y lo que viene a la derecha (audiencia y qué hacer
+ * con ella). La fecha y su botón van bajo un solo encabezado: se leen como una misma cosa.
+ */
+const ENCABEZADOS: { titulo: string; columnas: number; clase?: string }[] = [
+  { titulo: 'No. interno', columnas: 1, clase: 'sticky left-0 z-10 bg-gray-50' },
+  { titulo: 'Usuaria', columnas: 1 },
+  { titulo: 'Tipo de proceso', columnas: 1 },
+  { titulo: 'No. judicial', columnas: 1 },
+  { titulo: 'Último avance', columnas: 1 },
+  { titulo: 'Audiencia', columnas: 2, clase: 'border-l border-gray-200' },
+  { titulo: 'Abrir', columnas: 1 },
 ]
 
 function FilasEsqueleto() {
@@ -47,7 +65,7 @@ function FilasEsqueleto() {
       {Array.from({ length: 5 }, (_, indice) => (
         <tr key={indice} className="border-t border-gray-100">
           {COLUMNAS.map((columna) => (
-            <td key={columna.titulo} className="px-4 py-3">
+            <td key={columna.titulo} className="px-4 py-3.5">
               <div className="h-4 animate-pulse rounded bg-gray-100" />
             </td>
           ))}
@@ -203,16 +221,23 @@ export default function ListaProcesos() {
       ) : (
         <section ref={tablaRef} className="scroll-mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1120px] table-fixed text-left">
+            <table className="w-full min-w-[1240px] table-fixed text-left">
+              {/* Los anchos van en <col>: con un encabezado que abarca dos columnas, los <th> no sirven. */}
+              <colgroup>
+                {COLUMNAS.map((columna) => (
+                  <col key={columna.titulo} className={columna.ancho} />
+                ))}
+              </colgroup>
               <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
                 <tr>
-                  {COLUMNAS.map((columna, indice) => (
+                  {ENCABEZADOS.map((encabezado) => (
                     <th
-                      key={columna.titulo}
+                      key={encabezado.titulo}
                       scope="col"
-                      className={`whitespace-nowrap px-4 py-2.5 font-medium ${columna.ancho} ${indice === 0 ? 'sticky left-0 z-10 bg-gray-50' : ''}`}
+                      colSpan={encabezado.columnas}
+                      className={`whitespace-nowrap px-4 py-3 font-medium ${encabezado.clase ?? ''}`}
                     >
-                      {columna.titulo}
+                      {encabezado.titulo === 'Abrir' ? <span className="sr-only">{encabezado.titulo}</span> : encabezado.titulo}
                     </th>
                   ))}
                 </tr>
