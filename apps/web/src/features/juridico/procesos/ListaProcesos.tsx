@@ -64,7 +64,7 @@ function FilasEsqueleto() {
       {Array.from({ length: 5 }, (_, indice) => (
         <tr key={indice} className="border-t border-gray-100">
           {COLUMNAS.map((columna) => (
-            <td key={columna.titulo} className="px-4 py-3.5">
+            <td key={columna.titulo} className="px-4 py-4">
               <div className="h-4 animate-pulse rounded bg-gray-100" />
             </td>
           ))}
@@ -245,11 +245,7 @@ export default function ListaProcesos() {
         </div>
       </div>
       <FiltroCarpetas opciones={opciones} activa={anio} onCambiar={(valor) => actualizarParams({ anio: valor })} />
-      <p className="text-[13px] text-gray-500">
-        {textoCorto
-          ? `Escribe al menos ${LARGO_MINIMO_BUSQUEDA_PROCESOS} caracteres.`
-          : 'Procesos en curso. Los finalizados, suspendidos y abandonados se consultan en el expediente de cada usuaria.'}
-      </p>
+      {textoCorto && <p className="text-[13px] text-gray-500">Escribe al menos {LARGO_MINIMO_BUSQUEDA_PROCESOS} caracteres.</p>}
 
       {error && !datos ? (
         <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="los procesos" onReintentar={() => void recargar()} />

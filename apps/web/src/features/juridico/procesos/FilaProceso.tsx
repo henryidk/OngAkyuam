@@ -65,7 +65,7 @@ function CeldaAudiencia({ proceso, hoy }: { proceso: ProcesoResumen; hoy: string
       >
         {formatFechaGT(proxima.fecha)} · {formatHora12(proxima.hora)}
       </Link>
-      <p className={`mt-0.5 whitespace-nowrap text-[13px] leading-5 font-medium ${colorAviso(pendiente, aviso)}`}>{cuando}</p>
+      <p className={`mt-1.5 whitespace-nowrap text-[13px] leading-5 font-medium ${colorAviso(pendiente, aviso)}`}>{cuando}</p>
     </>
   )
 }
@@ -146,9 +146,9 @@ export default function FilaProceso({
   return (
     // Toda la fila abre el detalle; el enlace del código es el que recibe el foco del teclado.
     // Todas las celdas abren con una línea text-sm/leading-5 para que la fila se lea a una misma altura.
-    <tr onClick={() => navigate(destino)} className="group cursor-pointer border-t border-gray-100 transition-colors hover:bg-gray-50">
+    <tr onClick={() => navigate(destino)} className="group cursor-pointer border-t border-gray-200 transition-colors hover:bg-gray-50">
       {/* Primera columna fija al desplazar la tabla: lleva su propio fondo. */}
-      <td className="sticky left-0 z-10 bg-white px-4 py-3.5 align-top group-hover:bg-gray-50">
+      <td className="sticky left-0 z-10 bg-white px-4 py-4 align-top group-hover:bg-gray-50">
         <Link
           to={destino}
           onClick={sinPropagar}
@@ -157,7 +157,7 @@ export default function FilaProceso({
         >
           {expediente}
         </Link>
-        <p className="mt-0.5 flex items-center gap-1.5 whitespace-nowrap text-[13px] leading-5 text-gray-500">
+        <p className="mt-1.5 flex items-center gap-1.5 whitespace-nowrap text-[13px] leading-5 text-gray-500">
           {etiquetaProceso}
           {/* La lista solo trae procesos en trámite: casi todos van "En proceso"; se marca la excepción. */}
           {proceso.fase === 'INICIADO' && (
@@ -165,17 +165,17 @@ export default function FilaProceso({
           )}
         </p>
       </td>
-      <td className="px-4 py-3.5 align-top">
+      <td className="px-4 py-4 align-top">
         <p className="text-sm leading-5 font-medium text-gray-900">{proceso.usuaria.nombreCompleto}</p>
       </td>
-      <td className="px-4 py-3.5 align-top">
+      <td className="px-4 py-4 align-top">
         <p className="text-sm leading-5 text-gray-900">{ETIQUETAS_TIPO_PROCESO_JURIDICO[proceso.tipo]}</p>
-        <p className="mt-0.5 text-[13px] leading-5 text-gray-500">
+        <p className="mt-1.5 text-[13px] leading-5 text-gray-500">
           {ETIQUETAS_CATEGORIA_PROCESO[CATEGORIA_POR_TIPO_PROCESO[proceso.tipo]]} ·{' '}
           {[proceso.abogada?.nombre, proceso.procuradora?.nombre].filter(Boolean).join(' y ') || 'Sin equipo asignado'}
         </p>
       </td>
-      <td className="px-4 py-3.5 align-top">
+      <td className="px-4 py-4 align-top">
         {proceso.numeroJudicial ? (
           // Suele traer el juzgado o la fiscalía junto al número: se parte en líneas con un ancho
           // acotado y, si es muy largo, se recorta a 3 líneas (completo en el title y en el detalle).
@@ -188,16 +188,16 @@ export default function FilaProceso({
           </BotonHueco>
         )}
       </td>
-      <td className="px-4 py-3.5 align-top">
+      <td className="px-4 py-4 align-top">
         {/* La cabecera ya dice "Último avance": aquí solo la fecha. */}
         <p className="whitespace-nowrap text-sm leading-5 text-gray-700 tabular-nums">{fechaDeInstante(proceso.ultimaActuacionEn)}</p>
-        {alerta && <p className="mt-0.5 text-[13px] leading-5 font-medium text-[#8a5a14]">● {alerta}</p>}
+        {alerta && <p className="mt-1.5 text-[13px] leading-5 font-medium text-[#8a5a14]">● {alerta}</p>}
       </td>
       {/* Audiencia y su acción, juntas bajo un mismo encabezado: fecha a la izquierda, qué hacer a la derecha. */}
-      <td className="border-l border-gray-100 py-3.5 pl-4 pr-2 align-top">
+      <td className="border-l border-gray-100 py-4 pl-4 pr-2 align-top">
         <CeldaAudiencia proceso={proceso} hoy={hoy} />
       </td>
-      <td className="py-3.5 pl-2 pr-2 align-top">
+      <td className="py-4 pl-2 pr-2 align-top">
         <CeldaAccion
           proceso={proceso}
           hoy={hoy}
@@ -207,7 +207,7 @@ export default function FilaProceso({
         />
       </td>
       {/* Señal de que la fila entera abre el detalle, como en las listas de un teléfono. */}
-      <td className="py-3.5 pr-3 align-top">
+      <td className="py-4 pr-3 align-top">
         <ChevronRight
           size={18}
           aria-hidden="true"
