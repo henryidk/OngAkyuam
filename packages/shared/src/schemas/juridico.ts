@@ -16,8 +16,7 @@ import {
 } from '../catalogos/juridico.js'
 import { ANIO_EXPEDIENTE_MAXIMO, ANIO_EXPEDIENTE_MINIMO } from '../catalogos/audienciasJuridico.js'
 import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
-import type { AudienciaProgramadaDto, ProximaAudienciaDto } from './audienciasJuridico.js'
-import type { TipoDocumento } from './documentos.js'
+import type { AudienciaFilaDto, AudienciaProgramadaDto, ProximaAudienciaDto } from './audienciasJuridico.js'
 import type { TipoRegistro } from './registroUsuaria.js'
 import { booleanoQuerySchema, fechaReporteSchema } from './query.js'
 import type { ConteoReporte } from './trabajoSocial.js'
@@ -485,50 +484,47 @@ export interface FichaUsuariaJuridicoDto {
 
 // ---- Inicio ----
 
-/** Filas visibles de las colas del Inicio; el contador de cada una muestra el total real. */
-export const FILAS_COLA_INICIO = 5
-export const FILAS_MIS_PROCESOS_INICIO = 4
-export const NOVEDADES_TS_INICIO = 6
+/** Próximas audiencias del Inicio, sin límite de fecha: el Inicio cabe en una pantalla, sin scroll. */
+export const FILAS_AGENDA_INICIO = 6
 
 export interface ColaInicio<TFila> {
   items: TFila[]
   total: number
 }
 
-/** Lo mínimo de una referencia pendiente para la cola del Inicio (sin motivo ni datos de contacto). */
-export interface ReferenciaInicioDto {
-  referidoId: string
-  expedienteId: string
-  expedienteNumero: string
-  usuaria: UsuariaJuridicoRef
-  referidoEn: string
-}
-
-/**
- * Lista blanca de cambios de Trabajo Social que Jurídico ve como novedad. Nunca valores: de un
- * cambio de datos solo viajan los nombres de los campos.
- */
-export type NovedadTsDto = {
-  id: string
-  createdAt: string
-  usuaria: UsuariaJuridicoRef
-  expedienteNumero: string
-} & (
-  | { tipo: 'DATOS'; campos: string[] }
-  | { tipo: 'DOCUMENTO'; documento: { tipo: TipoDocumento; version: number } }
-)
-
 /** Procesos sin finalizar hoy, sin importar el año en que empezaron. */
 export interface CargaActualJuridico {
   enTramite: number
   suspendidos: number
   abandonados: number
+  /** De los en trámite, los de un expediente de un año anterior (casos de seguimiento). */
+  enTramiteDeSeguimiento: number
+}
+
+export interface MovimientoMesJuridico {
+  /** 1 a 12. */
+  mes: number
+  abiertos: number
+  finalizados: number
 }
 
 /** Movimiento del año calendario: abiertos por fecha de inicio, finalizados por fecha de cierre. */
 export interface MovimientoAnioJuridico {
   abiertos: number
   finalizados: number
+  /** Siempre los 12 meses, aunque estén en 0, para que las barras no cambien de lugar. */
+  porMes: MovimientoMesJuridico[]
+  finalizadosPorForma: Record<FormaFinalizacionProceso, number>
+}
+
+/** Audiencias del Inicio; solo PROGRAMADAS. */
+export interface AudienciasInicio {
+  /** Las próximas `FILAS_AGENDA_INICIO`, sin límite de fecha, la más cercana primero; `total`, todas. */
+  agenda: ColaInicio<AudienciaFilaDto>
+  /** Cuántas de la agenda quedan hoy. */
+  restantesHoy: number
+  /** Cuántas ya pasaron su hora y no tienen resultado. */
+  pendientesResultado: number
 }
 
 export interface ProcesosPorTipoDto {
@@ -544,13 +540,7 @@ export interface InicioJuridicoDto {
   movimientoAnio: MovimientoAnioJuridico
   /** Solo los tipos con algún proceso en trámite; el más cargado primero. */
   enTramitePorTipo: ProcesosPorTipoDto[]
-  /** Las más antiguas primero. */
-  referenciasNuevas: ColaInicio<ReferenciaInicioDto>
-  /** En trámite y sin actuación en `DIAS_ALERTA_INACTIVIDAD` días o más; la más olvidada primero. */
-  requierenAtencion: ColaInicio<ProcesoResumen>
-  /** En trámite como abogada o procuradora. `null`: la cuenta no está vinculada a una ficha de personal. */
-  misProcesos: ColaInicio<ProcesoResumen> | null
-  novedadesTs: NovedadTsDto[]
+  audiencias: AudienciasInicio
 }
 
 // ---- Reportes ----

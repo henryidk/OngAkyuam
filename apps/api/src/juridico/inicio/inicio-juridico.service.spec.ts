@@ -1,109 +1,108 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import {
-  FILAS_COLA_INICIO,
-  FILAS_MIS_PROCESOS_INICIO,
-  type ReferenciaBandejaDto,
-} from '@akyuam/shared';
+import { FILAS_AGENDA_INICIO, finDiaGT } from '@akyuam/shared';
+import type { IReloj } from '../../common/reloj';
+import type { IAgendaAudienciasRepository } from '../interfaces/agenda-audiencias-repository.interface';
 import type { IInicioRepository } from '../interfaces/inicio-repository.interface';
-import type { IReferenciasRepository } from '../interfaces/referencias-repository.interface';
-import { EXPEDIENTE_ID, REFERIDO_ID, USUARIA_ID } from '../pruebas/dobles';
 import { InicioJuridicoService } from './inicio-juridico.service';
 
-const CUENTA_ID = '77777777-7777-4777-8777-777777777777';
-
-function referencia(indice: number): ReferenciaBandejaDto {
-  return {
-    referidoId: REFERIDO_ID,
-    expedienteId: EXPEDIENTE_ID,
-    expedienteNumero: `0${indice}-2026`,
-    usuaria: {
-      id: USUARIA_ID,
-      nombreCompleto: 'Usuaria de prueba',
-      dpi: '0000000000000',
-    },
-    motivo: 'Motivo de prueba',
-    referidoEn: '2026-10-01T15:00:00.000Z',
-    referidoPor: 'Trabajadora social',
-    edad: 30,
-    municipio: null,
-    regresa: false,
-  } as ReferenciaBandejaDto;
-}
+/** Viernes 30/10/2026 a las 23:30 en Guatemala: en UTC ya es sábado. */
+const AHORA = new Date('2026-10-31T05:30:00.000Z');
 
 describe('InicioJuridicoService', () => {
   let inicioRepository: jest.Mocked<IInicioRepository>;
-  let referenciasRepository: jest.Mocked<IReferenciasRepository>;
+  let agendaRepository: jest.Mocked<IAgendaAudienciasRepository>;
+  let reloj: IReloj;
   let service: InicioJuridicoService;
 
   beforeEach(() => {
     inicioRepository = {
-      colaProcesos: jest.fn().mockResolvedValue({ items: [], total: 0 }),
       indicadores: jest.fn().mockResolvedValue({
-        cargaActual: { enTramite: 0, suspendidos: 0, abandonados: 0 },
-        movimientoAnio: { abiertos: 0, finalizados: 0 },
+        cargaActual: {
+          enTramite: 0,
+          suspendidos: 0,
+          abandonados: 0,
+          enTramiteDeSeguimiento: 0,
+        },
+        movimientoAnio: {
+          abiertos: 0,
+          finalizados: 0,
+          porMes: [],
+          finalizadosPorForma: {
+            CONVENIO: 0,
+            SENTENCIA: 0,
+            DESISTIMIENTO: 0,
+            OTROS: 0,
+          },
+        },
       }),
       enTramitePorTipo: jest.fn().mockResolvedValue([]),
-      tieneFichaPersonal: jest.fn().mockResolvedValue(true),
-      novedadesTs: jest.fn().mockResolvedValue([]),
     };
-    referenciasRepository = {
-      listar: jest.fn().mockResolvedValue([]),
-      buscarPendientePorExpediente: jest.fn(),
+    agendaRepository = {
+      listar: jest.fn().mockResolvedValue({ items: [], total: 0 }),
+      listarOcupadas: jest.fn(),
+      listarPorProceso: jest.fn(),
     };
+    reloj = { ahora: () => AHORA };
     service = new InicioJuridicoService(
       inicioRepository,
-      referenciasRepository,
+      agendaRepository,
+      reloj,
     );
   });
 
-  it('"Mis procesos" se pide con la cuenta que consulta', async () => {
-    await service.obtener(CUENTA_ID);
+  it('el año y el día salen del reloj en Guatemala, no en UTC', async () => {
+    const inicio = await service.obtener();
 
-    expect(inicioRepository.tieneFichaPersonal).toHaveBeenCalledWith(CUENTA_ID);
-    expect(inicioRepository.colaProcesos).toHaveBeenCalledWith(
-      { cola: 'MIOS', usuarioId: CUENTA_ID },
-      FILAS_MIS_PROCESOS_INICIO,
-    );
+    expect(inicio.anio).toBe(2026);
+    expect(inicioRepository.indicadores).toHaveBeenCalledWith(2026);
+    expect(agendaRepository.listar).toHaveBeenCalledWith({
+      vista: 'proximas',
+      hasta: finDiaGT('2026-10-30'),
+      page: 1,
+      pageSize: 1,
+      ahora: AHORA,
+    });
   });
 
-  it('sin ficha de personal, "Mis procesos" es null y no se consulta', async () => {
-    inicioRepository.tieneFichaPersonal.mockResolvedValue(false);
+  it('el 31 de diciembre por la noche todavía cuenta el año que termina', async () => {
+    reloj.ahora = () => new Date('2027-01-01T03:00:00.000Z');
 
-    const inicio = await service.obtener(CUENTA_ID);
+    const inicio = await service.obtener();
 
-    expect(inicio.misProcesos).toBeNull();
-    expect(inicioRepository.colaProcesos).not.toHaveBeenCalledWith(
-      expect.objectContaining({ cola: 'MIOS' }),
-      expect.anything(),
-    );
+    expect(inicio.anio).toBe(2026);
+    expect(inicioRepository.indicadores).toHaveBeenCalledWith(2026);
   });
 
-  it('las referencias nuevas solo llevan los datos de la tarjeta: ni DPI ni motivo', async () => {
-    referenciasRepository.listar.mockResolvedValue([referencia(1)]);
+  it('la agenda son las próximas sin límite de fecha; los pendientes, las que ya pasaron', async () => {
+    await service.obtener();
 
-    const inicio = await service.obtener(CUENTA_ID);
-
-    expect(referenciasRepository.listar).toHaveBeenCalledWith();
-    expect(inicio.referenciasNuevas.items).toEqual([
-      {
-        referidoId: REFERIDO_ID,
-        expedienteId: EXPEDIENTE_ID,
-        expedienteNumero: '01-2026',
-        usuaria: { id: USUARIA_ID, nombreCompleto: 'Usuaria de prueba' },
-        referidoEn: '2026-10-01T15:00:00.000Z',
-      },
-    ]);
+    expect(agendaRepository.listar).toHaveBeenCalledWith({
+      vista: 'proximas',
+      page: 1,
+      pageSize: FILAS_AGENDA_INICIO,
+      ahora: AHORA,
+    });
+    expect(agendaRepository.listar).toHaveBeenCalledWith({
+      vista: 'pendientes',
+      page: 1,
+      pageSize: 1,
+      ahora: AHORA,
+    });
   });
 
-  it('corta las referencias a las filas de la cola, pero el total cuenta todas', async () => {
-    const pendientes = Array.from({ length: FILAS_COLA_INICIO + 2 }, (_, i) =>
-      referencia(i),
+  it('de las de hoy y de las pendientes de resultado solo devuelve el total', async () => {
+    agendaRepository.listar.mockImplementation((params) =>
+      Promise.resolve({
+        items: [],
+        total:
+          params.vista === 'pendientes' ? 8 : params.pageSize === 1 ? 2 : 9,
+      }),
     );
-    referenciasRepository.listar.mockResolvedValue(pendientes);
 
-    const inicio = await service.obtener(CUENTA_ID);
+    const { audiencias } = await service.obtener();
 
-    expect(inicio.referenciasNuevas.items).toHaveLength(FILAS_COLA_INICIO);
-    expect(inicio.referenciasNuevas.total).toBe(FILAS_COLA_INICIO + 2);
+    expect(audiencias.restantesHoy).toBe(2);
+    expect(audiencias.pendientesResultado).toBe(8);
+    expect(audiencias.agenda.total).toBe(9);
   });
 });
