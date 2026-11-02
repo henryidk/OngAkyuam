@@ -164,7 +164,7 @@ describe('BandejaPsicologiaRepository.obtenerPreviaToma', () => {
         fechaNacimiento: new Date('1990-01-15T00:00:00.000Z'),
         municipio: 'COBAN',
         municipioOtro: null,
-        grupoEtnico: 'MAYA_QECHI',
+        grupoEtnico: 'MAYA',
       },
       ninos: [
         {
@@ -224,7 +224,7 @@ describe('BandejaPsicologiaRepository.obtenerPreviaToma', () => {
     expect(previa).toMatchObject({
       usuariaNombreCompleto: 'Usuaria Ficticia',
       municipio: 'Cobán',
-      grupoEtnico: "Maya Q'eqchi'",
+      grupoEtnico: 'Maya',
       tipologias: ['Física'],
       motivo: 'Motivo ficticio',
     });

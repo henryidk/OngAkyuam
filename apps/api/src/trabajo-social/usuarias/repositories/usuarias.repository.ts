@@ -222,6 +222,8 @@ export class UsuariasRepository implements IUsuariasRepository {
       departamentoOtro: usuaria.departamentoOtro,
       municipioOtro: usuaria.municipioOtro,
       ubicacionGeografica: usuaria.ubicacionGeografica,
+      areaResidencia: usuaria.areaResidencia,
+      ocupacion: usuaria.ocupacion,
       casos: usuaria.expedientes.map((expediente) => ({
         id: expediente.id,
         numero: expediente.numero,
@@ -269,6 +271,8 @@ export class UsuariasRepository implements IUsuariasRepository {
           departamentoOtro: datos.departamentoOtro,
           municipioOtro: datos.municipioOtro,
           ubicacionGeografica: datos.ubicacionGeografica,
+          areaResidencia: datos.areaResidencia,
+          ocupacion: datos.ocupacion,
         },
       });
     } catch (error) {

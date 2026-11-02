@@ -94,7 +94,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Choc',
     dpi: '0000000811601',
     fechaNacimiento: '1991-04-09',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     tipologia: ['FISICA'],
     referidaHace: 0,
@@ -109,7 +109,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Maquín',
     dpi: '0000000821601',
     fechaNacimiento: '1983-11-30',
-    grupoEtnico: 'MAYA_POQOMCHI',
+    grupoEtnico: 'MAYA',
     municipio: 'TACTIC',
     tipologia: ['FISICA', 'SEXUAL'],
     referidaHace: 6,
@@ -119,7 +119,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Bol',
     dpi: '0000000831601',
     fechaNacimiento: '1996-02-14',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'SAN_CRISTOBAL_VERAPAZ',
     tipologia: ['FISICA', 'PSICOLOGICA'],
     referidaHace: 25,
@@ -155,7 +155,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Tun',
     dpi: '0000000851601',
     fechaNacimiento: '2001-05-27',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     tipologia: ['SEXUAL'],
     referidaHace: 9,
@@ -169,7 +169,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Pop',
     dpi: '0000000861601',
     fechaNacimiento: '1988-12-12',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     tipologia: ['FISICA'],
     referidaHace: 60,
@@ -225,6 +225,8 @@ async function crearCaso(
   return prisma.$transaction(async (tx) => {
     const usuaria = await tx.usuaria.create({
       data: {
+        areaResidencia: 'RURAL',
+        ocupacion: 'Ama de casa',
         nombres: datos.nombres,
         apellidos: datos.apellidos,
         dpi: datos.dpi,
@@ -240,6 +242,8 @@ async function crearCaso(
     const numero = await siguienteNumero(tx, Number(fechaCaso.slice(0, 4)));
     const expediente = await tx.expediente.create({
       data: {
+        condicionMaternidad: 'NORMAL',
+        idiomaAtencion: 'QEQCHI',
         numero,
         usuariaId: usuaria.id,
         fecha: new Date(fechaCaso),
@@ -317,6 +321,7 @@ async function crearCaso(
       if (cita.estado === 'ATENDIDA') {
         await tx.consultaMedica.create({
           data: {
+            atencionBrindada: 'Dato ficticio: consulta general y orientación.',
             atencionId: atencion.id,
             citaId: creada.id,
             ninoId,

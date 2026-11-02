@@ -1,7 +1,9 @@
 import type { ChangeEvent } from 'react'
 import { Controller, useWatch } from 'react-hook-form'
 import {
+  AREAS_RESIDENCIA,
   DEPARTAMENTOS_FUERA_ALTA_VERAPAZ,
+  ETIQUETAS_AREA_RESIDENCIA,
   edadEnAniosGT,
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
@@ -9,6 +11,7 @@ import {
   formatFechaGT,
   GRUPOS_ETNICOS,
   MUNICIPIOS_ALTA_VERAPAZ,
+  OCUPACION_MAX,
 } from '@akyuam/shared'
 import Campo, { claseBordeCampo } from '../../../components/form/Campo'
 import CampoMunicipioFuera from '../../../components/form/CampoMunicipioFuera'
@@ -41,6 +44,10 @@ const opcionesGrupoEtnico = GRUPOS_ETNICOS.map((grupo) => ({ value: grupo, label
 const opcionesMunicipio = MUNICIPIOS_ALTA_VERAPAZ.map((municipio) => ({
   value: municipio,
   label: ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[municipio],
+}))
+const opcionesAreaResidencia = AREAS_RESIDENCIA.map((area) => ({
+  value: area,
+  label: ETIQUETAS_AREA_RESIDENCIA[area],
 }))
 const DEPARTAMENTOS = [DEPARTAMENTO_ALTA_VERAPAZ, ...DEPARTAMENTOS_FUERA_ALTA_VERAPAZ]
 
@@ -213,6 +220,21 @@ export default function FormularioIdentidadUsuaria({
         registro={register('direccion')}
         error={errors.direccion?.message}
         modificado={modificado('direccion')}
+      />
+      <SelectInput
+        label="Área de residencia"
+        placeholder="Selecciona urbana o rural"
+        opciones={opcionesAreaResidencia}
+        registro={register('areaResidencia')}
+        error={errors.areaResidencia?.message}
+        modificado={modificado('areaResidencia')}
+      />
+      <TextoInput
+        label="Ocupación"
+        maxLength={OCUPACION_MAX}
+        registro={register('ocupacion')}
+        error={errors.ocupacion?.message}
+        modificado={modificado('ocupacion')}
       />
       <div>
         <p className="text-sm font-medium text-gray-500">Registrada</p>

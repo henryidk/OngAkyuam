@@ -1,4 +1,5 @@
 import type {
+  AccionTrabajoSocialDto,
   ActualizarAccesoInput,
   AreaAtencion,
   BandejaTs,
@@ -16,6 +17,7 @@ import type {
   MatrizAccesos,
   ReferidoCreado,
   ReferirInput,
+  RegistrarAccionTrabajoSocialInput,
   RegistrarEgresoInput,
   ReportePoblacionBeneficiada,
   ReportePoblacionQuery,
@@ -158,6 +160,19 @@ export function obtenerBandeja() {
 /** Bitácora de la usuaria: lo que pasó en todos sus casos, del más reciente al más antiguo. */
 export function obtenerBitacora(usuariaId: string) {
   return api.get<EventoBitacora[]>(`/trabajo-social/usuarias/${usuariaId}/bitacora`).then((res) => res.data)
+}
+
+function rutaAcciones(expedienteId: string) {
+  return `/trabajo-social/expedientes/${expedienteId}/acciones`
+}
+
+/** "Atención brindada" de Trabajo Social en un caso, la más reciente primero. */
+export function listarAccionesCaso(expedienteId: string) {
+  return api.get<AccionTrabajoSocialDto[]>(rutaAcciones(expedienteId)).then((res) => res.data)
+}
+
+export function registrarAccionCaso(expedienteId: string, datos: RegistrarAccionTrabajoSocialInput) {
+  return api.post<AccionTrabajoSocialDto>(rutaAcciones(expedienteId), datos).then((res) => res.data)
 }
 
 const RUTA_REPORTE_POBLACION = '/trabajo-social/reportes/poblacion-beneficiada'

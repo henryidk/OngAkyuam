@@ -26,7 +26,7 @@ function expediente(
     dpi: '0000000000000',
     fechaNacimiento: '1995-04-10',
     edad: 30,
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     departamentoOtro: null,
     municipioOtro: null,
@@ -49,7 +49,7 @@ describe('aFilaPoblacionJuridico', () => {
       nombreApellido: 'Ana Prueba Ficticia',
       dpi: '0000000000000',
       rangoEdad: '14 a 30 años',
-      grupoEtnico: "Maya Q'eqchi'",
+      grupoEtnico: 'Maya',
       ubicacionGeografica: 'Barrio Ficticio',
       tipologia: 'Física, Psicológica',
     });

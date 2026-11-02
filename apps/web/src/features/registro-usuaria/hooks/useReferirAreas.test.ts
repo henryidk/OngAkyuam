@@ -17,10 +17,11 @@ describe('useReferirAreas', () => {
     referir.mockResolvedValue({} as ReferidoCreado)
   })
 
-  it('refiere cada área elegida con su motivo y sin documentos (todavía no existen)', async () => {
+  it('refiere cada área elegida con el mismo motivo y sin documentos (todavía no existen)', async () => {
     const { result } = renderHook(() => useReferirAreas(EXPEDIENTE))
 
-    act(() => result.current.actualizar('JURIDICO', { seleccionada: true, motivo: 'Denuncia' }))
+    act(() => result.current.setMotivo('Denuncia'))
+    act(() => result.current.actualizar('JURIDICO', { seleccionada: true }))
     act(() => result.current.actualizar('PSICOLOGIA', { seleccionada: true, datosCaso: false }))
     expect(result.current.porEnviar).toEqual(['JURIDICO', 'PSICOLOGIA'])
 
@@ -37,7 +38,7 @@ describe('useReferirAreas', () => {
     })
     expect(referir).toHaveBeenCalledWith(EXPEDIENTE, {
       area: 'PSICOLOGIA',
-      motivo: '',
+      motivo: 'Denuncia',
       visibilidad: { datosCaso: false, documentos: [] },
     })
     expect(result.current.referidas).toEqual(['JURIDICO', 'PSICOLOGIA'])

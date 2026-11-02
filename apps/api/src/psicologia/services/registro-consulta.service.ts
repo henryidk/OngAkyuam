@@ -106,6 +106,7 @@ export class RegistroConsultaService {
       // La clínica es de la sesión que ocurrió: con inasistencia o cancelación no aplica.
       clinica: datos.estado === 'ATENDIDA' ? datos.clinica : null,
       enfoqueTerapeutico: vacioANulo(datos.enfoqueTerapeutico),
+      atencionBrindada: vacioANulo(datos.atencionBrindada),
       borrador: datos.borrador,
       proximaCita,
     });

@@ -208,11 +208,13 @@ async function main(): Promise<void> {
     async (tx) => {
       const usuaria = await tx.usuaria.create({
         data: {
+          areaResidencia: 'RURAL',
+          ocupacion: 'Ama de casa',
           nombres: USUARIA.nombres,
           apellidos: USUARIA.apellidos,
           dpi: USUARIA.dpi,
           fechaNacimiento: new Date(USUARIA.fechaNacimiento),
-          grupoEtnico: 'MAYA_QECHI',
+          grupoEtnico: 'MAYA',
           municipio: 'COBAN',
           telefono: '00000000',
         },
@@ -221,6 +223,8 @@ async function main(): Promise<void> {
       const numero = await siguienteNumero(tx, Number(fechaCaso.slice(0, 4)));
       const expediente = await tx.expediente.create({
         data: {
+          condicionMaternidad: 'NORMAL',
+          idiomaAtencion: 'QEQCHI',
           numero,
           usuariaId: usuaria.id,
           fecha: new Date(fechaCaso),
@@ -294,6 +298,8 @@ async function main(): Promise<void> {
           const opciones = DIAGNOSTICOS[persona];
           await tx.consultaMedica.create({
             data: {
+              atencionBrindada:
+                'Dato ficticio: consulta general y orientación.',
               atencionId: atencion.id,
               citaId: cita?.id ?? null,
               ninoId: ninoId[persona],

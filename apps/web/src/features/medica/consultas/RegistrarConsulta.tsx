@@ -190,6 +190,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
           motivoConsulta: estado.motivo,
           signos: leerSignos(estado.signos).signos,
           diagnostico: estado.diagnostico,
+          atencionBrindada: estado.atencion,
           planTratamiento: estado.plan,
           recetaLaboratorios: estado.receta,
           loteDocumentos: docs?.hayListos ? docs.lote : null,

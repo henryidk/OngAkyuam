@@ -17,10 +17,14 @@ function cteCasos(filtro: FiltroReportePoblacion): Prisma.Sql {
   return Prisma.sql`
     casos AS (
       SELECT e.id, e.numero, e.fecha, e."createdAt", e."tipoRegistro", e."tipologiaDelito",
+             e."condicionMaternidad", e."idiomaAtencion",
              u.nombres, u.apellidos, u.dpi, u."fechaNacimiento", u."grupoEtnico", u.municipio,
-             u."departamentoOtro", u."municipioOtro", u."ubicacionGeografica"
+             u."departamentoOtro", u."municipioOtro", u."ubicacionGeografica",
+             u.telefono, u."areaResidencia", u.ocupacion,
+             cp."nombreCompleto" AS "atendidaPorNombre", cp.puesto AS "atendidaPorPuesto", cp.sede
       FROM "Expediente" e
       JOIN "Usuaria" u ON u.id = e."usuariaId"
+      JOIN "Usuario" cp ON cp.id = e."creadoPorId"
       WHERE e.fecha BETWEEN ${filtro.desde}::date AND ${filtro.hasta}::date
         ${porTipo}
     )`;
@@ -37,7 +41,9 @@ function ctePersonas(filtro: FiltroReportePoblacion): Prisma.Sql {
       UNION ALL
       SELECT c.id, c.numero, c.fecha, c."createdAt", c."tipoRegistro", c."tipologiaDelito",
              false, n.id, n.nombres, n.apellidos, NULL, n."fechaNacimiento", n.genero::text,
-             c."grupoEtnico", c.municipio, c."departamentoOtro", c."municipioOtro", c."ubicacionGeografica"
+             c."grupoEtnico", c.municipio, c."departamentoOtro", c."municipioOtro", c."ubicacionGeografica",
+             NULL, c."areaResidencia", NULL, NULL, c."idiomaAtencion",
+             c."atendidaPorNombre", c."atendidaPorPuesto", c.sede
       FROM casos c
       JOIN "Nino" n ON n."expedienteId" = c.id`
     : Prisma.empty;
@@ -47,7 +53,9 @@ function ctePersonas(filtro: FiltroReportePoblacion): Prisma.Sql {
       SELECT c.id AS "expedienteId", c.numero, c.fecha, c."createdAt", c."tipoRegistro", c."tipologiaDelito",
              true AS "esUsuaria", NULL::text AS "ninoId", c.nombres, c.apellidos, c.dpi, c."fechaNacimiento",
              NULL::text AS "generoNino", c."grupoEtnico", c.municipio, c."departamentoOtro", c."municipioOtro",
-             c."ubicacionGeografica"
+             c."ubicacionGeografica",
+             c.telefono, c."areaResidencia", c.ocupacion, c."condicionMaternidad", c."idiomaAtencion",
+             c."atendidaPorNombre", c."atendidaPorPuesto", c.sede
       FROM casos c
       ${ninos}
     ),
@@ -82,7 +90,50 @@ export class ReportePoblacionRepository implements IReportePoblacionRepository {
              p.edad, p."generoNino",
              p."grupoEtnico"::text AS "grupoEtnico",
              p.municipio::text AS municipio,
-             p."departamentoOtro", p."municipioOtro", p."ubicacionGeografica"
+             p."departamentoOtro", p."municipioOtro", p."ubicacionGeografica",
+             p.telefono, p."areaResidencia"::text AS "areaResidencia", p.ocupacion,
+             p."condicionMaternidad"::text AS "condicionMaternidad",
+             p."idiomaAtencion"::text AS "idiomaAtencion",
+             p."atendidaPorNombre", p."atendidaPorPuesto", p.sede::text AS sede,
+             -- Referencias, bitácora de Trabajo Social y procesos jurídicos son del caso de la
+             -- usuaria: no se repiten en las filas de sus hijas/hijos.
+             CASE WHEN p."esUsuaria" THEN COALESCE((
+               SELECT array_agg(r.area::text ORDER BY r."createdAt")
+               FROM "ReferidoArea" r WHERE r."expedienteId" = p."expedienteId"
+             ), '{}') ELSE '{}' END AS "areasReferidas",
+             CASE WHEN p."esUsuaria" THEN (
+               SELECT r.motivo FROM "ReferidoArea" r
+               WHERE r."expedienteId" = p."expedienteId" AND btrim(COALESCE(r.motivo, '')) <> ''
+               ORDER BY r."createdAt", r.id LIMIT 1
+             ) END AS "motivoReferencia",
+             CASE WHEN p."esUsuaria" THEN COALESCE((
+               SELECT json_agg(json_build_object('fecha', to_char(a.fecha, 'YYYY-MM-DD'), 'texto', a.descripcion)
+                               ORDER BY a.fecha, a."createdAt")
+               FROM "AccionTrabajoSocial" a WHERE a."expedienteId" = p."expedienteId"
+             ), '[]'::json) ELSE '[]'::json END AS "accionesTrabajoSocial",
+             CASE WHEN p."esUsuaria" THEN COALESCE((
+               SELECT array_agg(DISTINCT pj.tipo::text)
+               FROM "ProcesoJuridico" pj WHERE pj."expedienteId" = p."expedienteId"
+             ), '{}') ELSE '{}' END AS "procesosJuridicos",
+             -- Atención psicológica y médica: de cada persona (la usuaria o esa hija/hijo).
+             COALESCE((
+               SELECT json_agg(json_build_object('fechaHora', ci."fechaHora", 'texto', ci."atencionBrindada")
+                               ORDER BY ci."fechaHora")
+               FROM "CitaPsicologica" ci
+               JOIN "AtencionPsicologica" ap ON ap.id = ci."atencionId"
+               WHERE ap."expedienteId" = p."expedienteId"
+                 AND ci."ninoId" IS NOT DISTINCT FROM p."ninoId"
+                 AND ci.estado = 'ATENDIDA' AND NOT ci.borrador
+                 AND btrim(COALESCE(ci."atencionBrindada", '')) <> ''
+             ), '[]'::json) AS "atencionesPsicologicas",
+             COALESCE((
+               SELECT json_agg(json_build_object('fechaHora', cm."fechaHora", 'texto', cm."atencionBrindada")
+                               ORDER BY cm."fechaHora")
+               FROM "ConsultaMedica" cm
+               JOIN "AtencionMedica" am ON am.id = cm."atencionId"
+               WHERE am."expedienteId" = p."expedienteId"
+                 AND cm."ninoId" IS NOT DISTINCT FROM p."ninoId"
+             ), '[]'::json) AS "atencionesMedicas"
       FROM personas_edad p
       WINDOW w AS (
         ORDER BY p.fecha, p."createdAt", p."expedienteId", p."esUsuaria" DESC,

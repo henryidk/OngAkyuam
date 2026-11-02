@@ -61,9 +61,16 @@ const PASOS_BASE: PasoWizard[] = [
     id: 'situacion',
     fase: 'datos',
     titulo: 'Situación de violencia',
-    descripcion: 'Tipología, agresor, observaciones',
+    descripcion: 'Tipología, condición, idioma, agresor',
     ayuda: 'Datos de este caso. Si la usuaria regresa en el futuro, se registra un caso nuevo sin repetir sus datos.',
-    campos: ['datosCaso.fecha', 'datosCaso.tipologiaDelito', 'datosCaso.datosAgresor', 'datosCaso.observaciones'],
+    campos: [
+      'datosCaso.fecha',
+      'datosCaso.tipologiaDelito',
+      'datosCaso.condicionMaternidad',
+      'datosCaso.idiomaAtencion',
+      'datosCaso.datosAgresor',
+      'datosCaso.observaciones',
+    ],
   },
   {
     id: 'registro',

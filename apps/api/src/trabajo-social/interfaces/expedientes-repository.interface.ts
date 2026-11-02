@@ -1,5 +1,8 @@
 import type {
+  AreaResidencia,
+  CondicionMaternidad,
   GrupoEtnico,
+  IdiomaAtencion,
   MunicipioAltaVerapaz,
   TipologiaDelito,
   TipoRegistro,
@@ -37,6 +40,8 @@ export interface DatosIdentidadUsuaria {
   departamentoOtro: string | null;
   municipioOtro: string | null;
   ubicacionGeografica: string | null;
+  areaResidencia: AreaResidencia;
+  ocupacion: string;
 }
 
 export interface DatosAgresor {
@@ -61,6 +66,8 @@ export interface DatosCasoParams {
   /** "YYYY-MM-DD", solo en casos INTERNA. */
   fechaIngresoAlbergue: string | null;
   observaciones: string | null;
+  condicionMaternidad: CondicionMaternidad;
+  idiomaAtencion: IdiomaAtencion;
   creadoPorId: string;
   agresor: DatosAgresor | null;
   ninos: DatosNino[];

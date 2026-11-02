@@ -26,13 +26,14 @@ export function ChipDocumento({ documento }: { documento: DocumentoMedicoDto }) 
 }
 
 /**
- * Cuerpo de una consulta registrada: signos vitales, los cuatro textos clínicos y los documentos.
+ * Cuerpo de una consulta registrada: signos vitales, los textos clínicos y los documentos.
  * Lo usan la historia clínica (desplegada) y "Consultas anteriores" del formulario.
  */
 export default function DetalleConsulta({ consulta }: { consulta: ConsultaMedicaDto }) {
   const campos = [
     { etiqueta: 'Motivo de consulta', valor: consulta.motivoConsulta },
     { etiqueta: 'Diagnóstico', valor: consulta.diagnostico },
+    { etiqueta: 'Atención brindada', valor: consulta.atencionBrindada },
     { etiqueta: 'Plan de tratamiento', valor: consulta.planTratamiento },
     { etiqueta: 'Receta y laboratorios', valor: consulta.recetaLaboratorios },
   ]

@@ -53,6 +53,7 @@ describe('UsuariosService', () => {
       dpi: '1234567890123',
       rol: 'JURIDICO',
       puesto: 'ABOGADA',
+      sede: 'COBAN',
       isActive: true,
       mustChangePassword: false,
       createdAt: new Date('2026-01-01'),
@@ -99,6 +100,7 @@ describe('UsuariosService', () => {
             telefono: '12345678',
             dpi: '1234567890123',
             username: 'nueva',
+            sede: 'COBAN' as const,
             rol: 'JURIDICO',
             puesto: undefined,
           },
@@ -116,6 +118,7 @@ describe('UsuariosService', () => {
             telefono: '12345678',
             dpi: '1234567890123',
             username: 'nueva',
+            sede: 'COBAN' as const,
             rol: 'ADMINISTRACION',
             puesto: 'DOCTORA',
           },
@@ -137,6 +140,7 @@ describe('UsuariosService', () => {
             telefono: '12345678',
             dpi: '1234567890123',
             username: 'repetido',
+            sede: 'COBAN' as const,
             rol: 'JURIDICO',
             puesto: 'ABOGADA',
           },
@@ -156,6 +160,7 @@ describe('UsuariosService', () => {
             telefono: '12345678',
             dpi: '1234567890123',
             username: 'nueva',
+            sede: 'COBAN' as const,
             rol: 'JURIDICO',
             puesto: 'ABOGADA',
           },
@@ -174,6 +179,7 @@ describe('UsuariosService', () => {
           telefono: '12345678',
           dpi: '1234567890123',
           username: 'jperez',
+          sede: 'COBAN' as const,
           rol: 'JURIDICO',
           puesto: 'ABOGADA',
         },
@@ -260,6 +266,7 @@ describe('UsuariosService', () => {
         telefono: '87654321',
         dpi: '9876543210123',
         username: 'jperez2',
+        sede: 'COBAN' as const,
         rol: 'ADMINISTRACION',
         puesto: 'DOCTORA',
       } as never;
@@ -272,6 +279,7 @@ describe('UsuariosService', () => {
         telefono: '87654321',
         dpi: '9876543210123',
         username: 'jperez2',
+        sede: 'COBAN',
       });
     });
   });
@@ -283,6 +291,7 @@ describe('UsuariosService', () => {
       telefono: '12345678',
       dpi: '1234567890123',
       username: 'nueva',
+      sede: 'COBAN' as const,
       rol: 'JURIDICO' as const,
       puesto: 'ABOGADA',
       ...parcial,
@@ -329,10 +338,32 @@ describe('UsuariosService', () => {
       );
     });
 
-    it('rechaza el puesto Practicante fuera de Psicología', async () => {
+    it('una practicante de Medicina también es un puesto válido del área', async () => {
+      await service.crear(
+        nuevaCuenta({ rol: 'MEDICA', puesto: 'PRACTICANTE' }),
+        contexto,
+      );
+
+      expect(usuariosRepository.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ puesto: 'PRACTICANTE', fichaPersonal: null }),
+      );
+    });
+
+    it('una practicante de Jurídico no lleva ficha de personal', async () => {
+      await service.crear(
+        nuevaCuenta({ rol: 'JURIDICO', puesto: 'PRACTICANTE' }),
+        contexto,
+      );
+
+      expect(usuariosRepository.crear).toHaveBeenCalledWith(
+        expect.objectContaining({ puesto: 'PRACTICANTE', fichaPersonal: null }),
+      );
+    });
+
+    it('rechaza un puesto que no es del área', async () => {
       await expect(
         service.crear(
-          nuevaCuenta({ rol: 'MEDICA', puesto: 'PRACTICANTE' }),
+          nuevaCuenta({ rol: 'MEDICA', puesto: 'ABOGADA' }),
           contexto,
         ),
       ).rejects.toThrow('Puesto inválido para esta área');

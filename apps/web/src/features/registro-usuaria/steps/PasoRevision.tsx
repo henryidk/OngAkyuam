@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react'
 import type { UseFormReturn } from 'react-hook-form'
 import {
+  ETIQUETAS_AREA_RESIDENCIA,
+  ETIQUETAS_CONDICION_MATERNIDAD,
   ETIQUETAS_GENERO,
+  ETIQUETAS_IDIOMA_ATENCION,
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   ETIQUETAS_TIPO_REGISTRO,
@@ -100,6 +103,8 @@ export default function PasoRevision({ form, onEditar, usuariaExistente }: PasoR
             />
           )}
           <Fila etiqueta="Ubicación geográfica" valor={datos.datosUsuaria.ubicacionGeografica} />
+          <Fila etiqueta="Área de residencia" valor={ETIQUETAS_AREA_RESIDENCIA[datos.datosUsuaria.areaResidencia]} />
+          <Fila etiqueta="Ocupación" valor={datos.datosUsuaria.ocupacion.trim()} />
         </Seccion>
       )}
 
@@ -109,6 +114,8 @@ export default function PasoRevision({ form, onEditar, usuariaExistente }: PasoR
           etiqueta="Tipología del delito"
           valor={caso.tipologiaDelito.map((tipo) => ETIQUETAS_TIPOLOGIA_DELITO[tipo]).join(', ')}
         />
+        <Fila etiqueta="Condición" valor={ETIQUETAS_CONDICION_MATERNIDAD[caso.condicionMaternidad]} />
+        <Fila etiqueta="Idioma de atención" valor={ETIQUETAS_IDIOMA_ATENCION[caso.idiomaAtencion]} />
         <Fila
           etiqueta="Agresor"
           valor={

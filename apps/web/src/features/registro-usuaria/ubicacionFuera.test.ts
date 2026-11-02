@@ -16,6 +16,8 @@ function identidad(ubicacion: Partial<IdentidadUsuaria>): IdentidadUsuaria {
     departamentoOtro: 'Petén',
     municipioOtro: 'Sayaxché',
     ubicacionGeografica: 'Barrio ficticio',
+    areaResidencia: 'URBANA',
+    ocupacion: 'Estudiante',
     ...ubicacion,
   }
 }

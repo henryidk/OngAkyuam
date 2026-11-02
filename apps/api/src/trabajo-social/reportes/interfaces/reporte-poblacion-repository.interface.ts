@@ -1,5 +1,11 @@
 import type {
+  AreaAtencion,
+  AreaResidencia,
+  CondicionMaternidad,
   GRUPOS_ETNICOS,
+  IdiomaAtencion,
+  Sede,
+  TIPOS_PROCESO_JURIDICO,
   MUNICIPIOS_ALTA_VERAPAZ,
   TIPOLOGIAS_DELITO,
   TipoRegistro,
@@ -47,6 +53,30 @@ export interface FilaPoblacionRow {
   departamentoOtro: string | null;
   municipioOtro: string | null;
   ubicacionGeografica: string | null;
+  /** Solo de la usuaria: null en las filas de hijas/hijos. */
+  telefono: string | null;
+  areaResidencia: AreaResidencia;
+  /** Solo de la usuaria. */
+  ocupacion: string | null;
+  /** Solo de la usuaria. */
+  condicionMaternidad: CondicionMaternidad | null;
+  idiomaAtencion: IdiomaAtencion;
+  /** Quien registró el caso y su sede ("Oficina responsable"). */
+  atendidaPorNombre: string;
+  atendidaPorPuesto: string | null;
+  sede: Sede;
+  /** Áreas a las que se refirió el caso; vacío en filas de hijas/hijos. */
+  areasReferidas: AreaAtencion[];
+  /** Motivo de la referencia más antigua que tiene motivo; null en filas de hijas/hijos. */
+  motivoReferencia: string | null;
+  /** Bitácora de Trabajo Social del caso; vacío en filas de hijas/hijos. */
+  accionesTrabajoSocial: { fecha: string; texto: string }[];
+  /** Tipos de proceso jurídico del caso, sin repetir; vacío en filas de hijas/hijos. */
+  procesosJuridicos: (typeof TIPOS_PROCESO_JURIDICO)[number][];
+  /** Atención brindada en cada sesión de Psicología atendida de esta persona (instante ISO). */
+  atencionesPsicologicas: { fechaHora: string; texto: string }[];
+  /** Atención brindada en cada consulta médica de esta persona (instante ISO). */
+  atencionesMedicas: { fechaHora: string; texto: string }[];
 }
 
 /** Cuántas personas hay por (usuaria/niño, edad, grupo étnico); el servicio lo agrupa por rango. */

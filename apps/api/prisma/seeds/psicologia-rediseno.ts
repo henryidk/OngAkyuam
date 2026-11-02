@@ -74,7 +74,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Tzib',
     dpi: '0000000711601',
     fechaNacimiento: '1994-05-17',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     tipologia: ['PSICOLOGICA'],
     referidaHaceDias: 1,
@@ -84,7 +84,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Xol',
     dpi: '0000000721601',
     fechaNacimiento: '1988-09-02',
-    grupoEtnico: 'MAYA_POQOMCHI',
+    grupoEtnico: 'MAYA',
     municipio: 'TACTIC',
     tipologia: ['FISICA', 'PSICOLOGICA'],
     referidaHaceDias: 7,
@@ -99,7 +99,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Cuc',
     dpi: '0000000731601',
     fechaNacimiento: '1990-12-24',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'SAN_CRISTOBAL_VERAPAZ',
     tipologia: ['PSICOLOGICA'],
     referidaHaceDias: 3,
@@ -124,7 +124,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Tiul',
     dpi: '0000000751601',
     fechaNacimiento: '1985-06-30',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     tipologia: ['FISICA', 'PSICOLOGICA'],
     referidaHaceDias: 40,
@@ -147,7 +147,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Pacay',
     dpi: '0000000761601',
     fechaNacimiento: '1979-10-05',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'TACTIC',
     tipologia: ['PSICOLOGICA', 'ECONOMICA_PATRIMONIAL'],
     referidaHaceDias: 30,
@@ -164,7 +164,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Caz',
     dpi: '0000000771601',
     fechaNacimiento: '1992-01-15',
-    grupoEtnico: 'MAYA_POQOMCHI',
+    grupoEtnico: 'MAYA',
     municipio: 'SAN_CRISTOBAL_VERAPAZ',
     tipologia: ['PSICOLOGICA'],
     referidaHaceDias: 120,
@@ -187,7 +187,7 @@ const CASOS: CasoSeed[] = [
     apellidos: 'Ficticia Choc',
     dpi: '0000000781601',
     fechaNacimiento: '1987-04-21',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     tipologia: ['FISICA', 'PSICOLOGICA'],
     referidaHaceDias: 175,
@@ -225,6 +225,8 @@ async function crearCaso(
   return prisma.$transaction(async (tx) => {
     const usuaria = await tx.usuaria.create({
       data: {
+        areaResidencia: 'RURAL',
+        ocupacion: 'Ama de casa',
         nombres: datos.nombres,
         apellidos: datos.apellidos,
         dpi: datos.dpi,
@@ -238,6 +240,8 @@ async function crearCaso(
     const numero = await siguienteNumero(tx, Number(fechaCaso.slice(0, 4)));
     const expediente = await tx.expediente.create({
       data: {
+        condicionMaternidad: 'NORMAL',
+        idiomaAtencion: 'QEQCHI',
         numero,
         usuariaId: usuaria.id,
         fecha: new Date(fechaCaso),
@@ -347,6 +351,11 @@ async function crearCaso(
         acuerdos:
           cita.estado === 'ATENDIDA'
             ? 'Dato ficticio: acuerdos de la sesión.'
+            : null,
+        // Obligatoria en toda sesión atendida (CitaPsicologica_atencion_brindada_chk).
+        atencionBrindada:
+          cita.estado === 'ATENDIDA'
+            ? 'Dato ficticio: escucha activa y contención emocional.'
             : null,
         atendidoPorId: psicologaId,
         createdAt: tomadaEn,

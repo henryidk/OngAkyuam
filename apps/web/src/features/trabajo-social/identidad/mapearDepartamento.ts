@@ -35,6 +35,8 @@ export function valoresIdentidad(usuaria: UsuariaExpedienteHub): EditarIdentidad
     departamentoOtro: usuaria.departamentoOtro ?? '',
     municipioOtro: usuaria.municipioOtro ?? '',
     ubicacionGeografica: usuaria.ubicacionGeografica ?? '',
+    areaResidencia: usuaria.areaResidencia,
+    ocupacion: usuaria.ocupacion,
   }
 }
 
@@ -50,6 +52,8 @@ export const CAMPOS_VISIBLES_IDENTIDAD = [
   'municipio',
   'ubicacionGeografica',
   'direccion',
+  'areaResidencia',
+  'ocupacion',
 ] as const
 
 export type CampoVisibleIdentidad = (typeof CAMPOS_VISIBLES_IDENTIDAD)[number]
@@ -66,6 +70,8 @@ const CAMPOS_DEL_SCHEMA: Record<CampoVisibleIdentidad, readonly (keyof EditarIde
   municipio: ['municipio', 'municipioOtro'],
   ubicacionGeografica: ['ubicacionGeografica'],
   direccion: ['direccion'],
+  areaResidencia: ['areaResidencia'],
+  ocupacion: ['ocupacion'],
 }
 
 /** Cuenta lo que la persona percibe como un cambio, no los campos internos del schema. */

@@ -157,6 +157,7 @@ export class ConsultasSesionesRepository implements IConsultasSesionesRepository
         motivoNoAsistencia: true,
         clinica: true,
         enfoqueTerapeutico: true,
+        atencionBrindada: true,
         atendidoPor: { select: { nombreCompleto: true } },
         documentos: { orderBy: { createdAt: 'desc' }, take: 1 },
       },
@@ -180,6 +181,7 @@ export class ConsultasSesionesRepository implements IConsultasSesionesRepository
       motivoNoAsistencia: cita.motivoNoAsistencia,
       clinica: cita.clinica,
       enfoqueTerapeutico: cita.enfoqueTerapeutico,
+      atencionBrindada: cita.atencionBrindada,
       documento: mapearDocumentoCita(cita.documentos[0]),
       atendidoPor: cita.atendidoPor.nombreCompleto,
     };

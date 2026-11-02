@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { AREAS_ATENCION, TIPOS_REGISTRO } from '../catalogos/registroUsuaria.js'
 import { areaAtencionSchema } from './registroUsuaria.js'
-import type { AreaAtencion, TipoRegistro } from './registroUsuaria.js'
+import type { AreaAtencion, CondicionMaternidad, TipoRegistro } from './registroUsuaria.js'
 import { tipoDocumentoTrabajoSocialSchema } from './documentos.js'
 import { booleanoQuerySchema, fechaReporteSchema } from './query.js'
 import { hoyGT } from '../timezone.js'
@@ -36,6 +36,36 @@ export const referirSchema = z.object({
   }),
 })
 export type ReferirInput = z.infer<typeof referirSchema>
+
+/** Largo máximo de una acción de la bitácora de atención brindada (mismo límite que la base). */
+export const ACCION_TRABAJO_SOCIAL_MAX = 500
+
+/**
+ * `POST /trabajo-social/expedientes/:id/acciones` — una acción de "Atención brindada" de Trabajo
+ * Social (entrevista, orientación, gestión...) con la fecha en que se hizo.
+ */
+export const registrarAccionTrabajoSocialSchema = z.object({
+  fecha: fechaCalendarioSchema.refine((fecha) => fecha <= hoyGT(), {
+    message: 'La fecha no puede ser futura',
+  }),
+  descripcion: z
+    .string()
+    .trim()
+    .min(1, 'Describe la atención brindada')
+    .max(ACCION_TRABAJO_SOCIAL_MAX, `Máximo ${ACCION_TRABAJO_SOCIAL_MAX} caracteres`),
+})
+export type RegistrarAccionTrabajoSocialInput = z.infer<typeof registrarAccionTrabajoSocialSchema>
+
+export interface AccionTrabajoSocialDto {
+  id: string
+  /** "YYYY-MM-DD" */
+  fecha: string
+  descripcion: string
+  /** Nombre de quien la registró, con "(practicante)" si lo es. */
+  registradaPor: string
+  /** Instante ISO del registro. */
+  createdAt: string
+}
 
 /**
  * `PUT /trabajo-social/expedientes/:id/accesos/:area` — un switch de la matriz. Ambos campos
@@ -266,24 +296,52 @@ export interface ProfesionalArea {
   puesto: string | null
 }
 
-/** Una fila del Excel/vista previa de población beneficiada (usuaria o hija/hijo). */
+/**
+ * Una fila del Excel/vista previa de población beneficiada (usuaria o hija/hijo). En las filas de
+ * hijas/hijos van vacíos ("" o null) los datos que solo son de la usuaria: DPI, teléfono,
+ * tipología, condición de maternidad, ocupación, referencias y atención de Trabajo Social y de
+ * Jurídico. Lugar, área urbana/rural, grupo étnico, idioma, oficina y quién atendió son del caso.
+ */
 export interface FilaPoblacionBeneficiada {
   numero: number
   fecha: string
   departamento: string
+  oficinaResponsable: string
   municipio: string
   numeroCaso: string
   fechaNacimiento: string
   edad: number
-  rangoEdad: string
   nombresApellidos: string
   dpi: string | null
-  genero: string
+  telefono: string | null
+  /** "M" (mujer) o "H" (hombre). */
+  genero: 'M' | 'H'
+  rangoEdad: string
   grupoEtnico: string
   ubicacionGeografica: string
   tipologia: string
-  registro: TipoRegistro
-  relacion: string
+  // ---- Área social ----
+  areaResidencia: string
+  /** null en las filas de hijas/hijos. */
+  condicionMaternidad: CondicionMaternidad | null
+  ocupacion: string
+  idiomaAtencion: string
+  derivadaAlbergue: boolean
+  /** Nombre de quien registró el caso, con "(practicante)" si lo es. */
+  atendidaPor: string
+  descripcionReferencia: string
+  /** Bitácora de Trabajo Social del caso: "02/11/2026: texto; …". */
+  atencionTrabajoSocial: string
+  // ---- Referida al área ----
+  referidaJuridico: boolean
+  referidaPsicologia: boolean
+  referidaMedica: boolean
+  // ---- Áreas de atención ----
+  /** Tipos de proceso jurídico del caso, sin repetir. */
+  procesoRequerido: string
+  /** Atención brindada en cada sesión/consulta de esta persona: "02/11/2026: texto; …". */
+  atencionPsicologica: string
+  atencionMedica: string
   /** false en las filas de hijas/hijos. No es una columna del Excel. */
   esUsuaria: boolean
 }

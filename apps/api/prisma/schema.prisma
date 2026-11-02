@@ -31,6 +31,9 @@ model Usuario {
   // atiende casos. Texto libre igual que `Personal.tipo`: qué valores son válidos por área
   // se valida con Zod (`PUESTOS_POR_AREA`), no con un enum de Postgres.
   puesto             String?
+  // Oficina donde trabaja la persona. Sale en "Oficina responsable" del reporte de población
+  // beneficiada (la sede de quien registró el caso).
+  sede               Sede
   isActive           Boolean  @default(true)
   mustChangePassword Boolean  @default(true)
   createdAt          DateTime @default(now())
@@ -61,7 +64,13 @@ model Usuario {
   documentosMedicosSubidos           DocumentoMedico[]
   documentosMedicosPendientes        DocumentoMedicoPendiente[]
   audienciasJuridicasCreadas         AudienciaJuridica[]
+  accionesTrabajoSocialRegistradas   AccionTrabajoSocial[]
   fichaPersonal                      Personal?
+}
+
+enum Sede {
+  COBAN
+  TACTIC
 }
 
 model RefreshToken {
@@ -107,11 +116,30 @@ enum GeneroPersona {
 }
 
 enum GrupoEtnico {
-  MAYA_QECHI
-  MAYA_POQOMCHI
+  MAYA
   XINCA
   GARIFUNA
   LADINO
+  OTRO
+}
+
+enum AreaResidencia {
+  URBANA
+  RURAL
+}
+
+// Situación de la usuaria al registrar el caso: gestante (embarazada), lactante (tiene un bebé)
+// o normal (sin hijos o con hijos que no entran en las otras dos).
+enum CondicionMaternidad {
+  GESTANTE
+  LACTANTE
+  NORMAL
+}
+
+enum IdiomaAtencion {
+  ESPANOL
+  QEQCHI
+  POQOMCHI
   OTRO
 }
 
@@ -158,6 +186,8 @@ model Usuaria {
   departamentoOtro    String? // excepción: usuaria de fuera de Alta Verapaz
   municipioOtro       String?
   ubicacionGeografica String? // aldea/zona/colonia, texto libre
+  areaResidencia      AreaResidencia
+  ocupacion           String                @db.VarChar(120)
   fechaNacimiento     DateTime              @db.Date
   grupoEtnico         GrupoEtnico
   createdAt           DateTime              @default(now()) @db.Timestamptz(3)
@@ -177,6 +207,8 @@ model Expediente {
   fecha                DateTime          @db.Date
   tipoRegistro         TipoRegistro
   tipologiaDelito      TipologiaDelito[]
+  condicionMaternidad  CondicionMaternidad
+  idiomaAtencion       IdiomaAtencion
   observaciones        String?           @db.Text
   // Solo INTERNA. Fechas de calendario (no instantes): se capturan del formulario en papel.
   fechaIngresoAlbergue DateTime?         @db.Date
@@ -193,6 +225,7 @@ model Expediente {
   procesosJuridicos      ProcesoJuridico[]
   atencionesPsicologicas AtencionPsicologica[]
   atencionesMedicas      AtencionMedica[]
+  accionesTrabajoSocial  AccionTrabajoSocial[]
 
   @@index([usuariaId])
   @@index([fecha])
@@ -236,6 +269,22 @@ model Agresor {
   apellidos    String?
   telefono     String?
   direccion    String?
+}
+
+// Bitácora de "Atención brindada" de Trabajo Social: cada acción que la operadora hizo con la
+// usuaria en este caso (entrevista, orientación, gestiones...), con su fecha. El reporte de
+// población beneficiada las junta en una celda.
+model AccionTrabajoSocial {
+  id              String     @id @default(uuid())
+  expedienteId    String
+  expediente      Expediente @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  fecha           DateTime   @db.Date
+  descripcion     String     @db.VarChar(500)
+  registradaPorId String
+  registradaPor   Usuario    @relation(fields: [registradaPorId], references: [id])
+  createdAt       DateTime   @default(now()) @db.Timestamptz(3)
+
+  @@index([expedienteId, fecha])
 }
 
 model Nino {
@@ -792,6 +841,10 @@ model CitaPsicologica {
   // sesión atendida.
   clinica             ClinicaPsicologia?
   enfoqueTerapeutico  String?               @db.Text
+  // Lo que se le brindó en la sesión, para el reporte de población beneficiada (lo ve Trabajo
+  // Social). Null solo si la cita no fue atendida o es un borrador: lo exige un CHECK
+  // (CitaPsicologica_atencion_brindada_chk, ver migración reporte_poblacion_campos_nuevos).
+  atencionBrindada    String?               @db.VarChar(300)
   borrador            Boolean               @default(false)
   reprogramadaDesdeId String?               @unique
   reprogramadaDesde   CitaPsicologica?      @relation("Reprogramacion", fields: [reprogramadaDesdeId], references: [id])
@@ -937,6 +990,8 @@ model ConsultaMedica {
   diagnostico        String         @db.VarChar(2000)
   planTratamiento    String?        @db.VarChar(4000)
   recetaLaboratorios String?        @db.VarChar(4000)
+  // Lo que se le brindó en la consulta, para el reporte de población beneficiada (lo ve Trabajo Social).
+  atencionBrindada   String         @db.VarChar(300)
   registradaPorId    String
   registradaPor      Usuario        @relation(fields: [registradaPorId], references: [id], onDelete: Restrict)
   createdAt          DateTime       @default(now()) @db.Timestamptz(3)

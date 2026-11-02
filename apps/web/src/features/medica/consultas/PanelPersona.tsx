@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { ArrowRight } from 'lucide-react'
 import {
+  ATENCION_BRINDADA_MAX,
   DIAGNOSTICO_MEDICO_MAX,
   MOTIVO_CONSULTA_MEDICA_MAX,
   PLAN_TRATAMIENTO_MAX,
@@ -62,6 +63,7 @@ export default function PanelPersona({
   }, [onDocumentos, clave, lote, cantidad, hayListos, subiendo, conError])
 
   const errorDiagnostico = intentado && estado.diagnostico.trim() === '' ? 'Escribe el diagnóstico.' : null
+  const errorAtencion = intentado && estado.atencion.trim() === '' ? 'Escribe la atención brindada.' : null
   const nombre = primerNombre(persona.nombreCompleto)
 
   return (
@@ -148,6 +150,17 @@ export default function PanelPersona({
             valor={estado.diagnostico}
             onCambiar={(diagnostico) => onCambiar({ diagnostico })}
             error={errorDiagnostico}
+          />
+          <CampoTexto
+            id={`atencion-${clave}`}
+            etiqueta="Atención brindada"
+            obligatorio
+            filas={2}
+            maximo={ATENCION_BRINDADA_MAX}
+            placeholder="Resumen breve de lo que se brindó; sale en el reporte de Trabajo Social"
+            valor={estado.atencion}
+            onCambiar={(atencion) => onCambiar({ atencion })}
+            error={errorAtencion}
           />
           <CampoTexto
             id={`plan-${clave}`}

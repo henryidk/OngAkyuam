@@ -30,7 +30,7 @@ function proceso(overrides: Partial<FilaProcesoRow> = {}): FilaProcesoRow {
     apellidos: 'Ficticia',
     telefono: '5555-0000',
     edad: 31,
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     departamentoOtro: null,
     municipioOtro: null,

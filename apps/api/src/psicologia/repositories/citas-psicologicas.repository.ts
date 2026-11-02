@@ -164,6 +164,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
           motivoNoAsistencia: params.motivoNoAsistencia,
           clinica: params.clinica,
           enfoqueTerapeutico: params.enfoqueTerapeutico,
+          atencionBrindada: params.atencionBrindada,
           borrador: params.borrador,
         },
       });

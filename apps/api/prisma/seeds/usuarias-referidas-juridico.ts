@@ -45,7 +45,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     apellidos: 'Ficticia Caal',
     dpi: '0000000051601',
     fechaNacimiento: '1991-04-12',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     fechaCaso: '2026-09-22',
     tipologia: ['FISICA', 'PSICOLOGICA'],
@@ -57,7 +57,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     apellidos: 'Ficticia Pop',
     dpi: '0000000061601',
     fechaNacimiento: '1987-11-03',
-    grupoEtnico: 'MAYA_POQOMCHI',
+    grupoEtnico: 'MAYA',
     municipio: 'TACTIC',
     fechaCaso: '2026-09-23',
     tipologia: ['ECONOMICA_PATRIMONIAL'],
@@ -68,7 +68,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     apellidos: 'Ficticia Tiul',
     dpi: '0000000071601',
     fechaNacimiento: '1995-02-27',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'SAN_CRISTOBAL_VERAPAZ',
     fechaCaso: '2026-09-24',
     tipologia: ['PSICOLOGICA'],
@@ -90,7 +90,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     apellidos: 'Ficticia Xol',
     dpi: '0000000091601',
     fechaNacimiento: '1999-06-05',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'SANTA_CRUZ_VERAPAZ',
     fechaCaso: '2026-09-26',
     tipologia: ['PSICOLOGICA'],
@@ -101,7 +101,7 @@ const USUARIAS: UsuariaReferidaSeed[] = [
     apellidos: 'Ficticia Coc',
     dpi: '0000000101601',
     fechaNacimiento: '1978-12-30',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'TAMAHU',
     fechaCaso: '2026-09-29',
     tipologia: ['ECONOMICA_PATRIMONIAL'],
@@ -116,6 +116,8 @@ async function crear(
   return prisma.$transaction(async (tx) => {
     const usuaria = await tx.usuaria.create({
       data: {
+        areaResidencia: 'RURAL',
+        ocupacion: 'Ama de casa',
         nombres: datos.nombres,
         apellidos: datos.apellidos,
         dpi: datos.dpi,
@@ -133,6 +135,8 @@ async function crear(
 
     await tx.expediente.create({
       data: {
+        condicionMaternidad: 'NORMAL',
+        idiomaAtencion: 'QEQCHI',
         numero,
         usuariaId: usuaria.id,
         fecha: new Date(datos.fechaCaso),
@@ -195,7 +199,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
     dpi: '0000000011601',
     telefono: '0000-0001',
     fechaNacimiento: '1989-03-08',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     fechaCaso: '2026-08-03',
     tipologia: ['FISICA', 'ECONOMICA_PATRIMONIAL'],
@@ -238,7 +242,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
     dpi: '0000000021601',
     telefono: '0000-0002',
     fechaNacimiento: '1984-07-21',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'TACTIC',
     fechaCaso: '2026-02-10',
     tipologia: ['ECONOMICA_PATRIMONIAL'],
@@ -292,7 +296,7 @@ const USUARIAS_CON_HISTORIAL: UsuariaConHistorialSeed[] = [
     dpi: '0000000031601',
     telefono: '0000-0003',
     fechaNacimiento: '1993-10-14',
-    grupoEtnico: 'MAYA_POQOMCHI',
+    grupoEtnico: 'MAYA',
     municipio: 'SAN_CRISTOBAL_VERAPAZ',
     fechaCaso: '2026-05-04',
     tipologia: ['PSICOLOGICA'],
@@ -410,6 +414,8 @@ async function crearConHistorial(
   return prisma.$transaction(async (tx) => {
     const usuaria = await tx.usuaria.create({
       data: {
+        areaResidencia: 'RURAL',
+        ocupacion: 'Ama de casa',
         nombres: datos.nombres,
         apellidos: datos.apellidos,
         dpi: datos.dpi,
@@ -423,6 +429,8 @@ async function crearConHistorial(
     const numero = await siguienteNumero(tx, datos.fechaCaso);
     const expediente = await tx.expediente.create({
       data: {
+        condicionMaternidad: 'NORMAL',
+        idiomaAtencion: 'QEQCHI',
         numero,
         usuariaId: usuaria.id,
         fecha: new Date(datos.fechaCaso),
@@ -548,6 +556,8 @@ async function crearConHistorial(
     if (datos.regreso) {
       await tx.expediente.create({
         data: {
+          condicionMaternidad: 'NORMAL',
+          idiomaAtencion: 'QEQCHI',
           numero: await siguienteNumero(tx, datos.regreso.fechaCaso),
           usuariaId: usuaria.id,
           fecha: new Date(datos.regreso.fechaCaso),

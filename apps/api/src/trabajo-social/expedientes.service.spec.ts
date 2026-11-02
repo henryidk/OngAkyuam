@@ -51,6 +51,8 @@ describe('ExpedientesService', () => {
       fechaIngresoAlbergue: '',
       datosAgresor: { nombres: '', apellidos: '', telefono: '', direccion: '' },
       observaciones: '',
+      condicionMaternidad: 'NORMAL',
+      idiomaAtencion: 'QEQCHI',
       ninos: [],
       ...overrides,
     };
@@ -73,6 +75,8 @@ describe('ExpedientesService', () => {
         departamentoOtro: '',
         municipioOtro: '',
         ubicacionGeografica: 'Zona 1',
+        areaResidencia: 'RURAL',
+        ocupacion: 'Ama de casa',
       },
       datosCaso: datosCaso(),
       ...overrides,

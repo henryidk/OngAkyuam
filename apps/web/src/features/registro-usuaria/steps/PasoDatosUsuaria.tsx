@@ -2,15 +2,19 @@ import { Controller, useWatch, type UseFormReturn } from 'react-hook-form'
 import {
   calcularRangoEdad,
   edadEnAniosGT,
+  AREAS_RESIDENCIA,
   DEPARTAMENTOS_FUERA_ALTA_VERAPAZ,
+  ETIQUETAS_AREA_RESIDENCIA,
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   ETIQUETAS_RANGO_EDAD,
   MUNICIPIOS_ALTA_VERAPAZ,
+  OCUPACION_MAX,
   type RegistroUsuariaNuevaFormValues,
   type UsuariaResumenBusqueda,
 } from '@akyuam/shared'
 import CampoMunicipioFuera from '../../../components/form/CampoMunicipioFuera'
 import GrupoEtnicoSegmentado from '../../../components/form/GrupoEtnicoSegmentado'
+import GrupoRadio from '../../../components/form/GrupoRadio'
 import SelectInput from '../../../components/form/SelectInput'
 import TextoInput from '../../../components/form/TextoInput'
 import AvisoPosibleDuplicada from '../components/AvisoPosibleDuplicada'
@@ -29,6 +33,11 @@ const FECHA_ISO_REGEX = /^\d{4}-\d{2}-\d{2}$/
 const opcionesMunicipio = MUNICIPIOS_ALTA_VERAPAZ.map((municipio) => ({
   value: municipio,
   label: ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ[municipio],
+}))
+
+const opcionesAreaResidencia = AREAS_RESIDENCIA.map((area) => ({
+  value: area,
+  label: ETIQUETAS_AREA_RESIDENCIA[area],
 }))
 
 const opcionesDepartamentoOtro = DEPARTAMENTOS_FUERA_ALTA_VERAPAZ.map((departamento) => ({
@@ -172,6 +181,21 @@ export default function PasoDatosUsuaria({ form, posiblesDuplicadas, onRegistrar
         ayuda="Aldea, zona, colonia o cantón donde vive la usuaria."
         registro={register('datosUsuaria.ubicacionGeografica')}
         error={errors.datosUsuaria?.ubicacionGeografica?.message}
+      />
+
+      <GrupoRadio
+        label="Área de residencia"
+        opciones={opcionesAreaResidencia}
+        registro={register('datosUsuaria.areaResidencia')}
+        error={errors.datosUsuaria?.areaResidencia?.message}
+      />
+
+      <TextoInput
+        label="Ocupación"
+        maxLength={OCUPACION_MAX}
+        ayuda="Por ejemplo: ama de casa, comerciante, estudiante."
+        registro={register('datosUsuaria.ocupacion')}
+        error={errors.datosUsuaria?.ocupacion?.message}
       />
 
       {posiblesDuplicadas.length > 0 && (

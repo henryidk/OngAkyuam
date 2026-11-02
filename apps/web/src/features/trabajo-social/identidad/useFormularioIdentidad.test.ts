@@ -74,6 +74,8 @@ describe('useFormularioIdentidad', () => {
       departamentoOtro: '',
       municipioOtro: '',
       ubicacionGeografica: 'Zona de prueba',
+      areaResidencia: 'URBANA',
+      ocupacion: 'Ocupación de prueba',
     })
     expect(onGuardado).toHaveBeenCalledWith(guardada)
   })

@@ -5,6 +5,10 @@ import { ExcelJsExportador } from '../common/hoja-calculo/exceljs-exportador';
 import { EXPORTADOR_HOJA_CALCULO } from '../common/hoja-calculo/exportador-hoja-calculo.interface';
 import { PrismaModule } from '../prisma/prisma.module';
 import { StorageModule } from '../storage/storage.module';
+import { AccionesController } from './acciones/acciones.controller';
+import { AccionesService } from './acciones/acciones.service';
+import { ACCIONES_REPOSITORY } from './acciones/interfaces/acciones-repository.interface';
+import { AccionesRepository } from './acciones/repositories/acciones.repository';
 import { AccesosController } from './accesos/accesos.controller';
 import { AccesosService } from './accesos/accesos.service';
 import { ACCESOS_REPOSITORY } from './accesos/interfaces/accesos-repository.interface';
@@ -57,6 +61,7 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     DocumentosController,
     ReferidosController,
     AccesosController,
+    AccionesController,
     EgresoController,
     CompartidoController,
     BitacoraController,
@@ -70,6 +75,8 @@ import { UsuariasModule } from './usuarias/usuarias.module';
     { provide: REFERIDOS_REPOSITORY, useClass: ReferidosRepository },
     AccesosService,
     { provide: ACCESOS_REPOSITORY, useClass: AccesosRepository },
+    AccionesService,
+    { provide: ACCIONES_REPOSITORY, useClass: AccionesRepository },
     EgresoService,
     { provide: EGRESO_REPOSITORY, useClass: EgresoRepository },
     CompartidoService,

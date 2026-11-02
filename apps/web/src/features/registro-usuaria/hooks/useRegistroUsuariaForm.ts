@@ -27,11 +27,15 @@ export const valoresIniciales = {
     departamentoOtro: '',
     municipioOtro: '',
     ubicacionGeografica: '',
+    areaResidencia: '',
+    ocupacion: '',
   },
   datosCaso: {
     fecha: hoyGT(),
     tipologiaDelito: [],
     tipoRegistro: '',
+    condicionMaternidad: '',
+    idiomaAtencion: '',
     fechaIngresoAlbergue: '',
     datosAgresor: {
       nombres: '',

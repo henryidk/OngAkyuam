@@ -1,7 +1,9 @@
 import { Plus } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
+  ETIQUETAS_CONDICION_MATERNIDAD,
   ETIQUETAS_ESTADO_TS,
+  ETIQUETAS_IDIOMA_ATENCION,
   ETIQUETAS_TIPO_REGISTRO,
   formatFechaGT,
   TONO_BADGE_ESTADO_TS,
@@ -9,6 +11,7 @@ import {
 } from '@akyuam/shared'
 import Badge from '../../../../components/ui/Badge'
 import Button from '../../../../components/ui/Button'
+import AtencionBrindadaCaso from '../../atencion/AtencionBrindadaCaso'
 import { textoAreas } from '../../usuarias/filaUsuaria'
 import { useContextoFicha } from '../contextoFicha'
 import { textoAgresor, textoTipologia } from '../textoCaso'
@@ -78,6 +81,8 @@ function TarjetaCaso({ caso, actual, version }: { caso: ExpedienteResumenCaso; a
       {detalle && (
         <dl className="mt-3 grid grid-cols-[150px_1fr] gap-x-4 gap-y-2 text-sm">
           <Dato etiqueta="Tipología 22-2008">{textoTipologia(detalle)}</Dato>
+          <Dato etiqueta="Condición">{ETIQUETAS_CONDICION_MATERNIDAD[detalle.condicionMaternidad]}</Dato>
+          <Dato etiqueta="Idioma de atención">{ETIQUETAS_IDIOMA_ATENCION[detalle.idiomaAtencion]}</Dato>
           <Dato etiqueta="Agresor">{textoAgresor(detalle)}</Dato>
           <Dato etiqueta="Referida a">{textoAreas(caso.areasReferidas)}</Dato>
           <Dato etiqueta="Observaciones">
@@ -85,6 +90,7 @@ function TarjetaCaso({ caso, actual, version }: { caso: ExpedienteResumenCaso; a
           </Dato>
         </dl>
       )}
+      <AtencionBrindadaCaso expedienteId={caso.id} />
     </section>
   )
 }

@@ -52,6 +52,7 @@ export interface RegistrarConsultaParams {
   motivoNoAsistencia: string | null;
   clinica: ClinicaPsicologia | null;
   enfoqueTerapeutico: string | null;
+  atencionBrindada: string | null;
   borrador: boolean;
   /** "¿Qué sigue?": la próxima cita que nace junto con el registro, para la misma persona. */
   proximaCita: { fechaHora: Date; duracionMinutos: number } | null;

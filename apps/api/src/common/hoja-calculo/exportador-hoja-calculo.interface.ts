@@ -11,6 +11,12 @@ export interface ColumnaHoja {
   /** Ancho en caracteres. */
   ancho: number;
   tipo: TipoColumnaHoja;
+  /**
+   * Encabezado de grupo (p. ej. "Área social"). Si alguna columna lo trae, la hoja lleva dos
+   * filas de encabezado: el grupo combinado sobre sus columnas consecutivas y, debajo, el título
+   * de cada una. Una columna sin grupo ocupa las dos filas.
+   */
+  grupo?: string;
 }
 
 export type ValorCeldaHoja = string | number | null;

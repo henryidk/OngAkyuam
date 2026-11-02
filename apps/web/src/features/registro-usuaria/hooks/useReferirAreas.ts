@@ -5,7 +5,6 @@ import { referirCaso } from '../../trabajo-social/api/trabajoSocial.api'
 
 export interface ReferenciaArea {
   seleccionada: boolean
-  motivo: string
   /** Agresor, tipología y observaciones. Jurídico los ve siempre por normativa. */
   datosCaso: boolean
   /** Ya se envió: no se puede quitar desde aquí (para eso está la ficha). */
@@ -14,17 +13,20 @@ export interface ReferenciaArea {
 
 type ReferenciasPorArea = Record<AreaAtencion, ReferenciaArea>
 
-const REFERENCIA_INICIAL: ReferenciaArea = { seleccionada: false, motivo: '', datosCaso: true, referida: false }
+const REFERENCIA_INICIAL: ReferenciaArea = { seleccionada: false, datosCaso: true, referida: false }
 
 /**
  * Paso "Referir" del registro: a diferencia del modal de la ficha (un área a la vez), aquí se
  * eligen varias áreas de una vez porque es el momento en que Trabajo Social decide a dónde va
  * el caso. Los documentos todavía no existen: su visibilidad se elige en el paso siguiente.
+ * El motivo es uno solo para todas las áreas: se copia a cada referencia (así sale una sola
+ * "Descripción de referencia" en el reporte de población).
  */
 export function useReferirAreas(expedienteId: string) {
   const [referencias, setReferencias] = useState<ReferenciasPorArea>(
     () => Object.fromEntries(AREAS_ATENCION.map((area) => [area, REFERENCIA_INICIAL])) as ReferenciasPorArea,
   )
+  const [motivo, setMotivoEstado] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,6 +34,11 @@ export function useReferirAreas(expedienteId: string) {
     setReferencias((actuales) =>
       actuales[area].referida ? actuales : { ...actuales, [area]: { ...actuales[area], ...cambios } },
     )
+    setError(null)
+  }, [])
+
+  const setMotivo = useCallback((valor: string) => {
+    setMotivoEstado(valor)
     setError(null)
   }, [])
 
@@ -47,7 +54,7 @@ export function useReferirAreas(expedienteId: string) {
     setEnviando(true)
     try {
       for (const area of porEnviar) {
-        const { motivo, datosCaso } = referencias[area]
+        const { datosCaso } = referencias[area]
         const validado = referirSchema.safeParse({ area, motivo, visibilidad: { datosCaso, documentos: [] } })
         if (!validado.success) {
           setError(`${ETIQUETAS_AREA_ATENCION[area]}: ${validado.error.issues[0]?.message ?? 'revisa la referencia'}`)
@@ -65,9 +72,9 @@ export function useReferirAreas(expedienteId: string) {
     } finally {
       setEnviando(false)
     }
-  }, [expedienteId, porEnviar, referencias])
+  }, [expedienteId, motivo, porEnviar, referencias])
 
-  return { referencias, actualizar, porEnviar, referidas, referirSeleccionadas, enviando, error }
+  return { referencias, actualizar, motivo, setMotivo, porEnviar, referidas, referirSeleccionadas, enviando, error }
 }
 
 export type UseReferirAreas = ReturnType<typeof useReferirAreas>

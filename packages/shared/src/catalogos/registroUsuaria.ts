@@ -29,11 +29,10 @@ export const DEPARTAMENTOS_GUATEMALA = [
   'Jutiapa',
 ] as const
 
-export const GRUPOS_ETNICOS = ['MAYA_QECHI', 'MAYA_POQOMCHI', 'XINCA', 'GARIFUNA', 'LADINO', 'OTRO'] as const
+export const GRUPOS_ETNICOS = ['MAYA', 'XINCA', 'GARIFUNA', 'LADINO', 'OTRO'] as const
 
 export const ETIQUETAS_GRUPO_ETNICO: Record<(typeof GRUPOS_ETNICOS)[number], string> = {
-  MAYA_QECHI: "Maya Q'eqchi'",
-  MAYA_POQOMCHI: "Maya Poqomchi'",
+  MAYA: 'Maya',
   XINCA: 'Xinca',
   GARIFUNA: 'Garífuna',
   LADINO: 'Ladino',
@@ -105,6 +104,38 @@ export const ETIQUETAS_AREA_ATENCION: Record<(typeof AREAS_ATENCION)[number], st
   MEDICA: 'Médica',
 }
 
+/** Dónde vive la usuaria: dato de su identidad, como el municipio. */
+export const AREAS_RESIDENCIA = ['URBANA', 'RURAL'] as const
+
+export const ETIQUETAS_AREA_RESIDENCIA: Record<(typeof AREAS_RESIDENCIA)[number], string> = {
+  URBANA: 'Urbana',
+  RURAL: 'Rural',
+}
+
+/**
+ * Situación de la usuaria en cada caso: gestante (embarazada), lactante (tiene un bebé) o normal
+ * (sin hijos, o con hijos que no entran en las otras dos). Se elige una sola.
+ */
+export const CONDICIONES_MATERNIDAD = ['GESTANTE', 'LACTANTE', 'NORMAL'] as const
+
+export const ETIQUETAS_CONDICION_MATERNIDAD: Record<(typeof CONDICIONES_MATERNIDAD)[number], string> = {
+  GESTANTE: 'Gestante',
+  LACTANTE: 'Lactante',
+  NORMAL: 'Normal',
+}
+
+/** Idioma en que se atiende a la usuaria en el caso. */
+export const IDIOMAS_ATENCION = ['ESPANOL', 'QEQCHI', 'POQOMCHI', 'OTRO'] as const
+
+export const ETIQUETAS_IDIOMA_ATENCION: Record<(typeof IDIOMAS_ATENCION)[number], string> = {
+  ESPANOL: 'Español',
+  QEQCHI: "Q'eqchi'",
+  POQOMCHI: "Poqomchi'",
+  OTRO: 'Otro',
+}
+
+export const OCUPACION_MAX = 120
+
 export const TIPOS_REGISTRO = ['INTERNA', 'EXTERNA'] as const
 
 export const ETIQUETAS_TIPO_REGISTRO: Record<(typeof TIPOS_REGISTRO)[number], string> = {
@@ -162,6 +193,8 @@ export const ETIQUETAS_CAMPO_IDENTIDAD_USUARIA = {
   departamentoOtro: 'departamento',
   municipioOtro: 'municipio',
   ubicacionGeografica: 'ubicación geográfica',
+  areaResidencia: 'área urbana/rural',
+  ocupacion: 'ocupación',
 } as const
 
 export type CampoIdentidadUsuaria = keyof typeof ETIQUETAS_CAMPO_IDENTIDAD_USUARIA

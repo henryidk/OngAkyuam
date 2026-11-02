@@ -161,6 +161,8 @@ export class ExpedientesService {
         ? vacioANulo(datosUsuaria.municipioOtro)
         : null,
       ubicacionGeografica: datosUsuaria.ubicacionGeografica,
+      areaResidencia: datosUsuaria.areaResidencia,
+      ocupacion: datosUsuaria.ocupacion,
     };
   }
 
@@ -177,6 +179,8 @@ export class ExpedientesService {
           ? datosCaso.fechaIngresoAlbergue
           : null,
       observaciones: vacioANulo(datosCaso.observaciones),
+      condicionMaternidad: datosCaso.condicionMaternidad,
+      idiomaAtencion: datosCaso.idiomaAtencion,
       creadoPorId,
       agresor: tieneDatosAgresor(datosCaso.datosAgresor)
         ? {

@@ -23,6 +23,7 @@ function crearCita(overrides: Partial<CitaResumen> = {}): CitaResumen {
     recomendaciones: null,
     clinica: null,
     enfoqueTerapeutico: null,
+    atencionBrindada: null,
     borrador: false,
     reprogramadaDesdeId: null,
     atendidoPor: 'Psicóloga A',

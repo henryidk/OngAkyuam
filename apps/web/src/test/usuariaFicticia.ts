@@ -16,6 +16,8 @@ export function usuariaFicticia(cambios: Partial<UsuariaExpedienteHub> = {}): Us
     departamentoOtro: null,
     municipioOtro: null,
     ubicacionGeografica: 'Zona de prueba',
+    areaResidencia: 'URBANA',
+    ocupacion: 'Ocupación de prueba',
     casos: [],
     casoActivo: null,
     ...cambios,

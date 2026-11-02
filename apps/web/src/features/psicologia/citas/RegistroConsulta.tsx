@@ -8,6 +8,7 @@ import {
   CODIGO_TRASLAPE_CITA,
   DURACIONES_CITA_PSICOLOGICA_MINUTOS,
   DURACION_CITA_PSICOLOGICA_POR_DEFECTO,
+  ATENCION_BRINDADA_MAX,
   ENFOQUE_TERAPEUTICO_MAX,
   ETIQUETAS_ESTADO_CITA_PSICOLOGICA,
   RESULTADOS_SESION_PSICOLOGICA,
@@ -87,6 +88,7 @@ export default function RegistroConsulta() {
       estado: 'ATENDIDA',
       temas: '',
       intervencion: '',
+      atencionBrindada: '',
       recomendaciones: '',
       acuerdos: '',
       observaciones: '',
@@ -117,6 +119,7 @@ export default function RegistroConsulta() {
       estado: esResultado(cita.estado) ? cita.estado : 'ATENDIDA',
       temas: cita.temas ?? '',
       intervencion: cita.intervencion ?? '',
+      atencionBrindada: cita.atencionBrindada ?? '',
       recomendaciones: cita.recomendaciones ?? '',
       acuerdos: cita.acuerdos ?? '',
       observaciones: cita.observaciones ?? '',
@@ -304,6 +307,14 @@ export default function RegistroConsulta() {
             <div className="space-y-4">
               <TextareaInput label="Temas abordados" registro={register('temas')} opcional error={errors.temas?.message} />
               <TextareaInput label="Intervención" registro={register('intervencion')} opcional error={errors.intervencion?.message} />
+              <TextareaInput
+                label="Atención brindada"
+                registro={register('atencionBrindada')}
+                rows={2}
+                maxLength={ATENCION_BRINDADA_MAX}
+                ayuda="Resumen breve de la atención; sale en el reporte de población de Trabajo Social."
+                error={errors.atencionBrindada?.message}
+              />
               <div>
                 <TextareaInput
                   label="Enfoque terapéutico"

@@ -64,6 +64,7 @@ export class UsuariosService {
       username: datos.username,
       rol: datos.rol,
       puesto: datos.puesto,
+      sede: datos.sede,
       passwordHash,
       fichaPersonal,
     });
@@ -77,7 +78,11 @@ export class UsuariosService {
       entidadId: usuario.id,
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      detalles: { rol: datos.rol, puesto: datos.puesto ?? null },
+      detalles: {
+        rol: datos.rol,
+        puesto: datos.puesto ?? null,
+        sede: datos.sede,
+      },
     });
 
     return { usuario, passwordTemporal };
@@ -91,13 +96,14 @@ export class UsuariosService {
     await this.validarUnicidad(datos.username, datos.dpi, id);
 
     // `datos` viene tipado por `editarUsuarioSchema`, que no declara `rol`/`puesto` — esta
-    // llamada solo puede tocar los 4 campos de abajo aunque el repositorio recibiera más.
+    // llamada solo puede tocar los campos de abajo aunque el repositorio recibiera más.
     const usuario = await this.usuariosRepository.editar({
       id,
       nombreCompleto: datos.nombreCompleto,
       telefono: datos.telefono,
       dpi: datos.dpi,
       username: datos.username,
+      sede: datos.sede,
     });
     if (!usuario) {
       throw new NotFoundException('Usuario no encontrado');
@@ -221,7 +227,7 @@ export class UsuariosService {
     if (!usuario) {
       throw new NotFoundException('Usuario no encontrado');
     }
-    if (!usaFichaPersonal(usuario.rol)) {
+    if (!usaFichaPersonal(usuario.rol, usuario.puesto)) {
       throw new BadRequestException('Esta área no tiene fichas de personal');
     }
     if (datos.personalId) {
@@ -257,7 +263,7 @@ export class UsuariosService {
   private async resolverFichaAlCrear(
     datos: CrearUsuarioInput,
   ): Promise<CrearUsuarioParams['fichaPersonal']> {
-    if (!usaFichaPersonal(datos.rol)) {
+    if (!usaFichaPersonal(datos.rol, datos.puesto)) {
       if (datos.personalId) {
         throw new BadRequestException('Esta área no tiene fichas de personal');
       }
@@ -336,6 +342,16 @@ export class UsuariosService {
   }
 }
 
-function usaFichaPersonal(rol: CrearUsuarioInput['rol']): boolean {
-  return rol in CATALOGOS_TIPO_PERSONAL;
+/**
+ * Solo los puestos del catálogo de personal del área llevan ficha (en Jurídico, abogada y
+ * procuradora): una practicante de Jurídico no se asigna a procesos, así que no tiene ficha.
+ * Las cuentas viejas sin puesto se tratan como del catálogo.
+ */
+function usaFichaPersonal(
+  rol: CrearUsuarioInput['rol'],
+  puesto?: string | null,
+): boolean {
+  const catalogo =
+    CATALOGOS_TIPO_PERSONAL[rol as keyof typeof CATALOGOS_TIPO_PERSONAL];
+  return !!catalogo && (!puesto || catalogo.includes(puesto));
 }

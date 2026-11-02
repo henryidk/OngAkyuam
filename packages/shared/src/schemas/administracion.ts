@@ -1,7 +1,8 @@
 import { z } from 'zod'
-import { PUESTOS_POR_AREA, ROLES_CON_LOGIN_ADMINISTRABLES } from '../catalogos/administracion.js'
+import { PUESTOS_POR_AREA, ROLES_CON_LOGIN_ADMINISTRABLES, SEDES, type Sede } from '../catalogos/administracion.js'
 
 export const rolConLoginSchema = z.enum(ROLES_CON_LOGIN_ADMINISTRABLES)
+export const sedeSchema = z.enum(SEDES, 'Selecciona la sede')
 export type RolConLogin = z.infer<typeof rolConLoginSchema>
 
 const camposBaseUsuario = {
@@ -12,6 +13,8 @@ const camposBaseUsuario = {
     .string()
     .min(3, 'El nombre de usuario debe tener al menos 3 caracteres')
     .regex(/^[a-zA-Z0-9._-]+$/, 'Solo letras, números, punto, guion y guion bajo'),
+  // Se puede cambiar al editar la cuenta: una persona puede pasar a trabajar en otra oficina.
+  sede: sedeSchema,
 }
 
 /**
@@ -86,6 +89,7 @@ export interface UsuarioAdminDto {
   dpi: string | null
   rol: RolConLogin
   puesto: string | null
+  sede: Sede
   isActive: boolean
   mustChangePassword: boolean
   createdAt: Date

@@ -42,3 +42,38 @@ describe('ExcelJsExportador', () => {
     expect(libro.creator).toBe('AKyuam');
   });
 });
+
+describe('ExcelJsExportador con encabezados agrupados', () => {
+  it('combina el grupo sobre sus columnas y deja las columnas sueltas en dos filas', async () => {
+    const exportador = new ExcelJsExportador();
+    const contenido = await exportador.generar({
+      nombreHoja: 'Agrupada',
+      columnas: [
+        { titulo: 'No.', ancho: 6, tipo: 'numero' },
+        { titulo: 'Legal', ancho: 8, tipo: 'texto', grupo: 'Referida al área' },
+        {
+          titulo: 'Médica',
+          ancho: 8,
+          tipo: 'texto',
+          grupo: 'Referida al área',
+        },
+        { titulo: 'Notas', ancho: 8, tipo: 'texto' },
+      ],
+      filas: [[1, 'X', '', 'algo']],
+    });
+    const libro = new Workbook();
+    await libro.xlsx.load(contenido as unknown as ArrayBuffer);
+    const hoja = libro.getWorksheet('Agrupada');
+
+    expect(hoja?.getCell('A1').value).toBe('No.');
+    expect(hoja?.getCell('A2').isMerged).toBe(true);
+    expect(hoja?.getCell('B1').value).toBe('Referida al área');
+    expect(hoja?.getCell('C1').isMerged).toBe(true);
+    expect(hoja?.getCell('B2').value).toBe('Legal');
+    expect(hoja?.getCell('C2').value).toBe('Médica');
+    expect(hoja?.getCell('D1').value).toBe('Notas');
+    // Los datos empiezan debajo de las dos filas de encabezado.
+    expect(hoja?.getCell('A3').value).toBe(1);
+    expect(hoja?.getCell('B3').value).toBe('X');
+  });
+});

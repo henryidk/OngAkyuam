@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Workbook } from 'exceljs';
+import { Workbook, type Worksheet } from 'exceljs';
 import type {
   HojaCalculo,
   IExportadorHojaCalculo,
@@ -34,15 +34,30 @@ export class ExcelJsExportador implements IExportadorHojaCalculo {
     // Sin nombre de la persona que exporta en los metadatos del archivo.
     libro.creator = 'AKyuam';
 
+    const conGrupos = hoja.columnas.some((columna) => columna.grupo);
+    const filasEncabezado = conGrupos ? 2 : 1;
     const hojaExcel = libro.addWorksheet(hoja.nombreHoja, {
-      views: [{ state: 'frozen', ySplit: 1 }],
+      views: [{ state: 'frozen', ySplit: filasEncabezado }],
     });
     hojaExcel.columns = hoja.columnas.map((columna) => ({
-      header: columna.titulo,
       width: columna.ancho,
       style: columna.tipo === 'fecha' ? { numFmt: 'dd/mm/yyyy' } : {},
     }));
-    hojaExcel.getRow(1).font = { bold: true };
+
+    if (conGrupos) {
+      this.escribirEncabezadoAgrupado(hojaExcel, hoja);
+    } else {
+      hojaExcel.addRow(hoja.columnas.map((columna) => columna.titulo));
+    }
+    for (let numero = 1; numero <= filasEncabezado; numero++) {
+      const fila = hojaExcel.getRow(numero);
+      fila.font = { bold: true };
+      fila.alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+        wrapText: true,
+      };
+    }
 
     for (const fila of hoja.filas) {
       hojaExcel.addRow(
@@ -54,13 +69,48 @@ export class ExcelJsExportador implements IExportadorHojaCalculo {
 
     if (hoja.filas.length > 0) {
       hojaExcel.autoFilter = {
-        from: { row: 1, column: 1 },
-        to: { row: 1, column: hoja.columnas.length },
+        from: { row: filasEncabezado, column: 1 },
+        to: { row: filasEncabezado, column: hoja.columnas.length },
       };
     }
 
     const contenido = await libro.xlsx.writeBuffer();
     return Buffer.from(contenido);
+  }
+
+  /**
+   * Fila 1: el grupo combinado sobre sus columnas consecutivas; fila 2: el título de cada
+   * columna. Las columnas sin grupo combinan sus dos filas con su propio título.
+   */
+  private escribirEncabezadoAgrupado(hojaExcel: Worksheet, hoja: HojaCalculo) {
+    const filaGrupos = hojaExcel.getRow(1);
+    const filaTitulos = hojaExcel.getRow(2);
+    let indice = 0;
+    while (indice < hoja.columnas.length) {
+      const columna = hoja.columnas[indice];
+      const desde = indice + 1;
+      if (!columna.grupo) {
+        filaGrupos.getCell(desde).value = columna.titulo;
+        hojaExcel.mergeCells(1, desde, 2, desde);
+        indice++;
+        continue;
+      }
+      let hasta = desde;
+      while (
+        hasta < hoja.columnas.length &&
+        hoja.columnas[hasta].grupo === columna.grupo
+      ) {
+        hasta++;
+      }
+      filaGrupos.getCell(desde).value = columna.grupo;
+      if (hasta > desde) {
+        hojaExcel.mergeCells(1, desde, 1, hasta);
+      }
+      for (let n = desde; n <= hasta; n++) {
+        filaTitulos.getCell(n).value = hoja.columnas[n - 1].titulo;
+      }
+      indice = hasta;
+    }
   }
 
   private valorCelda(

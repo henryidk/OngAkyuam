@@ -1,5 +1,14 @@
 import type { UseFormReturn } from 'react-hook-form'
-import { OBSERVACIONES_CASO_MAX, type RegistroUsuariaNuevaFormValues } from '@akyuam/shared'
+import {
+  CONDICIONES_MATERNIDAD,
+  ETIQUETAS_CONDICION_MATERNIDAD,
+  ETIQUETAS_IDIOMA_ATENCION,
+  IDIOMAS_ATENCION,
+  OBSERVACIONES_CASO_MAX,
+  type RegistroUsuariaNuevaFormValues,
+} from '@akyuam/shared'
+import GrupoRadio from '../../../components/form/GrupoRadio'
+import SelectInput from '../../../components/form/SelectInput'
 import TextareaInput from '../../../components/form/TextareaInput'
 import TextoInput from '../../../components/form/TextoInput'
 import TipologiaChips from '../../../components/form/TipologiaChips'
@@ -9,6 +18,16 @@ interface PasoSituacionProps {
   sinDatosAgresor: boolean
   onCambiarSinDatosAgresor: (valor: boolean) => void
 }
+
+const opcionesCondicion = CONDICIONES_MATERNIDAD.map((condicion) => ({
+  value: condicion,
+  label: ETIQUETAS_CONDICION_MATERNIDAD[condicion],
+}))
+
+const opcionesIdioma = IDIOMAS_ATENCION.map((idioma) => ({
+  value: idioma,
+  label: ETIQUETAS_IDIOMA_ATENCION[idioma],
+}))
 
 const CAMPOS_AGRESOR = ['nombres', 'apellidos', 'telefono', 'direccion'] as const
 
@@ -36,6 +55,22 @@ export default function PasoSituacion({ form, sinDatosAgresor, onCambiarSinDatos
         registro={register('datosCaso.tipologiaDelito')}
         error={errors.datosCaso?.tipologiaDelito?.message}
       />
+
+      <div className="grid gap-4 border-t border-gray-100 pt-5 sm:grid-cols-2">
+        <GrupoRadio
+          label="Condición de la usuaria"
+          opciones={opcionesCondicion}
+          registro={register('datosCaso.condicionMaternidad')}
+          error={errors.datosCaso?.condicionMaternidad?.message}
+        />
+        <SelectInput
+          label="Idioma de atención"
+          placeholder="Selecciona un idioma"
+          opciones={opcionesIdioma}
+          registro={register('datosCaso.idiomaAtencion')}
+          error={errors.datosCaso?.idiomaAtencion?.message}
+        />
+      </div>
 
       <section className="border-t border-gray-100 pt-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">

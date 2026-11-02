@@ -58,6 +58,7 @@ export function mapearCita(cita: CitaConRelaciones): CitaResumen {
     recomendaciones: cita.recomendaciones,
     clinica: cita.clinica,
     enfoqueTerapeutico: cita.enfoqueTerapeutico,
+    atencionBrindada: cita.atencionBrindada,
     borrador: cita.borrador,
     reprogramadaDesdeId: cita.reprogramadaDesdeId,
     atendidoPor: cita.atendidoPor.nombreCompleto,

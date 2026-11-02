@@ -53,6 +53,7 @@ async function main(): Promise<void> {
 
     await prisma.usuario.create({
       data: {
+        sede: 'COBAN',
         username: usuarioSeed.username,
         nombreCompleto: usuarioSeed.nombreCompleto,
         rol: usuarioSeed.rol,

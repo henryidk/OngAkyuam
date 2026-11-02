@@ -1,6 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   calcularRangoEdad,
+  ETIQUETAS_AREA_RESIDENCIA,
+  ETIQUETAS_IDIOMA_ATENCION,
+  ETIQUETAS_SEDE,
+  ETIQUETAS_TIPO_PROCESO_JURIDICO,
+  fechaCalendarioGT,
+  nombreConPuesto,
+  resumenAtenciones,
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_RANGO_EDAD,
   ETIQUETAS_TIPOLOGIA_DELITO,
@@ -9,7 +16,6 @@ import {
   GRUPOS_ETNICOS,
   lugarParaReporte,
   TIPOLOGIAS_DELITO,
-  ETIQUETAS_CORTAS_TIPO_REGISTRO,
   type ConteoReporte,
   type FilaPoblacionBeneficiada,
   type RangoEdad,
@@ -61,33 +67,62 @@ function detallesAuditoria(query: ReportePoblacionQuery) {
   };
 }
 
+/** Instantes de sesiones/consultas → fecha de calendario en Guatemala, para el resumen. */
+function aFechadas(
+  atenciones: FilaPoblacionRow['atencionesPsicologicas'],
+): { fecha: string; texto: string }[] {
+  return atenciones.map((atencion) => ({
+    fecha: fechaCalendarioGT(new Date(atencion.fechaHora)),
+    texto: atencion.texto,
+  }));
+}
+
 /**
  * Traduce una persona del reporte a las columnas del Excel de Trabajo Social. Fuera de Alta
- * Verapaz, departamento y municipio son los que se escribieron a mano en el registro.
+ * Verapaz, departamento y municipio son los que se escribieron a mano en el registro. Las filas
+ * de hijas/hijos heredan del caso el lugar, el idioma, la oficina y quién atendió; lo que es
+ * solo de la usuaria (DPI, teléfono, tipología, ocupación, referencias...) queda vacío.
  */
 export function aFilaPoblacion(
   row: FilaPoblacionRow,
 ): FilaPoblacionBeneficiada {
-  const esHija = row.generoNino === 'MUJER';
+  const referidas = new Set(row.areasReferidas);
   return {
     numero: row.numero,
     fecha: row.fecha,
     ...lugarParaReporte(row),
+    oficinaResponsable: ETIQUETAS_SEDE[row.sede],
     numeroCaso: row.numeroCaso,
     fechaNacimiento: row.fechaNacimiento,
     edad: row.edad,
     rangoEdad: ETIQUETAS_RANGO_EDAD[calcularRangoEdad(row.edad)],
     nombresApellidos: `${row.nombres} ${row.apellidos}`,
     dpi: row.dpi,
-    genero: row.esUsuaria ? 'Mujer' : esHija ? 'Niña' : 'Niño',
+    telefono: row.telefono,
+    genero: row.esUsuaria || row.generoNino === 'MUJER' ? 'M' : 'H',
     grupoEtnico: ETIQUETAS_GRUPO_ETNICO[row.grupoEtnico],
     ubicacionGeografica: row.ubicacionGeografica ?? '',
     // La tipología describe la violencia que vivió la usuaria: no se repite en sus hijas/hijos.
     tipologia: row.esUsuaria ? etiquetasTipologia(row.tipologias) : '',
-    registro: row.tipoRegistro,
-    relacion: row.esUsuaria
-      ? 'Usuaria'
-      : `${esHija ? 'Hija' : 'Hijo'} de ${row.numeroCaso}`,
+    areaResidencia: ETIQUETAS_AREA_RESIDENCIA[row.areaResidencia],
+    condicionMaternidad: row.condicionMaternidad,
+    ocupacion: row.ocupacion ?? '',
+    idiomaAtencion: ETIQUETAS_IDIOMA_ATENCION[row.idiomaAtencion],
+    derivadaAlbergue: row.tipoRegistro === 'INTERNA',
+    atendidaPor: nombreConPuesto(row.atendidaPorNombre, row.atendidaPorPuesto),
+    descripcionReferencia: row.motivoReferencia?.trim() ?? '',
+    atencionTrabajoSocial: resumenAtenciones(row.accionesTrabajoSocial),
+    referidaJuridico: referidas.has('JURIDICO'),
+    referidaPsicologia: referidas.has('PSICOLOGIA'),
+    referidaMedica: referidas.has('MEDICA'),
+    procesoRequerido: row.procesosJuridicos
+      .map((tipo) => ETIQUETAS_TIPO_PROCESO_JURIDICO[tipo])
+      .sort((a, b) => a.localeCompare(b, 'es'))
+      .join(', '),
+    atencionPsicologica: resumenAtenciones(
+      aFechadas(row.atencionesPsicologicas),
+    ),
+    atencionMedica: resumenAtenciones(aFechadas(row.atencionesMedicas)),
     esUsuaria: row.esUsuaria,
   };
 }
@@ -144,45 +179,131 @@ export function armarDesgloses(
   };
 }
 
-/** Columnas en el mismo orden que el Excel que usa hoy Trabajo Social (plan §3.8). */
+const GRUPO_AREA_SOCIAL = 'Área social';
+const GRUPO_REFERIDA = 'Referida al área';
+const GRUPO_ATENCION = 'Áreas de atención';
+
+/** Columnas en el orden del formato de la ONG, con sus tres grupos de encabezado. */
 export const COLUMNAS_POBLACION: ColumnaHoja[] = [
   { titulo: 'No.', ancho: 6, tipo: 'numero' },
-  { titulo: 'Fecha', ancho: 12, tipo: 'fecha' },
+  { titulo: 'Fecha de registro', ancho: 12, tipo: 'fecha' },
   { titulo: 'Departamento', ancho: 16, tipo: 'texto' },
+  { titulo: 'Oficina responsable', ancho: 12, tipo: 'texto' },
   { titulo: 'Municipio', ancho: 22, tipo: 'texto' },
   { titulo: 'No. de caso', ancho: 12, tipo: 'texto' },
   { titulo: 'Fecha de nacimiento', ancho: 14, tipo: 'fecha' },
   { titulo: 'Edad', ancho: 6, tipo: 'numero' },
-  { titulo: 'Rango de edad', ancho: 16, tipo: 'texto' },
   { titulo: 'Nombres y apellidos', ancho: 32, tipo: 'texto' },
   { titulo: 'DPI', ancho: 16, tipo: 'texto' },
-  { titulo: 'Género', ancho: 8, tipo: 'texto' },
-  { titulo: 'Grupo étnico', ancho: 16, tipo: 'texto' },
+  { titulo: 'Teléfono', ancho: 12, tipo: 'texto' },
+  { titulo: 'Género (M/H)', ancho: 8, tipo: 'texto' },
+  { titulo: 'Rango de edad', ancho: 16, tipo: 'texto' },
+  { titulo: 'Grupo étnico', ancho: 14, tipo: 'texto' },
   { titulo: 'Ubicación geográfica', ancho: 24, tipo: 'texto' },
-  { titulo: 'Tipología 22-2008', ancho: 28, tipo: 'texto' },
-  { titulo: 'Registro', ancho: 10, tipo: 'texto' },
-  { titulo: 'Relación', ancho: 16, tipo: 'texto' },
+  { titulo: 'Tipología del delito', ancho: 28, tipo: 'texto' },
+  {
+    titulo: 'Área urbana/rural',
+    ancho: 10,
+    tipo: 'texto',
+    grupo: GRUPO_AREA_SOCIAL,
+  },
+  { titulo: 'Gestante', ancho: 9, tipo: 'texto', grupo: GRUPO_AREA_SOCIAL },
+  { titulo: 'Lactante', ancho: 9, tipo: 'texto', grupo: GRUPO_AREA_SOCIAL },
+  { titulo: 'Normal', ancho: 9, tipo: 'texto', grupo: GRUPO_AREA_SOCIAL },
+  { titulo: 'Ocupación', ancho: 18, tipo: 'texto', grupo: GRUPO_AREA_SOCIAL },
+  {
+    titulo: 'Idioma de atención',
+    ancho: 12,
+    tipo: 'texto',
+    grupo: GRUPO_AREA_SOCIAL,
+  },
+  {
+    titulo: 'Derivada a albergue',
+    ancho: 10,
+    tipo: 'texto',
+    grupo: GRUPO_AREA_SOCIAL,
+  },
+  {
+    titulo: 'Atendida por',
+    ancho: 26,
+    tipo: 'texto',
+    grupo: GRUPO_AREA_SOCIAL,
+  },
+  {
+    titulo: 'Descripción de referencia',
+    ancho: 36,
+    tipo: 'texto',
+    grupo: GRUPO_AREA_SOCIAL,
+  },
+  {
+    titulo: 'Atención brindada',
+    ancho: 48,
+    tipo: 'texto',
+    grupo: GRUPO_AREA_SOCIAL,
+  },
+  { titulo: 'Legal', ancho: 8, tipo: 'texto', grupo: GRUPO_REFERIDA },
+  { titulo: 'Psicológica', ancho: 11, tipo: 'texto', grupo: GRUPO_REFERIDA },
+  { titulo: 'Médica', ancho: 8, tipo: 'texto', grupo: GRUPO_REFERIDA },
+  {
+    titulo: 'Legal: proceso requerido',
+    ancho: 32,
+    tipo: 'texto',
+    grupo: GRUPO_ATENCION,
+  },
+  {
+    titulo: 'Psicológica: atención brindada',
+    ancho: 48,
+    tipo: 'texto',
+    grupo: GRUPO_ATENCION,
+  },
+  {
+    titulo: 'Médica: atención brindada',
+    ancho: 48,
+    tipo: 'texto',
+    grupo: GRUPO_ATENCION,
+  },
 ];
+
+function marca(valor: boolean): string {
+  return valor ? 'X' : '';
+}
 
 export function aFilaHoja(fila: FilaPoblacionBeneficiada): ValorCeldaHoja[] {
   return [
     fila.numero,
     fila.fecha,
     fila.departamento,
+    fila.oficinaResponsable,
     fila.municipio,
     fila.numeroCaso,
     fila.fechaNacimiento,
     fila.edad,
-    fila.rangoEdad,
     fila.nombresApellidos,
     // Texto, no número: un DPI de 13 dígitos se mostraría en notación científica.
     fila.dpi,
+    fila.telefono,
     fila.genero,
+    fila.rangoEdad,
     fila.grupoEtnico,
     fila.ubicacionGeografica,
     fila.tipologia,
-    ETIQUETAS_CORTAS_TIPO_REGISTRO[fila.registro],
-    fila.relacion,
+    fila.areaResidencia,
+    marca(fila.condicionMaternidad === 'GESTANTE'),
+    marca(fila.condicionMaternidad === 'LACTANTE'),
+    marca(fila.condicionMaternidad === 'NORMAL'),
+    fila.ocupacion,
+    fila.idiomaAtencion,
+    // En las filas de hijas/hijos también vale: viven en el albergue con su madre.
+    fila.derivadaAlbergue ? 'Sí' : 'No',
+    fila.atendidaPor,
+    fila.descripcionReferencia,
+    fila.atencionTrabajoSocial,
+    marca(fila.referidaJuridico),
+    marca(fila.referidaPsicologia),
+    marca(fila.referidaMedica),
+    fila.procesoRequerido,
+    fila.atencionPsicologica,
+    fila.atencionMedica,
   ];
 }
 

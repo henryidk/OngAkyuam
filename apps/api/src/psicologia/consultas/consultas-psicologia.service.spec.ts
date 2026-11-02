@@ -37,6 +37,7 @@ const SESION = {
   motivoNoAsistencia: null,
   clinica: 'CLINICA_1',
   enfoqueTerapeutico: null,
+  atencionBrindada: 'Contención emocional',
   documento: null,
 } satisfies DetalleConsultaPsicologiaDto;
 

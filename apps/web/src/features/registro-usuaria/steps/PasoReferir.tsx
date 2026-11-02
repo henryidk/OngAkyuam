@@ -16,12 +16,27 @@ interface PasoReferirProps {
   referir: UseReferirAreas
 }
 
-/** Tarjetas seleccionables: al marcar un área se despliega su motivo y qué podrá ver. */
+/** Un solo motivo para todas las áreas y una tarjeta por área: al marcarla se despliega qué podrá ver. */
 export default function PasoReferir({ referir }: PasoReferirProps) {
-  const { referencias, actualizar, enviando } = referir
+  const { referencias, actualizar, motivo, setMotivo, enviando } = referir
 
   return (
     <div className="flex flex-col gap-3">
+      <label className="block">
+        <span className="mb-1 block text-sm font-medium text-gray-800">Motivo de la referencia</span>
+        <textarea
+          rows={2}
+          maxLength={MOTIVO_REFERIDO_MAX}
+          value={motivo}
+          disabled={enviando}
+          onChange={(event) => setMotivo(event.target.value)}
+          placeholder="Qué necesita la usuaria de las áreas a las que se refiere"
+          className={CLASE_CAMPO}
+        />
+        <span className="mt-1 block text-xs text-gray-500">
+          Es el mismo para todas las áreas que marques. Sale como «Descripción de referencia» en el reporte.
+        </span>
+      </label>
       {AREAS_ATENCION.map((area) => {
         const referencia = referencias[area]
         const esJuridico = area === 'JURIDICO'
@@ -63,18 +78,6 @@ export default function PasoReferir({ referir }: PasoReferirProps) {
 
             {abierta && !referencia.referida && (
               <div className="space-y-3 border-t border-gray-100 px-4 py-3.5">
-                <label className="block">
-                  <span className="mb-1 block text-xs font-medium text-gray-700">Motivo de la referencia</span>
-                  <textarea
-                    rows={2}
-                    maxLength={MOTIVO_REFERIDO_MAX}
-                    value={referencia.motivo}
-                    disabled={enviando}
-                    onChange={(event) => actualizar(area, { motivo: event.target.value })}
-                    placeholder={`Qué necesita la usuaria del área ${etiqueta.toLowerCase()}`}
-                    className={CLASE_CAMPO}
-                  />
-                </label>
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-sm font-medium text-gray-800">Agresor, tipología y observaciones</p>

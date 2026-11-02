@@ -55,6 +55,7 @@ describe('Medicina · restricciones de la base (e2e)', () => {
   function consulta(atencionId: string, datos: Record<string, unknown>) {
     return prisma.consultaMedica.create({
       data: {
+        atencionBrindada: 'Dato ficticio: consulta general y orientación.',
         atencionId,
         fechaHora: new Date(),
         diagnostico: 'Diagnóstico ficticio',

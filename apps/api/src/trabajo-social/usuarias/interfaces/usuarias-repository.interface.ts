@@ -1,4 +1,8 @@
-import type { GrupoEtnico, MunicipioAltaVerapaz } from '@prisma/client';
+import type {
+  AreaResidencia,
+  GrupoEtnico,
+  MunicipioAltaVerapaz,
+} from '@prisma/client';
 import type {
   AreaAtencion,
   FiltroListaUsuarias,
@@ -23,6 +27,8 @@ export interface DatosIdentidadUsuariaParams {
   departamentoOtro: string | null;
   municipioOtro: string | null;
   ubicacionGeografica: string | null;
+  areaResidencia: AreaResidencia;
+  ocupacion: string;
 }
 
 export interface ListarUsuariasParams {

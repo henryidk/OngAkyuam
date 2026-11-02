@@ -17,6 +17,7 @@ const sesionAtendida = {
   motivoNoAsistencia: '',
   clinica: 'CLINICA_1',
   enfoqueTerapeutico: '',
+  atencionBrindada: 'Escucha activa',
 };
 
 describe('schemas del rediseño de Psicología', () => {
@@ -202,6 +203,25 @@ describe('schemas del rediseño de Psicología', () => {
           clinica: 'CLINICA_3',
         }).success,
       ).toBe(false);
+    });
+
+    it('una sesión atendida exige la atención brindada al finalizar, el borrador no', () => {
+      const resultado = registroConsultaSchema.safeParse({
+        ...sesionAtendida,
+        atencionBrindada: '   ',
+      });
+      expect(resultado.success).toBe(false);
+      expect(resultado.error?.issues[0]).toMatchObject({
+        path: ['atencionBrindada'],
+        message: 'Escribe la atención brindada en la sesión.',
+      });
+      expect(
+        registroConsultaSchema.safeParse({
+          ...sesionAtendida,
+          atencionBrindada: '',
+          borrador: true,
+        }).success,
+      ).toBe(true);
     });
 
     it('limita el enfoque terapéutico a 2000 caracteres', () => {

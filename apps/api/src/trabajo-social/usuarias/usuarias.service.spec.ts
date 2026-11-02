@@ -48,6 +48,8 @@ describe('UsuariasService', () => {
       departamentoOtro: null,
       municipioOtro: null,
       ubicacionGeografica: 'Zona 1',
+      areaResidencia: 'RURAL',
+      ocupacion: 'Ama de casa',
       casos: [],
       ...overrides,
     };
@@ -69,6 +71,8 @@ describe('UsuariasService', () => {
       departamentoOtro: '',
       municipioOtro: '',
       ubicacionGeografica: 'Zona 1',
+      areaResidencia: 'RURAL',
+      ocupacion: 'Ama de casa',
       ...overrides,
     };
   }

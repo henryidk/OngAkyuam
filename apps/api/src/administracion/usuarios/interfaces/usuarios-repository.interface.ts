@@ -1,4 +1,4 @@
-import type { Rol } from '@prisma/client';
+import type { Rol, Sede } from '@prisma/client';
 import type { UsuarioAdminDto } from '@akyuam/shared';
 
 export const USUARIOS_REPOSITORY = Symbol('USUARIOS_REPOSITORY');
@@ -14,6 +14,7 @@ export interface CrearUsuarioParams {
   username: string;
   rol: Rol;
   puesto?: string;
+  sede: Sede;
   passwordHash: string;
   /**
    * Ficha de personal de la cuenta, en la misma transacción: `nueva` la crea con el nombre
@@ -28,6 +29,7 @@ export interface EditarUsuarioParams {
   telefono: string;
   dpi: string;
   username: string;
+  sede: Sede;
 }
 
 export interface FichaPersonalRow {

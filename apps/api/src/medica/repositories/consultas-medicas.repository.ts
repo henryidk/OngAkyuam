@@ -89,6 +89,7 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
               motivoConsulta: registro.motivoConsulta,
               ...registro.signos,
               diagnostico: registro.diagnostico,
+              atencionBrindada: registro.atencionBrindada,
               planTratamiento: registro.planTratamiento,
               recetaLaboratorios: registro.recetaLaboratorios,
               registradaPorId: params.registradaPorId,

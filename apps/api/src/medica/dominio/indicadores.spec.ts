@@ -14,7 +14,7 @@ function consulta(
     usuariaId: 'u1',
     ninoId: null,
     fechaNacimiento: '1990-01-01',
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     tipologias: ['FISICA'],
     esPrimera: false,

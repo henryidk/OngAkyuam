@@ -63,6 +63,8 @@ function mapearParametrosIdentidad(
       ? vacioANulo(datos.municipioOtro)
       : null,
     ubicacionGeografica: vacioANulo(datos.ubicacionGeografica),
+    areaResidencia: datos.areaResidencia,
+    ocupacion: datos.ocupacion,
   };
 }
 
@@ -80,6 +82,8 @@ const CAMPOS_IDENTIDAD: (keyof UsuariaHubRow)[] = [
   'departamentoOtro',
   'municipioOtro',
   'ubicacionGeografica',
+  'areaResidencia',
+  'ocupacion',
 ];
 
 function camposCambiados(

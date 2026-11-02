@@ -28,11 +28,34 @@ function usuaria(overrides: Partial<FilaPoblacionRow> = {}): FilaPoblacionRow {
     fechaNacimiento: '1995-03-02',
     edad: 31,
     generoNino: null,
-    grupoEtnico: 'MAYA_QECHI',
+    grupoEtnico: 'MAYA',
     municipio: 'COBAN',
     departamentoOtro: null,
     municipioOtro: null,
     ubicacionGeografica: 'Zona 1',
+    telefono: '00000000',
+    areaResidencia: 'RURAL',
+    ocupacion: 'Ama de casa',
+    condicionMaternidad: 'LACTANTE',
+    idiomaAtencion: 'QEQCHI',
+    atendidaPorNombre: 'Trabajadora Ficticia',
+    atendidaPorPuesto: 'PRACTICANTE',
+    sede: 'TACTIC',
+    areasReferidas: ['JURIDICO', 'MEDICA'],
+    motivoReferencia: '  Orientación legal  ',
+    accionesTrabajoSocial: [
+      { fecha: '2026-09-12', texto: 'Seguimiento telefónico' },
+      { fecha: '2026-09-10', texto: 'Entrevista inicial' },
+    ],
+    procesosJuridicos: [
+      'DIVORCIO_MUTUO_ACUERDO',
+      'FIJACION_PENSION_ALIMENTICIA',
+    ],
+    atencionesPsicologicas: [],
+    // 02:30 UTC del 11 = 20:30 del 10 en Guatemala: la fecha del resumen es la de Guatemala.
+    atencionesMedicas: [
+      { fechaHora: '2026-09-11T02:30:00.000Z', texto: 'Consulta general' },
+    ],
     ...overrides,
   };
 }
@@ -43,9 +66,17 @@ function nino(overrides: Partial<FilaPoblacionRow> = {}): FilaPoblacionRow {
     esUsuaria: false,
     nombres: 'Luz Prueba',
     dpi: null,
+    telefono: null,
+    ocupacion: null,
+    condicionMaternidad: null,
     fechaNacimiento: '2019-05-20',
     edad: 7,
     generoNino: 'MUJER',
+    areasReferidas: [],
+    motivoReferencia: null,
+    accionesTrabajoSocial: [],
+    procesosJuridicos: [],
+    atencionesMedicas: [],
     ...overrides,
   });
 }
@@ -56,6 +87,7 @@ describe('aFilaPoblacion', () => {
       numero: 1,
       fecha: '2026-09-10',
       departamento: 'Alta Verapaz',
+      oficinaResponsable: 'Tactic',
       municipio: 'Cobán',
       numeroCaso: '07-2026',
       fechaNacimiento: '1995-03-02',
@@ -63,36 +95,67 @@ describe('aFilaPoblacion', () => {
       rangoEdad: '31 a 60 años',
       nombresApellidos: 'Ana Prueba Ficticia',
       dpi: '0000000000000',
-      genero: 'Mujer',
-      grupoEtnico: "Maya Q'eqchi'",
+      telefono: '00000000',
+      genero: 'M',
+      grupoEtnico: 'Maya',
       ubicacionGeografica: 'Zona 1',
       tipologia: 'Física, Psicológica',
-      registro: 'INTERNA',
-      relacion: 'Usuaria',
+      areaResidencia: 'Rural',
+      condicionMaternidad: 'LACTANTE',
+      ocupacion: 'Ama de casa',
+      idiomaAtencion: "Q'eqchi'",
+      derivadaAlbergue: true,
+      atendidaPor: 'Trabajadora Ficticia (practicante)',
+      descripcionReferencia: 'Orientación legal',
+      atencionTrabajoSocial:
+        '10/09/2026: Entrevista inicial; 12/09/2026: Seguimiento telefónico',
+      referidaJuridico: true,
+      referidaPsicologia: false,
+      referidaMedica: true,
+      procesoRequerido:
+        'Juicio Oral de Divorcio por Mutuo Acuerdo, Juicio Oral de Fijación de Pensión Alimenticia',
+      atencionPsicologica: '',
+      atencionMedica: '10/09/2026: Consulta general',
       esUsuaria: true,
     });
   });
 
-  it('la hija hereda lugar y grupo étnico de la madre, sin tipología ni DPI', () => {
+  it('la hija hereda del caso lugar, idioma, oficina y quién atendió, sin lo propio de la usuaria', () => {
     const fila = aFilaPoblacion(nino());
 
     expect(fila).toMatchObject({
       departamento: 'Alta Verapaz',
       municipio: 'Cobán',
-      grupoEtnico: "Maya Q'eqchi'",
+      grupoEtnico: 'Maya',
       ubicacionGeografica: 'Zona 1',
-      genero: 'Niña',
-      relacion: 'Hija de 07-2026',
+      areaResidencia: 'Rural',
+      idiomaAtencion: "Q'eqchi'",
+      oficinaResponsable: 'Tactic',
+      atendidaPor: 'Trabajadora Ficticia (practicante)',
+      derivadaAlbergue: true,
+      genero: 'M',
       tipologia: '',
       dpi: null,
+      telefono: null,
+      ocupacion: '',
+      condicionMaternidad: null,
+      descripcionReferencia: '',
+      atencionTrabajoSocial: '',
+      referidaJuridico: false,
+      procesoRequerido: '',
+      esUsuaria: false,
     });
   });
 
-  it('distingue Hijo/Niño por el género del niño', () => {
-    expect(aFilaPoblacion(nino({ generoNino: 'HOMBRE' }))).toMatchObject({
-      genero: 'Niño',
-      relacion: 'Hijo de 07-2026',
-    });
+  it('un niño sale con género H', () => {
+    expect(aFilaPoblacion(nino({ generoNino: 'HOMBRE' })).genero).toBe('H');
+  });
+
+  it('quien no es practicante sale solo con su nombre', () => {
+    expect(
+      aFilaPoblacion(usuaria({ atendidaPorPuesto: 'TRABAJADORA_SOCIAL' }))
+        .atendidaPor,
+    ).toBe('Trabajadora Ficticia');
   });
 
   it('usa el rango de edad que corresponde a la edad a la fecha del caso', () => {
@@ -124,16 +187,42 @@ describe('aFilaPoblacion', () => {
 });
 
 describe('aFilaHoja', () => {
-  it('tiene una celda por columna y usa la etiqueta corta del registro', () => {
+  const celda = (celdas: unknown[], titulo: string) =>
+    celdas[COLUMNAS_POBLACION.findIndex((c) => c.titulo === titulo)];
+
+  it('tiene una celda por columna, marca con X y deja el DPI como texto', () => {
     const celdas = aFilaHoja(aFilaPoblacion(usuaria()));
 
     expect(celdas).toHaveLength(COLUMNAS_POBLACION.length);
-    expect(
-      celdas[COLUMNAS_POBLACION.findIndex((c) => c.titulo === 'Registro')],
-    ).toBe('Interna');
-    expect(
-      celdas[COLUMNAS_POBLACION.findIndex((c) => c.titulo === 'DPI')],
-    ).toBe('0000000000000');
+    expect(celda(celdas, 'DPI')).toBe('0000000000000');
+    expect(celda(celdas, 'Gestante')).toBe('');
+    expect(celda(celdas, 'Lactante')).toBe('X');
+    expect(celda(celdas, 'Normal')).toBe('');
+    expect(celda(celdas, 'Derivada a albergue')).toBe('Sí');
+    expect(celda(celdas, 'Legal')).toBe('X');
+    expect(celda(celdas, 'Psicológica')).toBe('');
+    expect(celda(celdas, 'Médica')).toBe('X');
+  });
+
+  it('la fila de una hija no marca ninguna condición de maternidad', () => {
+    const celdas = aFilaHoja(aFilaPoblacion(nino({ tipoRegistro: 'EXTERNA' })));
+
+    expect(celda(celdas, 'Gestante')).toBe('');
+    expect(celda(celdas, 'Lactante')).toBe('');
+    expect(celda(celdas, 'Normal')).toBe('');
+    expect(celda(celdas, 'Derivada a albergue')).toBe('No');
+  });
+
+  it('los grupos de encabezado siguen el formato de la ONG', () => {
+    const grupos = COLUMNAS_POBLACION.map((c) => c.grupo ?? null);
+
+    expect(COLUMNAS_POBLACION).toHaveLength(32);
+    expect(grupos.slice(0, 16).every((g) => g === null)).toBe(true);
+    expect(new Set(grupos.slice(16, 26))).toEqual(new Set(['Área social']));
+    expect(new Set(grupos.slice(26, 29))).toEqual(
+      new Set(['Referida al área']),
+    );
+    expect(new Set(grupos.slice(29))).toEqual(new Set(['Áreas de atención']));
   });
 });
 
@@ -142,8 +231,8 @@ describe('armarDesgloses', () => {
     const resultado = armarDesgloses(
       [
         { esUsuaria: true, edad: 31, grupoEtnico: 'LADINO', total: 2 },
-        { esUsuaria: true, edad: 20, grupoEtnico: 'MAYA_QECHI', total: 1 },
-        { esUsuaria: false, edad: 5, grupoEtnico: 'MAYA_QECHI', total: 3 },
+        { esUsuaria: true, edad: 20, grupoEtnico: 'MAYA', total: 1 },
+        { esUsuaria: false, edad: 5, grupoEtnico: 'MAYA', total: 3 },
         { esUsuaria: false, edad: 13, grupoEtnico: 'LADINO', total: 1 },
       ],
       [{ tipologia: 'FISICA', total: 3 }],
@@ -159,15 +248,15 @@ describe('armarDesgloses', () => {
       ['MAYOR_60', 0],
     ]);
     expect(
-      resultado.desgloses.grupoEtnico.find((c) => c.clave === 'MAYA_QECHI'),
-    ).toEqual({ clave: 'MAYA_QECHI', etiqueta: "Maya Q'eqchi'", total: 4 });
+      resultado.desgloses.grupoEtnico.find((c) => c.clave === 'MAYA'),
+    ).toEqual({ clave: 'MAYA', etiqueta: 'Maya', total: 4 });
   });
 
   it('muestra todas las categorías del catálogo aunque estén en 0', () => {
     const resultado = armarDesgloses([], []);
 
     expect(resultado.totales).toEqual({ personas: 0, usuarias: 0, ninos: 0 });
-    expect(resultado.desgloses.grupoEtnico).toHaveLength(6);
+    expect(resultado.desgloses.grupoEtnico).toHaveLength(5);
     expect(resultado.desgloses.tipologia.map((c) => c.total)).toEqual([
       0, 0, 0, 0,
     ]);

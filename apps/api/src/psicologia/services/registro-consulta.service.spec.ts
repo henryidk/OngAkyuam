@@ -33,6 +33,7 @@ function crearCita(overrides: Partial<CitaResumen> = {}): CitaResumen {
     recomendaciones: null,
     clinica: null,
     enfoqueTerapeutico: null,
+    atencionBrindada: null,
     borrador: false,
     reprogramadaDesdeId: null,
     atendidoPor: 'Psicóloga A',
@@ -117,6 +118,7 @@ describe('RegistroConsultaService', () => {
     motivoNoAsistencia: '',
     clinica: 'CLINICA_2' as const,
     enfoqueTerapeutico: '',
+    atencionBrindada: 'Escucha activa y contención',
     borrador: false,
   };
 
@@ -139,6 +141,7 @@ describe('RegistroConsultaService', () => {
         expect.objectContaining({
           clinica: 'CLINICA_2',
           enfoqueTerapeutico: null,
+          atencionBrindada: 'Escucha activa y contención',
         }),
       );
     });

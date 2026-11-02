@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ATENCION_BRINDADA_MAX } from '../dominio/poblacionBeneficiada.js'
 import {
   BUSQUEDA_PACIENTES_MEDICA_MAX,
   BUSQUEDA_PACIENTES_MEDICA_MIN,
@@ -224,6 +225,8 @@ export const registroPersonaConsultaSchema = z.object({
   motivoConsulta: textoOpcional(MOTIVO_CONSULTA_MEDICA_MAX),
   signos: signosVitalesSchema,
   diagnostico: textoLibre(DIAGNOSTICO_MEDICO_MAX).min(1, 'Escribe el diagnóstico.'),
+  /** Lo que se brindó en la consulta; sale en el reporte de población beneficiada de Trabajo Social. */
+  atencionBrindada: textoLibre(ATENCION_BRINDADA_MAX).min(1, 'Escribe la atención brindada.'),
   planTratamiento: textoOpcional(PLAN_TRATAMIENTO_MAX),
   recetaLaboratorios: textoOpcional(RECETA_LABORATORIOS_MAX),
   /** Lote de documentos de esta persona, subidos antes de guardar; null = sin documentos. */
@@ -726,6 +729,7 @@ export interface ConsultaMedicaDto {
   persona: PersonaAtendidaDto
   motivoConsulta: string | null
   diagnostico: string
+  atencionBrindada: string
   planTratamiento: string | null
   recetaLaboratorios: string | null
   signos: SignosVitalesDto

@@ -21,6 +21,7 @@ import type { TipoRegistro } from './registroUsuaria.js'
 import type { ConteoReporte } from './trabajoSocial.js'
 import type { VistaMedicaParaPsicologia } from './medica.js'
 import { diasEntreFechasGT } from '../timezone.js'
+import { ATENCION_BRINDADA_MAX } from '../dominio/poblacionBeneficiada.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -142,6 +143,11 @@ export const registroConsultaSchema = z
     enfoqueTerapeutico: z
       .string()
       .max(ENFOQUE_TERAPEUTICO_MAX, `Máximo ${ENFOQUE_TERAPEUTICO_MAX} caracteres`),
+    /** Lo que se brindó en la sesión; sale en el reporte de población beneficiada de Trabajo Social. */
+    atencionBrindada: z
+      .string()
+      .trim()
+      .max(ATENCION_BRINDADA_MAX, `Máximo ${ATENCION_BRINDADA_MAX} caracteres`),
     borrador: z.boolean().default(false),
     /** "¿Qué sigue?" — ausente equivale a `NINGUNA` (los formularios anteriores al rediseño no lo envían). */
     siguiente: siguientePasoSesionSchema.optional(),
@@ -159,6 +165,10 @@ export const registroConsultaSchema = z
       message: 'El motivo es requerido cuando la cita no fue atendida',
       path: ['motivoNoAsistencia'],
     },
+  )
+  .refine(
+    (datos) => datos.borrador || datos.estado !== 'ATENDIDA' || datos.atencionBrindada.length > 0,
+    { message: 'Escribe la atención brindada en la sesión.', path: ['atencionBrindada'] },
   )
   // Un borrador puede quedar sin clínica; una sesión atendida ya registrada, no.
   .refine((datos) => datos.borrador || datos.estado !== 'ATENDIDA' || datos.clinica !== null, {
@@ -293,6 +303,7 @@ export interface CitaResumen {
   recomendaciones: string | null
   clinica: ClinicaPsicologia | null
   enfoqueTerapeutico: string | null
+  atencionBrindada: string | null
   borrador: boolean
   reprogramadaDesdeId: string | null
   atendidoPor: string
@@ -648,6 +659,7 @@ export interface SesionProcesoDto {
   motivoNoAsistencia: string | null
   clinica: ClinicaPsicologia | null
   enfoqueTerapeutico: string | null
+  atencionBrindada: string | null
   documento: DocumentoCitaDto | null
 }
 

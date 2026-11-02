@@ -98,6 +98,8 @@ export class ExpedientesRepository implements IExpedientesRepository {
           departamentoOtro: identidad.departamentoOtro,
           municipioOtro: identidad.municipioOtro,
           ubicacionGeografica: identidad.ubicacionGeografica,
+          areaResidencia: identidad.areaResidencia,
+          ocupacion: identidad.ocupacion,
         },
         select: { id: true, nombres: true, apellidos: true, municipio: true },
       });
@@ -146,6 +148,8 @@ export class ExpedientesRepository implements IExpedientesRepository {
           ? new Date(datosCaso.fechaIngresoAlbergue)
           : undefined,
         observaciones: datosCaso.observaciones,
+        condicionMaternidad: datosCaso.condicionMaternidad,
+        idiomaAtencion: datosCaso.idiomaAtencion,
         creadoPorId: datosCaso.creadoPorId,
         agresor: datosCaso.agresor ? { create: datosCaso.agresor } : undefined,
         ninos:
@@ -194,6 +198,8 @@ export class ExpedientesRepository implements IExpedientesRepository {
       tipologiaDelito: expediente.tipologiaDelito,
       usuariaId: expediente.usuariaId,
       observaciones: expediente.observaciones,
+      condicionMaternidad: expediente.condicionMaternidad,
+      idiomaAtencion: expediente.idiomaAtencion,
       fechaIngresoAlbergue: expediente.fechaIngresoAlbergue
         ? fechaColumnaISO(expediente.fechaIngresoAlbergue)
         : null,

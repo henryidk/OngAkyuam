@@ -417,6 +417,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         motivoNoAsistencia: true,
         clinica: true,
         enfoqueTerapeutico: true,
+        atencionBrindada: true,
         nino: { select: { id: true, ...SELECT_PERSONA } },
         atencion: {
           select: {
@@ -469,6 +470,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         motivoNoAsistencia: cita.motivoNoAsistencia,
         clinica: cita.clinica,
         enfoqueTerapeutico: cita.enfoqueTerapeutico,
+        atencionBrindada: cita.atencionBrindada,
         documento: mapearDocumentoCita(cita.documentos[0]),
       })),
       siguienteCursor: hayMas ? pagina[pagina.length - 1].id : null,

@@ -76,6 +76,11 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
     // Los registros viejos pueden traer `detalles.prioridad`: se ignora a propósito.
     texto: (detalles) => `Refirió el caso al ${nombreArea(detalles)}`,
   },
+  ACCION_TS_REGISTRADA: {
+    area: null,
+    destacado: false,
+    texto: () => 'Registró una atención brindada',
+  },
   EGRESO_ALBERGUE_REGISTRADO: {
     area: null,
     destacado: true,

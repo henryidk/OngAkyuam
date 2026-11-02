@@ -5,12 +5,16 @@ import type { TipoDocumento } from './documentos.js'
 import type { EstadoCasoTs, EstadoTs } from './trabajoSocial.js'
 import {
   AREAS_ATENCION,
+  AREAS_RESIDENCIA,
+  CONDICIONES_MATERNIDAD,
   DEPARTAMENTOS_GUATEMALA,
   EDAD_MAXIMA_NINOS,
   GENEROS,
   GRUPOS_ETNICOS,
+  IDIOMAS_ATENCION,
   MAYORIA_DE_EDAD,
   MUNICIPIOS_ALTA_VERAPAZ,
+  OCUPACION_MAX,
   TIPOLOGIAS_DELITO,
   TIPOS_REGISTRO,
 } from '../catalogos/registroUsuaria.js'
@@ -58,6 +62,9 @@ export const tipologiaDelitoSchema = z.enum(TIPOLOGIAS_DELITO)
 export const generoSchema = z.enum(GENEROS, REQUERIDO)
 export const tipoRegistroSchema = z.enum(TIPOS_REGISTRO, REQUERIDO)
 export const areaAtencionSchema = z.enum(AREAS_ATENCION)
+export const areaResidenciaSchema = z.enum(AREAS_RESIDENCIA, REQUERIDO)
+export const condicionMaternidadSchema = z.enum(CONDICIONES_MATERNIDAD, REQUERIDO)
+export const idiomaAtencionSchema = z.enum(IDIOMAS_ATENCION, REQUERIDO)
 
 /**
  * Identidad de la usuaria — se captura una vez y se reutiliza en todos sus casos (expedientes).
@@ -84,6 +91,12 @@ export const identidadUsuariaSchema = z
     departamentoOtro: z.string(),
     municipioOtro: z.string(),
     ubicacionGeografica: z.string().min(1, 'Requerido'),
+    areaResidencia: areaResidenciaSchema,
+    ocupacion: z
+      .string()
+      .trim()
+      .min(1, 'Requerido')
+      .max(OCUPACION_MAX, `Máximo ${OCUPACION_MAX} caracteres`),
   })
   // El DPI es obligatorio salvo para una menor de edad, que se registra con nombres y fecha de
   // nacimiento. Con la fecha inválida no se evalúa: ese error ya lo reporta su propio campo.
@@ -172,6 +185,8 @@ export const datosCasoSchema = z
     fecha: fechaCalendarioSchema,
     tipologiaDelito: z.array(tipologiaDelitoSchema).min(1, 'Selecciona al menos una tipología'),
     tipoRegistro: tipoRegistroSchema,
+    condicionMaternidad: condicionMaternidadSchema,
+    idiomaAtencion: idiomaAtencionSchema,
     // "" mientras sea Externa — mismo criterio de strings planos que el resto del archivo.
     fechaIngresoAlbergue: z.string(),
     datosAgresor: datosAgresorSchema,
@@ -215,6 +230,9 @@ export type DatosAgresor = z.infer<typeof datosAgresorSchema>
 export type Nino = z.infer<typeof ninoSchema>
 export type TipoRegistro = z.infer<typeof tipoRegistroSchema>
 export type AreaAtencion = z.infer<typeof areaAtencionSchema>
+export type AreaResidencia = z.infer<typeof areaResidenciaSchema>
+export type CondicionMaternidad = z.infer<typeof condicionMaternidadSchema>
+export type IdiomaAtencion = z.infer<typeof idiomaAtencionSchema>
 export type RegistroUsuariaNuevaFormValues = z.infer<typeof registroUsuariaNuevaSchema>
 export type NuevoCasoFormValues = z.infer<typeof nuevoCasoSchema>
 export type EditarIdentidadUsuariaInput = z.infer<typeof editarIdentidadUsuariaSchema>
@@ -280,6 +298,8 @@ export interface UsuariaExpedienteHub {
   departamentoOtro: string | null
   municipioOtro: string | null
   ubicacionGeografica: string | null
+  areaResidencia: AreaResidencia
+  ocupacion: string
   /** Más reciente primero; el primero es el caso activo. */
   casos: ExpedienteResumenCaso[]
   /** Estado del caso activo y de cada área referida en él; `null` si la usuaria no tiene casos. */
@@ -293,6 +313,8 @@ export interface ExpedienteDetalleCaso {
   fecha: string
   tipoRegistro: TipoRegistro
   tipologiaDelito: string[]
+  condicionMaternidad: CondicionMaternidad
+  idiomaAtencion: IdiomaAtencion
   usuariaId: string
   agresor: {
     nombres: string | null

@@ -50,6 +50,7 @@ function sufijo(): string {
 export async function crearUsuario(prisma: PrismaService, rol: Rol) {
   return prisma.usuario.create({
     data: {
+      sede: 'COBAN',
       nombreCompleto: `${MARCA} ${rol}`,
       username: `e2e_${rol.toLowerCase()}_${sufijo()}`,
       // Nunca inicia sesión con contraseña: las pruebas firman el token directamente.
@@ -68,6 +69,8 @@ export async function crearExpediente(
 ) {
   const usuaria = await prisma.usuaria.create({
     data: {
+      areaResidencia: 'RURAL',
+      ocupacion: 'Ama de casa',
       nombres: MARCA,
       apellidos: `Usuaria ${sufijo()}`,
       fechaNacimiento: new Date('1990-01-01'),
@@ -76,6 +79,8 @@ export async function crearExpediente(
   });
   const expediente = await prisma.expediente.create({
     data: {
+      condicionMaternidad: 'NORMAL',
+      idiomaAtencion: 'QEQCHI',
       numero: `E2E-${sufijo()}`,
       usuariaId: usuaria.id,
       fecha: new Date('2026-01-01'),
@@ -157,6 +162,7 @@ export async function crearAtencionConConsulta(
   });
   const consulta = await prisma.consultaMedica.create({
     data: {
+      atencionBrindada: 'Dato ficticio: consulta general y orientación.',
       atencionId: atencion.id,
       fechaHora: new Date('2026-01-02T15:00:00.000Z'),
       motivoConsulta: `${MARCA} motivo clínico`,

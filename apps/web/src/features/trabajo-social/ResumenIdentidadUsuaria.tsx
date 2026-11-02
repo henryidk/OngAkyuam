@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { formatFechaGT, type UsuariaExpedienteHub } from '@akyuam/shared'
+import { ETIQUETAS_AREA_RESIDENCIA, formatFechaGT, type UsuariaExpedienteHub } from '@akyuam/shared'
 import Button from '../../components/ui/Button'
 import { useToast } from '../../components/ui/Toast'
 import { textoGrupoEtnico, textoUbicacion } from './ficha/textoUsuaria'
@@ -60,6 +60,8 @@ export default function ResumenIdentidadUsuaria({ usuaria, onActualizado }: Resu
             <div>Grupo étnico: {textoGrupoEtnico(usuaria.grupoEtnico)}</div>
             <div>Municipio: {textoUbicacion(usuaria) ?? '—'}</div>
             <div>Dirección: {usuaria.direccion || '—'}</div>
+            <div>Área: {ETIQUETAS_AREA_RESIDENCIA[usuaria.areaResidencia]}</div>
+            <div>Ocupación: {usuaria.ocupacion || '—'}</div>
           </dl>
         </div>
         <Button type="button" variante="secondary" onClick={() => setEditando(true)}>

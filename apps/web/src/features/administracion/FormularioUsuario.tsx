@@ -6,8 +6,10 @@ import {
   editarUsuarioSchema,
   ETIQUETAS_PUESTO,
   ETIQUETAS_ROL_CON_LOGIN,
+  ETIQUETAS_SEDE,
   PUESTOS_POR_AREA,
   ROLES_CON_LOGIN_ADMINISTRABLES,
+  SEDES,
   type CrearUsuarioInput,
   type CrearUsuarioResultado,
   type EditarUsuarioInput,
@@ -33,6 +35,8 @@ const OPCIONES_ROL = ROLES_CON_LOGIN_ADMINISTRABLES.map((rol) => ({
   value: rol,
   label: ETIQUETAS_ROL_CON_LOGIN[rol],
 }))
+
+const OPCIONES_SEDE = SEDES.map((sede) => ({ value: sede, label: ETIQUETAS_SEDE[sede] }))
 
 function opcionesPuesto(rol: RolConLogin | '') {
   if (!rol || rol === 'ADMINISTRACION') return []
@@ -74,6 +78,7 @@ function FormularioCrear({
       telefono: '',
       dpi: '',
       username: '',
+      sede: undefined,
       rol: undefined,
       puesto: undefined,
       personalId: undefined,
@@ -119,6 +124,14 @@ function FormularioCrear({
         label="Nombre de usuario"
         registro={register('username')}
         error={errors.username?.message}
+      />
+      <SelectInput
+        label="Sede"
+        registro={register('sede')}
+        opciones={OPCIONES_SEDE}
+        placeholder="Seleccionar…"
+        error={errors.sede?.message}
+        ayuda="Oficina donde trabaja. Es la «Oficina responsable» de los casos que registre."
       />
       <SelectInput
         label="Área"
@@ -185,6 +198,7 @@ function FormularioEditar({
       telefono: usuario.telefono ?? '',
       dpi: usuario.dpi ?? '',
       username: usuario.username,
+      sede: usuario.sede,
     },
   })
 
@@ -245,6 +259,14 @@ function FormularioEditar({
         label="Nombre de usuario"
         registro={register('username')}
         error={errors.username?.message}
+      />
+      <SelectInput
+        label="Sede"
+        registro={register('sede')}
+        opciones={OPCIONES_SEDE}
+        placeholder="Seleccionar…"
+        error={errors.sede?.message}
+        ayuda="Oficina donde trabaja. Es la «Oficina responsable» de los casos que registre."
       />
       {conFicha && (
         <div>

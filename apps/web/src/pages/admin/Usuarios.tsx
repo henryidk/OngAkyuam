@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { UserPlus, Users as UsersIcon } from 'lucide-react'
 import {
   ETIQUETAS_PUESTO,
+  ETIQUETAS_SEDE,
   ETIQUETAS_ROL_CON_LOGIN,
   ROLES_CON_LOGIN_ADMINISTRABLES,
   type RolConLogin,
@@ -94,6 +95,7 @@ export default function Usuarios() {
                 <th className="px-4 py-3 font-medium">Usuario</th>
                 <th className="px-4 py-3 font-medium">Área</th>
                 <th className="px-4 py-3 font-medium">Puesto</th>
+                <th className="px-4 py-3 font-medium">Sede</th>
                 <th className="px-4 py-3 font-medium">Estado</th>
                 <th className="px-4 py-3 font-medium" />
               </tr>
@@ -107,6 +109,7 @@ export default function Usuarios() {
                   <td className="px-4 py-3 text-gray-600">
                     {usuario.puesto ? ETIQUETAS_PUESTO[usuario.puesto] ?? usuario.puesto : '—'}
                   </td>
+                  <td className="px-4 py-3 text-gray-600">{ETIQUETAS_SEDE[usuario.sede]}</td>
                   <td className="px-4 py-3">
                     <Badge tono={usuario.isActive ? 'success' : 'neutral'}>
                       {usuario.isActive ? 'Activo' : 'Inactivo'}

@@ -20,6 +20,7 @@ const USUARIO_ADMIN_SELECT = {
   dpi: true,
   rol: true,
   puesto: true,
+  sede: true,
   isActive: true,
   mustChangePassword: true,
   createdAt: true,
@@ -34,6 +35,7 @@ type UsuarioAdminRow = {
   dpi: string | null;
   rol: UsuarioAdminDto['rol'];
   puesto: string | null;
+  sede: UsuarioAdminDto['sede'];
   isActive: boolean;
   mustChangePassword: boolean;
   createdAt: Date;
@@ -49,6 +51,7 @@ function mapear(usuario: UsuarioAdminRow): UsuarioAdminDto {
     dpi: usuario.dpi,
     rol: usuario.rol,
     puesto: usuario.puesto,
+    sede: usuario.sede,
     isActive: usuario.isActive,
     mustChangePassword: usuario.mustChangePassword,
     createdAt: usuario.createdAt,
@@ -86,6 +89,7 @@ export class UsuariosRepository implements IUsuariosRepository {
         username: params.username,
         rol: params.rol,
         puesto: params.puesto,
+        sede: params.sede,
         passwordHash: params.passwordHash,
         mustChangePassword: true,
         ...(params.fichaPersonal?.modo === 'nueva' && {
@@ -116,6 +120,7 @@ export class UsuariosRepository implements IUsuariosRepository {
             telefono: params.telefono,
             dpi: params.dpi,
             username: params.username,
+            sede: params.sede,
           },
           select: USUARIO_ADMIN_SELECT,
         }),

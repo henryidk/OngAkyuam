@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { edadEnAniosGT, fechaCalendarioGT, formatFechaGT, type UsuariaExpedienteHub } from '@akyuam/shared'
+import {
+  edadEnAniosGT,
+  ETIQUETAS_AREA_RESIDENCIA,
+  fechaCalendarioGT,
+  formatFechaGT,
+  type UsuariaExpedienteHub,
+} from '@akyuam/shared'
 import Button from '../../../../components/ui/Button'
 import { useToast } from '../../../../components/ui/Toast'
 import EdicionIdentidadUsuaria from '../../identidad/EdicionIdentidadUsuaria'
@@ -82,6 +88,8 @@ export default function PestanaDatos() {
             <CampoLectura etiqueta="Municipio" valor={textoMunicipio(usuaria)} />
             <CampoLectura etiqueta="Ubicación geográfica" valor={usuaria.ubicacionGeografica} />
             <CampoLectura etiqueta="Dirección" valor={usuaria.direccion} />
+            <CampoLectura etiqueta="Área de residencia" valor={ETIQUETAS_AREA_RESIDENCIA[usuaria.areaResidencia]} />
+            <CampoLectura etiqueta="Ocupación" valor={usuaria.ocupacion} />
             <CampoLectura
               etiqueta="Registrada"
               valor={formatFechaGT(fechaCalendarioGT(new Date(usuaria.createdAt)))}

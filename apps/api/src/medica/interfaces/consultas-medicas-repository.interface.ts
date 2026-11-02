@@ -10,6 +10,7 @@ export interface RegistroPersonaParams {
   motivoConsulta: string | null;
   signos: SignosVitalesDto;
   diagnostico: string;
+  atencionBrindada: string;
   planTratamiento: string | null;
   recetaLaboratorios: string | null;
   loteDocumentos: string | null;
