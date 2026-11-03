@@ -23,9 +23,6 @@ function crearCitaAgregado(
     procesoCodigo: '01-2026',
     procesoId: 'proceso-1',
     procesoConcluido: false,
-    // Registrada y referida el mismo día: primer ingreso.
-    fechaPrimerRegistro: '2026-01-20',
-    ingresoProceso: new Date('2026-01-20T22:00:00.000Z'),
     numeroExpediente: '01-2026',
     diagnostico: 'Ansiedad',
     enfoqueTerapeutico: 'Sistémico',
@@ -351,7 +348,6 @@ describe('IndicadoresPsicologiaService', () => {
           1,
           '2026-02-05',
           '2026-03-05',
-          'Primer ingreso',
           'En atención',
           'Psicóloga Ficticia (licenciada)',
         ],
@@ -374,7 +370,7 @@ describe('IndicadoresPsicologiaService', () => {
       ]);
       const [fila] = exportador.generar.mock.calls[0][0].filas;
       expect(fila[11]).toBe(5);
-      expect(fila[17]).toBe('Concluido');
+      expect(fila[16]).toBe('Concluido');
     });
 
     it('toma diagnóstico, enfoque y estado del proceso más reciente, sin arrastrar los del anterior', async () => {
@@ -399,32 +395,21 @@ describe('IndicadoresPsicologiaService', () => {
       const [fila] = exportador.generar.mock.calls[0][0].filas;
       expect(fila[9]).toBe('');
       expect(fila[10]).toBe('');
-      expect(fila[17]).toBe('En atención');
+      expect(fila[16]).toBe('En atención');
     });
 
-    it.each([
-      // Registrada en 2025 y referida a Psicología en 2026.
-      ['2025-11-10', '2026-02-03T16:00:00.000Z', 'Seguimiento'],
-      // Mismo año pero otro día: también ya estaba registrada.
-      ['2026-01-05', '2026-03-10T16:00:00.000Z', 'Seguimiento'],
-      // 20 de enero 23:30 en GT ya es 21 en UTC: sigue siendo el mismo día de registro.
-      ['2026-01-20', '2026-01-21T05:30:00.000Z', 'Primer ingreso'],
-    ])(
-      'registro %s e ingreso a Psicología %s → %s',
-      async (fechaPrimerRegistro, ingreso, esperado) => {
-        citasRepository.listarCitasEnRango.mockResolvedValue([
-          crearCitaAgregado({
-            fechaPrimerRegistro,
-            ingresoProceso: new Date(ingreso),
-          }),
-        ]);
+    it('no lleva la columna Ingreso: el ingreso por área vive en la base, no en el Excel', async () => {
+      citasRepository.listarCitasEnRango.mockResolvedValue([
+        crearCitaAgregado(),
+      ]);
 
-        await exportar();
+      await exportar();
 
-        const [fila] = exportador.generar.mock.calls[0][0].filas;
-        expect(fila[16]).toBe(esperado);
-      },
-    );
+      const hoja = exportador.generar.mock.calls[0][0];
+      expect(hoja.columnas.map((columna) => columna.titulo)).not.toContain(
+        'Ingreso',
+      );
+    });
 
     it('audita la descarga con el año y el número de filas, y nombra el archivo sin datos personales', async () => {
       citasRepository.listarCitasEnRango.mockResolvedValue([

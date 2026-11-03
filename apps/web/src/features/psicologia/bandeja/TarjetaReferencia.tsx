@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { DIAS_ALERTA_ESPERA_PSICOLOGIA, type ReferenciaBandejaPsicologiaDto } from '@akyuam/shared'
+import EtiquetaIngreso from '../../../components/EtiquetaIngreso'
 import Button from '../../../components/ui/Button'
 import { fechaDeInstante, iniciales } from '../../../lib/formato'
 import { etiquetaPersona } from '../compartido/personas'
@@ -47,6 +48,7 @@ export default function TarjetaReferencia({
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-semibold text-gray-900">{referencia.usuariaNombreCompleto}</h3>
+              <EtiquetaIngreso ingreso={referencia.ingreso} />
               {referencia.atendidaAntes && (
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
                   Ya atendida antes

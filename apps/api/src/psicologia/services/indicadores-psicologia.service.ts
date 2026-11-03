@@ -64,7 +64,6 @@ export const COLUMNAS_PERSONAS_ATENDIDAS: ColumnaHoja[] = [
   { titulo: 'Inasistencias', ancho: 12, tipo: 'numero' },
   { titulo: 'Primera sesión', ancho: 13, tipo: 'fecha' },
   { titulo: 'Última sesión', ancho: 13, tipo: 'fecha' },
-  { titulo: 'Ingreso', ancho: 15, tipo: 'texto' },
   { titulo: 'Estado del caso', ancho: 15, tipo: 'texto' },
   { titulo: 'Nombre', ancho: 32, tipo: 'texto' },
 ];
@@ -99,7 +98,6 @@ export function aFilaHoja(
     persona.inasistencias,
     persona.primeraSesion,
     persona.ultimaSesion,
-    persona.procesoReciente.seguimiento ? 'Seguimiento' : 'Primer ingreso',
     persona.procesoReciente.concluido ? 'Concluido' : 'En atención',
     persona.profesional,
   ];

@@ -59,27 +59,12 @@ export interface PersonaAtendida {
   primeraSesion: string;
   ultimaSesion: string;
   numeroExpediente: string;
-  /**
-   * El proceso de la sesión atendida más reciente del periodo. `seguimiento`: la usuaria ya
-   * estaba registrada desde un día anterior al ingreso de este proceso a Psicología; si no, es
-   * su primer ingreso.
-   */
-  procesoReciente: { id: string; concluido: boolean; seguimiento: boolean };
+  /** El proceso de la sesión atendida más reciente del periodo. */
+  procesoReciente: { id: string; concluido: boolean };
   /** El último anotado en ese proceso (las sesiones previas a que se pidiera no lo tienen). */
   diagnostico: string | null;
   enfoqueTerapeutico: string | null;
   profesional: string;
-}
-
-/**
- * Por día de calendario en GT: registrarla y referirla en la misma visita es su primer
- * ingreso; si ya estaba registrada desde un día anterior, es seguimiento.
- */
-export function esSeguimiento(
-  fechaPrimerRegistro: string,
-  ingresoProceso: Date,
-): boolean {
-  return fechaPrimerRegistro < fechaCalendarioGT(ingresoProceso);
 }
 
 function datosProceso(
@@ -88,7 +73,6 @@ function datosProceso(
   return {
     id: cita.procesoId,
     concluido: cita.procesoConcluido,
-    seguimiento: esSeguimiento(cita.fechaPrimerRegistro, cita.ingresoProceso),
   };
 }
 

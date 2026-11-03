@@ -7,6 +7,10 @@ import {
   type ListaUsuariasPsicologia,
 } from '@akyuam/shared';
 import { condicionBusqueda } from '../../common/busqueda-usuarias';
+import {
+  SELECT_INGRESO_USUARIA,
+  ingresoDeUsuaria,
+} from '../../common/ingreso-area';
 import { PrismaService } from '../../prisma/prisma.service';
 import { estadoReferencia } from '../dominio/estado-referencia';
 import type {
@@ -206,6 +210,7 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
             createdAt: true,
             motivo: true,
             otorgadoPor: { select: { nombreCompleto: true } },
+            ...SELECT_INGRESO_USUARIA,
             expediente: {
               select: {
                 numero: true,
@@ -293,6 +298,7 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
         referidoPor: referencia.otorgadoPor.nombreCompleto,
         motivo: referencia.motivo,
         estado,
+        ingreso: ingresoDeUsuaria(referencia),
       };
     });
 

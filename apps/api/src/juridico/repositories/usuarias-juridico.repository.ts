@@ -9,6 +9,10 @@ import {
   type ListaUsuariasJuridico,
 } from '@akyuam/shared';
 import { condicionBusqueda } from '../../common/busqueda-usuarias';
+import {
+  SELECT_INGRESO_USUARIA,
+  ingresoDeUsuaria,
+} from '../../common/ingreso-area';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EXPEDIENTE_REFERIDO_A_JURIDICO } from '../compartido/acceso-juridico';
 import type {
@@ -209,6 +213,7 @@ export class UsuariasJuridicoRepository implements IUsuariasJuridicoRepository {
         atendidoEn: true,
         otorgadoPor: { select: { nombreCompleto: true } },
         expediente: { select: { numero: true } },
+        ...SELECT_INGRESO_USUARIA,
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -238,6 +243,7 @@ export class UsuariasJuridicoRepository implements IUsuariasJuridicoRepository {
         referidoPor: referencia.otorgadoPor.nombreCompleto,
         motivo: referencia.motivo,
         estado: estadoReferencia(referencia),
+        ingreso: ingresoDeUsuaria(referencia),
       })),
     };
   }

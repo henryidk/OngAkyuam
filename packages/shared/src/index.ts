@@ -20,6 +20,7 @@ export * from "./catalogos/psicologia.js";
 export * from "./catalogos/trabajoSocial.js";
 export * from "./catalogos/medica.js";
 export * from "./catalogos/audienciasJuridico.js";
+export * from "./catalogos/ingresoArea.js";
 export * from "./dominio/seguimiento.js";
 export * from "./dominio/poblacionBeneficiada.js";
 export * from "./dominio/avisosAudiencias.js";

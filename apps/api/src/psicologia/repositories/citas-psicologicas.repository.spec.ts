@@ -260,11 +260,8 @@ describe('CitasPsicologicasRepository.listarCitasEnRango', () => {
       atencion: {
         consecutivo: 1,
         estado: 'CIERRE',
-        createdAt: new Date('2026-04-01T15:00:00.000Z'),
-        referido: { createdAt: new Date('2026-03-20T15:00:00.000Z') },
         expediente: {
           numero: '05-2026',
-          fecha: new Date('2026-03-20T00:00:00.000Z'),
           usuariaId: 'usuaria-1',
           tipologiaDelito: ['FISICA'],
           referidos: puedeVerDatosCaso === null ? [] : [{ puedeVerDatosCaso }],
@@ -272,7 +269,6 @@ describe('CitasPsicologicasRepository.listarCitasEnRango', () => {
             fechaNacimiento: new Date('1990-01-15T00:00:00.000Z'),
             grupoEtnico: 'LADINO',
             municipio: 'COBAN',
-            expedientes: [{ fecha: new Date('2025-08-12T00:00:00.000Z') }],
           },
         },
       },
@@ -301,9 +297,6 @@ describe('CitasPsicologicasRepository.listarCitasEnRango', () => {
       diagnostico: 'Ansiedad',
       enfoqueTerapeutico: 'Sistémico',
       profesional: 'Psicóloga Ficticia (practicante)',
-      // El expediente más antiguo de la usuaria y la referencia del proceso, no su apertura.
-      fechaPrimerRegistro: '2025-08-12',
-      ingresoProceso: new Date('2026-03-20T15:00:00.000Z'),
     });
   });
 

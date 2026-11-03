@@ -74,7 +74,7 @@ describe('Hijos/as con identidad estable (e2e)', () => {
     };
   }
 
-  function crearCaso(usuariaId: string, body: unknown) {
+  function crearCaso(usuariaId: string, body: object) {
     const sesion = sesionDe(app, ts);
     return request(app.getHttpServer())
       .post(`/api/trabajo-social/usuarias/${usuariaId}/expedientes`)

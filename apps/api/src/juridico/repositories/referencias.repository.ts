@@ -6,6 +6,10 @@ import {
   nombreMunicipio,
   type ReferenciaBandejaDto,
 } from '@akyuam/shared';
+import {
+  SELECT_INGRESO_USUARIA,
+  ingresoDeUsuaria,
+} from '../../common/ingreso-area';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   PROCESO_CON_ACCESO,
@@ -15,6 +19,7 @@ import type { IReferenciasRepository } from '../interfaces/referencias-repositor
 import { nombreCompleto } from './mapeo-proceso';
 
 const INCLUDE_REFERENCIA = {
+  ...SELECT_INGRESO_USUARIA,
   otorgadoPor: { select: { nombreCompleto: true } },
   expediente: {
     select: {
@@ -58,6 +63,7 @@ function mapearReferencia(
     edad: edadEnAniosGT(fechaColumnaISO(usuaria.fechaNacimiento)),
     municipio: nombreMunicipio(usuaria.municipio, usuaria.municipioOtro),
     atendidaAntes,
+    ingreso: ingresoDeUsuaria(referencia),
   };
 }
 

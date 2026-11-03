@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ATENCION_BRINDADA_MAX } from '../dominio/poblacionBeneficiada.js'
+import type { TipoIngresoArea } from '../catalogos/ingresoArea.js'
 import {
   BUSQUEDA_PACIENTES_MEDICA_MAX,
   BUSQUEDA_PACIENTES_MEDICA_MIN,
@@ -479,6 +480,8 @@ export interface ReferenciaBandejaMedicaDto {
   referidoPor: string
   /** La usuaria primero y luego sus hijos/as del expediente. */
   personas: PersonaAtendidaDto[]
+  /** Si esta referencia es el primer ingreso de la usuaria al área o un seguimiento. */
+  ingreso: TipoIngresoArea
 }
 
 /** Una cita tal como la muestra la Agenda. Nunca incluye datos clínicos. */

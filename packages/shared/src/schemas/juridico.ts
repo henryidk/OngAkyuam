@@ -15,6 +15,7 @@ import {
   TIPOS_PROCESO_JURIDICO,
 } from '../catalogos/juridico.js'
 import { ANIO_EXPEDIENTE_MAXIMO, ANIO_EXPEDIENTE_MINIMO } from '../catalogos/audienciasJuridico.js'
+import type { TipoIngresoArea } from '../catalogos/ingresoArea.js'
 import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
 import type { AudienciaFilaDto, AudienciaProgramadaDto, ProximaAudienciaDto } from './audienciasJuridico.js'
 import type { TipoRegistro } from './registroUsuaria.js'
@@ -379,6 +380,8 @@ export interface ReferenciaBandejaDto {
   municipio: string | null
   /** Ya tiene procesos en Jurídico, de cualquier estado: la usuaria regresa. */
   atendidaAntes: boolean
+  /** Si esta referencia es el primer ingreso de la usuaria al área o un seguimiento. */
+  ingreso: TipoIngresoArea
 }
 
 export interface ProcesoActivoPorTipo {
@@ -462,6 +465,8 @@ export interface ReferenciaHistorialDto {
   referidoPor: string
   motivo: string | null
   estado: EstadoReferenciaJuridico
+  /** Si esta referencia es el primer ingreso de la usuaria al área o un seguimiento. */
+  ingreso: TipoIngresoArea
 }
 
 /** `GET /juridico/usuarias/:id` — encabezado de la ficha y todo lo que Jurídico lleva de la usuaria. */

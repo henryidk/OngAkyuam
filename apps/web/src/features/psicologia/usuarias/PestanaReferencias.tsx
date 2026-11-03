@@ -1,4 +1,4 @@
-import type { ReferenciaHistorialPsicologiaDto } from '@akyuam/shared'
+import { ETIQUETAS_INGRESO_AREA, type ReferenciaHistorialPsicologiaDto } from '@akyuam/shared'
 import { fechaDeInstante } from '../../../lib/formato'
 import { useContextoFicha } from './contextoFicha'
 
@@ -26,7 +26,8 @@ export default function PestanaReferencias() {
               <div className="min-w-0 space-y-0.5">
                 <p className="text-sm text-gray-800">{referencia.motivo || 'Sin motivo registrado.'}</p>
                 <p className="text-xs text-gray-500">
-                  Expediente {referencia.expedienteNumero} · por {referencia.referidoPor}
+                  Expediente {referencia.expedienteNumero} · por {referencia.referidoPor} ·{' '}
+                  {ETIQUETAS_INGRESO_AREA[referencia.ingreso]}
                 </p>
               </div>
               <span

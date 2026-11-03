@@ -243,12 +243,9 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
           select: {
             ...SELECT_CODIGO_PROCESO,
             estado: true,
-            createdAt: true,
-            referido: { select: { createdAt: true } },
             expediente: {
               select: {
                 numero: true,
-                fecha: true,
                 usuariaId: true,
                 tipologiaDelito: true,
                 referidos: {
@@ -260,11 +257,6 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
                     fechaNacimiento: true,
                     grupoEtnico: true,
                     municipio: true,
-                    expedientes: {
-                      select: { fecha: true },
-                      orderBy: { fecha: 'asc' },
-                      take: 1,
-                    },
                   },
                 },
               },
@@ -294,12 +286,6 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         procesoCodigo: codigoProceso(expediente.numero, cita.atencion),
         procesoId: cita.atencionId,
         procesoConcluido: cita.atencion.estado === 'CIERRE',
-        // Siempre hay al menos uno: el expediente de esta misma cita.
-        fechaPrimerRegistro: fechaColumnaISO(
-          expediente.usuaria.expedientes[0]?.fecha ?? expediente.fecha,
-        ),
-        ingresoProceso:
-          cita.atencion.referido?.createdAt ?? cita.atencion.createdAt,
         numeroExpediente: expediente.numero,
         diagnostico: cita.diagnostico,
         enfoqueTerapeutico: cita.enfoqueTerapeutico,

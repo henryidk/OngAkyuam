@@ -12,6 +12,10 @@ import type {
   ReferenciaBandejaMedicaDto,
   SinProximaConsultaDto,
 } from '@akyuam/shared';
+import {
+  SELECT_INGRESO_USUARIA,
+  ingresoDeUsuaria,
+} from '../../common/ingreso-area';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   SELECT_HIJO,
@@ -192,6 +196,7 @@ export class AgendaMedicaRepository
         createdAt: true,
         motivo: true,
         otorgadoPor: { select: { nombreCompleto: true } },
+        ...SELECT_INGRESO_USUARIA,
         expediente: {
           select: {
             id: true,
@@ -219,6 +224,7 @@ export class AgendaMedicaRepository
         referidoEn: r.createdAt.toISOString(),
         referidoPor: r.otorgadoPor.nombreCompleto,
         personas: personasDelExpediente(r.expediente),
+        ingreso: ingresoDeUsuaria(r),
       }));
   }
 

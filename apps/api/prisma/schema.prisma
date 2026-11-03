@@ -193,31 +193,32 @@ model Usuaria {
   createdAt           DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
 
-  expedientes Expediente[]
-  hijos       HijoUsuaria[]
+  expedientes  Expediente[]
+  hijos        HijoUsuaria[]
+  ingresosArea IngresoArea[]
 
   @@index([apellidos, nombres]) // recorrido ordenado; la búsqueda difusa usa el índice trigram (ver migración)
   @@index([municipio])
 }
 
 model Expediente {
-  id                   String            @id @default(uuid())
-  numero               String            @unique // "NN-AAAA", ver ExpedienteContador
+  id                   String              @id @default(uuid())
+  numero               String              @unique // "NN-AAAA", ver ExpedienteContador
   usuariaId            String
-  usuaria              Usuaria           @relation(fields: [usuariaId], references: [id])
-  fecha                DateTime          @db.Date
+  usuaria              Usuaria             @relation(fields: [usuariaId], references: [id])
+  fecha                DateTime            @db.Date
   tipoRegistro         TipoRegistro
   tipologiaDelito      TipologiaDelito[]
   condicionMaternidad  CondicionMaternidad
   idiomaAtencion       IdiomaAtencion
-  observaciones        String?           @db.Text
+  observaciones        String?             @db.Text
   // Solo INTERNA. Fechas de calendario (no instantes): se capturan del formulario en papel.
-  fechaIngresoAlbergue DateTime?         @db.Date
-  fechaEgresoAlbergue  DateTime?         @db.Date
+  fechaIngresoAlbergue DateTime?           @db.Date
+  fechaEgresoAlbergue  DateTime?           @db.Date
   creadoPorId          String
-  creadoPor            Usuario           @relation(fields: [creadoPorId], references: [id])
-  createdAt            DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt            DateTime          @updatedAt @db.Timestamptz(3)
+  creadoPor            Usuario             @relation(fields: [creadoPorId], references: [id])
+  createdAt            DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
 
   agresor                Agresor?
   ninos                  Nino[]
@@ -257,9 +258,40 @@ model ReferidoArea {
   procesosJuridicos      ProcesoJuridico[]
   atencionesPsicologicas AtencionPsicologica[]
   atencionesMedicas      AtencionMedica[]
+  ingresos               IngresoArea[]
 
   @@unique([expedienteId, area])
   @@index([area])
+}
+
+// Primera vez en la vida que una persona llega a un área, o una vez más.
+enum TipoIngresoArea {
+  PRIMER_INGRESO
+  SEGUIMIENTO
+}
+
+// Cómo entró cada persona a un área en una referencia: la usuaria (`hijoId` null) y cada hijo/a
+// que el área atiende en ella. Solo la escribe la base (migración `ingreso_area`):
+//   - la fila de la usuaria, al crear la referencia;
+//   - la de un hijo/a, cuando Psicología le fija un proceso o Médica le agenda una cita o una
+//     consulta.
+// PRIMER_INGRESO si es su primera referencia a esa área en cualquiera de sus expedientes; las
+// siguientes, SEGUIMIENTO. Índices parciales en la migración: una fila por persona y referencia,
+// y un solo PRIMER_INGRESO por persona y área. Las filas no se modifican.
+model IngresoArea {
+  id         String          @id @default(uuid())
+  referidoId String
+  referido   ReferidoArea    @relation(fields: [referidoId], references: [id], onDelete: Cascade)
+  area       Rol
+  usuariaId  String
+  usuaria    Usuaria         @relation(fields: [usuariaId], references: [id], onDelete: Cascade)
+  hijoId     String?
+  hijo       HijoUsuaria?    @relation(fields: [hijoId], references: [id], onDelete: Cascade)
+  ingreso    TipoIngresoArea
+  createdAt  DateTime        @default(now()) @db.Timestamptz(3)
+
+  @@index([usuariaId, area])
+  @@index([hijoId, area])
 }
 
 model Agresor {
@@ -289,18 +321,18 @@ model AccionTrabajoSocial {
 }
 
 model Nino {
-  id              String        @id @default(uuid())
-  expedienteId    String
-  expediente      Expediente    @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
+  id           String      @id @default(uuid())
+  expedienteId String
+  expediente   Expediente  @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
   // Quién es el hijo/a (sus datos viven ahí, una sola vez). Esta fila es su participación en
   // un caso: la base exige que sea hijo/a de la usuaria del expediente (trigger
   // `nino_hijo_de_la_usuaria`, migración `hijos_identidad_estable`).
-  hijoId          String
-  hijo            HijoUsuaria   @relation(fields: [hijoId], references: [id], onDelete: Restrict)
+  hijoId       String
+  hijo         HijoUsuaria @relation(fields: [hijoId], references: [id], onDelete: Restrict)
   // Número estable del hijo/a dentro del expediente de su madre (04-2026.01, 04-2026.02). Lo
   // asigna un trigger de la base al insertar (el valor enviado se ignora) y no se puede cambiar:
   // ver la migración `psicologia_proceso_por_persona`.
-  consecutivo     Int           @default(0)
+  consecutivo  Int         @default(0)
 
   citasPsicologicas      CitaPsicologica[]
   atencionesPsicologicas AtencionPsicologica[]
@@ -331,6 +363,7 @@ model HijoUsuaria {
 
   casos                  Nino[]
   atencionesPsicologicas AtencionPsicologica[]
+  ingresosArea           IngresoArea[]
 
   @@index([usuariaId])
 }
@@ -1041,19 +1074,19 @@ model ConsultaMedica {
 }
 
 model DocumentoMedico {
-  id            String              @id @default(uuid())
+  id            String         @id @default(uuid())
   consultaId    String
-  consulta      ConsultaMedica      @relation(fields: [consultaId], references: [id], onDelete: Restrict)
-  nombreVisible String              @db.VarChar(120)
+  consulta      ConsultaMedica @relation(fields: [consultaId], references: [id], onDelete: Restrict)
+  nombreVisible String         @db.VarChar(120)
   // Solo para mostrar — nunca forma parte de la clave del objeto.
-  nombreArchivo String              @db.VarChar(255)
+  nombreArchivo String         @db.VarChar(255)
   // "medica/{expedienteId}/{atencionId}/{uuid}"
-  claveObjeto   String              @unique @db.VarChar(255)
-  mimeType      String              @db.VarChar(100)
+  claveObjeto   String         @unique @db.VarChar(255)
+  mimeType      String         @db.VarChar(100)
   tamanioBytes  Int
   subidoPorId   String
-  subidoPor     Usuario             @relation(fields: [subidoPorId], references: [id], onDelete: Restrict)
-  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+  subidoPor     Usuario        @relation(fields: [subidoPorId], references: [id], onDelete: Restrict)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
 
   @@index([consultaId])
 }
@@ -1062,20 +1095,20 @@ model DocumentoMedico {
 // transacción lo convierte en `DocumentoMedico` y borra esta fila (la clave en R2 no cambia).
 // La limpieza diaria borra fila y objeto vencidos para no dejar archivos clínicos huérfanos.
 model DocumentoMedicoPendiente {
-  id            String              @id @default(uuid())
+  id            String   @id @default(uuid())
   // Agrupa los documentos de un mismo formulario de consulta.
-  lote          String              @db.Uuid
-  nombreVisible String              @db.VarChar(120)
-  nombreArchivo String              @db.VarChar(255)
+  lote          String   @db.Uuid
+  nombreVisible String   @db.VarChar(120)
+  nombreArchivo String   @db.VarChar(255)
   // "medica/{expedienteId}/{atencionId}/{uuid}" — ya definitiva al subir.
-  claveObjeto   String              @unique @db.VarChar(255)
-  mimeType      String              @db.VarChar(100)
+  claveObjeto   String   @unique @db.VarChar(255)
+  mimeType      String   @db.VarChar(100)
   tamanioBytes  Int
   atencionId    String
   subidoPorId   String
-  subidoPor     Usuario             @relation(fields: [subidoPorId], references: [id], onDelete: Restrict)
-  expiraEn      DateTime            @db.Timestamptz(3)
-  createdAt     DateTime            @default(now()) @db.Timestamptz(3)
+  subidoPor     Usuario  @relation(fields: [subidoPorId], references: [id], onDelete: Restrict)
+  expiraEn      DateTime @db.Timestamptz(3)
+  createdAt     DateTime @default(now()) @db.Timestamptz(3)
 
   @@index([lote, subidoPorId])
   @@index([expiraEn])

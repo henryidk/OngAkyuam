@@ -87,10 +87,6 @@ export interface CitaParaAgregado {
   procesoId: string;
   /** El proceso está cerrado (Cierre): en el reporte sale "Concluido"; si no, "En atención". */
   procesoConcluido: boolean;
-  /** "YYYY-MM-DD" del expediente más antiguo de la usuaria: cuándo Trabajo Social la registró por primera vez. */
-  fechaPrimerRegistro: string;
-  /** Instante en que este proceso entró a Psicología: la referencia que lo originó o, sin ella, su apertura. */
-  ingresoProceso: Date;
   numeroExpediente: string;
   diagnostico: string | null;
   enfoqueTerapeutico: string | null;

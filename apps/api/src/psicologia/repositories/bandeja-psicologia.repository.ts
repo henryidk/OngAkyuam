@@ -10,6 +10,10 @@ import {
   type ExpedientePreviaTomaDto,
   type ReferenciaBandejaPsicologiaDto,
 } from '@akyuam/shared';
+import {
+  SELECT_INGRESO_USUARIA,
+  ingresoDeUsuaria,
+} from '../../common/ingreso-area';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   IBandejaPsicologiaRepository,
@@ -113,6 +117,7 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
         motivo: true,
         createdAt: true,
         otorgadoPor: { select: { nombreCompleto: true } },
+        ...SELECT_INGRESO_USUARIA,
         expediente: { select: SELECT_EXPEDIENTE_COLA },
       },
       orderBy: { createdAt: 'asc' },
@@ -143,6 +148,7 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
         diasEsperando: diasDesdeGT(referidoEn),
         personas: personasDelExpediente(expediente),
         atendidaAntes: atendidasAntes.has(expediente.usuaria.id),
+        ingreso: ingresoDeUsuaria(referido),
       };
     });
   }

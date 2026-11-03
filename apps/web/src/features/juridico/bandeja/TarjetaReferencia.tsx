@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { ReferenciaBandejaDto } from '@akyuam/shared'
+import EtiquetaIngreso from '../../../components/EtiquetaIngreso'
 import { fechaDeInstante, iniciales } from '../compartido/formato'
 import { RUTAS_JURIDICO } from '../rutas'
 
@@ -32,6 +33,7 @@ export default function TarjetaReferencia({ referencia }: TarjetaReferenciaProps
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base font-semibold text-gray-900">{usuaria.nombreCompleto}</h2>
+              <EtiquetaIngreso ingreso={referencia.ingreso} />
               {referencia.atendidaAntes && (
                 <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
                   Ya atendida antes

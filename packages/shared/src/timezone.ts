@@ -217,6 +217,17 @@ export function diaSemanaGT(fechaIso: string): number {
   return DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).weekday
 }
 
+/**
+ * Semana de calendario (lunes a domingo) del mes en que cae una fecha "YYYY-MM-DD": la semana 1
+ * es la que contiene el día 1, aunque empiece en el mes anterior. Da de 1 a 5, y 6 en los meses
+ * largos cuyo día 1 cae en sábado o domingo.
+ */
+export function semanaDelMesGT(fechaIso: string): number {
+  const fecha = DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ })
+  const desfaseDiaUno = fecha.startOf('month').weekday - 1
+  return Math.floor((fecha.day - 1 + desfaseDiaUno) / 7) + 1
+}
+
 /** Hora "HH:mm" en Guatemala de un instante — la hora de una cita tal como se muestra y se compara con el horario del área. */
 export function horaGT(fecha: Date | string): string {
   const dt = typeof fecha === 'string' ? DateTime.fromISO(fecha) : DateTime.fromJSDate(fecha)

@@ -15,6 +15,7 @@ import {
   MOTIVOS_CIERRE_PSICOLOGIA,
   TIPOS_CITA_PSICOLOGICA,
 } from '../catalogos/psicologia.js'
+import type { TipoIngresoArea } from '../catalogos/ingresoArea.js'
 import type { GENEROS, GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
 import type { TipoDocumento } from './documentos.js'
 import type { TipoRegistro } from './registroUsuaria.js'
@@ -432,6 +433,8 @@ export interface ReferenciaBandejaPsicologiaDto {
   personas: PersonaAtendidaDto[]
   /** Ya tuvo un proceso psicológico, de cualquier estado: la usuaria regresa. */
   atendidaAntes: boolean
+  /** Si esta referencia es el primer ingreso de la usuaria al área o un seguimiento. */
+  ingreso: TipoIngresoArea
 }
 
 /**
@@ -813,6 +816,8 @@ export interface ReferenciaHistorialPsicologiaDto {
   referidoPor: string
   motivo: string | null
   estado: EstadoReferenciaPsicologia
+  /** Si esta referencia es el primer ingreso de la usuaria al área o un seguimiento. */
+  ingreso: TipoIngresoArea
 }
 
 /** `GET /psicologia/usuarias/:usuariaId` — encabezado de la ficha y lo que Psicología lleva de la usuaria. */

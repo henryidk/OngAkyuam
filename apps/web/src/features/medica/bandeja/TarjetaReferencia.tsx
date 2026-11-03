@@ -1,4 +1,4 @@
-import { diasDesdeGT, type ReferenciaBandejaMedicaDto } from '@akyuam/shared'
+import { ETIQUETAS_INGRESO_AREA, diasDesdeGT, type ReferenciaBandejaMedicaDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import { fechaDeInstante, iniciales } from '../../../lib/formato'
 import Chip from '../compartido/Chip'
@@ -31,6 +31,9 @@ export default function TarjetaReferencia({ referencia, onVerExpediente, onAgend
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="text-[15px] font-semibold text-[#1c2430]">{referencia.usuariaNombreCompleto}</h3>
+            <Chip tono={referencia.ingreso === 'PRIMER_INGRESO' ? 'purple' : 'gray'}>
+              {ETIQUETAS_INGRESO_AREA[referencia.ingreso]}
+            </Chip>
             <ChipEspera referidoEn={referencia.referidoEn} />
           </div>
           <p className="mt-0.5 text-[13px] text-[#5b6573]">
