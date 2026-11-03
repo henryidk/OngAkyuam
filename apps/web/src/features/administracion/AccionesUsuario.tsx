@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { CrearUsuarioResultado, UsuarioAdminDto } from '@akyuam/shared'
-import Button from '../../components/ui/Button'
+import { KeyRound, Pencil, UserCheck, UserX, type LucideIcon } from 'lucide-react'
 import ConfirmModal from '../../components/ui/ConfirmModal'
 import { api } from '../../lib/api'
 import { extraerMensajeError } from '../../lib/errors'
@@ -68,31 +68,24 @@ export default function AccionesUsuario({
   }
 
   return (
-    <div className="flex items-center justify-end gap-2">
-      <Button variante="secondary" onClick={onEditar}>
-        Editar
-      </Button>
-      <Button
-        variante="secondary"
+    <div className="flex flex-wrap items-center gap-1.5 md:flex-nowrap md:justify-end md:gap-1">
+      <BotonAccion Icono={Pencil} etiqueta="Editar" onClick={onEditar} />
+      <BotonAccion
+        Icono={KeyRound}
+        etiqueta="Resetear contraseña"
         onClick={() => setAccionAbierta('resetear')}
-        disabled={esPropiaCuenta}
-        title={esPropiaCuenta ? 'No puedes resetear tu propia contraseña aquí' : undefined}
-      >
-        Resetear
-      </Button>
+        deshabilitadoPor={esPropiaCuenta ? 'No puedes resetear tu propia contraseña aquí' : undefined}
+      />
       {usuario.isActive ? (
-        <Button
-          variante="danger"
+        <BotonAccion
+          Icono={UserX}
+          etiqueta="Desactivar"
+          peligro
           onClick={() => setAccionAbierta('desactivar')}
-          disabled={esPropiaCuenta}
-          title={esPropiaCuenta ? 'No puedes desactivar tu propia cuenta' : undefined}
-        >
-          Desactivar
-        </Button>
+          deshabilitadoPor={esPropiaCuenta ? 'No puedes desactivar tu propia cuenta' : undefined}
+        />
       ) : (
-        <Button variante="secondary" onClick={() => setAccionAbierta('activar')}>
-          Activar
-        </Button>
+        <BotonAccion Icono={UserCheck} etiqueta="Activar" exito onClick={() => setAccionAbierta('activar')} />
       )}
 
       <ConfirmModal
@@ -129,5 +122,37 @@ export default function AccionesUsuario({
         onCancelar={cerrar}
       />
     </div>
+  )
+}
+
+interface BotonAccionProps {
+  Icono: LucideIcon
+  etiqueta: string
+  onClick: () => void
+  peligro?: boolean
+  exito?: boolean
+  /** Motivo por el que la acción no está disponible; si viene, el botón se deshabilita y lo explica. */
+  deshabilitadoPor?: string
+}
+
+/** Solo ícono en la tabla (con tooltip); con texto visible en las tarjetas de móvil. */
+function BotonAccion({ Icono, etiqueta, onClick, peligro, exito, deshabilitadoPor }: BotonAccionProps) {
+  const tono = peligro
+    ? 'hover:border-red-200 hover:bg-red-50 hover:text-red-700'
+    : exito
+      ? 'hover:border-green-200 hover:bg-green-50 hover:text-green-700'
+      : 'hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700'
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!!deshabilitadoPor}
+      title={deshabilitadoPor ?? etiqueta}
+      aria-label={etiqueta}
+      className={`inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-600 transition-colors md:border-transparent md:bg-transparent md:p-2 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-transparent disabled:hover:bg-transparent disabled:hover:text-gray-600 ${tono}`}
+    >
+      <Icono className="h-4 w-4" />
+      <span className="md:sr-only">{etiqueta}</span>
+    </button>
   )
 }
