@@ -956,7 +956,7 @@ enum EstadoCitaMedica {
 
 // Episodio de atención médica de un expediente. Se abre al agendar la primera consulta; la base
 // solo deja una ACTIVA por expediente ("AtencionMedica_activa_uq"). El código visible
-// "M{consecutivo}-{numero de expediente}" se deriva, no se guarda.
+// ("10-2026", "10-2026 · Atención 2") se deriva con `etiquetaAtencion` de shared, no se guarda.
 model AtencionMedica {
   id                String               @id @default(uuid())
   expedienteId      String

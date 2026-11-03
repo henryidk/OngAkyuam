@@ -281,7 +281,7 @@ export interface UsuariaResumenBusqueda {
   dpi: string | null
   fechaNacimiento: string
   /** Número de su caso más reciente (o el que coincidió, si se buscó por número). `null` si aún no tiene ninguno. */
-  numeroExpediente: string | null
+  expedienteNumero: string | null
 }
 
 /** Un caso dentro del historial de una usuaria — ver GET /trabajo-social/usuarias/:id. */

@@ -80,10 +80,10 @@ describe('Reportes: usuarias nuevas (TS) y rango del Excel de Psicología (e2e)'
 
   function filaDe(
     reporte: ReportePoblacionBeneficiada,
-    numeroCaso: string,
+    expedienteNumero: string,
   ): FilaPoblacionBeneficiada | undefined {
     return reporte.vistaPrevia.find(
-      (fila) => fila.numeroCaso === numeroCaso && fila.esUsuaria,
+      (fila) => fila.expedienteNumero === expedienteNumero && fila.esUsuaria,
     );
   }
 
@@ -156,7 +156,8 @@ describe('Reportes: usuarias nuevas (TS) y rango del Excel de Psicología (e2e)'
         antes.totales.usuariasNuevas + 1,
       );
       const hija = reporte.vistaPrevia.find(
-        (fila) => fila.numeroCaso === expediente.numero && !fila.esUsuaria,
+        (fila) =>
+          fila.expedienteNumero === expediente.numero && !fila.esUsuaria,
       );
       expect(hija?.usuariaNueva).toBe(true);
     });

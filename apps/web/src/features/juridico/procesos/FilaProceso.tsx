@@ -6,6 +6,7 @@ import {
   ETIQUETAS_CATEGORIA_PROCESO,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
   formatFechaGT,
+  partesCodigo,
   type ProcesoResumen,
 } from '@akyuam/shared'
 import { fechaDeInstante, textoAlerta } from '../compartido/formato'
@@ -142,7 +143,7 @@ export default function FilaProceso({
   const navigate = useNavigate()
   const destino = RUTAS_JURIDICO.proceso(proceso.id)
   // "05-2026 · Proceso 2": el expediente es el dato principal; el número de proceso, el secundario.
-  const [expediente, etiquetaProceso] = proceso.codigo.split(' · ')
+  const { numero: expediente, unidad: etiquetaProceso } = partesCodigo(proceso.codigo)
   return (
     // Toda la fila abre el detalle; el enlace del código es el que recibe el foco del teclado.
     // Todas las celdas abren con una línea text-sm/leading-5 para que la fila se lea a una misma altura.

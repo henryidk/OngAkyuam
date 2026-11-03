@@ -77,7 +77,7 @@ export default function ListaPorRegistrar() {
       )}
 
       <ConfirmarNoAsistio
-        cita={aMarcar && { id: aMarcar.citaId, descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.procesoCodigo}` }}
+        cita={aMarcar && { id: aMarcar.citaId, descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.codigoProceso}` }}
         onCancelar={() => setAMarcar(null)}
         onIntento={alIntentarNoAsistio}
       />

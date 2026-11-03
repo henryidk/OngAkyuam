@@ -21,8 +21,8 @@ export default function AvisoPosibleDuplicada({ coincidencias, onRegistrarCasoPa
           <li key={usuaria.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
             <span className="text-sm text-gray-800">
               {usuaria.nombres} {usuaria.apellidos}
-              {usuaria.numeroExpediente && (
-                <span className="tabular-nums text-gray-500"> · Expediente {usuaria.numeroExpediente}</span>
+              {usuaria.expedienteNumero && (
+                <span className="tabular-nums text-gray-500"> · Expediente {usuaria.expedienteNumero}</span>
               )}
             </span>
             <Button type="button" variante="secondary" onClick={() => onRegistrarCasoPara(usuaria.id)}>

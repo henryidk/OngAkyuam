@@ -79,7 +79,7 @@ export default function FilaCita({ cita, esHoy, principal, enCurso, onNoAsistio,
             <p className="truncate text-[12.5px] text-brand-600">Hija/o de {cita.usuariaNombreCompleto}</p>
           )}
           <p className="truncate text-[12.5px] text-gray-500">
-            <CodigoProceso codigo={cita.procesoCodigo} className="text-gray-600" /> ·{' '}
+            <CodigoProceso codigo={cita.codigoProceso} className="text-gray-600" /> ·{' '}
             {ETIQUETAS_TIPO_CITA_PSICOLOGICA[cita.tipo]}
           </p>
         </div>

@@ -17,6 +17,7 @@ import {
   SinReferenciaPendienteError,
   VersionCambioError,
 } from '../interfaces/errores-medica';
+import { consecutivoTrasMaximo } from '../../common/consecutivo';
 import { columnaFecha, crearCitaEnTx } from './crear-cita';
 import { SERIALIZABLE, conReintentosHorario } from './transaccion';
 
@@ -210,7 +211,7 @@ export class CitasMedicasRepository implements ICitasMedicasRepository {
       where: { expedienteId: params.expedienteId },
       _max: { consecutivo: true },
     });
-    const consecutivo = (_max.consecutivo ?? 0) + 1;
+    const consecutivo = consecutivoTrasMaximo(_max.consecutivo);
     const nueva = await tx.atencionMedica.create({
       data: {
         expedienteId: params.expedienteId,

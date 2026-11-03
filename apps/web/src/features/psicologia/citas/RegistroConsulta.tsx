@@ -108,7 +108,7 @@ export default function RegistroConsulta() {
     migas: cita
       ? [
           { etiqueta: 'Procesos', ruta: RUTAS_PSICOLOGIA.procesos() },
-          { etiqueta: cita.procesoCodigo, ruta: RUTAS_PSICOLOGIA.proceso(cita.procesoId) },
+          { etiqueta: cita.codigoProceso, ruta: RUTAS_PSICOLOGIA.proceso(cita.procesoId) },
         ]
       : [{ etiqueta: 'Procesos', ruta: RUTAS_PSICOLOGIA.procesos() }],
   })
@@ -160,7 +160,7 @@ export default function RegistroConsulta() {
             : 'La cita se movió a otra fecha: registra la sesión desde la cita nueva.'}
         </p>
         <Link to={rutaProceso} className="inline-block text-sm font-medium text-brand-700 hover:underline">
-          Ir al proceso {cita.procesoCodigo} →
+          Ir al proceso {cita.codigoProceso} →
         </Link>
       </div>
     )
@@ -252,7 +252,7 @@ export default function RegistroConsulta() {
         <p className="mt-1 text-sm text-gray-600">
           {cita.ninoNombreCompleto !== null && <>Hija/o de {cita.usuariaNombreCompleto} · </>}
           <Link to={rutaProceso} className="text-brand-700 hover:underline">
-            <CodigoProceso codigo={cita.procesoCodigo} />
+            <CodigoProceso codigo={cita.codigoProceso} />
           </Link>{' '}
           · {formatInstanteGT(cita.fechaHora)} · {cita.duracionMinutos} min
         </p>

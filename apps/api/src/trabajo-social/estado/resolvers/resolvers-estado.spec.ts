@@ -71,6 +71,34 @@ describe('JuridicoEstadoResolver', () => {
       new JuridicoEstadoResolver(repo).resolver(referido),
     ).resolves.toEqual({ estado, detalle, profesional: null });
   });
+
+  it('muestra a las abogadas de los procesos abiertos, sin repetir, con su cargo', async () => {
+    const repo = repositorio();
+    repo.procesosJuridicos.mockResolvedValue([
+      { fase: 'INICIADO', situacion: 'ACTIVO', abogada: 'Abogada A' },
+      { fase: 'EN_PROCESO', situacion: 'ACTIVO', abogada: 'Abogada A' },
+      { fase: 'FINALIZADO', situacion: 'ACTIVO', abogada: 'Abogada B' },
+      { fase: 'INICIADO', situacion: 'ACTIVO', abogada: null },
+    ]);
+
+    const resultado = await new JuridicoEstadoResolver(repo).resolver(referido);
+
+    expect(resultado.profesional).toBe('Abogada A (abogada)');
+  });
+
+  it('con todo cerrado muestra a quienes llevaron los procesos', async () => {
+    const repo = repositorio();
+    repo.procesosJuridicos.mockResolvedValue([
+      { fase: 'FINALIZADO', situacion: 'ACTIVO', abogada: 'Abogada A' },
+      { fase: 'FINALIZADO', situacion: 'ACTIVO', abogada: 'Abogada B' },
+    ]);
+
+    const resultado = await new JuridicoEstadoResolver(repo).resolver(referido);
+
+    expect(resultado.profesional).toBe(
+      'Abogada A (abogada), Abogada B (abogada)',
+    );
+  });
 });
 
 describe('PsicologiaEstadoResolver', () => {
@@ -129,6 +157,7 @@ describe('MedicaEstadoResolver', () => {
   const activa: AtencionMedicaParaEstado = {
     estado: 'ACTIVA',
     motivoAlta: null,
+    medica: null,
     fechaAlta: null,
     posteriorAReferencia: true,
     proximaCita: null,
@@ -190,6 +219,37 @@ describe('MedicaEstadoResolver', () => {
       detalle: 'Alta · Referida a otra institución · 09/10/2026',
       profesional: null,
     });
+  });
+
+  it('con atención vigente muestra a la médica que atiende, no la asignación al referir', async () => {
+    const repo = repositorio();
+    repo.atencionMedica.mockResolvedValue({
+      ...activa,
+      medica: 'Médica Ficticia (practicante)',
+    });
+
+    const resultado = await new MedicaEstadoResolver(repo).resolver({
+      expedienteId: 'e-1',
+      profesional: 'Asignada al referir',
+    });
+
+    expect(resultado.profesional).toBe('Médica Ficticia (practicante)');
+  });
+
+  it('pendiente de primera consulta: queda la asignación de Trabajo Social', async () => {
+    const repo = repositorio();
+    repo.atencionMedica.mockResolvedValue({
+      ...alta,
+      medica: 'Médica Anterior',
+      posteriorAReferencia: false,
+    });
+
+    const resultado = await new MedicaEstadoResolver(repo).resolver({
+      expedienteId: 'e-1',
+      profesional: 'Asignada al referir',
+    });
+
+    expect(resultado.profesional).toBe('Asignada al referir');
   });
 
   it('alta seguida de una nueva referencia: vuelve a estar pendiente', async () => {

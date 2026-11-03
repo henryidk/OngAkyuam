@@ -15,7 +15,7 @@ import { useReferir } from './useReferir'
 
 interface ModalReferirProps {
   expedienteId: string
-  numeroExpediente: string
+  expedienteNumero: string
   /** Si se conoce, el título dice "Referir a {nombre}"; si no, "Referir caso {número}". */
   nombreUsuaria?: string
   areasReferidas: AreaAtencion[]
@@ -75,7 +75,7 @@ function ControlVisibilidad({
  */
 export default function ModalReferir({
   expedienteId,
-  numeroExpediente,
+  expedienteNumero,
   nombreUsuaria,
   areasReferidas,
   areaInicial,
@@ -102,10 +102,10 @@ export default function ModalReferir({
       >
         <div className="border-b border-gray-200 px-6 py-5">
           <h2 id="titulo-modal-referir" className="text-lg font-semibold text-gray-900">
-            {nombreUsuaria ? `Referir a ${nombreUsuaria}` : `Referir caso ${numeroExpediente}`}
+            {nombreUsuaria ? `Referir a ${nombreUsuaria}` : `Referir caso ${expedienteNumero}`}
           </h2>
           <p className="mt-0.5 text-[13px] text-gray-500">
-            Expediente {numeroExpediente} · al referir, el área recibe la usuaria en su bandeja.
+            Expediente {expedienteNumero} · al referir, el área recibe la usuaria en su bandeja.
           </p>
         </div>
 

@@ -129,7 +129,7 @@ export default function ListaUsuarias() {
                   >
                     <td className="px-4 py-3 text-sm font-medium tabular-nums text-brand-700">
                       <Link to={rutaFicha} onClick={(event) => event.stopPropagation()} className="hover:underline">
-                        {fila.numeroExpediente}
+                        {fila.expedienteNumero}
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-sm">

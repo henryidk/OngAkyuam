@@ -27,6 +27,7 @@ import {
 } from './acceso-expediente';
 import { hijoDeFicha } from './hijos-ficha.mapper';
 import { edad, nombreCompleto, SELECT_PERSONA } from './personas';
+import { consecutivoSiguiente } from '../../common/consecutivo';
 
 /** Tope de referencias en la ficha: una usuaria tiene a lo más una por expediente. */
 const LIMITE_REFERENCIAS = 100;
@@ -322,7 +323,11 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
       referencias: historial,
       codigoProcesoNuevo: etiquetaProcesoPsicologia(
         (expedienteTomado ?? expediente).numero,
-        (expedienteTomado?.atencionesPsicologicas[0]?.consecutivo ?? 0) + 1,
+        consecutivoSiguiente(
+          (expedienteTomado?.atencionesPsicologicas ?? []).map(
+            (proceso) => proceso.consecutivo,
+          ),
+        ),
         null,
       ),
       hijos: ninos.map((nino) =>

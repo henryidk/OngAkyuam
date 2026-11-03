@@ -18,7 +18,6 @@
  * Uso, desde apps/api:  npx ts-node prisma/seeds/psicologia-rediseno.ts
  */
 import {
-  Prisma,
   PrismaClient,
   type EstadoAtencionPsicologica,
   type EstadoCitaPsicologica,
@@ -28,6 +27,7 @@ import {
   type TipologiaDelito,
 } from '@prisma/client';
 import { hoyGT, parseLocalGT, sumarDiasGT } from '@akyuam/shared';
+import { siguienteNumeroExpediente } from './compartido/expediente';
 
 const prisma = new PrismaClient();
 
@@ -202,19 +202,6 @@ const CASOS: CasoSeed[] = [
   },
 ];
 
-/** Misma numeración que usa el sistema, para no chocar con expedientes creados después. */
-async function siguienteNumero(
-  tx: Prisma.TransactionClient,
-  anio: number,
-): Promise<string> {
-  const contador = await tx.expedienteContador.upsert({
-    where: { anio },
-    create: { anio, ultimo: 1 },
-    update: { ultimo: { increment: 1 } },
-  });
-  return `${String(contador.ultimo).padStart(2, '0')}-${anio}`;
-}
-
 async function crearCaso(
   datos: CasoSeed,
   trabajoSocialId: string,
@@ -235,7 +222,10 @@ async function crearCaso(
     });
 
     const fechaCaso = sumarDiasGT(hoyGT(), -datos.referidaHaceDias);
-    const numero = await siguienteNumero(tx, Number(fechaCaso.slice(0, 4)));
+    const numero = await siguienteNumeroExpediente(
+      tx,
+      Number(fechaCaso.slice(0, 4)),
+    );
     const expediente = await tx.expediente.create({
       data: {
         condicionMaternidad: 'NORMAL',

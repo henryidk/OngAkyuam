@@ -6,13 +6,48 @@ import type {
   ResultadoTomarCaso,
   TomarCasoParams,
 } from '../interfaces/atencion-psicologica-repository.interface';
+import {
+  SERIALIZABLE,
+  conReintentos,
+  siguienteConsecutivoProceso,
+} from './transaccion-psicologia';
 
 @Injectable()
 export class AtencionPsicologicaRepository implements IAtencionPsicologicaRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Una transacción serializable con el expediente bloqueado, igual que abrir un proceso en
+   * Jurídico o Médica: dos psicólogas que toman el mismo caso a la vez se ponen en fila, y la
+   * segunda ve el caso ya tomado. El índice único ("un solo proceso sin cerrar por expediente")
+   * sigue de respaldo: si aun así choca tras los reintentos, la otra lo tomó primero.
+   */
   async tomarCaso(params: TomarCasoParams): Promise<ResultadoTomarCaso> {
-    const referido = await this.prisma.referidoArea.findUnique({
+    try {
+      return await conReintentos(() =>
+        this.prisma.$transaction(
+          (tx) => this.tomarCasoEnTransaccion(tx, params),
+          SERIALIZABLE,
+        ),
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return 'YA_TOMADO';
+      }
+      throw error;
+    }
+  }
+
+  private async tomarCasoEnTransaccion(
+    tx: Prisma.TransactionClient,
+    params: TomarCasoParams,
+  ): Promise<ResultadoTomarCaso> {
+    await tx.$queryRaw`SELECT id FROM "Expediente" WHERE id = ${params.expedienteId} FOR UPDATE`;
+
+    const referido = await tx.referidoArea.findUnique({
       where: {
         expedienteId_area: {
           expedienteId: params.expedienteId,
@@ -32,10 +67,8 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
       referidoId: referido.id,
     };
 
-    // Atención sin dueña que quedó de antes del rediseño. Update condicional: el `WHERE
-    // psicologaAsignadaId IS NULL` re-evaluado por Postgres bajo el lock de fila hace que, si
-    // dos requests llegan aquí a la vez, solo uno afecte una fila.
-    const reclamadas = await this.prisma.atencionPsicologica.updateMany({
+    // Atención sin dueña que quedó de antes del rediseño: se reclama esa en lugar de crear otra.
+    const reclamadas = await tx.atencionPsicologica.updateMany({
       where: {
         expedienteId: params.expedienteId,
         psicologaAsignadaId: null,
@@ -47,7 +80,7 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
       return 'TOMADO';
     }
 
-    const yaTomada = await this.prisma.atencionPsicologica.count({
+    const yaTomada = await tx.atencionPsicologica.count({
       where: {
         expedienteId: params.expedienteId,
         psicologaAsignadaId: { not: null },
@@ -57,27 +90,20 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
       return 'YA_TOMADO';
     }
 
-    // Crear la atención ya con dueña es el reclamo en sí. Si dos psicólogas compiten, el índice
-    // único de la base ("un solo proceso sin cerrar por expediente") hace fallar a la segunda
-    // con P2002 — nunca se asume que "falló" significa "gané yo".
-    try {
-      await this.prisma.atencionPsicologica.create({
-        data: {
-          expedienteId: params.expedienteId,
-          consecutivo: await this.siguienteConsecutivo(params.expedienteId),
-          ...reclamo,
-        },
-      });
-      return 'TOMADO';
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        return 'YA_TOMADO';
-      }
-      throw error;
-    }
+    // El caso se toma en el lugar de la usuaria; si su primera cita es para un hijo/a, se
+    // renumera al abrirlo.
+    await tx.atencionPsicologica.create({
+      data: {
+        expedienteId: params.expedienteId,
+        consecutivo: await siguienteConsecutivoProceso(
+          tx,
+          params.expedienteId,
+          null,
+        ),
+        ...reclamo,
+      },
+    });
+    return 'TOMADO';
   }
 
   async fechaPrimerProceso(psicologaId: string): Promise<Date | null> {
@@ -120,14 +146,5 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
         fechaCierre: { gte: desde, lte: hasta },
       },
     });
-  }
-
-  /** El caso se toma en el lugar de la usuaria; si su primera cita es para un hijo/a, se renumera al abrirlo. */
-  private async siguienteConsecutivo(expedienteId: string): Promise<number> {
-    const { _max } = await this.prisma.atencionPsicologica.aggregate({
-      where: { expedienteId, ninoId: null },
-      _max: { consecutivo: true },
-    });
-    return (_max.consecutivo ?? 0) + 1;
   }
 }

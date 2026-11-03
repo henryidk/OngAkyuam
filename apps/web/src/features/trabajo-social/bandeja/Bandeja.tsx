@@ -147,7 +147,7 @@ function PorReferir({ cola, onReferir }: { cola: BandejaTs['pendientesReferir'];
           <NombreUsuaria
             usuariaId={fila.usuariaId}
             nombre={fila.nombreCompleto}
-            detalle={`Exp. ${fila.numeroExpediente} · ${ETIQUETAS_TIPO_REGISTRO[fila.tipoRegistro]} · registrada ${cuandoTexto(fila.createdAt).toLowerCase()}`}
+            detalle={`Exp. ${fila.expedienteNumero} · ${ETIQUETAS_TIPO_REGISTRO[fila.tipoRegistro]} · registrada ${cuandoTexto(fila.createdAt).toLowerCase()}`}
           />
           <button type="button" onClick={() => onReferir(fila)} className={CLASE_ACCION}>
             Referir
@@ -171,7 +171,7 @@ function EnAlbergue({ cola }: { cola: BandejaTs['enAlbergue'] }) {
           <NombreUsuaria
             usuariaId={fila.usuariaId}
             nombre={fila.nombreCompleto}
-            detalle={`Exp. ${fila.numeroExpediente}${
+            detalle={`Exp. ${fila.expedienteNumero}${
               fila.cantidadNinos > 0 ? ` · con ${plural(fila.cantidadNinos, 'hija/hijo', 'hijas/hijos')}` : ''
             }`}
           />
@@ -263,7 +263,7 @@ export default function Bandeja() {
       {referir && (
         <ModalReferir
           expedienteId={referir.expedienteId}
-          numeroExpediente={referir.numeroExpediente}
+          expedienteNumero={referir.expedienteNumero}
           nombreUsuaria={referir.nombreCompleto}
           areasReferidas={[]}
           onCerrar={() => setReferir(null)}

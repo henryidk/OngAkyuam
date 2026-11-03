@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { fechaColumnaISO } from '@akyuam/shared';
+import { fechaColumnaISO, nombreConPuesto } from '@akyuam/shared';
 import type {
   AtencionMedicaParaEstado,
   AtencionPsicologicaParaEstado,
@@ -15,10 +15,19 @@ export class EstadoAreasRepository implements IEstadoAreasRepository {
   async procesosJuridicos(
     expedienteId: string,
   ): Promise<ProcesoJuridicoParaEstado[]> {
-    return this.prisma.procesoJuridico.findMany({
+    const procesos = await this.prisma.procesoJuridico.findMany({
       where: { expedienteId },
-      select: { fase: true, situacion: true },
+      orderBy: { consecutivo: 'asc' },
+      select: {
+        fase: true,
+        situacion: true,
+        abogada: { select: { nombre: true } },
+      },
     });
+    return procesos.map(({ abogada, ...proceso }) => ({
+      ...proceso,
+      abogada: abogada?.nombre ?? null,
+    }));
   }
 
   async atencionPsicologica(
@@ -31,7 +40,7 @@ export class EstadoAreasRepository implements IEstadoAreasRepository {
       orderBy: { createdAt: 'desc' },
       select: {
         estado: true,
-        psicologaAsignada: { select: { nombreCompleto: true } },
+        psicologaAsignada: { select: { nombreCompleto: true, puesto: true } },
         citas: {
           where: { estado: 'PROGRAMADA', fechaHora: { gte: new Date() } },
           orderBy: { fechaHora: 'asc' },
@@ -40,13 +49,20 @@ export class EstadoAreasRepository implements IEstadoAreasRepository {
         },
       },
     });
+    const psicologa = (proceso: (typeof procesos)[number]) =>
+      proceso.psicologaAsignada
+        ? nombreConPuesto(
+            proceso.psicologaAsignada.nombreCompleto,
+            proceso.psicologaAsignada.puesto,
+          )
+        : null;
     const abiertos = procesos.filter((proceso) => proceso.estado !== 'CIERRE');
     if (abiertos.length === 0) {
       const ultimo = procesos[0];
       return ultimo
         ? {
             estado: ultimo.estado,
-            psicologa: ultimo.psicologaAsignada?.nombreCompleto ?? null,
+            psicologa: psicologa(ultimo),
             proximaCita: null,
           }
         : null;
@@ -57,7 +73,7 @@ export class EstadoAreasRepository implements IEstadoAreasRepository {
     const conPsicologa = abiertos.find((proceso) => proceso.psicologaAsignada);
     return {
       estado: (conPsicologa ?? abiertos[0]).estado,
-      psicologa: conPsicologa?.psicologaAsignada?.nombreCompleto ?? null,
+      psicologa: conPsicologa ? psicologa(conPsicologa) : null,
       proximaCita: proximas[0] ?? null,
     };
   }
@@ -74,6 +90,7 @@ export class EstadoAreasRepository implements IEstadoAreasRepository {
           estado: true,
           motivoAlta: true,
           fechaAlta: true,
+          medica: { select: { nombreCompleto: true, puesto: true } },
           createdAt: true,
           citas: {
             where: { estado: 'PROGRAMADA' },
@@ -95,6 +112,12 @@ export class EstadoAreasRepository implements IEstadoAreasRepository {
     return {
       estado: atencion.estado,
       motivoAlta: atencion.motivoAlta,
+      medica: atencion.medica
+        ? nombreConPuesto(
+            atencion.medica.nombreCompleto,
+            atencion.medica.puesto,
+          )
+        : null,
       fechaAlta: atencion.fechaAlta
         ? fechaColumnaISO(atencion.fechaAlta)
         : null,

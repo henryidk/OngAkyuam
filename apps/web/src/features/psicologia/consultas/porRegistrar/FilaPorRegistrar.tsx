@@ -26,7 +26,7 @@ export default function FilaPorRegistrar({ sesion, atraso, onNoAsistio }: FilaPo
         <p className="text-sm font-semibold text-gray-900">{persona.nombreCompleto}</p>
         {esHijo && <p className="text-xs text-gray-500">Hijo/a de {sesion.usuariaNombreCompleto}</p>}
         <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-xs text-gray-600">
-          <CodigoProceso codigo={sesion.procesoCodigo} className="text-gray-600" />
+          <CodigoProceso codigo={sesion.codigoProceso} className="text-gray-600" />
           <span aria-hidden="true">·</span>
           <span>{ETIQUETAS_TIPO_CITA_PSICOLOGICA[sesion.tipo]}</span>
           {atraso !== null && (

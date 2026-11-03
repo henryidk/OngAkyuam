@@ -100,7 +100,7 @@ describe('RegistroProcesosService', () => {
     expect(registroRepository.crearLote).toHaveBeenCalledWith(
       expect.objectContaining({
         expedienteId: EXPEDIENTE_ID,
-        numeroExpediente: 'EXP-0001',
+        expedienteNumero: 'EXP-0001',
         referidoId: REFERIDO_ID,
         creadoPorId: contexto.usuarioId,
       }),

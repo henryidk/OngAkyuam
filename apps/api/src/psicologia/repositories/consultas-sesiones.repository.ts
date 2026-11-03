@@ -60,7 +60,7 @@ function encabezado(fila: FilaEncabezado) {
   return {
     citaId: fila.id,
     procesoId: fila.atencionId,
-    procesoCodigo: codigoProceso(expediente.numero, fila.atencion),
+    codigoProceso: codigoProceso(expediente.numero, fila.atencion),
     usuariaNombreCompleto: nombreCompleto(expediente.usuaria),
     persona: personaAtendida(expediente.usuaria, fila.nino),
     fechaHora: fila.fechaHora.toISOString(),

@@ -124,7 +124,7 @@ export default function FichaUsuaria() {
       {referir && casoActual && (
         <ModalReferir
           expedienteId={casoActual.id}
-          numeroExpediente={casoActual.numero}
+          expedienteNumero={casoActual.numero}
           nombreUsuaria={nombreCompleto(usuaria)}
           areasReferidas={casoActual.areasReferidas}
           areaInicial={referir.area}
@@ -136,7 +136,7 @@ export default function FichaUsuaria() {
       {egresoAbierto && casoActual && (
         <ModalEgreso
           expedienteId={casoActual.id}
-          numeroExpediente={casoActual.numero}
+          expedienteNumero={casoActual.numero}
           onCerrar={() => setEgresoAbierto(false)}
           onRegistrado={onEgresoRegistrado}
         />

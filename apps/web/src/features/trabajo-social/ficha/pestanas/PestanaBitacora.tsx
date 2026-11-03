@@ -70,8 +70,8 @@ function FilaEvento({ evento, ultimo, mostrarCaso }: FilaEventoProps) {
       </span>
       <p className="pb-[18px] text-sm text-gray-800">
         {evento.texto}
-        {mostrarCaso && evento.numeroExpediente && (
-          <span className="tabular-nums text-gray-500"> · caso {evento.numeroExpediente}</span>
+        {mostrarCaso && evento.expedienteNumero && (
+          <span className="tabular-nums text-gray-500"> · caso {evento.expedienteNumero}</span>
         )}
         {evento.autor && <span className="text-gray-500"> · {evento.autor}</span>}
       </p>

@@ -22,6 +22,7 @@ import {
   type TipologiaDelito,
   type TipoProcesoJuridico,
 } from '@prisma/client';
+import { siguienteNumeroExpediente } from './compartido/expediente';
 
 const prisma = new PrismaClient();
 
@@ -127,7 +128,10 @@ async function crear(
       },
     });
 
-    const numero = await siguienteNumero(tx, datos.fechaCaso);
+    const numero = await siguienteNumeroExpediente(
+      tx,
+      Number(datos.fechaCaso.slice(0, 4)),
+    );
 
     const areas: Rol[] = datos.tambienPsicologia
       ? ['JURIDICO', 'PSICOLOGIA']
@@ -393,20 +397,6 @@ interface ContextoSeed {
   procuradoraId: string;
 }
 
-/** Misma numeración que usa el sistema, para no chocar con expedientes creados después. */
-async function siguienteNumero(
-  tx: Prisma.TransactionClient,
-  fechaCaso: string,
-): Promise<string> {
-  const anio = Number(fechaCaso.slice(0, 4));
-  const contador = await tx.expedienteContador.upsert({
-    where: { anio },
-    create: { anio, ultimo: 1 },
-    update: { ultimo: { increment: 1 } },
-  });
-  return `${String(contador.ultimo).padStart(2, '0')}-${anio}`;
-}
-
 async function crearConHistorial(
   datos: UsuariaConHistorialSeed,
   ctx: ContextoSeed,
@@ -426,7 +416,10 @@ async function crearConHistorial(
       },
     });
 
-    const numero = await siguienteNumero(tx, datos.fechaCaso);
+    const numero = await siguienteNumeroExpediente(
+      tx,
+      Number(datos.fechaCaso.slice(0, 4)),
+    );
     const expediente = await tx.expediente.create({
       data: {
         condicionMaternidad: 'NORMAL',
@@ -558,7 +551,10 @@ async function crearConHistorial(
         data: {
           condicionMaternidad: 'NORMAL',
           idiomaAtencion: 'QEQCHI',
-          numero: await siguienteNumero(tx, datos.regreso.fechaCaso),
+          numero: await siguienteNumeroExpediente(
+            tx,
+            Number(datos.regreso.fechaCaso.slice(0, 4)),
+          ),
           usuariaId: usuaria.id,
           fecha: new Date(datos.regreso.fechaCaso),
           tipoRegistro: 'EXTERNA',

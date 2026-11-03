@@ -83,11 +83,11 @@ export interface CitaParaAgregado {
   grupoEtnico: (typeof GRUPOS_ETNICOS)[number];
   municipio: (typeof MUNICIPIOS_ALTA_VERAPAZ)[number] | null;
   tipologias: (typeof TIPOLOGIAS_DELITO)[number][];
-  procesoCodigo: string;
+  codigoProceso: string;
   procesoId: string;
   /** El proceso está cerrado (Cierre): en el reporte sale "Concluido"; si no, "En atención". */
   procesoConcluido: boolean;
-  numeroExpediente: string;
+  expedienteNumero: string;
   diagnostico: string | null;
   enfoqueTerapeutico: string | null;
   /** Quien atendió la sesión, con "(licenciada)" o "(practicante)". */

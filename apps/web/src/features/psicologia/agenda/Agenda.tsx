@@ -311,7 +311,7 @@ export default function Agenda() {
       )}
 
       <ConfirmarNoAsistio
-        cita={aMarcar && { id: aMarcar.id, descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.procesoCodigo}` }}
+        cita={aMarcar && { id: aMarcar.id, descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.codigoProceso}` }}
         onCancelar={() => setAMarcar(null)}
         onIntento={alIntentarNoAsistio}
       />

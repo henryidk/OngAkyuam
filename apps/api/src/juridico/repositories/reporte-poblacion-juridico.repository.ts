@@ -54,7 +54,7 @@ export class ReportePoblacionJuridicoRepository implements IReportePoblacionJuri
       WITH ${cteExpedientes(filtro)}
       SELECT (ROW_NUMBER() OVER w)::int AS numero,
              to_char(x.dia, 'YYYY-MM-DD') AS dia,
-             x.numero AS "numeroCaso",
+             x.numero AS "expedienteNumero",
              u.nombres, u.apellidos, u.dpi,
              to_char(u."fechaNacimiento", 'YYYY-MM-DD') AS "fechaNacimiento",
              GREATEST(0, date_part('year', age(x.dia, u."fechaNacimiento")))::int AS edad,

@@ -83,7 +83,7 @@ export function aFilaHoja(
   return [
     indice + 1,
     persona.esHijo ? 'Hija/o' : 'Usuaria',
-    persona.numeroExpediente,
+    persona.expedienteNumero,
     persona.procesos.join(', '),
     persona.edad,
     ETIQUETAS_RANGO_EDAD[persona.rangoEdad],

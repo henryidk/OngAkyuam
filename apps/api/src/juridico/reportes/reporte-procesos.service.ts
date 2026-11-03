@@ -20,6 +20,8 @@ import {
   type FilaReporteJuridico,
   type ReporteProcesosJuridico,
   type ReporteProcesosJuridicoQuery,
+  formatearResponsable,
+  SIN_RESPONSABLE,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
@@ -77,7 +79,8 @@ function ultimoAvance(row: FilaProcesoRow): AvanceReporte | null {
 export function aFilaReporte(row: FilaProcesoRow): FilaReporteJuridico {
   return {
     numero: row.numero,
-    numeroInterno: etiquetaProceso(row.expedienteNumero, row.consecutivo),
+    expedienteNumero: row.expedienteNumero,
+    codigoProceso: etiquetaProceso(row.expedienteNumero, row.consecutivo),
     usuaria: `${row.nombres} ${row.apellidos}`,
     telefono: row.telefono,
     tipo: row.tipo,
@@ -148,11 +151,12 @@ export function armarDesgloses(
 /** Columnas del Excel, en el orden que pidió Jurídico; la vista previa usa el mismo. */
 export const COLUMNAS_PROCESOS: ColumnaHoja[] = [
   { titulo: 'No.', ancho: 6, tipo: 'numero' },
-  { titulo: 'No. expediente', ancho: 20, tipo: 'texto' },
+  { titulo: 'No. expediente', ancho: 12, tipo: 'texto' },
+  { titulo: 'Proceso', ancho: 20, tipo: 'texto' },
   { titulo: 'Nombre de la usuaria', ancho: 32, tipo: 'texto' },
   { titulo: 'Teléfono', ancho: 14, tipo: 'texto' },
   { titulo: 'Tipo de proceso', ancho: 34, tipo: 'texto' },
-  { titulo: 'No. expediente juzgado', ancho: 40, tipo: 'texto' },
+  { titulo: 'No. judicial', ancho: 40, tipo: 'texto' },
   { titulo: 'Avance en el trámite del proceso', ancho: 60, tipo: 'texto' },
   { titulo: 'Responsable', ancho: 36, tipo: 'texto' },
   { titulo: 'Etnia', ancho: 16, tipo: 'texto' },
@@ -169,22 +173,22 @@ export function textoAvance(avance: AvanceReporte | null): string {
   return avance.contenido ? `${encabezado}: ${avance.contenido}` : encabezado;
 }
 
-/** "Ana López (abogada), Rosa Caal (procuradora)": quien esté asignada. */
+/** "Ana López (abogada), Rosa Caal (procuradora)": quien esté asignada, o "Sin asignar". */
 export function textoResponsables(
   fila: Pick<FilaReporteJuridico, 'abogada' | 'procuradora'>,
 ): string {
-  return [
-    fila.abogada && `${fila.abogada} (abogada)`,
-    fila.procuradora && `${fila.procuradora} (procuradora)`,
-  ]
-    .filter(Boolean)
-    .join(', ');
+  const personas = [
+    fila.abogada && formatearResponsable(fila.abogada, 'abogada'),
+    fila.procuradora && formatearResponsable(fila.procuradora, 'procuradora'),
+  ].filter(Boolean);
+  return personas.length > 0 ? personas.join(', ') : SIN_RESPONSABLE;
 }
 
 export function aFilaHoja(fila: FilaReporteJuridico): ValorCeldaHoja[] {
   return [
     fila.numero,
-    fila.numeroInterno,
+    fila.expedienteNumero,
+    fila.codigoProceso,
     fila.usuaria,
     fila.telefono ?? '',
     ETIQUETAS_TIPO_PROCESO_JURIDICO[fila.tipo],

@@ -784,6 +784,8 @@ export interface HistorialConsultasMedicaPaginaDto {
 
 /** Persona que se puede atender en el formulario de consulta. */
 export interface PersonaConsultaMedicaDto extends PersonaAtendidaDto {
+  /** "04-2026" para la usuaria, "04-2026.01" para cada hijo/a: el mismo número que en los reportes. */
+  numeroPersona: string
   fechaNacimiento: string
   /** Talla de la última consulta de esa persona, para precargarla. */
   ultimaTallaM: number | null

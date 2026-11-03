@@ -41,7 +41,7 @@ const RUTAS = [
 const TIPO_XLSX =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-/** Columna "No. de caso" del Excel de población beneficiada (1 = primera columna). */
+/** Columna "No. expediente" del Excel de población beneficiada (1 = primera columna). */
 const COLUMNA_NUMERO_CASO = 5;
 
 describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () => {
@@ -78,7 +78,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       .set('X-CSRF-Token', sesion.csrf);
   }
 
-  /** Descarga el Excel y devuelve los "No. de caso" que trae. */
+  /** Descarga el Excel y devuelve los "No. expediente" que trae. */
   async function casosEnExcel(query: string): Promise<string[]> {
     const respuesta = await pedir(
       `/api/juridico/reportes/poblacion-beneficiada.xlsx?${query}`,
@@ -248,7 +248,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       ).expect(200);
       const reporte = respuesta.body as ReportePoblacionJuridico;
       const fila = reporte.vistaPrevia.find(
-        (f) => f.numeroCaso === expediente.numero,
+        (f) => f.expedienteNumero === expediente.numero,
       );
 
       expect(respuesta.headers['cache-control']).toBe('no-store');
@@ -345,14 +345,16 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       });
       const [antiguo, nuevo] = todos.vistaPrevia;
       expect(antiguo).toMatchObject({
-        numeroInterno: `${expediente.numero} · Proceso 2`,
+        expedienteNumero: expediente.numero,
+        codigoProceso: `${expediente.numero} · Proceso 2`,
         tipo: 'DIVORCIO_MUTUO_ACUERDO',
         ultimoAvance: null,
         abogada: abogada.nombre,
         procuradora: null,
       });
       expect(nuevo).toMatchObject({
-        numeroInterno: expediente.numero,
+        expedienteNumero: expediente.numero,
+        codigoProceso: expediente.numero,
         usuaria: `${usuaria.nombres} ${usuaria.apellidos}`,
         ultimoAvance: {
           fecha: '2025-02-03',
@@ -370,7 +372,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
           `/api/juridico/reportes/procesos?desde=2000-01-01&hasta=${hoy}&responsableId=${procuradora.id}`,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
-      expect(deProcuradora.vistaPrevia.map((f) => f.numeroInterno)).toEqual([
+      expect(deProcuradora.vistaPrevia.map((f) => f.codigoProceso)).toEqual([
         expediente.numero,
       ]);
 
@@ -380,7 +382,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
           `/api/juridico/reportes/procesos?anio=${anio}&responsableId=${abogada.id}&tipo=DIVORCIO_MUTUO_ACUERDO`,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
-      expect(porTipo.vistaPrevia.map((f) => f.numeroInterno)).toEqual([
+      expect(porTipo.vistaPrevia.map((f) => f.codigoProceso)).toEqual([
         `${expediente.numero} · Proceso 2`,
       ]);
 

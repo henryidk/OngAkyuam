@@ -7,7 +7,7 @@ function sesion(citaId: string, fechaHora: string): SesionPorRegistrarDto {
   return {
     citaId,
     procesoId: 'proceso-1',
-    procesoCodigo: '05-2026.01',
+    codigoProceso: '05-2026.01',
     usuariaNombreCompleto: 'Usuaria Ficticia',
     persona: { ninoId: null, nombreCompleto: 'Usuaria Ficticia', edad: 30 },
     fechaHora,

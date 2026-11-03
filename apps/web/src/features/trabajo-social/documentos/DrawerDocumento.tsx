@@ -8,7 +8,7 @@ import { useVersionesDocumento } from './useVersionesDocumento'
 
 interface DrawerDocumentoProps {
   expedienteId: string
-  numeroExpediente: string
+  expedienteNumero: string
   /** `null` cierra el drawer. Solo se abre sobre filas con versión vigente. */
   fila: FilaDocumentoCaso | null
   subiendo: boolean
@@ -32,7 +32,7 @@ function VistaPrevia({ url, mimeType, titulo }: { url: string | null; mimeType: 
 
 export default function DrawerDocumento({
   expedienteId,
-  numeroExpediente,
+  expedienteNumero,
   fila,
   subiendo,
   errorSubida,
@@ -50,7 +50,7 @@ export default function DrawerDocumento({
     <Drawer
       abierto
       titulo={titulo}
-      subtitulo={`Expediente ${numeroExpediente} · v${vigente.version} · ${metaVersion(vigente)}`}
+      subtitulo={`Expediente ${expedienteNumero} · v${vigente.version} · ${metaVersion(vigente)}`}
       onCerrar={onCerrar}
       pie={
         <>

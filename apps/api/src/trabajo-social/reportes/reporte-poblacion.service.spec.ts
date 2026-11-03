@@ -18,7 +18,8 @@ function usuaria(overrides: Partial<FilaPoblacionRow> = {}): FilaPoblacionRow {
   return {
     numero: 1,
     fecha: '2026-09-10',
-    numeroCaso: '07-2026',
+    expedienteNumero: '07-2026',
+    ninoConsecutivo: null,
     tipoRegistro: 'INTERNA',
     tipologias: ['FISICA', 'PSICOLOGICA'],
     esUsuaria: true,
@@ -65,6 +66,7 @@ function nino(overrides: Partial<FilaPoblacionRow> = {}): FilaPoblacionRow {
   return usuaria({
     numero: 2,
     esUsuaria: false,
+    ninoConsecutivo: 1,
     nombres: 'Luz Prueba',
     dpi: null,
     telefono: null,
@@ -90,7 +92,8 @@ describe('aFilaPoblacion', () => {
       departamento: 'Alta Verapaz',
       oficinaResponsable: 'Tactic',
       municipio: 'Cobán',
-      numeroCaso: '07-2026',
+      expedienteNumero: '07-2026',
+      numeroPersona: '07-2026',
       fechaNacimiento: '1995-03-02',
       edad: 31,
       rangoEdad: '31 a 60 años',
@@ -122,10 +125,18 @@ describe('aFilaPoblacion', () => {
     });
   });
 
+  it('el hijo/a .10 lleva su número con dos dígitos', () => {
+    expect(aFilaPoblacion(nino({ ninoConsecutivo: 10 })).numeroPersona).toBe(
+      '07-2026.10',
+    );
+  });
+
   it('la hija hereda del caso lugar, idioma, oficina y quién atendió, sin lo propio de la usuaria', () => {
     const fila = aFilaPoblacion(nino());
 
     expect(fila).toMatchObject({
+      expedienteNumero: '07-2026',
+      numeroPersona: '07-2026.01',
       departamento: 'Alta Verapaz',
       municipio: 'Cobán',
       grupoEtnico: 'Maya',
@@ -235,22 +246,18 @@ describe('aFilaHoja', () => {
     expect(celda(celdas, 'Legal')).toBe('X');
     expect(celda(celdas, 'Psicológica')).toBe('');
     expect(celda(celdas, 'Médica')).toBe('X');
-    expect(celda(celdas, 'Usuaria nueva')).toBe('Sí');
   });
 
-  it('una usuaria que ya venía de antes sale "No" en Usuaria nueva, y su hija igual', () => {
-    expect(
-      celda(
-        aFilaHoja(aFilaPoblacion(usuaria({ usuariaNueva: false }))),
-        'Usuaria nueva',
-      ),
-    ).toBe('No');
-    expect(
-      celda(
-        aFilaHoja(aFilaPoblacion(nino({ usuariaNueva: false }))),
-        'Usuaria nueva',
-      ),
-    ).toBe('No');
+  it('"Usuaria nueva" queda registrado en la fila pero no va en el Excel', () => {
+    expect(aFilaPoblacion(usuaria({ usuariaNueva: false })).usuariaNueva).toBe(
+      false,
+    );
+    expect(aFilaPoblacion(nino({ usuariaNueva: true })).usuariaNueva).toBe(
+      true,
+    );
+    expect(COLUMNAS_POBLACION.map((c) => c.titulo)).not.toContain(
+      'Usuaria nueva',
+    );
   });
 
   it('la fila de una hija no marca ninguna condición de maternidad', () => {
@@ -265,7 +272,7 @@ describe('aFilaHoja', () => {
   it('los grupos de encabezado siguen el formato de la ONG', () => {
     const grupos = COLUMNAS_POBLACION.map((c) => c.grupo ?? null);
 
-    expect(COLUMNAS_POBLACION).toHaveLength(33);
+    expect(COLUMNAS_POBLACION).toHaveLength(32);
     expect(grupos.slice(0, 16).every((g) => g === null)).toBe(true);
     expect(new Set(grupos.slice(16, 26))).toEqual(new Set(['Área social']));
     expect(new Set(grupos.slice(26, 29))).toEqual(
@@ -274,11 +281,6 @@ describe('aFilaHoja', () => {
     expect(new Set(grupos.slice(29, 32))).toEqual(
       new Set(['Áreas de atención']),
     );
-    // "Usuaria nueva" va al final, fuera de los grupos, para no mover el formato de la ONG.
-    expect(COLUMNAS_POBLACION.at(-1)).toEqual(
-      expect.objectContaining({ titulo: 'Usuaria nueva' }),
-    );
-    expect(grupos.at(-1)).toBeNull();
   });
 });
 

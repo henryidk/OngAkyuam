@@ -22,7 +22,7 @@ const COLUMNAS: Columna[] = [
   { titulo: 'Departamento', valor: (fila) => fila.departamento },
   { titulo: 'Oficina responsable', valor: (fila) => fila.oficinaResponsable },
   { titulo: 'Municipio', valor: (fila) => fila.municipio },
-  { titulo: 'No. de caso', valor: (fila) => fila.numeroCaso },
+  { titulo: 'No. expediente', valor: (fila) => fila.numeroPersona },
   { titulo: 'Fecha de nacimiento', valor: (fila) => formatFechaGT(fila.fechaNacimiento) },
   { titulo: 'Edad', valor: (fila) => fila.edad },
   { titulo: 'Nombres y apellidos', valor: (fila) => fila.nombresApellidos },
@@ -49,7 +49,6 @@ const COLUMNAS: Columna[] = [
   { titulo: 'Legal: proceso requerido', valor: (fila) => fila.procesoRequerido, grupo: ATENCION, largo: true },
   { titulo: 'Psicológica: atención brindada', valor: (fila) => fila.atencionPsicologica, grupo: ATENCION, largo: true },
   { titulo: 'Médica: atención brindada', valor: (fila) => fila.atencionMedica, grupo: ATENCION, largo: true },
-  { titulo: 'Usuaria nueva', valor: (fila) => (fila.usuariaNueva ? 'Sí' : 'No') },
 ]
 
 /** Primera fila del encabezado: columnas sueltas (ocupan las dos filas) y grupos consecutivos. */

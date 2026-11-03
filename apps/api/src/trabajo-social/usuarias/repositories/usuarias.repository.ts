@@ -26,7 +26,7 @@ type UsuariaResumenRow = {
   apellidos: string;
   dpi: string | null;
   fechaNacimiento: Date;
-  numeroExpediente: string | null;
+  expedienteNumero: string | null;
 };
 
 // Subquery reusada por las 3 búsquedas de resumen: el número de su caso más reciente (o `null`
@@ -73,7 +73,7 @@ function mapearResumen(usuaria: UsuariaResumenRow): UsuariaResumenBusqueda {
     apellidos: usuaria.apellidos,
     dpi: usuaria.dpi,
     fechaNacimiento: fechaColumnaISO(usuaria.fechaNacimiento),
-    numeroExpediente: usuaria.numeroExpediente,
+    expedienteNumero: usuaria.expedienteNumero,
   };
 }
 
@@ -114,7 +114,7 @@ export class UsuariasRepository implements IUsuariasRepository {
         nombreCompleto: `${fila.nombres} ${fila.apellidos}`,
         fechaNacimiento: fechaColumnaISO(fila.fechaNacimiento),
         expedienteId: fila.expedienteId,
-        numeroExpediente: fila.numero,
+        expedienteNumero: fila.numero,
         tipoRegistro: fila.tipoRegistro,
         enAlbergue: fila.enAlbergue,
         cantidadNinos: fila.cantidadNinos,
@@ -140,7 +140,7 @@ export class UsuariasRepository implements IUsuariasRepository {
   async buscarPorDpi(dpi: string): Promise<UsuariaResumenBusqueda | null> {
     const filas = await this.prisma.$queryRaw<UsuariaResumenRow[]>(Prisma.sql`
       SELECT u.id, u.nombres, u.apellidos, u.dpi, u."fechaNacimiento",
-        ${SUBQUERY_NUMERO_EXPEDIENTE} AS "numeroExpediente"
+        ${SUBQUERY_NUMERO_EXPEDIENTE} AS "expedienteNumero"
       FROM "Usuaria" u
       WHERE u.dpi = ${dpi}
       LIMIT 1
@@ -160,7 +160,7 @@ export class UsuariasRepository implements IUsuariasRepository {
     // caso real de uso aquí. Mismo índice GIN, soporta ambos operadores.
     const filas = await this.prisma.$queryRaw<UsuariaResumenRow[]>(Prisma.sql`
       SELECT u.id, u.nombres, u.apellidos, u.dpi, u."fechaNacimiento",
-        ${SUBQUERY_NUMERO_EXPEDIENTE} AS "numeroExpediente"
+        ${SUBQUERY_NUMERO_EXPEDIENTE} AS "expedienteNumero"
       FROM "Usuaria" u
       WHERE ${nombre} <% (u.nombres || ' ' || u.apellidos)
       ORDER BY word_similarity(${nombre}, u.nombres || ' ' || u.apellidos) DESC
@@ -174,7 +174,7 @@ export class UsuariasRepository implements IUsuariasRepository {
     limite: number,
   ): Promise<UsuariaResumenBusqueda[]> {
     const filas = await this.prisma.$queryRaw<UsuariaResumenRow[]>(Prisma.sql`
-      SELECT u.id, u.nombres, u.apellidos, u.dpi, u."fechaNacimiento", x.numero AS "numeroExpediente"
+      SELECT u.id, u.nombres, u.apellidos, u.dpi, u."fechaNacimiento", x.numero AS "expedienteNumero"
       FROM "Usuaria" u
       JOIN "Expediente" x ON x."usuariaId" = u.id
       WHERE x.numero = ${numero}

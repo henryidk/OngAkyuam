@@ -38,7 +38,9 @@ export interface FilaPoblacionRow {
   numero: number;
   /** Fecha del caso, "YYYY-MM-DD". */
   fecha: string;
-  numeroCaso: string;
+  expedienteNumero: string;
+  /** Consecutivo del hijo/a dentro del expediente; null en la fila de la usuaria. */
+  ninoConsecutivo: number | null;
   tipoRegistro: TipoRegistro;
   tipologias: TipologiaBd[];
   esUsuaria: boolean;

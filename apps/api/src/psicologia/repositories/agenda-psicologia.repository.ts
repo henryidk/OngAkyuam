@@ -81,7 +81,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       return {
         id: cita.id,
         procesoId: atencion.id,
-        procesoCodigo: codigoProceso(atencion.expediente.numero, atencion),
+        codigoProceso: codigoProceso(atencion.expediente.numero, atencion),
         usuariaId: usuaria.id,
         usuariaNombreCompleto: nombreCompleto(usuaria),
         persona: personaAtendida(usuaria, cita.nino),

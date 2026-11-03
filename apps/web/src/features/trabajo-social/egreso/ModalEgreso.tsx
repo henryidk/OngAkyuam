@@ -7,7 +7,7 @@ import { useRegistrarEgreso } from './useRegistrarEgreso'
 
 interface ModalEgresoProps {
   expedienteId: string
-  numeroExpediente: string
+  expedienteNumero: string
   onCerrar: () => void
   onRegistrado: (resultado: ResultadoEgreso) => void
 }
@@ -16,7 +16,7 @@ const CLASES_INPUT =
   'mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 /** Salida del albergue del caso activo: fecha obligatoria y, si ya está escaneado, el convenio. */
-export default function ModalEgreso({ expedienteId, numeroExpediente, onCerrar, onRegistrado }: ModalEgresoProps) {
+export default function ModalEgreso({ expedienteId, expedienteNumero, onCerrar, onRegistrado }: ModalEgresoProps) {
   const { fechaEgreso, setFechaEgreso, elegirConvenio, error, enviando, registrar } = useRegistrarEgreso(
     expedienteId,
     onRegistrado,
@@ -26,7 +26,7 @@ export default function ModalEgreso({ expedienteId, numeroExpediente, onCerrar, 
     <ConfirmModal
       abierto
       titulo="Registrar egreso del albergue"
-      descripcion={`Expediente ${numeroExpediente}. Una vez registrado, el egreso no se puede deshacer desde aquí.`}
+      descripcion={`Expediente ${expedienteNumero}. Una vez registrado, el egreso no se puede deshacer desde aquí.`}
       confirmarLabel="Registrar egreso"
       cargando={enviando}
       error={error}

@@ -83,8 +83,8 @@ export default function PanelPersona({
           <DatoFicha etiqueta="Edad">{persona.edad} años</DatoFicha>
           <DatoFicha etiqueta="Fecha de nacimiento">{formatFechaGT(persona.fechaNacimiento)}</DatoFicha>
           <DatoFicha etiqueta="Procedencia">{contexto.procedencia ?? '—'}</DatoFicha>
-          <DatoFicha etiqueta="No. de expediente">
-            <span className="font-mono">{contexto.expedienteNumero}</span>
+          <DatoFicha etiqueta="No. expediente">
+            <span className="font-mono">{persona.numeroPersona}</span>
           </DatoFicha>
           <DatoFicha etiqueta={esHijo ? 'Teléfono (madre)' : 'Teléfono'}>{contexto.telefono ?? '—'}</DatoFicha>
         </dl>

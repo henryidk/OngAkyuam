@@ -1,22 +1,30 @@
 import type { ReactNode } from 'react'
-import { ETIQUETAS_ESTADO_VISIBLE, ETIQUETAS_TIPO_PROCESO_JURIDICO, formatFechaGT, type FilaReporteJuridico } from '@akyuam/shared'
+import {
+  ETIQUETAS_ESTADO_VISIBLE,
+  ETIQUETAS_TIPO_PROCESO_JURIDICO,
+  SIN_RESPONSABLE,
+  formatFechaGT,
+  formatearResponsable,
+  type FilaReporteJuridico,
+} from '@akyuam/shared'
 
 /** La tabla no parte líneas; los textos largos sí, con ancho acotado. */
 function TextoLargo({ children, ancho }: { children: ReactNode; ancho: string }) {
   return <span className={`block whitespace-normal break-words ${ancho}`}>{children}</span>
 }
 
+/** Igual que en el Excel: "Ana López (abogada)", una por línea, o "Sin asignar". */
 function Responsables({ fila }: { fila: FilaReporteJuridico }) {
   const personas = [
-    { rol: 'Abogada', nombre: fila.abogada },
-    { rol: 'Procuradora', nombre: fila.procuradora },
+    { cargo: 'abogada', nombre: fila.abogada },
+    { cargo: 'procuradora', nombre: fila.procuradora },
   ].filter((persona) => persona.nombre)
-  if (personas.length === 0) return <span className="text-gray-400">Sin asignar</span>
+  if (personas.length === 0) return <span className="text-gray-400">{SIN_RESPONSABLE}</span>
   return (
     <span className="block space-y-0.5">
       {personas.map((persona) => (
-        <span key={persona.rol} className="block">
-          {persona.nombre} <span className="text-[11px] text-gray-500">· {persona.rol}</span>
+        <span key={persona.cargo} className="block">
+          {formatearResponsable(persona.nombre, persona.cargo)}
         </span>
       ))}
     </span>
@@ -26,7 +34,8 @@ function Responsables({ fila }: { fila: FilaReporteJuridico }) {
 /** Mismas columnas y orden que el Excel. */
 const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNode }[] = [
   { titulo: 'No.', valor: (fila) => fila.numero },
-  { titulo: 'No. expediente', valor: (fila) => fila.numeroInterno },
+  { titulo: 'No. expediente', valor: (fila) => fila.expedienteNumero },
+  { titulo: 'Proceso', valor: (fila) => fila.codigoProceso },
   { titulo: 'Nombre de la usuaria', valor: (fila) => fila.usuaria },
   { titulo: 'Teléfono', valor: (fila) => fila.telefono ?? '—' },
   {
@@ -34,12 +43,12 @@ const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNod
     valor: (fila) => <TextoLargo ancho="min-w-[180px] max-w-[240px]">{ETIQUETAS_TIPO_PROCESO_JURIDICO[fila.tipo]}</TextoLargo>,
   },
   {
-    titulo: 'No. expediente juzgado',
+    titulo: 'No. judicial',
     valor: (fila) =>
       fila.numeroJudicial ? <TextoLargo ancho="min-w-[200px] max-w-[260px]">{fila.numeroJudicial}</TextoLargo> : '—',
   },
   {
-    titulo: 'Avance en el trámite',
+    titulo: 'Avance en el trámite del proceso',
     valor: (fila) =>
       fila.ultimoAvance ? (
         <TextoLargo ancho="min-w-[240px] max-w-[320px]">

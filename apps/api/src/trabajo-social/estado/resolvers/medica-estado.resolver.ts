@@ -28,18 +28,19 @@ export class MedicaEstadoResolver implements IResolverEstadoArea {
     const atencion = await this.repositorio.atencionMedica(
       referido.expedienteId,
     );
-    const profesional = referido.profesional;
-
     if (
       !atencion ||
       (atencion.estado === 'ALTA' && !atencion.posteriorAReferencia)
     ) {
+      // Sin atención vigente todavía nadie la atiende: queda quien asignó Trabajo Social.
       return {
         estado: 'ACTIVA',
         detalle: 'Pendiente de primera consulta',
-        profesional,
+        profesional: referido.profesional,
       };
     }
+    // Quien atiende de verdad es la médica de la atención, no la asignación al referir.
+    const profesional = atencion.medica ?? referido.profesional;
     if (atencion.estado === 'ALTA') {
       return { estado: 'CERRADA', detalle: detalleAlta(atencion), profesional };
     }

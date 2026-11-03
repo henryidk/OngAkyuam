@@ -39,7 +39,7 @@ export class BandejaService {
         filas: pendientesReferir.filas.map((fila) => ({
           expedienteId: fila.expedienteId,
           usuariaId: fila.usuariaId,
-          numeroExpediente: fila.numero,
+          expedienteNumero: fila.numero,
           nombreCompleto: nombreCompleto(fila),
           tipoRegistro: fila.tipoRegistro,
           createdAt: fila.casoCreadoEn.toISOString(),
@@ -54,7 +54,7 @@ export class BandejaService {
           return {
             expedienteId: fila.expedienteId,
             usuariaId: fila.usuariaId,
-            numeroExpediente: fila.numero,
+            expedienteNumero: fila.numero,
             nombreCompleto: nombreCompleto(fila),
             fechaIngresoAlbergue: fechaIngreso,
             diasEnAlbergue: fechaIngreso

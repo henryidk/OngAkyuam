@@ -242,7 +242,7 @@ export class RegistroProcesosService {
     try {
       return await this.registroRepository.crearLote({
         expedienteId: params.expediente.id,
-        numeroExpediente: params.expediente.numero,
+        expedienteNumero: params.expediente.numero,
         referidoId: params.referidoId,
         procesos: params.procesos,
         creadoPorId: params.creadoPorId,

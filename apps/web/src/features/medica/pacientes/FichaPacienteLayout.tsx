@@ -7,6 +7,7 @@ import {
   type CitaMedicaBreveDto,
   type CitaMedicaProgramadaDto,
   type ProgramablesMedicaQuery,
+  textoCodigo,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
@@ -64,7 +65,7 @@ export default function FichaPacienteLayout() {
     setProgramar(null)
     const cuando = `${fechaLargaEnFrase(cita.fecha)}, ${cita.hora}`
     mostrar(
-      cita.atencionAbierta ? `Atención ${cita.codigoAtencion} abierta · Consulta programada: ${cuando}` : `Consulta programada: ${cuando}`,
+      cita.atencionAbierta ? `${textoCodigo('Atención', cita.codigoAtencion)} abierta · Consulta programada: ${cuando}` : `Consulta programada: ${cuando}`,
     )
     trasCambio()
   }

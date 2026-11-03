@@ -62,8 +62,22 @@ export const ETIQUETAS_PUESTO: Record<string, string> = {
   DOCTORA: 'Doctora',
 }
 
+/** Texto de un responsable cuando no hay nadie asignado: el mismo en pantalla y en el Excel. */
+export const SIN_RESPONSABLE = 'Sin asignar'
+
+/**
+ * Único formato de "quién atiende" en todo el sistema: "Nombre (cargo)", solo el nombre si no se
+ * sabe el cargo, o "Sin asignar" si no hay nadie. El cargo llega ya en minúscula ("abogada",
+ * "practicante"); cada área decide qué cargo mostrar, este helper solo lo escribe igual en todos lados.
+ */
+export function formatearResponsable(nombre: string | null | undefined, cargo?: string | null): string {
+  const limpio = nombre?.trim()
+  if (!limpio) return SIN_RESPONSABLE
+  return cargo ? `${limpio} (${cargo})` : limpio
+}
+
 /** Nombre de una persona del personal tal como sale en pantalla y en reportes: las practicantes
  * llevan "(practicante)" para que se sepa quién atendió. */
 export function nombreConPuesto(nombreCompleto: string, puesto: string | null): string {
-  return puesto === PUESTO_PRACTICANTE ? `${nombreCompleto} (practicante)` : nombreCompleto
+  return formatearResponsable(nombreCompleto, puesto === PUESTO_PRACTICANTE ? 'practicante' : null)
 }

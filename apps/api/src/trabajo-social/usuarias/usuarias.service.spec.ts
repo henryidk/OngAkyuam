@@ -200,7 +200,7 @@ describe('UsuariasService', () => {
         apellidos: 'Perez',
         dpi: '1234567890123',
         fechaNacimiento: '1990-01-01',
-        numeroExpediente: '05-2026',
+        expedienteNumero: '05-2026',
       });
 
       const resultado = await service.buscar(

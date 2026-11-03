@@ -48,7 +48,8 @@ describe('aFilaReporte', () => {
   it('arma la fila con el No. interno del proceso y los datos que registró Trabajo Social', () => {
     expect(aFilaReporte(proceso())).toEqual({
       numero: 1,
-      numeroInterno: '05-2026 · Proceso 2',
+      expedienteNumero: '05-2026',
+      codigoProceso: '05-2026 · Proceso 2',
       usuaria: 'Ana Prueba Ficticia',
       telefono: '5555-0000',
       tipo: 'FIJACION_PENSION_ALIMENTICIA',
@@ -65,7 +66,7 @@ describe('aFilaReporte', () => {
   });
 
   it('el primer proceso del expediente lleva solo el número de expediente', () => {
-    expect(aFilaReporte(proceso({ consecutivo: 1 })).numeroInterno).toBe(
+    expect(aFilaReporte(proceso({ consecutivo: 1 })).codigoProceso).toBe(
       '05-2026',
     );
   });
@@ -114,7 +115,7 @@ describe('textoAvance y textoResponsables', () => {
     expect(textoAvance(null)).toBe('');
   });
 
-  it('nombra a quien esté asignada, con su cargo', () => {
+  it('nombra a quien esté asignada, con su cargo, o "Sin asignar"', () => {
     expect(
       textoResponsables({
         abogada: 'Abogada Ficticia',
@@ -124,7 +125,9 @@ describe('textoAvance y textoResponsables', () => {
     expect(
       textoResponsables({ abogada: null, procuradora: 'Procuradora Ficticia' }),
     ).toBe('Procuradora Ficticia (procuradora)');
-    expect(textoResponsables({ abogada: null, procuradora: null })).toBe('');
+    expect(textoResponsables({ abogada: null, procuradora: null })).toBe(
+      'Sin asignar',
+    );
   });
 });
 
@@ -146,6 +149,7 @@ describe('aFilaHoja', () => {
     expect(celdas).toHaveLength(COLUMNAS_PROCESOS.length);
     expect(celdas).toEqual([
       1,
+      '05-2026',
       '05-2026 · Proceso 2',
       'Ana Prueba Ficticia',
       '',

@@ -8,6 +8,7 @@ import {
   type CitaAgendaMedicaDto,
   type CitaMedicaProgramadaDto,
   type ProgramablesMedicaQuery,
+  textoCodigo,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
@@ -89,7 +90,7 @@ export default function Agenda() {
     setProgramar(null)
     const cuando = `${fechaLargaEnFrase(cita.fecha)}, ${cita.hora}`
     mostrar(
-      cita.atencionAbierta ? `Atención ${cita.codigoAtencion} abierta · Consulta programada: ${cuando}` : `Consulta programada: ${cuando}`,
+      cita.atencionAbierta ? `${textoCodigo('Atención', cita.codigoAtencion)} abierta · Consulta programada: ${cuando}` : `Consulta programada: ${cuando}`,
     )
     // Recargar siempre: si el día nuevo cae en la misma semana, la tira no se vuelve a pedir sola.
     recargarTodo()

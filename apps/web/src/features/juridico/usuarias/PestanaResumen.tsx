@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { ETIQUETAS_FASE, ETIQUETAS_TIPO_PROCESO_JURIDICO, ETIQUETAS_TIPO_REGISTRO, type ProcesoResumen } from '@akyuam/shared'
+import { ETIQUETAS_TIPO_PROCESO_JURIDICO, ETIQUETAS_TIPO_REGISTRO, type ProcesoResumen } from '@akyuam/shared'
 import { BarraAvanceCompacta } from '../compartido/BarraAvance'
 import EtiquetaEstado from '../compartido/EtiquetaEstado'
 import { fechaDeReferencia } from '../compartido/formato'
@@ -33,8 +33,7 @@ function FilaProcesoActivo({ proceso }: { proceso: ProcesoResumen }) {
             {proceso.abogada?.nombre ?? 'Sin abogada asignada'} · {fechaDeReferencia(proceso)}
           </p>
         </div>
-        <div className="space-y-1 text-right">
-          <p className="text-xs text-gray-500">{ETIQUETAS_FASE[proceso.fase]}</p>
+        <div className="text-right">
           <BarraAvanceCompacta fase={proceso.fase} estado={proceso.estadoVisible} />
         </div>
       </Link>

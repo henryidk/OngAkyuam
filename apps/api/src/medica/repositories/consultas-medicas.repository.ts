@@ -6,6 +6,7 @@ import {
   fechaColumnaISO,
   horaGT,
   etiquetaAtencion,
+  numeroPersona,
 } from '@akyuam/shared';
 import type {
   ConsultasMedicasPaginaDto,
@@ -177,7 +178,7 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
               },
             },
             ninos: {
-              select: { id: true, ...SELECT_HIJO },
+              select: { id: true, consecutivo: true, ...SELECT_HIJO },
               orderBy: { consecutivo: 'asc' },
             },
           },
@@ -193,10 +194,12 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
     const persona = (
       datos: { nombres: string; apellidos: string; fechaNacimiento: Date },
       ninoId: string | null,
+      ninoConsecutivo: number | null,
     ): PersonaConsultaMedicaDto => {
       const clave = ninoId ?? '';
       return {
         ninoId,
+        numeroPersona: numeroPersona(expediente.numero, ninoConsecutivo),
         nombreCompleto: nombreCompleto(datos),
         edad: edad(datos),
         fechaNacimiento: fechaColumnaISO(datos.fechaNacimiento),
@@ -224,8 +227,10 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
           }
         : null,
       personas: [
-        persona(expediente.usuaria, null),
-        ...expediente.ninos.map((nino) => persona(nino.hijo, nino.id)),
+        persona(expediente.usuaria, null, null),
+        ...expediente.ninos.map((nino) =>
+          persona(nino.hijo, nino.id, nino.consecutivo),
+        ),
       ],
     };
   }

@@ -98,7 +98,8 @@ export class ReportePoblacionRepository implements IReportePoblacionRepository {
       WITH ${ctePersonas(filtro)}
       SELECT (ROW_NUMBER() OVER w)::int AS numero,
              to_char(p.fecha, 'YYYY-MM-DD') AS fecha,
-             p.numero AS "numeroCaso",
+             p.numero AS "expedienteNumero",
+             CASE WHEN p."esUsuaria" THEN NULL ELSE p.consecutivo END AS "ninoConsecutivo",
              p."tipoRegistro"::text AS "tipoRegistro",
              -- La base exige al menos una (Expediente_tipologia_obligatoria_chk); por si acaso, [] y no null.
              COALESCE(p."tipologiaDelito"::text[], '{}') AS tipologias,

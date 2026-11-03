@@ -7,6 +7,7 @@ import {
   type PacienteBuscadaMedicaDto,
   type ProgramablesMedicaQuery,
   type ProgramarCitaMedicaInput,
+  textoCodigo,
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
@@ -212,8 +213,8 @@ export default function ModalProgramar({ preseleccion, fechaPreferida, onCerrar,
               )}
               {paciente.atencionActiva && (
                 <>
-                  {' · Atención '}
-                  <span className="font-mono">{paciente.atencionActiva.codigo}</span>
+                  {' · '}
+                  <span className="font-mono">{textoCodigo('Atención', paciente.atencionActiva.codigo)}</span>
                 </>
               )}
             </>
@@ -248,8 +249,8 @@ export default function ModalProgramar({ preseleccion, fechaPreferida, onCerrar,
                   Exp. {expediente}
                   {paciente?.atencionActiva && (
                     <>
-                      {' · Atención '}
-                      <span className="font-mono">{paciente.atencionActiva.codigo}</span>
+                      {' · '}
+                      <span className="font-mono">{textoCodigo('Atención', paciente.atencionActiva.codigo)}</span>
                     </>
                   )}
                   {abreAtencion && paciente?.codigoNuevaAtencion && (

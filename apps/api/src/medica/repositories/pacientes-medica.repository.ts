@@ -6,7 +6,6 @@ import {
   fechaCalendarioGT,
   fechaColumnaISO,
   horaGT,
-  etiquetaProceso,
   etiquetaAtencion,
 } from '@akyuam/shared';
 import type {
@@ -19,6 +18,10 @@ import type {
 } from '@akyuam/shared';
 import { condicionBusqueda } from '../../common/busqueda-usuarias';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  SELECT_CODIGO_PROCESO,
+  codigoProceso,
+} from '../../psicologia/repositories/codigo-proceso';
 import {
   SELECT_HIJO,
   SELECT_PERSONA,
@@ -585,7 +588,7 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
         expediente: { usuariaId, ...EXPEDIENTE_REFERIDO_A_MEDICA },
       },
       select: {
-        consecutivo: true,
+        ...SELECT_CODIGO_PROCESO,
         estado: true,
         fechaInicio: true,
         createdAt: true,
@@ -602,7 +605,7 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
       return null;
     }
     return {
-      codigo: etiquetaProceso(proceso.expediente.numero, proceso.consecutivo),
+      codigo: codigoProceso(proceso.expediente.numero, proceso),
       etapa: ETIQUETAS_ESTADO_ATENCION_PSICOLOGICA[proceso.estado],
       fechaInicio: fechaCalendarioGT(proceso.fechaInicio ?? proceso.createdAt),
       sesiones: proceso.citas.map((c) => fechaCalendarioGT(c.fechaHora)),

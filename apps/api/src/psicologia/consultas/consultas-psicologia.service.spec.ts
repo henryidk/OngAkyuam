@@ -20,7 +20,7 @@ import { ConsultasPsicologiaService } from './consultas-psicologia.service';
 const SESION = {
   citaId: CITA_ID,
   procesoId: PROCESO_ID,
-  procesoCodigo: '05-2026',
+  codigoProceso: '05-2026',
   usuariaId: 'usuaria-1',
   usuariaNombreCompleto: 'Usuaria De Prueba',
   atendidoPor: 'Psicóloga B',

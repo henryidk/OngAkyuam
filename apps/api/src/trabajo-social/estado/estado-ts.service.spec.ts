@@ -39,7 +39,7 @@ describe('EstadoTsService', () => {
 
   it('combina el estado de cada área referida y conserva la fecha del referido', async () => {
     repositorio.procesosJuridicos.mockResolvedValue([
-      { fase: 'FINALIZADO', situacion: 'ACTIVO' },
+      { fase: 'FINALIZADO', situacion: 'ACTIVO', abogada: null },
     ]);
     repositorio.atencionPsicologica.mockResolvedValue({
       estado: 'CIERRE',
@@ -77,7 +77,7 @@ describe('EstadoTsService', () => {
 
   it('con una sola área activa el caso sigue en atención', async () => {
     repositorio.procesosJuridicos.mockResolvedValue([
-      { fase: 'FINALIZADO', situacion: 'ACTIVO' },
+      { fase: 'FINALIZADO', situacion: 'ACTIVO', abogada: null },
     ]);
 
     const resultado = await service.resolverCaso([

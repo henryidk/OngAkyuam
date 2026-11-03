@@ -283,10 +283,10 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         tipologias: expediente.referidos[0]?.puedeVerDatosCaso
           ? expediente.tipologiaDelito
           : [],
-        procesoCodigo: codigoProceso(expediente.numero, cita.atencion),
+        codigoProceso: codigoProceso(expediente.numero, cita.atencion),
         procesoId: cita.atencionId,
         procesoConcluido: cita.atencion.estado === 'CIERRE',
-        numeroExpediente: expediente.numero,
+        expedienteNumero: expediente.numero,
         diagnostico: cita.diagnostico,
         enfoqueTerapeutico: cita.enfoqueTerapeutico,
         profesional: nombreProfesional(cita.atendidoPor),
@@ -353,7 +353,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       expedienteId: cita.atencion.expedienteId,
       numero: cita.atencion.expediente.numero,
       procesoId: cita.atencionId,
-      procesoCodigo: codigoProceso(
+      codigoProceso: codigoProceso(
         cita.atencion.expediente.numero,
         cita.atencion,
       ),

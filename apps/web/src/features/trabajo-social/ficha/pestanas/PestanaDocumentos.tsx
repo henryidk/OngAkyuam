@@ -92,7 +92,7 @@ export default function PestanaDocumentos({ expedienteId }: PestanaDocumentosPro
       {documentos && (
         <DrawerDocumento
           expedienteId={expedienteId}
-          numeroExpediente={documentos.numero}
+          expedienteNumero={documentos.numero}
           fila={filaAbierta}
           subiendo={filaAbierta !== null && tipoEnSubida === filaAbierta.tipo}
           errorSubida={errorSubida}

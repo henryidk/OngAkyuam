@@ -10,6 +10,7 @@ import {
   etiquetaProceso,
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { consecutivoTrasMaximo } from '../../common/consecutivo';
 import {
   EXPEDIENTE_REFERIDO_A_JURIDICO,
   PROCESO_ACTIVO,
@@ -112,7 +113,7 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
           where: { expedienteId: params.expedienteId },
           _max: { consecutivo: true },
         });
-        const ultimo = _max.consecutivo ?? 0;
+        const primero = consecutivoTrasMaximo(_max.consecutivo);
 
         if (params.referidoId) {
           const { count } = await tx.referidoArea.updateMany({
@@ -131,7 +132,7 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
         const nuevos = params.procesos.map((proceso, indice) => ({
           ...proceso,
           id: randomUUID(),
-          consecutivo: ultimo + indice + 1,
+          consecutivo: primero + indice,
         }));
 
         await tx.procesoJuridico.createMany({
@@ -179,7 +180,7 @@ export class RegistroProcesosRepository implements IRegistroProcesosRepository {
 
         return nuevos.map((proceso) => ({
           id: proceso.id,
-          codigo: etiquetaProceso(params.numeroExpediente, proceso.consecutivo),
+          codigo: etiquetaProceso(params.expedienteNumero, proceso.consecutivo),
         }));
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },

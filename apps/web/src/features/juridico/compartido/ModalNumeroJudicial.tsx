@@ -81,7 +81,7 @@ export default function ModalNumeroJudicial({ proceso, onCerrar, onHecho, onConf
       onCancelar={onCerrar}
     >
       <label className={CLASE_ETIQUETA}>
-        <span>No. de expediente judicial</span>
+        <span>No. judicial</span>
         <textarea
           autoFocus
           rows={3}

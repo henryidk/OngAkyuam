@@ -18,6 +18,7 @@ import {
   type PersonaAtendidaDto,
   type PersonaParaAbrirDto,
   type ProcesoParaAgendarDto,
+  textoCodigo,
 } from '@akyuam/shared'
 import ModalPasos from '../../../components/agenda/ModalPasos'
 import TarjetaHorario from '../../../components/agenda/TarjetaHorario'
@@ -144,10 +145,10 @@ export default function ModalProgramarCita({
     referencia = `Proceso nuevo ${destino.codigo}`
   } else if (destino.tipo === 'MOVER') {
     usuaria = destino.cita.usuariaNombreCompleto
-    referencia = `Proceso ${destino.cita.procesoCodigo} · estaba el ${formatInstanteGT(destino.cita.fechaHora)}`
+    referencia = `${textoCodigo('Proceso', destino.cita.codigoProceso)} · estaba el ${formatInstanteGT(destino.cita.fechaHora)}`
   } else if (proceso) {
     usuaria = proceso.usuariaNombreCompleto
-    referencia = `Proceso ${proceso.codigo}`
+    referencia = textoCodigo('Proceso', proceso.codigo)
   }
   // Si se atiende a un hijo/a, el modal lo nombra a él y dice de quién es hijo/a.
   const hijo = atendida?.ninoId ? atendida : undefined

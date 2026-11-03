@@ -27,6 +27,7 @@ import {
   parseLocalGT,
   sumarDiasGT,
 } from '@akyuam/shared';
+import { siguienteNumeroExpediente } from './compartido/expediente';
 
 const prisma = new PrismaClient();
 
@@ -158,18 +159,6 @@ function signos(persona: Persona, indice: number) {
   };
 }
 
-async function siguienteNumero(
-  tx: Prisma.TransactionClient,
-  anio: number,
-): Promise<string> {
-  const contador = await tx.expedienteContador.upsert({
-    where: { anio },
-    create: { anio, ultimo: 1 },
-    update: { ultimo: { increment: 1 } },
-  });
-  return `${String(contador.ultimo).padStart(2, '0')}-${anio}`;
-}
-
 async function primerUsuario(
   rol: 'TRABAJO_SOCIAL' | 'MEDICA',
 ): Promise<string> {
@@ -220,7 +209,10 @@ async function main(): Promise<void> {
         },
       });
       const fechaCaso = diaHabil(VISITAS[0].dias - 1);
-      const numero = await siguienteNumero(tx, Number(fechaCaso.slice(0, 4)));
+      const numero = await siguienteNumeroExpediente(
+        tx,
+        Number(fechaCaso.slice(0, 4)),
+      );
       const expediente = await tx.expediente.create({
         data: {
           condicionMaternidad: 'NORMAL',

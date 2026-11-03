@@ -20,7 +20,7 @@ function expediente(
   return {
     numero: 1,
     dia: '2026-03-02',
-    numeroCaso: '05-2026',
+    expedienteNumero: '05-2026',
     nombres: 'Ana Prueba',
     apellidos: 'Ficticia',
     dpi: '0000000000000',
@@ -43,7 +43,7 @@ describe('aFilaPoblacionJuridico', () => {
       dia: '2026-03-02',
       departamento: 'Alta Verapaz',
       municipio: 'Cobán',
-      numeroCaso: '05-2026',
+      expedienteNumero: '05-2026',
       fechaNacimiento: '1995-04-10',
       edad: 30,
       nombreApellido: 'Ana Prueba Ficticia',

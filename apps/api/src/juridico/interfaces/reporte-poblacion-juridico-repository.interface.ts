@@ -18,7 +18,7 @@ export interface FilaPoblacionJuridicoRow {
   numero: number;
   /** "YYYY-MM-DD": inicio del primer proceso o, sin procesos, la fecha del referido en Guatemala. */
   dia: string;
-  numeroCaso: string;
+  expedienteNumero: string;
   nombres: string;
   apellidos: string;
   dpi: string | null;

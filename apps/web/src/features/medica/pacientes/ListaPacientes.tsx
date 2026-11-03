@@ -191,7 +191,7 @@ export default function ListaPacientes() {
               <span>Expediente</span>
               <span>Paciente</span>
               <span>Edad</span>
-              <span>Situación</span>
+              <span>Estado</span>
               <span>Consultas</span>
               <span>Última</span>
               <span>Próxima</span>

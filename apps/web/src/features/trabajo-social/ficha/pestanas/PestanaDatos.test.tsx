@@ -219,7 +219,7 @@ describe('PestanaDatos', () => {
         apellidos: 'De Prueba',
         dpi: '2000000000002',
         fechaNacimiento: '1985-01-01',
-        numeroExpediente: '2-2026',
+        expedienteNumero: '2-2026',
       },
     ])
     const user = montar()

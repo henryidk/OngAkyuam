@@ -56,7 +56,7 @@ export class BitacoraService {
           accion: fila.accion,
           texto: evento.texto,
           autor: fila.autor,
-          numeroExpediente: fila.numeroExpediente,
+          expedienteNumero: fila.expedienteNumero,
           destacado: evento.destacado,
         },
       ];

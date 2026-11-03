@@ -11,10 +11,13 @@ export const ESTADO_AREAS_REPOSITORY = Symbol('ESTADO_AREAS_REPOSITORY');
 export interface ProcesoJuridicoParaEstado {
   fase: FaseProcesoJuridico;
   situacion: SituacionProcesoJuridico;
+  /** Nombre de la abogada asignada al proceso (la ficha de Personal), si hay. */
+  abogada: string | null;
 }
 
 export interface AtencionPsicologicaParaEstado {
   estado: EstadoAtencionPsicologica;
+  /** "Nombre" o "Nombre (practicante)": quien tomó el caso. */
   psicologa: string | null;
   proximaCita: Date | null;
 }
@@ -23,6 +26,8 @@ export interface AtencionPsicologicaParaEstado {
 export interface AtencionMedicaParaEstado {
   estado: EstadoAtencionMedica;
   motivoAlta: MotivoAltaMedica | null;
+  /** "Nombre" o "Nombre (practicante)": la médica de la atención, si ya tiene. */
+  medica: string | null;
   fechaAlta: string | null;
   /** Abierta después de la referencia vigente: si no, la referencia sigue pendiente. */
   posteriorAReferencia: boolean;

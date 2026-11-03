@@ -85,7 +85,7 @@ export default function DetalleCita() {
           </Link>
         )}
         <Link to={RUTAS_PSICOLOGIA.proceso(cita.procesoId)} className="text-gray-600 hover:underline">
-          Ver proceso <CodigoProceso codigo={cita.procesoCodigo} />
+          Ver proceso <CodigoProceso codigo={cita.codigoProceso} />
         </Link>
       </div>
     </div>

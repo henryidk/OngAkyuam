@@ -7,6 +7,7 @@ import {
 } from '@akyuam/shared';
 import type { GeneroPersona } from '@prisma/client';
 import { edad, nombreCompleto, type PersonaConNacimiento } from './personas';
+import { consecutivoSiguiente } from '../../common/consecutivo';
 
 /** Lo que la ficha lee de un hijo/a y de sus procesos (más reciente primero). */
 export interface NinoConProcesos {
@@ -44,9 +45,8 @@ export function hijoDeFicha(
           (mayor, fecha) => (mayor === null || fecha > mayor ? fecha : mayor),
           null,
         );
-  const ultimoConsecutivo = Math.max(
-    0,
-    ...procesos.map((proceso) => proceso.consecutivo),
+  const consecutivoNuevo = consecutivoSiguiente(
+    procesos.map((proceso) => proceso.consecutivo),
   );
 
   return {
@@ -73,7 +73,7 @@ export function hijoDeFicha(
     puedeAbrirProceso: expedienteTomado && !abierto,
     codigoProcesoNuevo: etiquetaProcesoPsicologia(
       expedienteNumero,
-      ultimoConsecutivo + 1,
+      consecutivoNuevo,
       nino.consecutivo,
     ),
   };

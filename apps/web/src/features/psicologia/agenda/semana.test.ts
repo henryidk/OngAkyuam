@@ -16,7 +16,7 @@ function cita(parcial: Partial<CitaAgendaDto>): CitaAgendaDto {
   return {
     id: 'cita-1',
     procesoId: 'proceso-1',
-    procesoCodigo: '05-2026',
+    codigoProceso: '05-2026',
     usuariaId: 'usuaria-1',
     usuariaNombreCompleto: 'Usuaria Ficticia',
     persona: { ninoId: null, nombreCompleto: 'Usuaria Ficticia', edad: 30 },

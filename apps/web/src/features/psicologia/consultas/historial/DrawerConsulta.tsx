@@ -44,7 +44,7 @@ export default function DrawerConsulta({ citaId, onCerrar }: DrawerConsultaProps
       pie={
         sesion ? (
           <Link to={RUTAS_PSICOLOGIA.proceso(sesion.procesoId, sesion.citaId)} className="text-sm font-semibold text-brand-700 hover:underline">
-            Ver proceso {sesion.procesoCodigo}
+            Ver proceso {sesion.codigoProceso}
           </Link>
         ) : undefined
       }

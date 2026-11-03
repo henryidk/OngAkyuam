@@ -6,10 +6,11 @@ function proceso(
   estado: string,
   psicologa: string | null,
   proximas: string[] = [],
+  puesto: string | null = null,
 ) {
   return {
     estado,
-    psicologaAsignada: psicologa ? { nombreCompleto: psicologa } : null,
+    psicologaAsignada: psicologa ? { nombreCompleto: psicologa, puesto } : null,
     citas: proximas.map((fecha) => ({ fechaHora: new Date(fecha) })),
   };
 }
@@ -22,6 +23,14 @@ function repositorioCon(filas: ReturnType<typeof proceso>[]) {
 }
 
 describe('EstadoAreasRepository.atencionPsicologica', () => {
+  it('una practicante sale con su puesto, igual que en los reportes', async () => {
+    const atencion = await repositorioCon([
+      proceso('INICIO', 'Psicóloga Ficticia', [], 'PRACTICANTE'),
+    ]).atencionPsicologica('e-1');
+
+    expect(atencion?.psicologa).toBe('Psicóloga Ficticia (practicante)');
+  });
+
   it('sin procesos no hay atención (el caso sigue en cola)', async () => {
     await expect(
       repositorioCon([]).atencionPsicologica('exp-1'),

@@ -353,7 +353,7 @@ export interface CitaPsicologicaDetalle extends CitaResumen {
   numero: string
   usuariaNombreCompleto: string
   procesoId: string
-  procesoCodigo: string
+  codigoProceso: string
   procesoEtapa: EstadoAtencionPsicologica
   /** Hijo/a que se atiende en esta cita; null = la usuaria. */
   ninoNombreCompleto: string | null
@@ -523,7 +523,7 @@ export interface CitaAgendaDto {
   id: string
   procesoId: string
   /** "05-2026". */
-  procesoCodigo: string
+  codigoProceso: string
   usuariaId: string
   usuariaNombreCompleto: string
   persona: PersonaAtendidaDto
@@ -694,7 +694,7 @@ export type SesionesProcesoPaginadas = PaginaConCursor<SesionProcesoDto>
 export interface SesionPorRegistrarDto {
   citaId: string
   procesoId: string
-  procesoCodigo: string
+  codigoProceso: string
   usuariaNombreCompleto: string
   persona: PersonaAtendidaDto
   fechaHora: string
@@ -708,7 +708,7 @@ export interface SesionPorRegistrarDto {
 export interface FilaHistorialConsultaPsicologiaDto {
   citaId: string
   procesoId: string
-  procesoCodigo: string
+  codigoProceso: string
   usuariaNombreCompleto: string
   persona: PersonaAtendidaDto
   fechaHora: string
@@ -726,7 +726,7 @@ export type HistorialConsultasPsicologiaPaginado = PaginaConCursor<FilaHistorial
 /** `GET /psicologia/consultas/:citaId` — la sesión completa, con su proceso y quién la atendió. */
 export interface DetalleConsultaPsicologiaDto extends SesionProcesoDto {
   procesoId: string
-  procesoCodigo: string
+  codigoProceso: string
   usuariaId: string
   usuariaNombreCompleto: string
   atendidoPor: string

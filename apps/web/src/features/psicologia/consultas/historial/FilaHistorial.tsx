@@ -30,7 +30,7 @@ export default function FilaHistorial({ sesion, onAbrir }: { sesion: FilaHistori
           <span className="text-sm font-semibold text-gray-900">{persona.nombreCompleto}</span>
           {persona.ninoId !== null && <span className="text-xs text-gray-500">Hijo/a de {sesion.usuariaNombreCompleto}</span>}
           <span className="flex flex-wrap items-center gap-x-1.5 text-xs text-gray-600">
-            <CodigoProceso codigo={sesion.procesoCodigo} className="text-gray-600" />
+            <CodigoProceso codigo={sesion.codigoProceso} className="text-gray-600" />
             {sesion.clinica !== null && (
               <>
                 <span aria-hidden="true">·</span>

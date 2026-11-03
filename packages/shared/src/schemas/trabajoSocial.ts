@@ -127,7 +127,7 @@ export interface FilaListaUsuarias {
   nombreCompleto: string
   fechaNacimiento: string
   expedienteId: string
-  numeroExpediente: string
+  expedienteNumero: string
   tipoRegistro: TipoRegistro
   enAlbergue: boolean
   cantidadNinos: number
@@ -191,7 +191,7 @@ export type ReportePoblacionQuery = z.infer<typeof reportePoblacionQuerySchema>
 export interface FilaColaReferir {
   expedienteId: string
   usuariaId: string
-  numeroExpediente: string
+  expedienteNumero: string
   nombreCompleto: string
   tipoRegistro: TipoRegistro
   createdAt: string
@@ -201,7 +201,7 @@ export interface FilaColaReferir {
 export interface FilaEnAlbergue {
   expedienteId: string
   usuariaId: string
-  numeroExpediente: string
+  expedienteNumero: string
   nombreCompleto: string
   /** null si el caso interno se registró sin fecha de ingreso. */
   fechaIngresoAlbergue: string | null
@@ -311,7 +311,10 @@ export interface FilaPoblacionBeneficiada {
   departamento: string
   oficinaResponsable: string
   municipio: string
-  numeroCaso: string
+  /** No. del expediente, siempre puro: "04-2026". */
+  expedienteNumero: string
+  /** Lo que sale en "No. expediente": el de la usuaria o el propio del hijo/a ("04-2026.01"). */
+  numeroPersona: string
   fechaNacimiento: string
   edad: number
   nombresApellidos: string
@@ -395,7 +398,7 @@ export interface EventoBitacora {
   /** Nombre del personal que lo hizo; null si la cuenta ya no existe. */
   autor: string | null
   /** Caso al que pertenece; null para cambios de los datos de la usuaria. */
-  numeroExpediente: string | null
+  expedienteNumero: string | null
   /** Registro, referido o proceso: se marca con el punto de color en la línea de tiempo. */
   destacado: boolean
 }

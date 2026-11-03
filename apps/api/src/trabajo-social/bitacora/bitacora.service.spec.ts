@@ -26,7 +26,7 @@ describe('BitacoraService', () => {
       detalles: { numero: '05-2026' },
       createdAt: new Date('2026-09-01T15:00:00.000Z'),
       autor: 'Ana Trabajo Social',
-      numeroExpediente: '05-2026',
+      expedienteNumero: '05-2026',
       ...overrides,
     };
   }
@@ -71,7 +71,7 @@ describe('BitacoraService', () => {
         accion: 'DOCUMENTO_SUBIDO',
         texto: 'Subió «Entrevista a usuaria»',
         autor: 'Ana Trabajo Social',
-        numeroExpediente: '05-2026',
+        expedienteNumero: '05-2026',
         destacado: false,
       },
       expect.objectContaining({

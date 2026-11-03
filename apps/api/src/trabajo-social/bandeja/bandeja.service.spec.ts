@@ -63,7 +63,7 @@ describe('BandejaService', () => {
         {
           expedienteId: 'e-1',
           usuariaId: 'u-1',
-          numeroExpediente: '05-2026',
+          expedienteNumero: '05-2026',
           nombreCompleto: 'Maria Perez',
           tipoRegistro: 'EXTERNA',
           createdAt: '2026-09-01T15:00:00.000Z',

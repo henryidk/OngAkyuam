@@ -38,6 +38,7 @@ import type {
 } from '../interfaces/agenda-medica-repository.interface';
 import { EXPEDIENTE_REFERIDO_A_MEDICA } from './acceso-medica.repository';
 import { SELECT_PERSONAS_CITA, personasDeCita } from './mapeo';
+import { consecutivoSiguiente } from '../../common/consecutivo';
 
 const SELECT_NINOS = {
   select: { id: true, ...SELECT_HIJO },
@@ -328,11 +329,9 @@ export class AgendaMedicaRepository
         referenciaPendiente(r.createdAt, expediente.atencionesMedicas),
       );
       if (referencia) {
-        const siguiente =
-          Math.max(
-            0,
-            ...expediente.atencionesMedicas.map((a) => a.consecutivo),
-          ) + 1;
+        const siguiente = consecutivoSiguiente(
+          expediente.atencionesMedicas.map((a) => a.consecutivo),
+        );
         programables.push({
           ...base,
           referidoId: referencia.id,

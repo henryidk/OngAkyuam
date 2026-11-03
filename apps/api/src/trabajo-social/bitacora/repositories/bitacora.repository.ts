@@ -27,7 +27,7 @@ export class BitacoraRepository implements IBitacoraRepository {
     return this.prisma.$queryRaw<EventoBitacoraRow[]>(Prisma.sql`
       WITH ${cteEventos(acciones, Prisma.sql`e."usuariaId" = ${usuariaId}`)},
       todos AS (
-        SELECT ev.id, ev.accion, ev.detalles, ev."createdAt", ev."usuarioId", x.numero AS "numeroExpediente"
+        SELECT ev.id, ev.accion, ev.detalles, ev."createdAt", ev."usuarioId", x.numero AS "expedienteNumero"
         FROM eventos ev
         JOIN "Expediente" x ON x.id = ev."expedienteId"
         UNION ALL
@@ -37,7 +37,7 @@ export class BitacoraRepository implements IBitacoraRepository {
         WHERE a.entidad = 'Usuaria' AND a."entidadId" = ${usuariaId}
           AND a.accion IN (${Prisma.join(acciones)})
       )
-      SELECT t.id, t.accion, t.detalles, t."createdAt", t."numeroExpediente", us."nombreCompleto" AS autor
+      SELECT t.id, t.accion, t.detalles, t."createdAt", t."expedienteNumero", us."nombreCompleto" AS autor
       FROM todos t
       LEFT JOIN "Usuario" us ON us.id = t."usuarioId"
       ORDER BY t."createdAt" DESC, t.id

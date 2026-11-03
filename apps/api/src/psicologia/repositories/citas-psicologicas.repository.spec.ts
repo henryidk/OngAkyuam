@@ -293,7 +293,7 @@ describe('CitasPsicologicasRepository.listarCitasEnRango', () => {
     expect(cita).toMatchObject({
       procesoId: 'proceso-1',
       procesoConcluido: true,
-      numeroExpediente: '05-2026',
+      expedienteNumero: '05-2026',
       diagnostico: 'Ansiedad',
       enfoqueTerapeutico: 'Sistémico',
       profesional: 'Psicóloga Ficticia (practicante)',

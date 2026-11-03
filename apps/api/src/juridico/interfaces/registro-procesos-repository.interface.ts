@@ -19,7 +19,7 @@ export interface ProcesoNuevo {
 
 export interface CrearLoteParams {
   expedienteId: string;
-  numeroExpediente: string;
+  expedienteNumero: string;
   /** Referencia de Trabajo Social que se atiende con este lote; `null` si no hay ninguna. */
   referidoId: string | null;
   procesos: ProcesoNuevo[];

@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import {
+  formatoNumeroExpediente,
   fechaColumnaISO,
   type AreaAtencion,
   type ExpedienteDetalleCaso,
@@ -136,7 +137,7 @@ export class ExpedientesRepository implements IExpedientesRepository {
       create: { anio, ultimo: 1 },
       update: { ultimo: { increment: 1 } },
     });
-    const numero = `${String(contador.ultimo).padStart(2, '0')}-${anio}`;
+    const numero = formatoNumeroExpediente(contador.ultimo, anio);
 
     const expediente = await tx.expediente.create({
       data: {

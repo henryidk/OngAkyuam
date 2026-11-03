@@ -1,5 +1,9 @@
 import { Prisma } from '@prisma/client';
-import type { IEstadoAreasRepository } from '../interfaces/estado-areas-repository.interface';
+import { formatearResponsable } from '@akyuam/shared';
+import type {
+  IEstadoAreasRepository,
+  ProcesoJuridicoParaEstado,
+} from '../interfaces/estado-areas-repository.interface';
 import type {
   IResolverEstadoArea,
   ReferidoParaEstado,
@@ -12,6 +16,10 @@ import type {
  * están finalizados o abandonados. Un proceso suspendido sigue contando como abierto (es una
  * pausa, Jurídico aún lleva el caso); uno abandonado no, y vuelve a contar si se reactiva.
  */
+function abierto(proceso: ProcesoJuridicoParaEstado): boolean {
+  return proceso.fase !== 'FINALIZADO' && proceso.situacion !== 'ABANDONADO';
+}
+
 export class JuridicoEstadoResolver implements IResolverEstadoArea {
   readonly area = 'JURIDICO' as const;
 
@@ -21,12 +29,20 @@ export class JuridicoEstadoResolver implements IResolverEstadoArea {
     const procesos = await this.repositorio.procesosJuridicos(
       referido.expedienteId,
     );
-    const abiertos = procesos.filter(
-      (proceso) =>
-        proceso.fase !== 'FINALIZADO' && proceso.situacion !== 'ABANDONADO',
-    ).length;
-    // Jurídico asigna abogada y procuradora en cada proceso, no Trabajo Social al referir.
-    const profesional = null;
+    const abiertos = procesos.filter(abierto).length;
+    // Jurídico asigna la abogada en cada proceso, no Trabajo Social al referir: se muestran las
+    // de los procesos abiertos (o, con todo cerrado, las que los llevaron), sin repetir.
+    const vigentes = abiertos > 0 ? procesos.filter(abierto) : procesos;
+    const abogadas = [
+      ...new Set(
+        vigentes.flatMap((proceso) =>
+          proceso.abogada
+            ? [formatearResponsable(proceso.abogada, 'abogada')]
+            : [],
+        ),
+      ),
+    ];
+    const profesional = abogadas.length > 0 ? abogadas.join(', ') : null;
 
     if (procesos.length === 0) {
       return {

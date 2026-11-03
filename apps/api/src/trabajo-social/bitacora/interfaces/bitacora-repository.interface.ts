@@ -8,7 +8,7 @@ export interface EventoBitacoraRow {
   detalles: DetallesAuditoria;
   createdAt: Date;
   autor: string | null;
-  numeroExpediente: string | null;
+  expedienteNumero: string | null;
 }
 
 export interface IBitacoraRepository {

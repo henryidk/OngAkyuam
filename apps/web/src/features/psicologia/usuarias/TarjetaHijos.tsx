@@ -4,6 +4,7 @@ import {
   ETIQUETAS_PUESTO,
   formatFechaGT,
   formatInstanteCortoGT,
+  partesCodigo,
   type HijoFichaPsicologiaDto,
   type ProcesoAbiertoPersonaDto,
 } from '@akyuam/shared'
@@ -22,8 +23,7 @@ interface TarjetaHijosProps {
 
 /** Sufijo del número del hijo/a en el expediente: "04-2026.01" → ".01". */
 function sufijoNumero(numero: string): string {
-  const punto = numero.lastIndexOf('.')
-  return punto === -1 ? numero : numero.slice(punto)
+  return partesCodigo(numero).sufijoPersona ?? numero
 }
 
 function textoResponsable(responsable: ProcesoAbiertoPersonaDto['responsable']): string | null {

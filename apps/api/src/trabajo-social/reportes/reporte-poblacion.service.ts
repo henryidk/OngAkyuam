@@ -21,6 +21,7 @@ import {
   type RangoEdad,
   type ReportePoblacionBeneficiada,
   type ReportePoblacionQuery,
+  numeroPersona,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
@@ -96,7 +97,8 @@ export function aFilaPoblacion(
     fecha: row.fecha,
     ...lugarParaReporte(row),
     oficinaResponsable: ETIQUETAS_SEDE[row.sede],
-    numeroCaso: row.numeroCaso,
+    expedienteNumero: row.expedienteNumero,
+    numeroPersona: numeroPersona(row.expedienteNumero, row.ninoConsecutivo),
     fechaNacimiento: row.fechaNacimiento,
     edad: row.edad,
     rangoEdad: ETIQUETAS_RANGO_EDAD[calcularRangoEdad(row.edad)],
@@ -196,7 +198,7 @@ export const COLUMNAS_POBLACION: ColumnaHoja[] = [
   { titulo: 'Departamento', ancho: 16, tipo: 'texto' },
   { titulo: 'Oficina responsable', ancho: 12, tipo: 'texto' },
   { titulo: 'Municipio', ancho: 22, tipo: 'texto' },
-  { titulo: 'No. de caso', ancho: 12, tipo: 'texto' },
+  { titulo: 'No. expediente', ancho: 12, tipo: 'texto' },
   { titulo: 'Fecha de nacimiento', ancho: 14, tipo: 'fecha' },
   { titulo: 'Edad', ancho: 6, tipo: 'numero' },
   { titulo: 'Nombres y apellidos', ancho: 32, tipo: 'texto' },
@@ -268,8 +270,6 @@ export const COLUMNAS_POBLACION: ColumnaHoja[] = [
     tipo: 'texto',
     grupo: GRUPO_ATENCION,
   },
-  // Al final para no mover las columnas del formato de la ONG.
-  { titulo: 'Usuaria nueva', ancho: 10, tipo: 'texto' },
 ];
 
 function marca(valor: boolean): string {
@@ -283,7 +283,7 @@ export function aFilaHoja(fila: FilaPoblacionBeneficiada): ValorCeldaHoja[] {
     fila.departamento,
     fila.oficinaResponsable,
     fila.municipio,
-    fila.numeroCaso,
+    fila.numeroPersona,
     fila.fechaNacimiento,
     fila.edad,
     fila.nombresApellidos,
@@ -312,7 +312,6 @@ export function aFilaHoja(fila: FilaPoblacionBeneficiada): ValorCeldaHoja[] {
     fila.procesoRequerido,
     fila.atencionPsicologica,
     fila.atencionMedica,
-    fila.usuariaNueva ? 'Sí' : 'No',
   ];
 }
 

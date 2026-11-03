@@ -613,8 +613,10 @@ export interface AvanceReporte {
 export interface FilaReporteJuridico {
   /** Correlativo del reporte, no se guarda en la base. */
   numero: number
-  /** No. interno del proceso: "05-2026" o, desde el segundo, "05-2026 · Proceso 2". */
-  numeroInterno: string
+  /** No. del expediente, siempre puro: "05-2026". */
+  expedienteNumero: string
+  /** Código del proceso: "05-2026" o, desde el segundo, "05-2026 · Proceso 2". */
+  codigoProceso: string
   usuaria: string
   telefono: string | null
   tipo: TipoProcesoJuridico
@@ -656,7 +658,7 @@ export interface FilaPoblacionJuridico {
   dia: string
   departamento: string
   municipio: string
-  numeroCaso: string
+  expedienteNumero: string
   fechaNacimiento: string
   /** Años cumplidos al "Día": la edad que tenía cuando la atendieron. */
   edad: number

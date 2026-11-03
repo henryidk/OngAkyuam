@@ -18,6 +18,7 @@ import {
   type ConteoReporte,
   type PeriodoIndicadores,
   type RangoEdad,
+  formatearResponsable,
 } from '@akyuam/shared';
 import type { CitaParaAgregado } from '../interfaces/citas-psicologicas-repository.interface';
 
@@ -41,13 +42,13 @@ export function nombreProfesional(profesional: {
   puesto: string | null;
 }): string {
   // Sin puesto no se sabe el cargo: solo el nombre, nunca un cargo inventado.
-  if (profesional.puesto === PUESTO_PRACTICANTE) {
-    return `${profesional.nombreCompleto} (practicante)`;
-  }
-  if (profesional.puesto === PUESTO_PSICOLOGA) {
-    return `${profesional.nombreCompleto} (licenciada)`;
-  }
-  return profesional.nombreCompleto;
+  const cargo =
+    profesional.puesto === PUESTO_PRACTICANTE
+      ? 'practicante'
+      : profesional.puesto === PUESTO_PSICOLOGA
+        ? 'licenciada'
+        : null;
+  return formatearResponsable(profesional.nombreCompleto, cargo);
 }
 
 /**
@@ -69,7 +70,7 @@ export interface PersonaAtendida {
   /** "YYYY-MM-DD" en hora de Guatemala. */
   primeraSesion: string;
   ultimaSesion: string;
-  numeroExpediente: string;
+  expedienteNumero: string;
   /** El proceso de la sesión atendida más reciente del periodo. */
   procesoReciente: { id: string; concluido: boolean };
   /** El último anotado en ese proceso (las sesiones previas a que se pidiera no lo tienen). */
@@ -124,7 +125,7 @@ export function personasAtendidas(
         inasistencias: 0,
         primeraSesion: dia,
         ultimaSesion: dia,
-        numeroExpediente: cita.numeroExpediente,
+        expedienteNumero: cita.expedienteNumero,
         procesoReciente: datosProceso(cita),
         diagnostico: null,
         enfoqueTerapeutico: null,
@@ -144,9 +145,9 @@ export function personasAtendidas(
     persona.enfoqueTerapeutico =
       cita.enfoqueTerapeutico ?? persona.enfoqueTerapeutico;
     persona.profesional = cita.profesional;
-    persona.numeroExpediente = cita.numeroExpediente;
+    persona.expedienteNumero = cita.expedienteNumero;
     agregarSinRepetir(persona.tipologias, cita.tipologias);
-    agregarSinRepetir(persona.procesos, [cita.procesoCodigo]);
+    agregarSinRepetir(persona.procesos, [cita.codigoProceso]);
   }
 
   for (const cita of citas) {
