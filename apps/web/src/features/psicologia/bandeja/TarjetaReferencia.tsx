@@ -49,11 +49,6 @@ export default function TarjetaReferencia({
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-base font-semibold text-gray-900">{referencia.usuariaNombreCompleto}</h3>
               <EtiquetaIngreso ingreso={referencia.ingreso} />
-              {referencia.atendidaAntes && (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                  Ya atendida antes
-                </span>
-              )}
               <span
                 className={`rounded-full px-2.5 py-0.5 text-xs font-medium tabular-nums ${
                   enAlerta ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-600'

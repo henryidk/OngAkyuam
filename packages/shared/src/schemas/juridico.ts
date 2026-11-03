@@ -378,8 +378,6 @@ export interface ReferenciaBandejaDto {
   edad: number
   /** Nombre del municipio (o el escrito a mano si es de fuera de Alta Verapaz). */
   municipio: string | null
-  /** Ya tiene procesos en Jurídico, de cualquier estado: la usuaria regresa. */
-  atendidaAntes: boolean
   /** Si esta referencia es el primer ingreso de la usuaria al área o un seguimiento. */
   ingreso: TipoIngresoArea
 }

@@ -431,8 +431,6 @@ export interface ReferenciaBandejaPsicologiaDto {
   diasEsperando: number
   /** La usuaria y los hijos/as registrados en el expediente. */
   personas: PersonaAtendidaDto[]
-  /** Ya tuvo un proceso psicológico, de cualquier estado: la usuaria regresa. */
-  atendidaAntes: boolean
   /** Si esta referencia es el primer ingreso de la usuaria al área o un seguimiento. */
   ingreso: TipoIngresoArea
 }

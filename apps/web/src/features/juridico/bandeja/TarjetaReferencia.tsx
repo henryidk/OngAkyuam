@@ -34,11 +34,6 @@ export default function TarjetaReferencia({ referencia }: TarjetaReferenciaProps
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-base font-semibold text-gray-900">{usuaria.nombreCompleto}</h2>
               <EtiquetaIngreso ingreso={referencia.ingreso} />
-              {referencia.atendidaAntes && (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
-                  Ya atendida antes
-                </span>
-              )}
               <span className="ml-auto text-xs text-gray-500 tabular-nums">
                 {fechaDeInstante(referencia.referidoEn)}
               </span>

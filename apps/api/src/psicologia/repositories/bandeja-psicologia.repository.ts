@@ -124,10 +124,6 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
       take: LIMITE_COLA,
     });
 
-    const atendidasAntes = await this.usuariasAtendidasAntes(
-      referidos.map((referido) => referido.expediente.usuaria.id),
-    );
-
     return referidos.map((referido) => {
       const { expediente } = referido;
       const referidoEn = referido.createdAt.toISOString();
@@ -147,7 +143,6 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
         referidoPor: referido.otorgadoPor.nombreCompleto,
         diasEsperando: diasDesdeGT(referidoEn),
         personas: personasDelExpediente(expediente),
-        atendidaAntes: atendidasAntes.has(expediente.usuaria.id),
         ingreso: ingresoDeUsuaria(referido),
       };
     });
@@ -412,25 +407,5 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
         tomadas.length === 0 ? 'SIN_TOMAR' : mia ? 'MIA' : 'NO_DISPONIBLE',
       procesoId: mia?.id ?? null,
     };
-  }
-
-  /** Usuarias que ya tuvieron algún proceso psicológico, en cualquier expediente. */
-  private async usuariasAtendidasAntes(
-    usuariaIds: string[],
-  ): Promise<Set<string>> {
-    if (usuariaIds.length === 0) {
-      return new Set();
-    }
-    const expedientes = await this.prisma.expediente.findMany({
-      where: {
-        usuariaId: { in: usuariaIds },
-        atencionesPsicologicas: {
-          some: { psicologaAsignadaId: { not: null } },
-        },
-      },
-      select: { usuariaId: true },
-      distinct: ['usuariaId'],
-    });
-    return new Set(expedientes.map((expediente) => expediente.usuariaId));
   }
 }
