@@ -45,6 +45,7 @@ export interface FilaProcesoRow {
   ultimoAvanceEn: Date | null;
   ultimoAvanceTipo: string | null;
   ultimoAvanceContenido: string | null;
+  estado: EstadoVisibleProceso;
 }
 
 /** Cuántos procesos hay por (estado, forma, tipo); el servicio arma cada desglose. */

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { ETIQUETAS_TIPO_PROCESO_JURIDICO, formatFechaGT, type FilaReporteJuridico } from '@akyuam/shared'
+import { ETIQUETAS_ESTADO_VISIBLE, ETIQUETAS_TIPO_PROCESO_JURIDICO, formatFechaGT, type FilaReporteJuridico } from '@akyuam/shared'
 
 /** La tabla no parte líneas; los textos largos sí, con ancho acotado. */
 function TextoLargo({ children, ancho }: { children: ReactNode; ancho: string }) {
@@ -62,6 +62,7 @@ const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNod
     titulo: 'Procedencia',
     valor: (fila) => (fila.procedencia ? <TextoLargo ancho="min-w-[180px] max-w-[240px]">{fila.procedencia}</TextoLargo> : '—'),
   },
+  { titulo: 'Estado', valor: (fila) => ETIQUETAS_ESTADO_VISIBLE[fila.estado] },
 ]
 
 export default function TablaReporteJuridico({ filas }: { filas: FilaReporteJuridico[] }) {

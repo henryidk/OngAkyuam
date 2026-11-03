@@ -39,6 +39,7 @@ function proceso(overrides: Partial<FilaProcesoRow> = {}): FilaProcesoRow {
     ultimoAvanceEn: null,
     ultimoAvanceTipo: null,
     ultimoAvanceContenido: null,
+    estado: 'EN_TRAMITE',
     ...overrides,
   };
 }
@@ -59,6 +60,7 @@ describe('aFilaReporte', () => {
       edad: 31,
       tipologia: 'Física, Psicológica',
       procedencia: 'Aldea Ficticia, Cobán, Alta Verapaz',
+      estado: 'EN_TRAMITE',
     });
   });
 
@@ -136,6 +138,7 @@ describe('aFilaHoja', () => {
           ultimoAvanceEn: new Date('2026-10-20T16:00:00.000Z'),
           ultimoAvanceTipo: 'Memorial',
           ultimoAvanceContenido: 'Se presentó',
+          estado: 'SUSPENDIDO',
         }),
       ),
     );
@@ -154,6 +157,7 @@ describe('aFilaHoja', () => {
       31,
       'Física, Psicológica',
       'Aldea Ficticia, Cobán, Alta Verapaz',
+      'Suspendido',
     ]);
   });
 });

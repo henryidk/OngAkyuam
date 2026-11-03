@@ -89,6 +89,7 @@ export function aFilaReporte(row: FilaProcesoRow): FilaReporteJuridico {
     edad: row.edad,
     tipologia: etiquetasTipologia(row.tipologias),
     procedencia: procedenciaParaReporte(row),
+    estado: row.estado,
   };
 }
 
@@ -158,6 +159,7 @@ export const COLUMNAS_PROCESOS: ColumnaHoja[] = [
   { titulo: 'Edad', ancho: 6, tipo: 'numero' },
   { titulo: 'Tipo de violencia', ancho: 28, tipo: 'texto' },
   { titulo: 'Procedencia', ancho: 36, tipo: 'texto' },
+  { titulo: 'Estado', ancho: 14, tipo: 'texto' },
 ];
 
 /** "20/10/2026 · Memorial de evacuación: se presentó…": fecha, tipo y lo que se escribió. */
@@ -193,6 +195,7 @@ export function aFilaHoja(fila: FilaReporteJuridico): ValorCeldaHoja[] {
     fila.edad,
     fila.tipologia,
     fila.procedencia,
+    ETIQUETAS_ESTADO_VISIBLE[fila.estado],
   ];
 }
 

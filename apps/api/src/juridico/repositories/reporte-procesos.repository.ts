@@ -74,7 +74,8 @@ export class ReporteProcesosRepository implements IReporteProcesosRepository {
              COALESCE(p."tipologiaDelito"::text[], '{}') AS tipologias,
              av."createdAt" AS "ultimoAvanceEn",
              av.tipo AS "ultimoAvanceTipo",
-             av.contenido AS "ultimoAvanceContenido"
+             av.contenido AS "ultimoAvanceContenido",
+             p.estado
       FROM procesos p
       LEFT JOIN LATERAL (
         SELECT n."createdAt", n.tipo, n.contenido

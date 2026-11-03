@@ -626,6 +626,8 @@ export interface FilaReporteJuridico {
   tipologia: string
   /** "Aldea Chicoj, San Pedro Carchá, Alta Verapaz": lo que se haya registrado, de lo particular a lo general. */
   procedencia: string
+  /** En trámite, Suspendido, Finalizado o Abandonado: el mismo estado que se ve en Procesos. */
+  estado: EstadoVisibleProceso
 }
 
 /** `GET /juridico/reportes/procesos`: totales, desgloses y las primeras filas. */
