@@ -347,6 +347,7 @@ describe('Medicina · acceso (e2e)', () => {
           motivoConsulta: null,
           signos: SIN_SIGNOS,
           diagnostico: `${MARCA} diagnóstico`,
+          atencionBrindada: `${MARCA} atención brindada`,
           planTratamiento: null,
           recetaLaboratorios: null,
           loteDocumentos: null,
