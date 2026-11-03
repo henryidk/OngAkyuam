@@ -18,6 +18,7 @@ import type {
   HistorialConsultasPsicologiaPaginado,
   HuecoLibreDto,
   IndicadoresPsicologia,
+  ExportarPsicologiaQuery,
   IndicadoresQuery,
   ListaUsuariasPsicologia,
   ListarProcesosPsicologiaQuery,
@@ -222,7 +223,7 @@ export function obtenerIndicadores(query: IndicadoresQuery) {
 }
 
 /** El Excel de personas atendidas, como `Blob` en memoria: nunca se guarda una copia en el servidor. */
-export function descargarIndicadores(query: IndicadoresQuery) {
+export function descargarIndicadores(query: ExportarPsicologiaQuery) {
   return api
     .get<Blob>('/psicologia/indicadores.xlsx', { params: query, responseType: 'blob' })
     .then((res) => res.data)

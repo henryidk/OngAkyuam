@@ -49,6 +49,7 @@ const COLUMNAS: Columna[] = [
   { titulo: 'Legal: proceso requerido', valor: (fila) => fila.procesoRequerido, grupo: ATENCION, largo: true },
   { titulo: 'Psicológica: atención brindada', valor: (fila) => fila.atencionPsicologica, grupo: ATENCION, largo: true },
   { titulo: 'Médica: atención brindada', valor: (fila) => fila.atencionMedica, grupo: ATENCION, largo: true },
+  { titulo: 'Usuaria nueva', valor: (fila) => (fila.usuariaNueva ? 'Sí' : 'No') },
 ]
 
 /** Primera fila del encabezado: columnas sueltas (ocupan las dos filas) y grupos consecutivos. */

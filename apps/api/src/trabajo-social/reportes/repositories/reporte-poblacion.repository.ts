@@ -9,15 +9,30 @@ import type {
   IReportePoblacionRepository,
 } from '../interfaces/reporte-poblacion-repository.interface';
 
+/**
+ * Usuaria nueva en el periodo: la fecha de su primer expediente, de todos los que tiene y sin
+ * importar el tipo de registro, cae en el rango. Se calcula en cada consulta (no se guarda) para
+ * que siga bien si Trabajo Social corrige la fecha de un caso. Usa `Expediente(usuariaId, fecha)`.
+ */
+function esUsuariaNueva(filtro: FiltroReportePoblacion): Prisma.Sql {
+  return Prisma.sql`(
+    SELECT min(primero.fecha) FROM "Expediente" primero WHERE primero."usuariaId" = e."usuariaId"
+  ) BETWEEN ${filtro.desde}::date AND ${filtro.hasta}::date`;
+}
+
 /** Casos cuya fecha (de calendario, `@db.Date`) cae en el rango, con los datos de la usuaria. */
 function cteCasos(filtro: FiltroReportePoblacion): Prisma.Sql {
   const porTipo = filtro.tipoRegistro
     ? Prisma.sql`AND e."tipoRegistro" = ${filtro.tipoRegistro}::"TipoRegistro"`
     : Prisma.empty;
+  const porNuevas = filtro.soloNuevas
+    ? Prisma.sql`AND ${esUsuariaNueva(filtro)}`
+    : Prisma.empty;
   return Prisma.sql`
     casos AS (
       SELECT e.id, e.numero, e.fecha, e."createdAt", e."tipoRegistro", e."tipologiaDelito",
-             e."condicionMaternidad", e."idiomaAtencion",
+             e."condicionMaternidad", e."idiomaAtencion", e."usuariaId",
+             ${esUsuariaNueva(filtro)} AS "usuariaNueva",
              u.nombres, u.apellidos, u.dpi, u."fechaNacimiento", u."grupoEtnico", u.municipio,
              u."departamentoOtro", u."municipioOtro", u."ubicacionGeografica",
              u.telefono, u."areaResidencia", u.ocupacion,
@@ -27,6 +42,7 @@ function cteCasos(filtro: FiltroReportePoblacion): Prisma.Sql {
       JOIN "Usuario" cp ON cp.id = e."creadoPorId"
       WHERE e.fecha BETWEEN ${filtro.desde}::date AND ${filtro.hasta}::date
         ${porTipo}
+        ${porNuevas}
     )`;
 }
 
@@ -40,7 +56,7 @@ function ctePersonas(filtro: FiltroReportePoblacion): Prisma.Sql {
     ? Prisma.sql`
       UNION ALL
       SELECT c.id, c.numero, c.fecha, c."createdAt", c."tipoRegistro", c."tipologiaDelito",
-             false, n.id, h.nombres, h.apellidos, NULL, h."fechaNacimiento", h.genero::text,
+             false, c."usuariaNueva", n.id, h.nombres, h.apellidos, NULL, h."fechaNacimiento", h.genero::text,
              c."grupoEtnico", c.municipio, c."departamentoOtro", c."municipioOtro", c."ubicacionGeografica",
              NULL, c."areaResidencia", NULL, NULL, c."idiomaAtencion",
              c."atendidaPorNombre", c."atendidaPorPuesto", c.sede, n.consecutivo
@@ -52,7 +68,7 @@ function ctePersonas(filtro: FiltroReportePoblacion): Prisma.Sql {
     ${cteCasos(filtro)},
     personas AS (
       SELECT c.id AS "expedienteId", c.numero, c.fecha, c."createdAt", c."tipoRegistro", c."tipologiaDelito",
-             true AS "esUsuaria", NULL::text AS "ninoId", c.nombres, c.apellidos, c.dpi, c."fechaNacimiento",
+             true AS "esUsuaria", c."usuariaNueva", NULL::text AS "ninoId", c.nombres, c.apellidos, c.dpi, c."fechaNacimiento",
              NULL::text AS "generoNino", c."grupoEtnico", c.municipio, c."departamentoOtro", c."municipioOtro",
              c."ubicacionGeografica",
              c.telefono, c."areaResidencia", c.ocupacion, c."condicionMaternidad", c."idiomaAtencion",
@@ -86,7 +102,7 @@ export class ReportePoblacionRepository implements IReportePoblacionRepository {
              p."tipoRegistro"::text AS "tipoRegistro",
              -- La base exige al menos una (Expediente_tipologia_obligatoria_chk); por si acaso, [] y no null.
              COALESCE(p."tipologiaDelito"::text[], '{}') AS tipologias,
-             p."esUsuaria", p.nombres, p.apellidos, p.dpi,
+             p."esUsuaria", p."usuariaNueva", p.nombres, p.apellidos, p.dpi,
              to_char(p."fechaNacimiento", 'YYYY-MM-DD') AS "fechaNacimiento",
              p.edad, p."generoNino",
              p."grupoEtnico"::text AS "grupoEtnico",
@@ -199,6 +215,15 @@ export class ReportePoblacionRepository implements IReportePoblacionRepository {
       FROM personas_edad p
       GROUP BY p."esUsuaria", p.edad, p."grupoEtnico"
     `);
+  }
+
+  async contarUsuariasNuevas(filtro: FiltroReportePoblacion): Promise<number> {
+    // Distintas: una usuaria nueva con dos casos en el periodo cuenta una vez.
+    const [fila] = await this.prisma.$queryRaw<{ total: number }[]>(Prisma.sql`
+      WITH ${cteCasos(filtro)}
+      SELECT count(DISTINCT c."usuariaId")::int AS total FROM casos c WHERE c."usuariaNueva"
+    `);
+    return fila?.total ?? 0;
   }
 
   conteosTipologia(

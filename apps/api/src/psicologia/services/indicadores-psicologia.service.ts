@@ -7,10 +7,13 @@ import {
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   ETIQUETAS_RANGO_EDAD,
   ETIQUETAS_TIPOLOGIA_DELITO,
+  finDiaGT,
   finMesGT,
   fechaCalendarioGT,
+  inicioDiaGT,
   inicioMesGT,
   semanaDelMesGT,
+  type ExportarPsicologiaQuery,
   type IndicadoresPsicologia,
   type IndicadoresQuery,
 } from '@akyuam/shared';
@@ -44,13 +47,13 @@ export interface ArchivoReporte {
 
 /**
  * Columnas del Excel de personas atendidas. Sin el nombre de la persona atendida; sí el de la
- * profesional. Diagnóstico, enfoque, ingreso, estado y semana son del proceso de su sesión más
- * reciente.
+ * profesional ("Responsable"). Diagnóstico, enfoque, estado y semana son del proceso de su sesión
+ * más reciente. El ingreso por área (primer ingreso / seguimiento) no va en el Excel.
  */
 export const COLUMNAS_PERSONAS_ATENDIDAS: ColumnaHoja[] = [
   { titulo: 'No.', ancho: 6, tipo: 'numero' },
   { titulo: 'Persona', ancho: 10, tipo: 'texto' },
-  { titulo: 'No. de expediente', ancho: 14, tipo: 'texto' },
+  { titulo: 'No. expediente', ancho: 14, tipo: 'texto' },
   { titulo: 'Proceso', ancho: 16, tipo: 'texto' },
   { titulo: 'Edad', ancho: 6, tipo: 'numero' },
   { titulo: 'Rango de edad', ancho: 16, tipo: 'texto' },
@@ -64,8 +67,8 @@ export const COLUMNAS_PERSONAS_ATENDIDAS: ColumnaHoja[] = [
   { titulo: 'Inasistencias', ancho: 12, tipo: 'numero' },
   { titulo: 'Primera sesión', ancho: 13, tipo: 'fecha' },
   { titulo: 'Última sesión', ancho: 13, tipo: 'fecha' },
-  { titulo: 'Estado del caso', ancho: 15, tipo: 'texto' },
-  { titulo: 'Nombre', ancho: 32, tipo: 'texto' },
+  { titulo: 'Estado', ancho: 13, tipo: 'texto' },
+  { titulo: 'Responsable', ancho: 32, tipo: 'texto' },
 ];
 
 /**
@@ -169,22 +172,27 @@ export class IndicadoresPsicologiaService {
   }
 
   /**
-   * Excel con una fila por persona atendida en el año, de mis procesos. Se genera en memoria.
-   * Lleva diagnóstico y enfoque (texto clínico): nunca va a la bitácora.
+   * Excel con una fila por persona atendida entre `desde` y `hasta` (fechas de calendario en
+   * Guatemala, inclusive), solo de mis procesos. Se genera en memoria. Lleva diagnóstico y
+   * enfoque (texto clínico): nunca va a la bitácora.
    */
   async exportar(
-    query: IndicadoresQuery,
+    query: ExportarPsicologiaQuery,
     psicologaId: string,
     contexto: ContextoAuditoria,
   ): Promise<ArchivoReporte> {
     const personas = personasAtendidas(
-      await this.citasDelAnio(query.anio, psicologaId),
+      await this.citasRepository.listarCitasEnRango({
+        psicologaId,
+        desde: inicioDiaGT(query.desde),
+        hasta: finDiaGT(query.hasta),
+      }),
     );
     const inicios = await this.citasRepository.primerasSesionesAtendidas([
       ...new Set(personas.map((persona) => persona.procesoReciente.id)),
     ]);
     const contenido = await this.exportador.generar({
-      nombreHoja: `Personas atendidas ${query.anio}`,
+      nombreHoja: 'Personas atendidas',
       columnas: COLUMNAS_PERSONAS_ATENDIDAS,
       filas: personas.map((persona, indice) => {
         const inicio = inicios.get(persona.procesoReciente.id);
@@ -197,7 +205,7 @@ export class IndicadoresPsicologiaService {
       }),
     });
 
-    // Solo el año y cuántas filas: nunca datos de una persona en la bitácora.
+    // Solo el rango y cuántas filas: nunca datos de una persona en la bitácora.
     await this.auditService.registrar({
       usuarioId: contexto.usuarioId,
       username: contexto.username,
@@ -205,12 +213,17 @@ export class IndicadoresPsicologiaService {
       entidad: 'Reporte',
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      detalles: { anio: query.anio, filas: personas.length },
+      detalles: {
+        desde: query.desde,
+        hasta: query.hasta,
+        filas: personas.length,
+      },
     });
 
     return {
       contenido,
-      nombreArchivo: `psicologia-personas-atendidas_${query.anio}.${this.exportador.extension}`,
+      // Solo el rango de fechas en el nombre: nunca datos de una persona.
+      nombreArchivo: `psicologia-personas-atendidas_${query.desde}_${query.hasta}.${this.exportador.extension}`,
       tipoContenido: this.exportador.tipoContenido,
     };
   }

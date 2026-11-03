@@ -23,6 +23,7 @@ import type { ConteoReporte } from './trabajoSocial.js'
 import type { VistaMedicaParaPsicologia } from './medica.js'
 import { diasEntreFechasGT } from '../timezone.js'
 import { ATENCION_BRINDADA_MAX } from '../dominio/poblacionBeneficiada.js'
+import { desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE, fechaReporteSchema } from './query.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -198,6 +199,15 @@ export const indicadoresQuerySchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
 })
 export type IndicadoresQuery = z.infer<typeof indicadoresQuerySchema>
+
+/**
+ * `GET /psicologia/indicadores.xlsx` — Excel de "mis" personas atendidas entre dos fechas de
+ * calendario (inclusive, en hora de Guatemala). Misma validación de fechas que los reportes de TS.
+ */
+export const exportarPsicologiaQuerySchema = z
+  .object({ desde: fechaReporteSchema, hasta: fechaReporteSchema })
+  .refine(desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE)
+export type ExportarPsicologiaQuery = z.infer<typeof exportarPsicologiaQuerySchema>
 
 // ---- Rediseño: queries de Procesos, Usuarias y huecos de la agenda ----
 

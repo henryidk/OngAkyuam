@@ -26,3 +26,14 @@ export const fechaReporteSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
   .refine(esFechaCalendarioReal, 'Fecha inválida')
+
+/** Regla común de los rangos de reporte: "YYYY-MM-DD" se ordena igual como texto que como fecha. */
+export function desdeNoPosteriorAHasta(query: { desde: string; hasta: string }): boolean {
+  return query.desde <= query.hasta
+}
+
+/** Mensaje y campo del error de `desdeNoPosteriorAHasta`, el mismo en todos los reportes. */
+export const ERROR_RANGO_REPORTE = {
+  message: 'La fecha "Desde" no puede ser posterior a "Hasta"',
+  path: ['hasta'],
+}

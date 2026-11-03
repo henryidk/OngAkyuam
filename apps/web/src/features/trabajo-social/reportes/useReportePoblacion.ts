@@ -17,15 +17,16 @@ export function useReportePoblacion(filtros: ReportePoblacionQuery | null) {
   const hasta = filtros?.hasta
   const tipoRegistro = filtros?.tipoRegistro
   const incluirNinos = filtros?.incluirNinos
+  const soloNuevas = filtros?.soloNuevas
 
   useEffect(() => {
-    if (!desde || !hasta || !tipoRegistro || incluirNinos === undefined) {
+    if (!desde || !hasta || !tipoRegistro || incluirNinos === undefined || soloNuevas === undefined) {
       return
     }
     let cancelado = false
     setCargando(true)
     setError(null)
-    obtenerReportePoblacion({ desde, hasta, tipoRegistro, incluirNinos })
+    obtenerReportePoblacion({ desde, hasta, tipoRegistro, incluirNinos, soloNuevas })
       .then((datos) => {
         if (!cancelado) setReporte(datos)
       })
@@ -38,7 +39,7 @@ export function useReportePoblacion(filtros: ReportePoblacionQuery | null) {
     return () => {
       cancelado = true
     }
-  }, [desde, hasta, tipoRegistro, incluirNinos])
+  }, [desde, hasta, tipoRegistro, incluirNinos, soloNuevas])
 
   return { reporte, cargando, error }
 }

@@ -29,14 +29,25 @@ const RANGOS_EDAD = Object.keys(ETIQUETAS_RANGO_EDAD) as RangoEdad[];
 
 type Tipologia = CitaParaAgregado['tipologias'][number];
 
-/** Quien atendió, como sale en el reporte: "Nombre (licenciada)" o "Nombre (practicante)". */
+/** Puesto de la psicóloga titulada en `PUESTOS_POR_AREA.PSICOLOGIA`. */
+const PUESTO_PSICOLOGA = 'PSICOLOGA';
+
+/**
+ * Quien atendió, como sale en el reporte: "Nombre (licenciada)", "Nombre (practicante)" o, si la
+ * cuenta no tiene puesto, solo el nombre.
+ */
 export function nombreProfesional(profesional: {
   nombreCompleto: string;
   puesto: string | null;
 }): string {
-  const cargo =
-    profesional.puesto === PUESTO_PRACTICANTE ? 'practicante' : 'licenciada';
-  return `${profesional.nombreCompleto} (${cargo})`;
+  // Sin puesto no se sabe el cargo: solo el nombre, nunca un cargo inventado.
+  if (profesional.puesto === PUESTO_PRACTICANTE) {
+    return `${profesional.nombreCompleto} (practicante)`;
+  }
+  if (profesional.puesto === PUESTO_PSICOLOGA) {
+    return `${profesional.nombreCompleto} (licenciada)`;
+  }
+  return profesional.nombreCompleto;
 }
 
 /**

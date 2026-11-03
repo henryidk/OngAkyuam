@@ -3,7 +3,12 @@ import { AREAS_ATENCION, TIPOS_REGISTRO } from '../catalogos/registroUsuaria.js'
 import { areaAtencionSchema } from './registroUsuaria.js'
 import type { AreaAtencion, CondicionMaternidad, TipoRegistro } from './registroUsuaria.js'
 import { tipoDocumentoTrabajoSocialSchema } from './documentos.js'
-import { booleanoQuerySchema, fechaReporteSchema } from './query.js'
+import {
+  booleanoQuerySchema,
+  desdeNoPosteriorAHasta,
+  ERROR_RANGO_REPORTE,
+  fechaReporteSchema,
+} from './query.js'
 import { hoyGT } from '../timezone.js'
 import type { TipoDocumento, TipoDocumentoTrabajoSocial } from './documentos.js'
 import { ESTADOS_AREA, ESTADOS_TS, FILTROS_LISTA_USUARIAS } from '../catalogos/trabajoSocial.js'
@@ -172,12 +177,10 @@ export const reportePoblacionQuerySchema = z
     hasta: fechaReporteSchema,
     tipoRegistro: filtroTipoRegistroReporteSchema.default('TODOS'),
     incluirNinos: booleanoQuerySchema.default(true),
+    /** Solo los casos de usuarias nuevas en el periodo (ver `FilaPoblacionBeneficiada.usuariaNueva`). */
+    soloNuevas: booleanoQuerySchema.default(false),
   })
-  // "YYYY-MM-DD" se ordena igual como texto que como fecha.
-  .refine((query) => query.desde <= query.hasta, {
-    message: 'La fecha "Desde" no puede ser posterior a "Hasta"',
-    path: ['hasta'],
-  })
+  .refine(desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE)
 export type ReportePoblacionQuery = z.infer<typeof reportePoblacionQuerySchema>
 
 // ---- DTOs de respuesta (mismo criterio que ProcesoResumen/ProcesoDetalle en juridico.ts:
@@ -342,6 +345,12 @@ export interface FilaPoblacionBeneficiada {
   /** Atención brindada en cada sesión/consulta de esta persona: "02/11/2026: texto; …". */
   atencionPsicologica: string
   atencionMedica: string
+  /**
+   * La usuaria llegó por primera vez en el periodo: la fecha de su primer expediente (de todos,
+   * no solo de los del reporte) cae entre "Desde" y "Hasta". Las filas de hijas/hijos llevan el
+   * valor de la madre. Se calcula al pedir el reporte, así que sigue bien si se corrige una fecha.
+   */
+  usuariaNueva: boolean
   /** false en las filas de hijas/hijos. No es una columna del Excel. */
   esUsuaria: boolean
 }
@@ -362,6 +371,8 @@ export interface ReportePoblacionBeneficiada {
     personas: number
     usuarias: number
     ninos: number
+    /** Usuarias distintas cuyo primer expediente cae en el periodo. */
+    usuariasNuevas: number
   }
   desgloses: {
     /** Usuarias e hijas/hijos, con la edad que tenían a la fecha del caso. */

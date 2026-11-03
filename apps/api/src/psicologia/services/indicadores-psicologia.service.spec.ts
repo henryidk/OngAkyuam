@@ -301,8 +301,8 @@ describe('IndicadoresPsicologiaService', () => {
   });
 
   describe('exportar', () => {
-    const exportar = () =>
-      service.exportar({ anio: 2026 }, 'psicologa-a', contexto);
+    const exportar = (desde = '2026-01-01', hasta = '2026-12-31') =>
+      service.exportar({ desde, hasta }, 'psicologa-a', contexto);
 
     it('pide solo las citas de la psicóloga que descarga', async () => {
       await exportar();
@@ -310,6 +310,41 @@ describe('IndicadoresPsicologiaService', () => {
       expect(citasRepository.listarCitasEnRango).toHaveBeenCalledWith(
         expect.objectContaining({ psicologaId: 'psicologa-a' }),
       );
+    });
+
+    it('el rango va del inicio del día "desde" al último instante del día "hasta", en hora de Guatemala', async () => {
+      await exportar('2026-03-01', '2026-03-31');
+
+      const params = citasRepository.listarCitasEnRango.mock.calls[0][0];
+      // Guatemala es UTC-6 todo el año: la medianoche del 1 de marzo es 06:00 UTC.
+      expect(params.desde.toISOString()).toBe('2026-03-01T06:00:00.000Z');
+      expect(params.hasta.toISOString()).toBe('2026-04-01T05:59:59.999Z');
+    });
+
+    it('columnas en el orden nuevo: "No. expediente", "Estado" y "Responsable"', async () => {
+      await exportar();
+
+      const hoja = exportador.generar.mock.calls[0][0];
+      expect(hoja.columnas.map((columna) => columna.titulo)).toEqual([
+        'No.',
+        'Persona',
+        'No. expediente',
+        'Proceso',
+        'Edad',
+        'Rango de edad',
+        'Grupo étnico',
+        'Municipio',
+        'Tipología 22-2008',
+        'Diagnóstico',
+        'Enfoque terapéutico',
+        'Semana de atención',
+        'Sesiones',
+        'Inasistencias',
+        'Primera sesión',
+        'Última sesión',
+        'Estado',
+        'Responsable',
+      ]);
     });
 
     it('genera una fila por persona atendida, con etiquetas y sin nombres', async () => {
@@ -411,20 +446,20 @@ describe('IndicadoresPsicologiaService', () => {
       );
     });
 
-    it('audita la descarga con el año y el número de filas, y nombra el archivo sin datos personales', async () => {
+    it('audita la descarga con el rango y el número de filas, y nombra el archivo sin datos personales', async () => {
       citasRepository.listarCitasEnRango.mockResolvedValue([
         crearCitaAgregado(),
       ]);
 
-      const archivo = await exportar();
+      const archivo = await exportar('2026-02-01', '2026-06-30');
 
       expect(archivo.nombreArchivo).toBe(
-        'psicologia-personas-atendidas_2026.xlsx',
+        'psicologia-personas-atendidas_2026-02-01_2026-06-30.xlsx',
       );
       expect(auditService.registrar).toHaveBeenCalledWith(
         expect.objectContaining({
           accion: 'REPORTE_PSICOLOGIA_EXPORTADO',
-          detalles: { anio: 2026, filas: 1 },
+          detalles: { desde: '2026-02-01', hasta: '2026-06-30', filas: 1 },
         }),
       );
     });

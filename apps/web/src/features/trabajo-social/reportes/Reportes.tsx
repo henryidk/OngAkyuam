@@ -3,7 +3,6 @@ import { FileSpreadsheet } from 'lucide-react'
 import {
   formatFechaGT,
   hoyGT,
-  mesActualGT,
   reportePoblacionQuerySchema,
   type ReportePoblacionQuery,
 } from '@akyuam/shared'
@@ -11,19 +10,13 @@ import DesgloseBarras, { DesgloseEsqueleto } from '../../../components/reportes/
 import EmptyState from '../../../components/ui/EmptyState'
 import { guardarArchivo } from '../../../lib/archivos'
 import { descargarReportePoblacion } from '../api/trabajoSocial.api'
-import FiltrosReporte from './FiltrosReporte'
+import FiltrosReporte, { rangoEsteMes } from './FiltrosReporte'
 import TablaVistaPrevia from './TablaVistaPrevia'
 import { useReportePoblacion } from './useReportePoblacion'
 
 /** Por defecto, el mes en curso hasta hoy (hora de Guatemala). */
 function filtrosIniciales(): ReportePoblacionQuery {
-  const { anio, mes } = mesActualGT()
-  return {
-    desde: `${anio}-${String(mes).padStart(2, '0')}-01`,
-    hasta: hoyGT(),
-    tipoRegistro: 'TODOS',
-    incluirNinos: true,
-  }
+  return { ...rangoEsteMes(), tipoRegistro: 'TODOS', incluirNinos: true, soloNuevas: false }
 }
 
 function plural(cantidad: number, singular: string, varios: string) {
@@ -110,7 +103,8 @@ export default function Reportes() {
             <p className="mt-0.5 text-[13px] text-gray-500">
               {plural(reporte.totales.personas, 'persona', 'personas')}:{' '}
               {plural(reporte.totales.usuarias, 'usuaria', 'usuarias')} +{' '}
-              {plural(reporte.totales.ninos, 'hija/hijo', 'hijas/hijos')} · vista previa de las columnas del Excel
+              {plural(reporte.totales.ninos, 'hija/hijo', 'hijas/hijos')} ·{' '}
+              {plural(reporte.totales.usuariasNuevas, 'usuaria nueva', 'usuarias nuevas')} · vista previa de las columnas del Excel
               {reporte.totales.personas > reporte.vistaPrevia.length &&
                 ` (primeras ${reporte.vistaPrevia.length} filas)`}
             </p>

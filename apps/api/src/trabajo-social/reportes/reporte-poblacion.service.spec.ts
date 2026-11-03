@@ -22,6 +22,7 @@ function usuaria(overrides: Partial<FilaPoblacionRow> = {}): FilaPoblacionRow {
     tipoRegistro: 'INTERNA',
     tipologias: ['FISICA', 'PSICOLOGICA'],
     esUsuaria: true,
+    usuariaNueva: true,
     nombres: 'Ana Prueba',
     apellidos: 'Ficticia',
     dpi: '0000000000000',
@@ -116,6 +117,7 @@ describe('aFilaPoblacion', () => {
         'Juicio Oral de Divorcio por Mutuo Acuerdo, Juicio Oral de Fijación de Pensión Alimenticia',
       atencionPsicologica: '',
       atencionMedica: '10/09/2026: Consulta general',
+      usuariaNueva: true,
       esUsuaria: true,
     });
   });
@@ -233,6 +235,22 @@ describe('aFilaHoja', () => {
     expect(celda(celdas, 'Legal')).toBe('X');
     expect(celda(celdas, 'Psicológica')).toBe('');
     expect(celda(celdas, 'Médica')).toBe('X');
+    expect(celda(celdas, 'Usuaria nueva')).toBe('Sí');
+  });
+
+  it('una usuaria que ya venía de antes sale "No" en Usuaria nueva, y su hija igual', () => {
+    expect(
+      celda(
+        aFilaHoja(aFilaPoblacion(usuaria({ usuariaNueva: false }))),
+        'Usuaria nueva',
+      ),
+    ).toBe('No');
+    expect(
+      celda(
+        aFilaHoja(aFilaPoblacion(nino({ usuariaNueva: false }))),
+        'Usuaria nueva',
+      ),
+    ).toBe('No');
   });
 
   it('la fila de una hija no marca ninguna condición de maternidad', () => {
@@ -247,13 +265,20 @@ describe('aFilaHoja', () => {
   it('los grupos de encabezado siguen el formato de la ONG', () => {
     const grupos = COLUMNAS_POBLACION.map((c) => c.grupo ?? null);
 
-    expect(COLUMNAS_POBLACION).toHaveLength(32);
+    expect(COLUMNAS_POBLACION).toHaveLength(33);
     expect(grupos.slice(0, 16).every((g) => g === null)).toBe(true);
     expect(new Set(grupos.slice(16, 26))).toEqual(new Set(['Área social']));
     expect(new Set(grupos.slice(26, 29))).toEqual(
       new Set(['Referida al área']),
     );
-    expect(new Set(grupos.slice(29))).toEqual(new Set(['Áreas de atención']));
+    expect(new Set(grupos.slice(29, 32))).toEqual(
+      new Set(['Áreas de atención']),
+    );
+    // "Usuaria nueva" va al final, fuera de los grupos, para no mover el formato de la ONG.
+    expect(COLUMNAS_POBLACION.at(-1)).toEqual(
+      expect.objectContaining({ titulo: 'Usuaria nueva' }),
+    );
+    expect(grupos.at(-1)).toBeNull();
   });
 });
 
@@ -267,9 +292,15 @@ describe('armarDesgloses', () => {
         { esUsuaria: false, edad: 13, grupoEtnico: 'LADINO', total: 1 },
       ],
       [{ tipologia: 'FISICA', total: 3 }],
+      2,
     );
 
-    expect(resultado.totales).toEqual({ personas: 7, usuarias: 3, ninos: 4 });
+    expect(resultado.totales).toEqual({
+      personas: 7,
+      usuarias: 3,
+      ninos: 4,
+      usuariasNuevas: 2,
+    });
     expect(
       resultado.desgloses.rangoEdad.map((c) => [c.clave, c.total]),
     ).toEqual([
@@ -284,9 +315,14 @@ describe('armarDesgloses', () => {
   });
 
   it('muestra todas las categorías del catálogo aunque estén en 0', () => {
-    const resultado = armarDesgloses([], []);
+    const resultado = armarDesgloses([], [], 0);
 
-    expect(resultado.totales).toEqual({ personas: 0, usuarias: 0, ninos: 0 });
+    expect(resultado.totales).toEqual({
+      personas: 0,
+      usuarias: 0,
+      ninos: 0,
+      usuariasNuevas: 0,
+    });
     expect(resultado.desgloses.grupoEtnico).toHaveLength(5);
     expect(resultado.desgloses.tipologia.map((c) => c.total)).toEqual([
       0, 0, 0, 0,
@@ -311,6 +347,7 @@ describe('ReportePoblacionService', () => {
     hasta: '2026-09-30',
     tipoRegistro: 'TODOS' as const,
     incluirNinos: true,
+    soloNuevas: false,
   };
 
   beforeEach(() => {
@@ -318,6 +355,7 @@ describe('ReportePoblacionService', () => {
       filas: jest.fn().mockResolvedValue([usuaria(), nino()]),
       conteosDemograficos: jest.fn().mockResolvedValue([]),
       conteosTipologia: jest.fn().mockResolvedValue([]),
+      contarUsuariasNuevas: jest.fn().mockResolvedValue(1),
     };
     exportador = {
       tipoContenido: 'application/test',
@@ -343,9 +381,26 @@ describe('ReportePoblacionService', () => {
         hasta: '2026-09-30',
         tipoRegistro: null,
         incluirNinos: true,
+        soloNuevas: false,
       },
       20,
     );
+  });
+
+  it('pasa "Solo usuarias nuevas" al repositorio y devuelve el total de nuevas', async () => {
+    const reporte = await service.vistaPrevia(
+      { ...query, soloNuevas: true },
+      contexto,
+    );
+
+    expect(repositorio.contarUsuariasNuevas).toHaveBeenCalledWith(
+      expect.objectContaining({ soloNuevas: true }),
+    );
+    expect(repositorio.filas).toHaveBeenCalledWith(
+      expect.objectContaining({ soloNuevas: true }),
+      20,
+    );
+    expect(reporte.totales.usuariasNuevas).toBe(1);
   });
 
   it('la exportación pide todas las filas y genera una fila de hoja por persona', async () => {
@@ -379,6 +434,7 @@ describe('ReportePoblacionService', () => {
           hasta: '2026-09-30',
           tipoRegistro: 'TODOS',
           incluirNinos: true,
+          soloNuevas: false,
           filas: 2,
         },
       }),

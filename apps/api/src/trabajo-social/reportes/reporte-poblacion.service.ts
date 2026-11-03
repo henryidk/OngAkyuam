@@ -53,6 +53,7 @@ function aFiltro(query: ReportePoblacionQuery): FiltroReportePoblacion {
     hasta: query.hasta,
     tipoRegistro: query.tipoRegistro === 'TODOS' ? null : query.tipoRegistro,
     incluirNinos: query.incluirNinos,
+    soloNuevas: query.soloNuevas,
   };
 }
 
@@ -64,6 +65,7 @@ function detallesAuditoria(query: ReportePoblacionQuery) {
     hasta: query.hasta,
     tipoRegistro: query.tipoRegistro,
     incluirNinos: query.incluirNinos,
+    soloNuevas: query.soloNuevas,
   };
 }
 
@@ -125,6 +127,7 @@ export function aFilaPoblacion(
       aFechadas(row.atencionesPsicologicas),
     ),
     atencionMedica: resumenAtenciones(aFechadas(row.atencionesMedicas)),
+    usuariaNueva: row.usuariaNueva,
     esUsuaria: row.esUsuaria,
   };
 }
@@ -133,6 +136,7 @@ export function aFilaPoblacion(
 export function armarDesgloses(
   demograficos: ConteoDemograficoRow[],
   tipologias: ConteoTipologiaRow[],
+  usuariasNuevas: number,
 ): Pick<ReportePoblacionBeneficiada, 'totales' | 'desgloses'> {
   const porRango = new Map<RangoEdad, number>();
   const porGrupo = new Map<string, number>();
@@ -176,7 +180,7 @@ export function armarDesgloses(
   }));
 
   return {
-    totales: { personas: usuarias + ninos, usuarias, ninos },
+    totales: { personas: usuarias + ninos, usuarias, ninos, usuariasNuevas },
     desgloses: { rangoEdad, grupoEtnico, tipologia },
   };
 }
@@ -264,6 +268,8 @@ export const COLUMNAS_POBLACION: ColumnaHoja[] = [
     tipo: 'texto',
     grupo: GRUPO_ATENCION,
   },
+  // Al final para no mover las columnas del formato de la ONG.
+  { titulo: 'Usuaria nueva', ancho: 10, tipo: 'texto' },
 ];
 
 function marca(valor: boolean): string {
@@ -306,6 +312,7 @@ export function aFilaHoja(fila: FilaPoblacionBeneficiada): ValorCeldaHoja[] {
     fila.procesoRequerido,
     fila.atencionPsicologica,
     fila.atencionMedica,
+    fila.usuariaNueva ? 'Sí' : 'No',
   ];
 }
 
@@ -324,11 +331,14 @@ export class ReportePoblacionService {
     contexto: ContextoAuditoria,
   ): Promise<ReportePoblacionBeneficiada> {
     const filtro = aFiltro(query);
-    const [filas, demograficos, tipologias] = await Promise.all([
-      this.repositorio.filas(filtro, FILAS_VISTA_PREVIA_REPORTE),
-      this.repositorio.conteosDemograficos(filtro),
-      this.repositorio.conteosTipologia(filtro),
-    ]);
+    const [filas, demograficos, tipologias, usuariasNuevas] = await Promise.all(
+      [
+        this.repositorio.filas(filtro, FILAS_VISTA_PREVIA_REPORTE),
+        this.repositorio.conteosDemograficos(filtro),
+        this.repositorio.conteosTipologia(filtro),
+        this.repositorio.contarUsuariasNuevas(filtro),
+      ],
+    );
 
     // La vista previa muestra nombres y DPI: se audita igual que la lista de Usuarias.
     await this.auditService.registrar({
@@ -342,7 +352,7 @@ export class ReportePoblacionService {
     });
 
     return {
-      ...armarDesgloses(demograficos, tipologias),
+      ...armarDesgloses(demograficos, tipologias, usuariasNuevas),
       vistaPrevia: filas.map(aFilaPoblacion),
     };
   }

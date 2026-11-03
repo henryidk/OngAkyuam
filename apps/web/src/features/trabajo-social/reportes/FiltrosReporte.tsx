@@ -1,5 +1,11 @@
 import { Download } from 'lucide-react'
-import type { FiltroTipoRegistroReporte, ReportePoblacionQuery } from '@akyuam/shared'
+import {
+  anioActualGT,
+  hoyGT,
+  mesActualGT,
+  type FiltroTipoRegistroReporte,
+  type ReportePoblacionQuery,
+} from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 
 const OPCIONES_REGISTRO: { valor: FiltroTipoRegistroReporte; etiqueta: string }[] = [
@@ -10,6 +16,20 @@ const OPCIONES_REGISTRO: { valor: FiltroTipoRegistroReporte; etiqueta: string }[
 
 const CLASES_CAMPO =
   'rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
+
+/** Del primer día del mes en curso hasta hoy (hora de Guatemala). */
+export function rangoEsteMes(): Pick<ReportePoblacionQuery, 'desde' | 'hasta'> {
+  const { anio, mes } = mesActualGT()
+  return { desde: `${anio}-${String(mes).padStart(2, '0')}-01`, hasta: hoyGT() }
+}
+
+/** Del 1 de enero del año en curso hasta hoy (hora de Guatemala). */
+export function rangoEsteAnio(): Pick<ReportePoblacionQuery, 'desde' | 'hasta'> {
+  return { desde: `${anioActualGT()}-01-01`, hasta: hoyGT() }
+}
+
+const CLASES_ATAJO =
+  'rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 interface FiltrosReporteProps {
   filtros: ReportePoblacionQuery
@@ -49,6 +69,14 @@ export default function FiltrosReporte({
           className={CLASES_CAMPO}
         />
       </label>
+      <div className="flex gap-2">
+        <button type="button" className={CLASES_ATAJO} onClick={() => onCambiar({ ...filtros, ...rangoEsteMes() })}>
+          Este mes
+        </button>
+        <button type="button" className={CLASES_ATAJO} onClick={() => onCambiar({ ...filtros, ...rangoEsteAnio() })}>
+          Este año
+        </button>
+      </div>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-gray-600">Registro</span>
         <select
@@ -73,6 +101,18 @@ export default function FiltrosReporte({
           className="h-4 w-4 rounded border-gray-300 accent-brand-600"
         />
         Incluir hijas e hijos
+      </label>
+      <label
+        className="flex items-center gap-2 pb-2 text-sm text-gray-700"
+        title="Usuarias cuyo primer expediente cae en este periodo"
+      >
+        <input
+          type="checkbox"
+          checked={filtros.soloNuevas}
+          onChange={(event) => onCambiar({ ...filtros, soloNuevas: event.target.checked })}
+          className="h-4 w-4 rounded border-gray-300 accent-brand-600"
+        />
+        Solo usuarias nuevas
       </label>
       <Button
         tamano="md"

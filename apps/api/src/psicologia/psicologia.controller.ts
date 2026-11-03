@@ -17,8 +17,10 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import {
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
+  exportarPsicologiaQuerySchema,
   indicadoresQuerySchema,
   registroConsultaSchema,
+  type ExportarPsicologiaQuery,
   type IndicadoresQuery,
   type RegistroConsultaInput,
 } from '@akyuam/shared';
@@ -99,14 +101,14 @@ export class PsicologiaController {
     );
   }
 
-  /** Excel de personas atendidas en el año. Pocas descargas por minuto: genera un archivo completo. */
+  /** Excel de personas atendidas entre dos fechas. Pocas descargas por minuto: genera un archivo completo. */
   @Get('indicadores.xlsx')
   @UseGuards(LimitePorUsuarioGuard)
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Header('Cache-Control', 'no-store')
   async exportarIndicadores(
-    @Query(new ZodValidationPipe(indicadoresQuerySchema))
-    query: IndicadoresQuery,
+    @Query(new ZodValidationPipe(exportarPsicologiaQuerySchema))
+    query: ExportarPsicologiaQuery,
     @CurrentUser() usuario: AuthenticatedUser,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ): Promise<StreamableFile> {

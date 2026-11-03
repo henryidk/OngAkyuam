@@ -25,6 +25,8 @@ export interface FiltroReportePoblacion {
   /** null = interna y externa. */
   tipoRegistro: TipoRegistro | null;
   incluirNinos: boolean;
+  /** Solo casos de usuarias cuyo primer expediente (de todos) cae en el rango. */
+  soloNuevas: boolean;
 }
 
 /**
@@ -40,6 +42,8 @@ export interface FilaPoblacionRow {
   tipoRegistro: TipoRegistro;
   tipologias: TipologiaBd[];
   esUsuaria: boolean;
+  /** Primer expediente de la usuaria dentro del rango; en hijas/hijos, el de la madre. */
+  usuariaNueva: boolean;
   nombres: string;
   apellidos: string;
   dpi: string | null;
@@ -108,6 +112,8 @@ export interface IReportePoblacionRepository {
   conteosDemograficos(
     filtro: FiltroReportePoblacion,
   ): Promise<ConteoDemograficoRow[]>;
+  /** Usuarias distintas de los casos del reporte que son nuevas en el periodo. */
+  contarUsuariasNuevas(filtro: FiltroReportePoblacion): Promise<number>;
   /** Solo usuarias: la tipología es del caso, no de las hijas/hijos. */
   conteosTipologia(
     filtro: FiltroReportePoblacion,

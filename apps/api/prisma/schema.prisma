@@ -229,7 +229,9 @@ model Expediente {
   atencionesMedicas      AtencionMedica[]
   accionesTrabajoSocial  AccionTrabajoSocial[]
 
-  @@index([usuariaId])
+  // (usuariaId, fecha): primer expediente de cada usuaria ("Usuaria nueva" del reporte de TS).
+  // También sirve a las búsquedas por usuariaId, así que reemplaza al índice simple.
+  @@index([usuariaId, fecha])
   @@index([fecha])
   @@index([creadoPorId])
 }
