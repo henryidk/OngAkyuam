@@ -105,6 +105,38 @@ export function formatFechaLargaGT(fechaIso: string): string {
   return texto.charAt(0).toUpperCase() + texto.slice(1)
 }
 
+export interface PartesFechaGT {
+  /** "Miércoles" */
+  diaSemana: string
+  /** "4" */
+  dia: string
+  /** "noviembre" */
+  mes: string
+  /** "nov" */
+  mesCorto: string
+}
+
+/** Piezas de una fecha "YYYY-MM-DD" en español, para componerlas en la interfaz (ej. una hoja de calendario). */
+export function partesFechaGT(fechaIso: string): PartesFechaGT {
+  const fecha = DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ }).setLocale('es')
+  const diaSemana = fecha.toFormat('cccc')
+  return {
+    diaSemana: diaSemana.charAt(0).toUpperCase() + diaSemana.slice(1),
+    dia: fecha.toFormat('d'),
+    mes: fecha.toFormat('LLLL'),
+    mesCorto: fecha.toFormat('LLL').replace(/\./g, ''),
+  }
+}
+
+/** Fecha "YYYY-MM-DD" corta en español (ej. "Vie 6 nov"): para etiquetas donde no cabe la larga. */
+export function formatFechaCortaGT(fechaIso: string): string {
+  const texto = DateTime.fromISO(fechaIso, { zone: GUATEMALA_TZ })
+    .setLocale('es')
+    .toFormat('ccc d LLL')
+    .replace(/\./g, '')
+  return texto.charAt(0).toUpperCase() + texto.slice(1)
+}
+
 /** Interpreta un valor de `<input type="datetime-local">` como hora de Guatemala explícita y devuelve el instante UTC correspondiente. */
 export function parseLocalGT(valorDatetimeLocal: string): Date {
   return DateTime.fromISO(valorDatetimeLocal, { zone: GUATEMALA_TZ }).toUTC().toJSDate()

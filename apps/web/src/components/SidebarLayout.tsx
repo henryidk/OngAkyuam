@@ -23,7 +23,7 @@ export interface ItemNav {
 interface SidebarLayoutProps {
   items: ItemNav[]
   subtitulo: string
-  /** Contenido opcional a la derecha del header (hoy ningún panel lo usa). */
+  /** Contenido opcional a la derecha del header — p. ej. la campana de audiencias de Jurídico. */
   accionesHeader?: ReactNode
   /** Contador por `ruta` de `ItemNav` — p. ej. pendientes de Inicio. Solo se muestra si es mayor a 0. */
   contadores?: Partial<Record<string, number>>

@@ -25,6 +25,8 @@ import { DocumentosProcesoService } from './documentos/documentos-proceso.servic
 import { HistorialUsuariaController } from './historial/historial-usuaria.controller';
 import { HistorialUsuariaService } from './historial/historial-usuaria.service';
 import { AvisosJuridicoListener } from './inicio/avisos-juridico.listener';
+import { AvisosAudienciasController } from './avisos/avisos-audiencias.controller';
+import { AvisosAudienciasService } from './avisos/avisos-audiencias.service';
 import { InicioJuridicoController } from './inicio/inicio-juridico.controller';
 import { InicioJuridicoService } from './inicio/inicio-juridico.service';
 import { AGENDA_AUDIENCIAS_REPOSITORY } from './interfaces/agenda-audiencias-repository.interface';
@@ -84,6 +86,7 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
   ],
   controllers: [
     InicioJuridicoController,
+    AvisosAudienciasController,
     BandejaJuridicoController,
     ProcesosController,
     TransicionesController,
@@ -107,6 +110,7 @@ import { TransicionesProcesoService } from './transiciones/transiciones-proceso.
     DocumentosProcesoService,
     HistorialUsuariaService,
     InicioJuridicoService,
+    AvisosAudienciasService,
     AvisosJuridicoListener,
     ReporteProcesosService,
     ReportePoblacionJuridicoService,

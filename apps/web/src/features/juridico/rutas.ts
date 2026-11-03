@@ -35,8 +35,9 @@ export const RUTAS_JURIDICO = {
   audienciasProceso: (procesoId: string, { audienciaId }: { audienciaId?: string } = {}) =>
     conQuery(`/juridico/procesos/${procesoId}/audiencias`, { audiencia: audienciaId }),
   /** Sección Audiencias: `vista` es la pestaña (Próximas, Pendientes de resultado, Historial). */
-  audiencias: ({ vista }: { vista?: VistaAudiencias } = {}) =>
-    conQuery('/juridico/audiencias', { vista: vista === 'proximas' ? undefined : vista }),
+  /** `desde`/`hasta` (fechas de calendario, nunca datos personales) acotan Próximas a unos días. */
+  audiencias: ({ vista, desde, hasta }: { vista?: VistaAudiencias; desde?: string; hasta?: string } = {}) =>
+    conQuery('/juridico/audiencias', { vista: vista === 'proximas' ? undefined : vista, desde, hasta }),
   reportes: () => '/juridico/reportes',
   usuarias: () => '/juridico/usuarias',
   /** Pestaña Resumen de la ficha; las demás cuelgan de la misma ruta. */

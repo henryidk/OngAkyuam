@@ -22,6 +22,7 @@ export * from "./catalogos/medica.js";
 export * from "./catalogos/audienciasJuridico.js";
 export * from "./dominio/seguimiento.js";
 export * from "./dominio/poblacionBeneficiada.js";
+export * from "./dominio/avisosAudiencias.js";
 export * from "./schemas/query.js";
 export * from "./schemas/registroUsuaria.js";
 export * from "./schemas/areas.js";

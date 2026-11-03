@@ -3,6 +3,7 @@ import { BarChart3, CalendarClock, Home, Inbox, Scale, Users } from 'lucide-reac
 import type { ResumenProcesos } from '@akyuam/shared'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { obtenerResumen } from '../../features/juridico/api/juridico.api'
+import CampanaAudiencias from '../../features/juridico/avisos/CampanaAudiencias'
 import type { ContextoJuridico } from '../../features/juridico/compartido/contexto'
 import { RUTAS_JURIDICO } from '../../features/juridico/rutas'
 import { crearSocketArea } from '../../lib/socket'
@@ -57,5 +58,13 @@ export default function JuridicoLayout() {
     [RUTAS_JURIDICO.audiencias()]: resumen.audienciasPendientes,
   }
 
-  return <SidebarLayout items={ITEMS_NAV} subtitulo="Jurídica" contadores={contadores ?? undefined} outletContext={contexto} />
+  return (
+    <SidebarLayout
+      items={ITEMS_NAV}
+      subtitulo="Jurídica"
+      contadores={contadores ?? undefined}
+      outletContext={contexto}
+      accionesHeader={<CampanaAudiencias />}
+    />
+  )
 }

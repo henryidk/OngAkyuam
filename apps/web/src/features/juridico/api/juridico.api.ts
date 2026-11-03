@@ -1,4 +1,5 @@
 import type {
+  AvisosAudienciasDto,
   ReporteProcesosJuridico,
   ReporteProcesosJuridicoQuery,
   InicioJuridicoDto,
@@ -33,6 +34,13 @@ import { api } from '../../../lib/api'
 
 export function obtenerInicio() {
   return api.get<InicioJuridicoDto>('/juridico/inicio').then((res) => res.data)
+}
+
+// ---- Avisos ----
+
+/** Audiencias de hoy a 7 días, para la campana y el aviso de cada hora. */
+export function obtenerAvisosAudiencias() {
+  return api.get<AvisosAudienciasDto>('/juridico/avisos/audiencias').then((res) => res.data)
 }
 
 // ---- Procesos ----
