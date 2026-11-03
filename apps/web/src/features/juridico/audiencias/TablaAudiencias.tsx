@@ -69,16 +69,42 @@ export default function TablaAudiencias({ items, vista, atenuada, onAccion }: Ta
           {items && vista !== 'proximas' && items.map(fila)}
           {items &&
             vista === 'proximas' &&
-            agruparPorDia(items, hoyGT()).map((grupo) => (
+            agruparPorDia(items, hoyGT()).map((grupo, indice) => (
               <Fragment key={grupo.fecha}>
-                <tr className={`border-t border-gray-200 ${grupo.esHoy ? 'bg-brand-50' : 'bg-gray-50/70'}`}>
-                  <th scope="colgroup" colSpan={columnas.length + 1} className="px-4 py-2 text-left">
-                    <span className="flex items-baseline justify-between gap-3">
-                      <span className={`text-sm font-semibold ${grupo.esHoy ? 'text-brand-700' : 'text-gray-800'}`}>
-                        {grupo.etiqueta}
-                        {grupo.detalle && <span className="ml-2 font-normal text-gray-500">{grupo.detalle}</span>}
+                <tr className={indice > 0 ? 'border-t-8 border-gray-50' : undefined}>
+                  <th
+                    scope="colgroup"
+                    colSpan={columnas.length + 1}
+                    className={`border-b px-4 pb-3 pt-4 text-left font-normal ${
+                      grupo.esHoy ? 'border-brand-100 bg-brand-50' : 'border-gray-200 bg-white'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      {/* Hoja de calendario: el número del día se distingue de un vistazo al bajar por la lista. */}
+                      <span
+                        aria-hidden="true"
+                        className={`flex w-11 shrink-0 flex-col items-center rounded-lg border py-1 leading-none ${
+                          grupo.esHoy ? 'border-brand-600 bg-brand-600 text-white' : 'border-gray-200 bg-gray-50 text-gray-900'
+                        }`}
+                      >
+                        <span className={`text-[10px] font-semibold uppercase ${grupo.esHoy ? 'text-brand-100' : 'text-gray-500'}`}>
+                          {grupo.mesCorto}
+                        </span>
+                        <span className="mt-0.5 text-lg font-semibold tabular-nums">{grupo.dia}</span>
                       </span>
-                      <span className="text-xs font-normal text-gray-500">{textoCantidad(grupo.items.length)}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className={`block text-base font-semibold ${grupo.esHoy ? 'text-brand-800' : 'text-gray-900'}`}>
+                          {grupo.titulo}
+                        </span>
+                        <span className="block text-sm text-gray-600">{grupo.subtitulo}</span>
+                      </span>
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          grupo.esHoy ? 'bg-white text-brand-700' : 'bg-gray-100 text-gray-700'
+                        }`}
+                      >
+                        {textoCantidad(grupo.items.length)}
+                      </span>
                     </span>
                   </th>
                 </tr>

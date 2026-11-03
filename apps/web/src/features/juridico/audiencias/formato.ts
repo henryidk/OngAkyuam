@@ -1,6 +1,8 @@
 import {
+  diasEntreFechasGT,
   formatFechaGT,
   formatFechaLargaGT,
+  partesFechaGT,
   sumarDiasGT,
   type AccionAudiencia,
   type AudienciaEnlazadaDto,
@@ -21,11 +23,28 @@ export function etiquetaDia(fecha: string, hoy: string): string {
 
 export interface GrupoDia<T> {
   fecha: string
-  etiqueta: string
-  /** Con "Hoy" y "Mañana", la fecha completa para no tener que calcularla ("Miércoles 4 de noviembre"). */
-  detalle: string | null
+  /** Lo primero que se lee: "Hoy", "Mañana" o el día de la semana ("Jueves"). */
+  titulo: string
+  /** Completa el título: "Miércoles 4 de noviembre" con Hoy/Mañana, "5 de noviembre · en 2 días" con el resto. */
+  subtitulo: string
+  /** Para la hoja de calendario: "4" y "nov". */
+  dia: string
+  mesCorto: string
   esHoy: boolean
   items: T[]
+}
+
+function encabezadoDia(fecha: string, hoy: string): Pick<GrupoDia<unknown>, 'titulo' | 'subtitulo' | 'dia' | 'mesCorto'> {
+  const { diaSemana, dia, mes, mesCorto } = partesFechaGT(fecha)
+  const etiqueta = etiquetaDia(fecha, hoy)
+  const relativa = etiqueta === 'Hoy' || etiqueta === 'Mañana'
+  const faltan = diasEntreFechasGT(hoy, fecha)
+  return {
+    titulo: relativa ? etiqueta : diaSemana,
+    subtitulo: relativa ? `${diaSemana} ${dia} de ${mes}` : `${dia} de ${mes} · en ${faltan} días`,
+    dia,
+    mesCorto,
+  }
 }
 
 /** Agrupa filas ya ordenadas por fecha, respetando ese orden (Próximas viene ascendente). */
@@ -36,12 +55,9 @@ export function agruparPorDia<T extends { fecha: string }>(items: T[], hoy: stri
     if (ultimo?.fecha === item.fecha) {
       ultimo.items.push(item)
     } else {
-      const etiqueta = etiquetaDia(item.fecha, hoy)
-      const relativa = etiqueta === 'Hoy' || etiqueta === 'Mañana'
       grupos.push({
         fecha: item.fecha,
-        etiqueta,
-        detalle: relativa ? formatFechaLargaGT(item.fecha) : null,
+        ...encabezadoDia(item.fecha, hoy),
         esHoy: item.fecha === hoy,
         items: [item],
       })

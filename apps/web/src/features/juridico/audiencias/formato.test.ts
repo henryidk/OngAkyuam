@@ -37,13 +37,22 @@ describe('agruparPorDia', () => {
       ],
       HOY,
     )
-    expect(grupos.map((grupo) => [grupo.etiqueta, grupo.esHoy, grupo.items.map((item) => item.id)])).toEqual([
+    expect(grupos.map((grupo) => [grupo.titulo, grupo.esHoy, grupo.items.map((item) => item.id)])).toEqual([
       ['Hoy', true, ['a', 'b']],
       ['Mañana', false, ['c']],
-      ['Viernes 23 de octubre', false, ['d']],
+      ['Viernes', false, ['d']],
     ])
-    // "Hoy" y "Mañana" llevan la fecha completa; las demás ya la dicen.
-    expect(grupos.map((grupo) => grupo.detalle)).toEqual(['Martes 20 de octubre', 'Miércoles 21 de octubre', null])
+    // "Hoy" y "Mañana" se completan con la fecha; el resto, con cuántos días faltan.
+    expect(grupos.map((grupo) => grupo.subtitulo)).toEqual([
+      'Martes 20 de octubre',
+      'Miércoles 21 de octubre',
+      '23 de octubre · en 3 días',
+    ])
+    expect(grupos.map((grupo) => [grupo.dia, grupo.mesCorto])).toEqual([
+      ['20', 'oct'],
+      ['21', 'oct'],
+      ['23', 'oct'],
+    ])
   })
 
   it('sin filas no hay grupos', () => {
