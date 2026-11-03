@@ -95,17 +95,34 @@ export class ReportePoblacionRepository implements IReportePoblacionRepository {
              p."condicionMaternidad"::text AS "condicionMaternidad",
              p."idiomaAtencion"::text AS "idiomaAtencion",
              p."atendidaPorNombre", p."atendidaPorPuesto", p.sede::text AS sede,
-             -- Referencias, bitácora de Trabajo Social y procesos jurídicos son del caso de la
-             -- usuaria: no se repiten en las filas de sus hijas/hijos.
-             CASE WHEN p."esUsuaria" THEN COALESCE((
-               SELECT array_agg(r.area::text ORDER BY r."createdAt")
-               FROM "ReferidoArea" r WHERE r."expedienteId" = p."expedienteId"
-             ), '{}') ELSE '{}' END AS "areasReferidas",
-             CASE WHEN p."esUsuaria" THEN (
+             -- "Referida al área": la X queda en quien recibe la atención. Psicología y Medicina
+             -- atienden a cada persona por separado, así que cada fila (usuaria o hija/hijo) la
+             -- lleva donde tiene atención propia. Jurídico solo atiende a la usuaria: su X sale de
+             -- la referencia. Una referencia a Psicología/Medicina que aún no atiende a nadie del
+             -- caso queda en la fila de la usuaria, para que el caso referido no se pierda.
+             ARRAY(
+               SELECT r.area::text FROM "ReferidoArea" r
+               WHERE p."esUsuaria" AND r."expedienteId" = p."expedienteId"
+                 AND (r.area = 'JURIDICO'
+                      OR (r.area = 'PSICOLOGIA' AND NOT propia."casoPsicologia")
+                      OR (r.area = 'MEDICA' AND NOT propia."casoMedica"))
+               UNION
+               SELECT 'PSICOLOGIA' WHERE propia.psicologia
+               UNION
+               SELECT 'MEDICA' WHERE propia.medica
+             ) AS "areasMarcadas",
+             -- Un solo motivo (se copia a todas las áreas al referir). En una hija/hijo, solo el de
+             -- una referencia de un área donde se le atiende.
+             (
                SELECT r.motivo FROM "ReferidoArea" r
                WHERE r."expedienteId" = p."expedienteId" AND btrim(COALESCE(r.motivo, '')) <> ''
+                 AND (p."esUsuaria"
+                      OR (r.area = 'PSICOLOGIA' AND propia.psicologia)
+                      OR (r.area = 'MEDICA' AND propia.medica))
                ORDER BY r."createdAt", r.id LIMIT 1
-             ) END AS "motivoReferencia",
+             ) AS "motivoReferencia",
+             -- Bitácora de Trabajo Social y procesos jurídicos son del caso de la usuaria: no se
+             -- repiten en las filas de sus hijas/hijos (Jurídico no atiende a hijas/hijos).
              CASE WHEN p."esUsuaria" THEN COALESCE((
                SELECT json_agg(json_build_object('fecha', to_char(a.fecha, 'YYYY-MM-DD'), 'texto', a.descripcion)
                                ORDER BY a.fecha, a."createdAt")
@@ -135,6 +152,34 @@ export class ReportePoblacionRepository implements IReportePoblacionRepository {
                  AND cm."ninoId" IS NOT DISTINCT FROM p."ninoId"
              ), '[]'::json) AS "atencionesMedicas"
       FROM personas_edad p
+      -- Atención propia de la persona en cada área, y si el área ya atiende a alguien del caso:
+      --  · Psicología: un proceso ya abierto (con fecha de inicio). Un caso tomado que aún no
+      --    tiene primera cita no cuenta: todavía no se eligió a quién se atiende.
+      --  · Medicina: una consulta, o una cita no cancelada que incluye a la persona (una
+      --    inasistencia cuenta, aunque no deja atención brindada).
+      CROSS JOIN LATERAL (
+        SELECT
+          bool_or(a.area = 'PSICOLOGIA' AND a."ninoId" IS NOT DISTINCT FROM p."ninoId") IS TRUE AS psicologia,
+          bool_or(a.area = 'MEDICA' AND a."ninoId" IS NOT DISTINCT FROM p."ninoId") IS TRUE AS medica,
+          bool_or(a.area = 'PSICOLOGIA') IS TRUE AS "casoPsicologia",
+          bool_or(a.area = 'MEDICA') IS TRUE AS "casoMedica"
+        FROM (
+          SELECT 'PSICOLOGIA' AS area, ap."ninoId"
+          FROM "AtencionPsicologica" ap
+          WHERE ap."expedienteId" = p."expedienteId" AND ap."fechaInicio" IS NOT NULL
+          UNION ALL
+          SELECT 'MEDICA', cm."ninoId"
+          FROM "ConsultaMedica" cm
+          JOIN "AtencionMedica" am ON am.id = cm."atencionId"
+          WHERE am."expedienteId" = p."expedienteId"
+          UNION ALL
+          SELECT 'MEDICA', cp."ninoId"
+          FROM "CitaMedicaPersona" cp
+          JOIN "CitaMedica" ci ON ci.id = cp."citaId"
+          JOIN "AtencionMedica" am ON am.id = ci."atencionId"
+          WHERE am."expedienteId" = p."expedienteId" AND ci.estado <> 'CANCELADA'
+        ) a
+      ) propia
       WINDOW w AS (
         ORDER BY p.fecha, p."createdAt", p."expedienteId", p."esUsuaria" DESC,
                  p."fechaNacimiento", p."ninoId"

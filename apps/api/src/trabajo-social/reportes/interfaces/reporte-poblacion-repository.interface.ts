@@ -65,9 +65,16 @@ export interface FilaPoblacionRow {
   atendidaPorNombre: string;
   atendidaPorPuesto: string | null;
   sede: Sede;
-  /** Áreas a las que se refirió el caso; vacío en filas de hijas/hijos. */
-  areasReferidas: AreaAtencion[];
-  /** Motivo de la referencia más antigua que tiene motivo; null en filas de hijas/hijos. */
+  /**
+   * Columnas "Referida al área" con X, en quien recibe la atención: Psicología/Medicina donde la
+   * persona tiene atención propia; Jurídico (solo la usuaria) por la referencia. Una referencia
+   * a Psicología/Medicina que aún no atiende a nadie del caso se marca en la usuaria.
+   */
+  areasMarcadas: AreaAtencion[];
+  /**
+   * Motivo de la referencia más antigua que tiene motivo. En una hija/hijo, solo si se le
+   * atiende en un área referida; si no, null.
+   */
   motivoReferencia: string | null;
   /** Bitácora de Trabajo Social del caso; vacío en filas de hijas/hijos. */
   accionesTrabajoSocial: { fecha: string; texto: string }[];

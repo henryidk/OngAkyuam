@@ -41,7 +41,7 @@ function usuaria(overrides: Partial<FilaPoblacionRow> = {}): FilaPoblacionRow {
     atendidaPorNombre: 'Trabajadora Ficticia',
     atendidaPorPuesto: 'PRACTICANTE',
     sede: 'TACTIC',
-    areasReferidas: ['JURIDICO', 'MEDICA'],
+    areasMarcadas: ['JURIDICO', 'MEDICA'],
     motivoReferencia: '  Orientación legal  ',
     accionesTrabajoSocial: [
       { fecha: '2026-09-12', texto: 'Seguimiento telefónico' },
@@ -72,7 +72,7 @@ function nino(overrides: Partial<FilaPoblacionRow> = {}): FilaPoblacionRow {
     fechaNacimiento: '2019-05-20',
     edad: 7,
     generoNino: 'MUJER',
-    areasReferidas: [],
+    areasMarcadas: [],
     motivoReferencia: null,
     accionesTrabajoSocial: [],
     procesosJuridicos: [],
@@ -144,6 +144,37 @@ describe('aFilaPoblacion', () => {
       referidaJuridico: false,
       procesoRequerido: '',
       esUsuaria: false,
+    });
+  });
+
+  it('la hija atendida en Psicología y Medicina lleva sus X, el motivo y su propia atención', () => {
+    const fila = aFilaPoblacion(
+      nino({
+        areasMarcadas: ['PSICOLOGIA', 'MEDICA'],
+        motivoReferencia: 'Acompañamiento a la familia',
+        atencionesPsicologicas: [
+          { fechaHora: '2026-09-12T16:00:00.000Z', texto: 'Juego terapéutico' },
+        ],
+        atencionesMedicas: [
+          {
+            fechaHora: '2026-09-11T02:30:00.000Z',
+            texto: 'Control de niña sana',
+          },
+        ],
+      }),
+    );
+
+    expect(fila).toMatchObject({
+      referidaJuridico: false,
+      referidaPsicologia: true,
+      referidaMedica: true,
+      descripcionReferencia: 'Acompañamiento a la familia',
+      atencionPsicologica: '12/09/2026: Juego terapéutico',
+      atencionMedica: '10/09/2026: Control de niña sana',
+      // Lo que es del caso de la usuaria sigue vacío.
+      atencionTrabajoSocial: '',
+      procesoRequerido: '',
+      tipologia: '',
     });
   });
 

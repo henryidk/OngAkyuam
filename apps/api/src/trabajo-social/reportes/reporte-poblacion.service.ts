@@ -81,12 +81,14 @@ function aFechadas(
  * Traduce una persona del reporte a las columnas del Excel de Trabajo Social. Fuera de Alta
  * Verapaz, departamento y municipio son los que se escribieron a mano en el registro. Las filas
  * de hijas/hijos heredan del caso el lugar, el idioma, la oficina y quién atendió; lo que es
- * solo de la usuaria (DPI, teléfono, tipología, ocupación, referencias...) queda vacío.
+ * solo de la usuaria (DPI, teléfono, tipología, ocupación, bitácora, proceso jurídico...) queda
+ * vacío. Las X de Psicología/Medicina, el motivo y la atención brindada sí aplican a una
+ * hija/hijo cuando esa área le atiende (ver `areasMarcadas` en el repositorio).
  */
 export function aFilaPoblacion(
   row: FilaPoblacionRow,
 ): FilaPoblacionBeneficiada {
-  const referidas = new Set(row.areasReferidas);
+  const marcadas = new Set(row.areasMarcadas);
   return {
     numero: row.numero,
     fecha: row.fecha,
@@ -112,9 +114,9 @@ export function aFilaPoblacion(
     atendidaPor: nombreConPuesto(row.atendidaPorNombre, row.atendidaPorPuesto),
     descripcionReferencia: row.motivoReferencia?.trim() ?? '',
     atencionTrabajoSocial: resumenAtenciones(row.accionesTrabajoSocial),
-    referidaJuridico: referidas.has('JURIDICO'),
-    referidaPsicologia: referidas.has('PSICOLOGIA'),
-    referidaMedica: referidas.has('MEDICA'),
+    referidaJuridico: marcadas.has('JURIDICO'),
+    referidaPsicologia: marcadas.has('PSICOLOGIA'),
+    referidaMedica: marcadas.has('MEDICA'),
     procesoRequerido: row.procesosJuridicos
       .map((tipo) => ETIQUETAS_TIPO_PROCESO_JURIDICO[tipo])
       .sort((a, b) => a.localeCompare(b, 'es'))
