@@ -96,7 +96,7 @@ export interface ActualizarVisibilidadParams {
 export class ProcesoNoDisponibleError extends Error {}
 /** El caso ya tenía primera cita: otro envío abrió el proceso antes. */
 export class ProcesoYaAbiertoError extends Error {}
-/** La persona ya tiene otro proceso abierto (la usuaria, en cualquiera de sus expedientes). */
+/** La persona ya tiene otro proceso abierto, en este o en otro de los expedientes de la usuaria. */
 export class OtroProcesoActivoError extends Error {}
 /** La usuaria tiene una referencia sin tomar o un caso tomado sin agendar: se atiende ese. */
 export class ReferenciaPendienteError extends Error {}

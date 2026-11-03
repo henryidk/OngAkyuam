@@ -2,6 +2,7 @@ import type { Prisma } from '@prisma/client';
 import { etiquetaAtencion, fechaCalendarioGT, horaGT } from '@akyuam/shared';
 import type { ConsultaMedicaDto } from '@akyuam/shared';
 import {
+  SELECT_HIJO,
   SELECT_PERSONA,
   personaAtendida,
 } from '../../psicologia/repositories/personas';
@@ -22,7 +23,7 @@ export const SELECT_CONSULTA = {
   planTratamiento: true,
   recetaLaboratorios: true,
   ...SELECT_SIGNOS,
-  nino: { select: { id: true, ...SELECT_PERSONA } },
+  nino: { select: { id: true, ...SELECT_HIJO } },
   atencion: {
     select: {
       consecutivo: true,

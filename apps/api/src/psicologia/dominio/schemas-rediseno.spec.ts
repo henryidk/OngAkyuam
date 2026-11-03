@@ -11,7 +11,7 @@ const sesionAtendida = {
   estado: 'ATENDIDA',
   temas: 'x',
   intervencion: '',
-  recomendaciones: '',
+  diagnostico: 'Ansiedad',
   acuerdos: '',
   observaciones: '',
   motivoNoAsistencia: '',
@@ -222,6 +222,41 @@ describe('schemas del rediseño de Psicología', () => {
           borrador: true,
         }).success,
       ).toBe(true);
+    });
+
+    it('una sesión atendida exige el diagnóstico al finalizar; el borrador y la inasistencia no', () => {
+      const resultado = registroConsultaSchema.safeParse({
+        ...sesionAtendida,
+        diagnostico: '  ',
+      });
+      expect(resultado.success).toBe(false);
+      expect(resultado.error?.issues[0]).toMatchObject({
+        path: ['diagnostico'],
+        message: 'Escribe el diagnóstico de la sesión.',
+      });
+      expect(
+        registroConsultaSchema.safeParse({
+          ...sesionAtendida,
+          diagnostico: '',
+          borrador: true,
+        }).success,
+      ).toBe(true);
+      expect(
+        registroConsultaSchema.safeParse({
+          ...sesionAtendida,
+          estado: 'NO_ASISTIO',
+          motivoNoAsistencia: 'No llegó',
+          diagnostico: '',
+        }).success,
+      ).toBe(true);
+    });
+
+    it('ya no recibe recomendaciones: se descartan si un cliente viejo las manda', () => {
+      const resultado = registroConsultaSchema.parse({
+        ...sesionAtendida,
+        recomendaciones: 'texto',
+      });
+      expect(resultado).not.toHaveProperty('recomendaciones');
     });
 
     it('limita el enfoque terapéutico a 2000 caracteres', () => {

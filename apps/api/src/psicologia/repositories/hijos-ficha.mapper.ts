@@ -9,10 +9,10 @@ import type { GeneroPersona } from '@prisma/client';
 import { edad, nombreCompleto, type PersonaConNacimiento } from './personas';
 
 /** Lo que la ficha lee de un hijo/a y de sus procesos (más reciente primero). */
-export interface NinoConProcesos extends PersonaConNacimiento {
+export interface NinoConProcesos {
   id: string;
   consecutivo: number;
-  genero: GeneroPersona;
+  hijo: PersonaConNacimiento & { genero: GeneroPersona };
   atencionesPsicologicas: {
     id: string;
     consecutivo: number;
@@ -52,10 +52,10 @@ export function hijoDeFicha(
   return {
     ninoId: nino.id,
     numero: numeroPersona(expedienteNumero, nino.consecutivo),
-    nombreCompleto: nombreCompleto(nino),
-    edad: edad(nino),
-    genero: nino.genero === 'MUJER' ? 'M' : 'H',
-    fechaNacimiento: fechaColumnaISO(nino.fechaNacimiento),
+    nombreCompleto: nombreCompleto(nino.hijo),
+    edad: edad(nino.hijo),
+    genero: nino.hijo.genero === 'MUJER' ? 'M' : 'H',
+    fechaNacimiento: fechaColumnaISO(nino.hijo.fechaNacimiento),
     procesoAbierto: abierto
       ? {
           procesoId: abierto.id,

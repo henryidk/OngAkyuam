@@ -22,6 +22,7 @@ describe('AccesoPsicologiaService', () => {
       buscarCitasSolapadas: jest.fn(),
       registrarConsulta: jest.fn(),
       listarCitasEnRango: jest.fn(),
+      primerasSesionesAtendidas: jest.fn(),
       obtenerDetalle: jest.fn(),
       buscarUltimaClinica: jest.fn().mockResolvedValue(null),
     };

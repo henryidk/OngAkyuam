@@ -56,6 +56,7 @@ export function mapearCita(cita: CitaConRelaciones): CitaResumen {
     temas: cita.temas,
     intervencion: cita.intervencion,
     recomendaciones: cita.recomendaciones,
+    diagnostico: cita.diagnostico,
     clinica: cita.clinica,
     enfoqueTerapeutico: cita.enfoqueTerapeutico,
     atencionBrindada: cita.atencionBrindada,

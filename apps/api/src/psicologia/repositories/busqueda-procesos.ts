@@ -18,8 +18,8 @@ export function condicionBusqueda(
           usuaria: { apellidos: { contains: palabra, ...contiene } },
         },
       },
-      { nino: { nombres: { contains: palabra, ...contiene } } },
-      { nino: { apellidos: { contains: palabra, ...contiene } } },
+      { nino: { hijo: { nombres: { contains: palabra, ...contiene } } } },
+      { nino: { hijo: { apellidos: { contains: palabra, ...contiene } } } },
     ],
   }));
 }

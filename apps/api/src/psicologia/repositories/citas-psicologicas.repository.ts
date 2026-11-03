@@ -15,6 +15,7 @@ import type {
   RegistrarConsultaParams,
 } from '../interfaces/citas-psicologicas-repository.interface';
 import { etapaTrasSesionAtendida } from '../dominio/etapa-proceso';
+import { nombreProfesional } from '../dominio/indicadores';
 import {
   citaRegistrable,
   PROCESO_LEGIBLE,
@@ -158,7 +159,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
           estado: params.estado,
           temas: params.temas,
           intervencion: params.intervencion,
-          recomendaciones: params.recomendaciones,
+          diagnostico: params.diagnostico,
           acuerdos: params.acuerdos,
           observaciones: params.observaciones,
           motivoNoAsistencia: params.motivoNoAsistencia,
@@ -233,13 +234,21 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         estado: true,
         tipo: true,
         ninoId: true,
-        nino: { select: { fechaNacimiento: true } },
+        atencionId: true,
+        diagnostico: true,
+        enfoqueTerapeutico: true,
+        atendidoPor: { select: { nombreCompleto: true, puesto: true } },
+        nino: { select: { hijo: { select: { fechaNacimiento: true } } } },
         atencion: {
           select: {
             ...SELECT_CODIGO_PROCESO,
+            estado: true,
+            createdAt: true,
+            referido: { select: { createdAt: true } },
             expediente: {
               select: {
                 numero: true,
+                fecha: true,
                 usuariaId: true,
                 tipologiaDelito: true,
                 referidos: {
@@ -251,6 +260,11 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
                     fechaNacimiento: true,
                     grupoEtnico: true,
                     municipio: true,
+                    expedientes: {
+                      select: { fecha: true },
+                      orderBy: { fecha: 'asc' },
+                      take: 1,
+                    },
                   },
                 },
               },
@@ -262,7 +276,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
 
     return citas.map((cita) => {
       const { expediente } = cita.atencion;
-      const persona = cita.nino ?? expediente.usuaria;
+      const persona = cita.nino?.hijo ?? expediente.usuaria;
       return {
         fechaHora: cita.fechaHora,
         estado: cita.estado,
@@ -278,8 +292,38 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
           ? expediente.tipologiaDelito
           : [],
         procesoCodigo: codigoProceso(expediente.numero, cita.atencion),
+        procesoId: cita.atencionId,
+        procesoConcluido: cita.atencion.estado === 'CIERRE',
+        // Siempre hay al menos uno: el expediente de esta misma cita.
+        fechaPrimerRegistro: fechaColumnaISO(
+          expediente.usuaria.expedientes[0]?.fecha ?? expediente.fecha,
+        ),
+        ingresoProceso:
+          cita.atencion.referido?.createdAt ?? cita.atencion.createdAt,
+        numeroExpediente: expediente.numero,
+        diagnostico: cita.diagnostico,
+        enfoqueTerapeutico: cita.enfoqueTerapeutico,
+        profesional: nombreProfesional(cita.atendidoPor),
       };
     });
+  }
+
+  async primerasSesionesAtendidas(
+    procesoIds: string[],
+  ): Promise<Map<string, Date>> {
+    if (procesoIds.length === 0) return new Map();
+    const grupos = await this.prisma.citaPsicologica.groupBy({
+      by: ['atencionId'],
+      where: { atencionId: { in: procesoIds }, estado: 'ATENDIDA' },
+      _min: { fechaHora: true },
+    });
+    return new Map(
+      grupos.flatMap((grupo) =>
+        grupo._min.fechaHora
+          ? [[grupo.atencionId, grupo._min.fechaHora] as const]
+          : [],
+      ),
+    );
   }
 
   async buscarUltimaClinica(
@@ -298,7 +342,9 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       where: { id: citaId },
       include: {
         ...INCLUDE_CITA,
-        nino: { select: { nombres: true, apellidos: true } },
+        nino: {
+          select: { hijo: { select: { nombres: true, apellidos: true } } },
+        },
         atencion: {
           select: {
             ...SELECT_CODIGO_PROCESO,
@@ -327,7 +373,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       ),
       procesoEtapa: cita.atencion.estado,
       ninoNombreCompleto: cita.nino
-        ? `${cita.nino.nombres} ${cita.nino.apellidos}`
+        ? `${cita.nino.hijo.nombres} ${cita.nino.hijo.apellidos}`
         : null,
       usuariaNombreCompleto: `${cita.atencion.expediente.usuaria.nombres} ${cita.atencion.expediente.usuaria.apellidos}`,
     };

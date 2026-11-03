@@ -8,7 +8,9 @@ import {
   ETIQUETAS_RANGO_EDAD,
   ETIQUETAS_TIPOLOGIA_DELITO,
   finMesGT,
+  fechaCalendarioGT,
   inicioMesGT,
+  semanaDelMesGT,
   type IndicadoresPsicologia,
   type IndicadoresQuery,
 } from '@akyuam/shared';
@@ -40,29 +42,46 @@ export interface ArchivoReporte {
   tipoContenido: string;
 }
 
-/** Columnas del Excel de personas atendidas. Sin nombres: el reporte es estadístico. */
+/**
+ * Columnas del Excel de personas atendidas. Sin el nombre de la persona atendida; sí el de la
+ * profesional. Diagnóstico, enfoque, ingreso, estado y semana son del proceso de su sesión más
+ * reciente.
+ */
 export const COLUMNAS_PERSONAS_ATENDIDAS: ColumnaHoja[] = [
   { titulo: 'No.', ancho: 6, tipo: 'numero' },
   { titulo: 'Persona', ancho: 10, tipo: 'texto' },
+  { titulo: 'No. de expediente', ancho: 14, tipo: 'texto' },
   { titulo: 'Proceso', ancho: 16, tipo: 'texto' },
   { titulo: 'Edad', ancho: 6, tipo: 'numero' },
   { titulo: 'Rango de edad', ancho: 16, tipo: 'texto' },
   { titulo: 'Grupo étnico', ancho: 16, tipo: 'texto' },
   { titulo: 'Municipio', ancho: 26, tipo: 'texto' },
   { titulo: 'Tipología 22-2008', ancho: 34, tipo: 'texto' },
+  { titulo: 'Diagnóstico', ancho: 40, tipo: 'texto' },
+  { titulo: 'Enfoque terapéutico', ancho: 30, tipo: 'texto' },
+  { titulo: 'Semana de atención', ancho: 11, tipo: 'numero' },
   { titulo: 'Sesiones', ancho: 9, tipo: 'numero' },
   { titulo: 'Inasistencias', ancho: 12, tipo: 'numero' },
   { titulo: 'Primera sesión', ancho: 13, tipo: 'fecha' },
   { titulo: 'Última sesión', ancho: 13, tipo: 'fecha' },
+  { titulo: 'Ingreso', ancho: 15, tipo: 'texto' },
+  { titulo: 'Estado del caso', ancho: 15, tipo: 'texto' },
+  { titulo: 'Nombre', ancho: 32, tipo: 'texto' },
 ];
 
+/**
+ * `inicioProceso` = primera sesión atendida del proceso ("YYYY-MM-DD" GT): de ella sale la semana
+ * del mes en que empezó la atención. Puede ser de un año anterior al del reporte.
+ */
 export function aFilaHoja(
   persona: PersonaAtendida,
   indice: number,
+  inicioProceso: string,
 ): ValorCeldaHoja[] {
   return [
     indice + 1,
     persona.esHijo ? 'Hija/o' : 'Usuaria',
+    persona.numeroExpediente,
     persona.procesos.join(', '),
     persona.edad,
     ETIQUETAS_RANGO_EDAD[persona.rangoEdad],
@@ -73,10 +92,16 @@ export function aFilaHoja(
     persona.tipologias
       .map((tipologia) => ETIQUETAS_TIPOLOGIA_DELITO[tipologia])
       .join(', '),
+    persona.diagnostico ?? '',
+    persona.enfoqueTerapeutico ?? '',
+    semanaDelMesGT(inicioProceso),
     persona.sesiones,
     persona.inasistencias,
     persona.primeraSesion,
     persona.ultimaSesion,
+    persona.procesoReciente.seguimiento ? 'Seguimiento' : 'Primer ingreso',
+    persona.procesoReciente.concluido ? 'Concluido' : 'En atención',
+    persona.profesional,
   ];
 }
 
@@ -145,7 +170,10 @@ export class IndicadoresPsicologiaService {
     return indicadores;
   }
 
-  /** Excel con una fila por persona atendida en el año, de mis procesos. Se genera en memoria. */
+  /**
+   * Excel con una fila por persona atendida en el año, de mis procesos. Se genera en memoria.
+   * Lleva diagnóstico y enfoque (texto clínico): nunca va a la bitácora.
+   */
   async exportar(
     query: IndicadoresQuery,
     psicologaId: string,
@@ -154,10 +182,21 @@ export class IndicadoresPsicologiaService {
     const personas = personasAtendidas(
       await this.citasDelAnio(query.anio, psicologaId),
     );
+    const inicios = await this.citasRepository.primerasSesionesAtendidas([
+      ...new Set(personas.map((persona) => persona.procesoReciente.id)),
+    ]);
     const contenido = await this.exportador.generar({
       nombreHoja: `Personas atendidas ${query.anio}`,
       columnas: COLUMNAS_PERSONAS_ATENDIDAS,
-      filas: personas.map(aFilaHoja),
+      filas: personas.map((persona, indice) => {
+        const inicio = inicios.get(persona.procesoReciente.id);
+        // Siempre hay una: la persona tuvo al menos una sesión atendida en ese proceso.
+        return aFilaHoja(
+          persona,
+          indice,
+          inicio ? fechaCalendarioGT(inicio) : persona.primeraSesion,
+        );
+      }),
     });
 
     // Solo el año y cuántas filas: nunca datos de una persona en la bitácora.

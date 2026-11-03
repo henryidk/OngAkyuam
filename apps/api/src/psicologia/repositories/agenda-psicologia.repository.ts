@@ -15,7 +15,12 @@ import type {
   RangoAgendaParams,
 } from '../interfaces/agenda-psicologia-repository.interface';
 import { codigoProceso, SELECT_CODIGO_PROCESO } from './codigo-proceso';
-import { nombreCompleto, personaAtendida, SELECT_PERSONA } from './personas';
+import {
+  nombreCompleto,
+  personaAtendida,
+  SELECT_HIJO,
+  SELECT_PERSONA,
+} from './personas';
 
 /** Tope de seguridad: el servicio ya acota el rango a unas semanas. */
 const LIMITE_CITAS = 500;
@@ -51,7 +56,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         tipo: true,
         estado: true,
         borrador: true,
-        nino: { select: { id: true, ...SELECT_PERSONA } },
+        nino: { select: { id: true, ...SELECT_HIJO } },
         atencion: {
           select: {
             ...SELECT_CODIGO_PROCESO,
@@ -129,7 +134,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
       select: {
         id: true,
         consecutivo: true,
-        nino: { select: { id: true, consecutivo: true, ...SELECT_PERSONA } },
+        nino: { select: { id: true, consecutivo: true, ...SELECT_HIJO } },
         expediente: {
           select: {
             numero: true,

@@ -18,6 +18,19 @@ export const SELECT_PERSONA = {
   fechaNacimiento: true,
 } as const;
 
+/**
+ * Los datos personales de un hijo/a viven en `HijoUsuaria` (uno solo por hijo, aunque venga en
+ * varios casos); `Nino` es solo su enlace con un expediente. Se piden siempre anidados:
+ * `nino: { select: { id: true, ...SELECT_HIJO } }`.
+ */
+export const SELECT_HIJO = { hijo: { select: SELECT_PERSONA } } as const;
+
+/** Un hijo/a dentro de un caso, con sus datos personales. */
+export interface NinoConPersona {
+  id: string;
+  hijo: PersonaConNacimiento;
+}
+
 export function nombreCompleto(persona: {
   nombres: string;
   apellidos: string;
@@ -32,9 +45,9 @@ export function edad(persona: PersonaConNacimiento): number {
 /** A quién se atiende en una cita: el hijo/a indicado o, si no hay, la usuaria. */
 export function personaAtendida(
   usuaria: PersonaConNacimiento,
-  nino: (PersonaConNacimiento & { id: string }) | null,
+  nino: NinoConPersona | null,
 ): PersonaAtendidaDto {
-  const persona = nino ?? usuaria;
+  const persona = nino?.hijo ?? usuaria;
   return {
     ninoId: nino?.id ?? null,
     nombreCompleto: nombreCompleto(persona),
@@ -45,7 +58,7 @@ export function personaAtendida(
 /** La usuaria primero y luego sus hijos/as: las personas a quienes se puede dar la cita. */
 export function personasDelExpediente(expediente: {
   usuaria: PersonaConNacimiento;
-  ninos: (PersonaConNacimiento & { id: string })[];
+  ninos: NinoConPersona[];
 }): PersonaAtendidaDto[] {
   return [
     personaAtendida(expediente.usuaria, null),
@@ -69,8 +82,7 @@ export function personasParaAbrir(
   expediente: {
     numero: string;
     usuaria: PersonaConNacimiento;
-    ninos: (PersonaConNacimiento & {
-      id: string;
+    ninos: (NinoConPersona & {
       consecutivo: number;
       atencionesPsicologicas: ProcesoAbiertoDe[];
     })[];

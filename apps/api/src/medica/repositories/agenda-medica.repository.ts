@@ -14,6 +14,7 @@ import type {
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  SELECT_HIJO,
   SELECT_PERSONA,
   edad,
   nombreCompleto,
@@ -35,8 +36,8 @@ import { EXPEDIENTE_REFERIDO_A_MEDICA } from './acceso-medica.repository';
 import { SELECT_PERSONAS_CITA, personasDeCita } from './mapeo';
 
 const SELECT_NINOS = {
-  select: { id: true, ...SELECT_PERSONA },
-  orderBy: { fechaNacimiento: 'asc' },
+  select: { id: true, ...SELECT_HIJO },
+  orderBy: { consecutivo: 'asc' },
 } as const;
 
 /** La cita de la Agenda: nunca trae datos clínicos (ni motivo ni diagnóstico). */

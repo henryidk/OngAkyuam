@@ -32,7 +32,12 @@ import { condicionBusqueda } from './busqueda-procesos';
 import { casoPorAgendar } from './bandeja-psicologia.repository';
 import { mapearDocumentoCita } from './citas-psicologicas.mapper';
 import { codigoProceso, SELECT_CODIGO_PROCESO } from './codigo-proceso';
-import { nombreCompleto, personaAtendida, SELECT_PERSONA } from './personas';
+import {
+  nombreCompleto,
+  personaAtendida,
+  SELECT_HIJO,
+  SELECT_PERSONA,
+} from './personas';
 
 const LIMITE_EXTRA_CURSOR = 1;
 /** Tope de procesos de una misma usuaria (con sus hijos/as): en la práctica son unos pocos. */
@@ -91,7 +96,7 @@ function condicionAlcance(
 const SELECT_RESUMEN = {
   ...SELECT_CODIGO_PROCESO,
   // Pisa el `nino` del código: además del número, quién es.
-  nino: { select: { id: true, consecutivo: true, ...SELECT_PERSONA } },
+  nino: { select: { id: true, consecutivo: true, ...SELECT_HIJO } },
   id: true,
   estado: true,
   fechaInicio: true,
@@ -412,13 +417,14 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         temas: true,
         intervencion: true,
         recomendaciones: true,
+        diagnostico: true,
         acuerdos: true,
         observaciones: true,
         motivoNoAsistencia: true,
         clinica: true,
         enfoqueTerapeutico: true,
         atencionBrindada: true,
-        nino: { select: { id: true, ...SELECT_PERSONA } },
+        nino: { select: { id: true, ...SELECT_HIJO } },
         atencion: {
           select: {
             expediente: { select: { usuaria: { select: SELECT_PERSONA } } },
@@ -465,6 +471,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         temas: cita.temas,
         intervencion: cita.intervencion,
         recomendaciones: cita.recomendaciones,
+        diagnostico: cita.diagnostico,
         acuerdos: cita.acuerdos,
         observaciones: cita.observaciones,
         motivoNoAsistencia: cita.motivoNoAsistencia,
@@ -506,7 +513,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
   ): Promise<PersonaAtendidaDto[]> {
     const citas = await this.prisma.citaPsicologica.findMany({
       where: { atencionId: procesoId, estado: 'ATENDIDA' },
-      select: { nino: { select: { id: true, ...SELECT_PERSONA } } },
+      select: { nino: { select: { id: true, ...SELECT_HIJO } } },
       distinct: ['ninoId'],
     });
     return citas

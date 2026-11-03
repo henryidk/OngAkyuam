@@ -21,6 +21,7 @@ function crearCita(overrides: Partial<CitaResumen> = {}): CitaResumen {
     temas: null,
     intervencion: null,
     recomendaciones: null,
+    diagnostico: null,
     clinica: null,
     enfoqueTerapeutico: null,
     atencionBrindada: null,
@@ -61,6 +62,7 @@ describe('CitasPsicologicasService', () => {
       buscarCitasSolapadas: jest.fn(),
       registrarConsulta: jest.fn(),
       listarCitasEnRango: jest.fn(),
+      primerasSesionesAtendidas: jest.fn(),
       obtenerDetalle: jest.fn(),
       buscarUltimaClinica: jest.fn().mockResolvedValue(null),
     };

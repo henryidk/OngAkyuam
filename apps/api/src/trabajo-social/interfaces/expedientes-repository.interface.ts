@@ -28,6 +28,13 @@ export class UsuariaNoEncontradaError extends Error {
   }
 }
 
+/** Un `hijoId` que no es de la usuaria del caso (o no existe): nunca se enlaza. */
+export class HijoDeOtraUsuariaError extends Error {
+  constructor() {
+    super('El hijo/a indicado no pertenece a la usuaria');
+  }
+}
+
 export interface DatosIdentidadUsuaria {
   nombres: string;
   apellidos: string;
@@ -52,6 +59,8 @@ export interface DatosAgresor {
 }
 
 export interface DatosNino {
+  /** Un hijo/a ya registrado de la usuaria; null = uno nuevo. */
+  hijoId: string | null;
   nombres: string;
   apellidos: string;
   fechaNacimiento: string;

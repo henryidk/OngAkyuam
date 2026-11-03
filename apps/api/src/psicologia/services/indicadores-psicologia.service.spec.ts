@@ -21,6 +21,15 @@ function crearCitaAgregado(
     municipio: 'COBAN',
     tipologias: ['FISICA'],
     procesoCodigo: '01-2026',
+    procesoId: 'proceso-1',
+    procesoConcluido: false,
+    // Registrada y referida el mismo día: primer ingreso.
+    fechaPrimerRegistro: '2026-01-20',
+    ingresoProceso: new Date('2026-01-20T22:00:00.000Z'),
+    numeroExpediente: '01-2026',
+    diagnostico: 'Ansiedad',
+    enfoqueTerapeutico: 'Sistémico',
+    profesional: 'Psicóloga Ficticia (licenciada)',
     ...overrides,
   };
 }
@@ -57,6 +66,7 @@ describe('IndicadoresPsicologiaService', () => {
       buscarCitasSolapadas: jest.fn(),
       registrarConsulta: jest.fn(),
       listarCitasEnRango: jest.fn(),
+      primerasSesionesAtendidas: jest.fn().mockResolvedValue(new Map()),
       obtenerDetalle: jest.fn(),
       buscarUltimaClinica: jest.fn().mockResolvedValue(null),
     };
@@ -326,18 +336,95 @@ describe('IndicadoresPsicologiaService', () => {
           1,
           'Usuaria',
           '01-2026',
+          '01-2026',
           36,
           '31 a 60 años',
           'Maya',
           'Cobán',
           'Física',
+          'Ansiedad',
+          'Sistémico',
+          // Sin dato del repositorio cae a la primera sesión del año: 5 de feb 2026 (jueves),
+          // el 1 de febrero es domingo → semana 2.
+          2,
           2,
           1,
           '2026-02-05',
           '2026-03-05',
+          'Primer ingreso',
+          'En atención',
+          'Psicóloga Ficticia (licenciada)',
         ],
       ]);
     });
+
+    it('calcula la semana de calendario con la primera sesión del proceso, aunque sea de otro año', async () => {
+      citasRepository.listarCitasEnRango.mockResolvedValue([
+        crearCitaAgregado({ procesoConcluido: true }),
+      ]);
+      // 2025-12-29 15:00 UTC = lunes 29 de dic en GT; el 1 de dic de 2025 fue lunes → semana 5.
+      citasRepository.primerasSesionesAtendidas.mockResolvedValue(
+        new Map([['proceso-1', new Date('2025-12-29T15:00:00.000Z')]]),
+      );
+
+      await exportar();
+
+      expect(citasRepository.primerasSesionesAtendidas).toHaveBeenCalledWith([
+        'proceso-1',
+      ]);
+      const [fila] = exportador.generar.mock.calls[0][0].filas;
+      expect(fila[11]).toBe(5);
+      expect(fila[17]).toBe('Concluido');
+    });
+
+    it('toma diagnóstico, enfoque y estado del proceso más reciente, sin arrastrar los del anterior', async () => {
+      citasRepository.listarCitasEnRango.mockResolvedValue([
+        crearCitaAgregado({
+          fechaHora: new Date('2026-02-05T15:00:00.000Z'),
+          procesoId: 'proceso-viejo',
+          procesoConcluido: true,
+          diagnostico: 'Duelo',
+        }),
+        crearCitaAgregado({
+          fechaHora: new Date('2026-08-05T15:00:00.000Z'),
+          procesoId: 'proceso-nuevo',
+          procesoCodigo: '01-2026 · Proceso 2',
+          diagnostico: null,
+          enfoqueTerapeutico: null,
+        }),
+      ]);
+
+      await exportar();
+
+      const [fila] = exportador.generar.mock.calls[0][0].filas;
+      expect(fila[9]).toBe('');
+      expect(fila[10]).toBe('');
+      expect(fila[17]).toBe('En atención');
+    });
+
+    it.each([
+      // Registrada en 2025 y referida a Psicología en 2026.
+      ['2025-11-10', '2026-02-03T16:00:00.000Z', 'Seguimiento'],
+      // Mismo año pero otro día: también ya estaba registrada.
+      ['2026-01-05', '2026-03-10T16:00:00.000Z', 'Seguimiento'],
+      // 20 de enero 23:30 en GT ya es 21 en UTC: sigue siendo el mismo día de registro.
+      ['2026-01-20', '2026-01-21T05:30:00.000Z', 'Primer ingreso'],
+    ])(
+      'registro %s e ingreso a Psicología %s → %s',
+      async (fechaPrimerRegistro, ingreso, esperado) => {
+        citasRepository.listarCitasEnRango.mockResolvedValue([
+          crearCitaAgregado({
+            fechaPrimerRegistro,
+            ingresoProceso: new Date(ingreso),
+          }),
+        ]);
+
+        await exportar();
+
+        const [fila] = exportador.generar.mock.calls[0][0].filas;
+        expect(fila[16]).toBe(esperado);
+      },
+    );
 
     it('audita la descarga con el año y el número de filas, y nombra el archivo sin datos personales', async () => {
       citasRepository.listarCitasEnRango.mockResolvedValue([

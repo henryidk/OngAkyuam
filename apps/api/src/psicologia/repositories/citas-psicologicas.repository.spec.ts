@@ -18,6 +18,7 @@ const CITA = {
   temas: null,
   intervencion: null,
   recomendaciones: null,
+  diagnostico: null,
   clinica: 'CLINICA_1',
   enfoqueTerapeutico: null,
   atencionBrindada: null,
@@ -56,7 +57,7 @@ function params(
     estado: 'ATENDIDA',
     temas: null,
     intervencion: null,
-    recomendaciones: null,
+    diagnostico: null,
     acuerdos: null,
     observaciones: null,
     motivoNoAsistencia: null,
@@ -248,11 +249,22 @@ describe('CitasPsicologicasRepository.listarCitasEnRango', () => {
       estado: 'ATENDIDA',
       tipo: 'SEGUIMIENTO',
       ninoId: null,
+      atencionId: 'proceso-1',
+      diagnostico: 'Ansiedad',
+      enfoqueTerapeutico: 'Sistémico',
+      atendidoPor: {
+        nombreCompleto: 'Psicóloga Ficticia',
+        puesto: 'PRACTICANTE',
+      },
       nino: null,
       atencion: {
         consecutivo: 1,
+        estado: 'CIERRE',
+        createdAt: new Date('2026-04-01T15:00:00.000Z'),
+        referido: { createdAt: new Date('2026-03-20T15:00:00.000Z') },
         expediente: {
           numero: '05-2026',
+          fecha: new Date('2026-03-20T00:00:00.000Z'),
           usuariaId: 'usuaria-1',
           tipologiaDelito: ['FISICA'],
           referidos: puedeVerDatosCaso === null ? [] : [{ puedeVerDatosCaso }],
@@ -260,11 +272,40 @@ describe('CitasPsicologicasRepository.listarCitasEnRango', () => {
             fechaNacimiento: new Date('1990-01-15T00:00:00.000Z'),
             grupoEtnico: 'LADINO',
             municipio: 'COBAN',
+            expedientes: [{ fecha: new Date('2025-08-12T00:00:00.000Z') }],
           },
         },
       },
     };
   }
+
+  async function listarCon(puedeVerDatosCaso: boolean | null) {
+    const prisma = {
+      citaPsicologica: {
+        findMany: jest.fn().mockResolvedValue([filaCita(puedeVerDatosCaso)]),
+      },
+    } as unknown as PrismaService;
+    return new CitasPsicologicasRepository(prisma).listarCitasEnRango({
+      psicologaId: 'psicologa-a',
+      desde: new Date('2026-01-01T06:00:00.000Z'),
+      hasta: new Date('2027-01-01T05:59:59.999Z'),
+    });
+  }
+
+  it('entrega expediente, estado del proceso, diagnóstico, enfoque y profesional para el reporte', async () => {
+    const [cita] = await listarCon(true);
+    expect(cita).toMatchObject({
+      procesoId: 'proceso-1',
+      procesoConcluido: true,
+      numeroExpediente: '05-2026',
+      diagnostico: 'Ansiedad',
+      enfoqueTerapeutico: 'Sistémico',
+      profesional: 'Psicóloga Ficticia (practicante)',
+      // El expediente más antiguo de la usuaria y la referencia del proceso, no su apertura.
+      fechaPrimerRegistro: '2025-08-12',
+      ingresoProceso: new Date('2026-03-20T15:00:00.000Z'),
+    });
+  });
 
   async function tipologiasCon(puedeVerDatosCaso: boolean | null) {
     const prisma = {

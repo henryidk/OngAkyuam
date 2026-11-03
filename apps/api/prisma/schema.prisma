@@ -194,6 +194,7 @@ model Usuaria {
   updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
 
   expedientes Expediente[]
+  hijos       HijoUsuaria[]
 
   @@index([apellidos, nombres]) // recorrido ordenado; la búsqueda difusa usa el índice trigram (ver migración)
   @@index([municipio])
@@ -291,10 +292,11 @@ model Nino {
   id              String        @id @default(uuid())
   expedienteId    String
   expediente      Expediente    @relation(fields: [expedienteId], references: [id], onDelete: Cascade)
-  nombres         String
-  apellidos       String
-  fechaNacimiento DateTime      @db.Date
-  genero          GeneroPersona
+  // Quién es el hijo/a (sus datos viven ahí, una sola vez). Esta fila es su participación en
+  // un caso: la base exige que sea hijo/a de la usuaria del expediente (trigger
+  // `nino_hijo_de_la_usuaria`, migración `hijos_identidad_estable`).
+  hijoId          String
+  hijo            HijoUsuaria   @relation(fields: [hijoId], references: [id], onDelete: Restrict)
   // Número estable del hijo/a dentro del expediente de su madre (04-2026.01, 04-2026.02). Lo
   // asigna un trigger de la base al insertar (el valor enviado se ignora) y no se puede cambiar:
   // ver la migración `psicologia_proceso_por_persona`.
@@ -309,7 +311,28 @@ model Nino {
   // Destino de la llave compuesta de AtencionPsicologica: la base rechaza el proceso de un hijo/a
   // de otro expediente.
   @@unique([id, expedienteId])
+  // El mismo hijo/a no entra dos veces al mismo caso.
+  @@unique([hijoId, expedienteId])
   @@index([expedienteId])
+}
+
+// Identidad estable de un hijo/a de la usuaria, compartida por todos sus casos: permite saber
+// si ya fue atendido antes en un área (ingreso por área). Solo datos de identificación.
+model HijoUsuaria {
+  id              String        @id @default(uuid())
+  usuariaId       String
+  usuaria         Usuaria       @relation(fields: [usuariaId], references: [id], onDelete: Cascade)
+  nombres         String
+  apellidos       String
+  fechaNacimiento DateTime      @db.Date
+  genero          GeneroPersona
+  createdAt       DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime      @updatedAt @db.Timestamptz(3)
+
+  casos                  Nino[]
+  atencionesPsicologicas AtencionPsicologica[]
+
+  @@index([usuariaId])
 }
 
 // Consecutivo atómico por año para el número de expediente "NN-AAAA".
@@ -706,6 +729,12 @@ model AtencionPsicologica {
   // tomado que aún no tiene primera cita queda en null hasta que se elige a quién se atiende.
   ninoId               String?
   nino                 Nino?                     @relation(fields: [ninoId, expedienteId], references: [id, expedienteId], onDelete: NoAction)
+  // Copia del hijo/a de `ninoId` (null = la usuaria). La llena siempre el trigger
+  // `atencion_psicologica_hijo` (lo que envíe la app se ignora) y existe solo para el índice
+  // parcial "un proceso abierto por hijo/a" entre todos los expedientes de su madre (migración
+  // `psicologia_proceso_abierto_por_hijo`). No se escribe desde el código.
+  hijoId               String?
+  hijo                 HijoUsuaria?              @relation(fields: [hijoId], references: [id], onDelete: Restrict)
   estado               EstadoAtencionPsicologica @default(INICIO)
   psicologaAsignadaId  String?
   psicologaAsignada    Usuario?                  @relation("AtencionPsicologicaAsignada", fields: [psicologaAsignadaId], references: [id])
@@ -836,7 +865,13 @@ model CitaPsicologica {
   motivoNoAsistencia  String?               @db.Text
   temas               String?               @db.Text
   intervencion        String?               @db.Text
+  // Ya no se pide en el registro de la sesión: se conserva solo para no perder lo ya escrito,
+  // que se sigue mostrando en las notas de sesiones anteriores.
   recomendaciones     String?               @db.Text
+  // Diagnóstico de la sesión. Null en sesiones previas a que se pidiera, sin atender o en
+  // borrador; la app lo exige al terminar el registro de una sesión atendida. El del último
+  // registro atendido sale en el Excel de personas atendidas.
+  diagnostico         String?               @db.Text
   // Null en sesiones previas a que se pidiera o sin atender; la app la exige al registrar una
   // sesión atendida.
   clinica             ClinicaPsicologia?

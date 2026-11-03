@@ -256,7 +256,7 @@ function WizardRegistro({
         <PasoSituacion form={form} sinDatosAgresor={sinDatosAgresor} onCambiarSinDatosAgresor={setSinDatosAgresor} />
       )}
       {paso.id === 'registro' && <PasoTipoRegistro form={form} />}
-      {paso.id === 'hijos' && <PasoHijos form={form} ninosFieldArray={ninosFieldArray} />}
+      {paso.id === 'hijos' && <PasoHijos form={form} ninosFieldArray={ninosFieldArray} hijosConocidos={usuaria?.hijos} />}
       {paso.id === 'revision' && <PasoRevision form={form} onEditar={irAPaso} usuariaExistente={usuariaExistente} />}
     </MarcoWizard>
   )

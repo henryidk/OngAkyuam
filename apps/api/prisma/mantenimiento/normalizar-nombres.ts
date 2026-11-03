@@ -66,7 +66,7 @@ async function main() {
     await prisma.usuaria.findMany({ select: SELECCION }),
   );
   const ninos = correccionesDe(
-    await prisma.nino.findMany({ select: SELECCION }),
+    await prisma.hijoUsuaria.findMany({ select: SELECCION }),
   );
   const agresores = correccionesDe(
     await prisma.agresor.findMany({ select: SELECCION }),
@@ -110,7 +110,7 @@ async function main() {
       }),
     ),
     ...ninos.map(({ id, nombres, apellidos }) =>
-      prisma.nino.update({
+      prisma.hijoUsuaria.update({
         where: { id },
         data: { nombres: nombres ?? '', apellidos: apellidos ?? '' },
       }),

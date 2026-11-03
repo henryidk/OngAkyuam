@@ -18,7 +18,12 @@ import { PROCESO_LEGIBLE, sesionPorRegistrar } from './acceso-expediente';
 import { condicionBusqueda } from './busqueda-procesos';
 import { mapearDocumentoCita } from './citas-psicologicas.mapper';
 import { codigoProceso, SELECT_CODIGO_PROCESO } from './codigo-proceso';
-import { nombreCompleto, personaAtendida, SELECT_PERSONA } from './personas';
+import {
+  nombreCompleto,
+  personaAtendida,
+  SELECT_HIJO,
+  SELECT_PERSONA,
+} from './personas';
 
 const LIMITE_EXTRA_CURSOR = 1;
 
@@ -32,7 +37,7 @@ const SELECT_ENCABEZADO = {
   id: true,
   fechaHora: true,
   atencionId: true,
-  nino: { select: { id: true, ...SELECT_PERSONA } },
+  nino: { select: { id: true, ...SELECT_HIJO } },
   atencion: {
     select: {
       ...SELECT_CODIGO_PROCESO,
@@ -152,6 +157,7 @@ export class ConsultasSesionesRepository implements IConsultasSesionesRepository
         temas: true,
         intervencion: true,
         recomendaciones: true,
+        diagnostico: true,
         acuerdos: true,
         observaciones: true,
         motivoNoAsistencia: true,
@@ -176,6 +182,7 @@ export class ConsultasSesionesRepository implements IConsultasSesionesRepository
       temas: cita.temas,
       intervencion: cita.intervencion,
       recomendaciones: cita.recomendaciones,
+      diagnostico: cita.diagnostico,
       acuerdos: cita.acuerdos,
       observaciones: cita.observaciones,
       motivoNoAsistencia: cita.motivoNoAsistencia,

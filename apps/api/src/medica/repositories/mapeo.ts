@@ -5,8 +5,9 @@ import {
   type SignosVitalesDto,
 } from '@akyuam/shared';
 import {
-  SELECT_PERSONA,
+  SELECT_HIJO,
   personaAtendida,
+  type NinoConPersona,
   type PersonaConNacimiento,
 } from '../../psicologia/repositories/personas';
 
@@ -89,20 +90,20 @@ export function decodificarCursor(
 
 /** Las personas de una cita, tal como se piden a Prisma (null en `nino` = la usuaria). */
 export const SELECT_PERSONAS_CITA = {
-  select: { nino: { select: { id: true, ...SELECT_PERSONA } } },
+  select: { nino: { select: { id: true, consecutivo: true, ...SELECT_HIJO } } },
 } as const;
 
 /**
  * Personas de una visita para mostrar: la usuaria primero (si viene) y luego sus hijos/as del
- * mayor al menor, igual que en el expediente.
+ * por su número en el expediente (el mismo orden en toda la app).
  */
 export function personasDeCita(
   usuaria: PersonaConNacimiento,
-  filas: { nino: (PersonaConNacimiento & { id: string }) | null }[],
+  filas: { nino: (NinoConPersona & { consecutivo: number }) | null }[],
 ): PersonaAtendidaDto[] {
   const ninos = filas
     .flatMap((fila) => (fila.nino ? [fila.nino] : []))
-    .sort((a, b) => a.fechaNacimiento.getTime() - b.fechaNacimiento.getTime());
+    .sort((a, b) => a.consecutivo - b.consecutivo);
   return [
     ...(filas.some((fila) => fila.nino === null)
       ? [personaAtendida(usuaria, null)]

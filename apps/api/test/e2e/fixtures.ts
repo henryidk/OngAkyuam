@@ -99,13 +99,22 @@ export async function crearExpediente(
 
 /** Hijo/a ficticio registrado en el expediente. */
 export async function crearNino(prisma: PrismaService, expedienteId: string) {
+  const { usuariaId } = await prisma.expediente.findUniqueOrThrow({
+    where: { id: expedienteId },
+    select: { usuariaId: true },
+  });
   return prisma.nino.create({
     data: {
-      expedienteId,
-      nombres: MARCA,
-      apellidos: `Nino ${sufijo()}`,
-      fechaNacimiento: new Date('2018-01-01'),
-      genero: 'MUJER',
+      expediente: { connect: { id: expedienteId } },
+      hijo: {
+        create: {
+          usuaria: { connect: { id: usuariaId } },
+          nombres: MARCA,
+          apellidos: `Nino ${sufijo()}`,
+          fechaNacimiento: new Date('2018-01-01'),
+          genero: 'MUJER',
+        },
+      },
     },
   });
 }

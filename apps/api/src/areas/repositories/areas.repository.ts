@@ -42,7 +42,7 @@ export class AreasRepository implements IAreasRepository {
       include: {
         usuaria: true,
         agresor: true,
-        ninos: true,
+        ninos: { include: { hijo: true }, orderBy: { consecutivo: 'asc' } },
         referidos: { where: { area }, select: { puedeVerDatosCaso: true } },
         // Las áreas nunca ven versiones reemplazadas: solo Trabajo Social ve el historial.
         documentos: {
@@ -88,11 +88,11 @@ export class AreasRepository implements IAreasRepository {
             }
           : null,
       },
-      ninos: expediente.ninos.map((nino) => ({
-        nombres: nino.nombres,
-        apellidos: nino.apellidos,
-        fechaNacimiento: fechaColumnaISO(nino.fechaNacimiento),
-        genero: nino.genero === 'MUJER' ? 'M' : 'H',
+      ninos: expediente.ninos.map(({ hijo }) => ({
+        nombres: hijo.nombres,
+        apellidos: hijo.apellidos,
+        fechaNacimiento: fechaColumnaISO(hijo.fechaNacimiento),
+        genero: hijo.genero === 'MUJER' ? 'M' : 'H',
       })),
       documentos: expediente.documentos.map((documento) => ({
         id: documento.id,

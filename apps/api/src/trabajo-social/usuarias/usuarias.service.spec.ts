@@ -51,6 +51,7 @@ describe('UsuariasService', () => {
       areaResidencia: 'RURAL',
       ocupacion: 'Ama de casa',
       casos: [],
+      hijos: [],
       ...overrides,
     };
   }

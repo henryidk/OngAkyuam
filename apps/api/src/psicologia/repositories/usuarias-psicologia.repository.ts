@@ -251,8 +251,7 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
           select: {
             id: true,
             consecutivo: true,
-            ...SELECT_PERSONA,
-            genero: true,
+            hijo: { select: { ...SELECT_PERSONA, genero: true } },
             // Los de cualquier psicóloga: la lectura es de toda el área.
             atencionesPsicologicas: {
               select: {

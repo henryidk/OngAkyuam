@@ -10,9 +10,11 @@ function nino(id: string, consecutivo: number, atendidaPor?: string) {
   return {
     id,
     consecutivo,
-    nombres: 'Juan',
-    apellidos: 'Pérez López',
-    fechaNacimiento: new Date('2018-03-12T00:00:00.000Z'),
+    hijo: {
+      nombres: 'Juan',
+      apellidos: 'Pérez López',
+      fechaNacimiento: new Date('2018-03-12T00:00:00.000Z'),
+    },
     atencionesPsicologicas: atendidaPor
       ? [{ psicologaAsignada: { nombreCompleto: atendidaPor } }]
       : [],

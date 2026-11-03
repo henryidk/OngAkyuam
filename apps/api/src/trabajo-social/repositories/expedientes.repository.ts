@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   DpiUsuariaDuplicadoError,
+  HijoDeOtraUsuariaError,
   UsuariaNoEncontradaError,
 } from '../interfaces/expedientes-repository.interface';
 import type {
@@ -152,19 +153,9 @@ export class ExpedientesRepository implements IExpedientesRepository {
         idiomaAtencion: datosCaso.idiomaAtencion,
         creadoPorId: datosCaso.creadoPorId,
         agresor: datosCaso.agresor ? { create: datosCaso.agresor } : undefined,
-        ninos:
-          datosCaso.ninos.length > 0
-            ? {
-                create: datosCaso.ninos.map((nino) => ({
-                  nombres: nino.nombres,
-                  apellidos: nino.apellidos,
-                  fechaNacimiento: new Date(nino.fechaNacimiento),
-                  genero: nino.genero,
-                })),
-              }
-            : undefined,
       },
     });
+    await this.enlazarNinos(tx, usuaria.id, expediente.id, datosCaso.ninos);
 
     return {
       id: expediente.id,
@@ -177,12 +168,57 @@ export class ExpedientesRepository implements IExpedientesRepository {
     };
   }
 
+  /**
+   * Cada hijo/a existe una sola vez (`HijoUsuaria`) y el caso solo lo enlaza. Uno ya conocido
+   * llega con su `hijoId`: se valida que sea de esta usuaria antes de tocar nada y sus datos se
+   * corrigen con lo enviado. Se enlazan en el orden recibido: de ahí sale su número (.01, .02).
+   * El trigger `nino_hijo_de_la_usuaria` vuelve a exigir la pertenencia en la base.
+   */
+  private async enlazarNinos(
+    tx: TransaccionPrisma,
+    usuariaId: string,
+    expedienteId: string,
+    ninos: DatosCasoParams['ninos'],
+  ): Promise<void> {
+    const conocidos = [
+      ...new Set(ninos.flatMap((nino) => (nino.hijoId ? [nino.hijoId] : []))),
+    ];
+    if (conocidos.length > 0) {
+      const propios = await tx.hijoUsuaria.count({
+        where: { id: { in: conocidos }, usuariaId },
+      });
+      if (propios !== conocidos.length) {
+        throw new HijoDeOtraUsuariaError();
+      }
+    }
+
+    for (const nino of ninos) {
+      const datos = {
+        nombres: nino.nombres,
+        apellidos: nino.apellidos,
+        fechaNacimiento: new Date(nino.fechaNacimiento),
+        genero: nino.genero,
+      };
+      const hijo = nino.hijoId
+        ? await tx.hijoUsuaria.update({
+            where: { id: nino.hijoId },
+            data: datos,
+            select: { id: true },
+          })
+        : await tx.hijoUsuaria.create({
+            data: { usuariaId, ...datos },
+            select: { id: true },
+          });
+      await tx.nino.create({ data: { expedienteId, hijoId: hijo.id } });
+    }
+  }
+
   async obtenerDetalle(id: string): Promise<ExpedienteDetalleCaso | null> {
     const expediente = await this.prisma.expediente.findUnique({
       where: { id },
       include: {
         agresor: true,
-        ninos: true,
+        ninos: { include: { hijo: true }, orderBy: { consecutivo: 'asc' } },
         referidos: { select: { area: true } },
       },
     });
@@ -214,11 +250,12 @@ export class ExpedientesRepository implements IExpedientesRepository {
             direccion: expediente.agresor.direccion,
           }
         : null,
-      ninos: expediente.ninos.map((nino) => ({
-        nombres: nino.nombres,
-        apellidos: nino.apellidos,
-        fechaNacimiento: fechaColumnaISO(nino.fechaNacimiento),
-        genero: nino.genero === 'MUJER' ? 'M' : 'H',
+      ninos: expediente.ninos.map(({ hijo }) => ({
+        hijoId: hijo.id,
+        nombres: hijo.nombres,
+        apellidos: hijo.apellidos,
+        fechaNacimiento: fechaColumnaISO(hijo.fechaNacimiento),
+        genero: hijo.genero === 'MUJER' ? 'M' : 'H',
       })),
       // `referidos.area` solo se otorga a áreas de atención en la práctica — mismo criterio de
       // acotamiento de tipo que `UsuariasRepository.obtenerHub`.

@@ -7,7 +7,7 @@ export interface NotaSesion {
 
 type CamposNotas = Pick<
   SesionProcesoDto,
-  'estado' | 'temas' | 'intervencion' | 'atencionBrindada' | 'enfoqueTerapeutico' | 'recomendaciones' | 'acuerdos' | 'observaciones' | 'motivoNoAsistencia'
+  'estado' | 'temas' | 'intervencion' | 'atencionBrindada' | 'diagnostico' | 'enfoqueTerapeutico' | 'recomendaciones' | 'acuerdos' | 'observaciones' | 'motivoNoAsistencia'
 >
 
 /** Las notas con contenido, en el orden del formulario de registro. */
@@ -18,7 +18,9 @@ export function notasDe(sesion: CamposNotas): NotaSesion[] {
           ['Temas abordados', sesion.temas],
           ['Intervención', sesion.intervencion],
           ['Atención brindada', sesion.atencionBrindada],
+          ['Diagnóstico', sesion.diagnostico],
           ['Enfoque terapéutico', sesion.enfoqueTerapeutico],
+          // Ya no se pide; solo aparece en sesiones registradas antes.
           ['Recomendaciones', sesion.recomendaciones],
           ['Acuerdos', sesion.acuerdos],
           ['Observaciones', sesion.observaciones],

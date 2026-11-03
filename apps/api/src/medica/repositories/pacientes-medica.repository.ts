@@ -20,6 +20,7 @@ import type {
 import { condicionBusqueda } from '../../common/busqueda-usuarias';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  SELECT_HIJO,
   SELECT_PERSONA,
   edad,
   nombreCompleto,
@@ -174,8 +175,8 @@ function decodificarCursorNombre(
 }
 
 const SELECT_NINOS = {
-  select: { id: true, ...SELECT_PERSONA },
-  orderBy: { fechaNacimiento: 'asc' },
+  select: { id: true, ...SELECT_HIJO },
+  orderBy: { consecutivo: 'asc' },
 } as const;
 
 const SELECT_ATENCION_FICHA = {

@@ -9,6 +9,7 @@ import {
   DURACIONES_CITA_PSICOLOGICA_MINUTOS,
   DURACION_CITA_PSICOLOGICA_POR_DEFECTO,
   ATENCION_BRINDADA_MAX,
+  DIAGNOSTICO_MAX,
   ENFOQUE_TERAPEUTICO_MAX,
   ETIQUETAS_ESTADO_CITA_PSICOLOGICA,
   RESULTADOS_SESION_PSICOLOGICA,
@@ -89,7 +90,7 @@ export default function RegistroConsulta() {
       temas: '',
       intervencion: '',
       atencionBrindada: '',
-      recomendaciones: '',
+      diagnostico: '',
       acuerdos: '',
       observaciones: '',
       motivoNoAsistencia: '',
@@ -120,7 +121,7 @@ export default function RegistroConsulta() {
       temas: cita.temas ?? '',
       intervencion: cita.intervencion ?? '',
       atencionBrindada: cita.atencionBrindada ?? '',
-      recomendaciones: cita.recomendaciones ?? '',
+      diagnostico: cita.diagnostico ?? '',
       acuerdos: cita.acuerdos ?? '',
       observaciones: cita.observaciones ?? '',
       motivoNoAsistencia: cita.motivoNoAsistencia ?? '',
@@ -315,6 +316,15 @@ export default function RegistroConsulta() {
                 ayuda="Resumen breve de la atención; sale en el reporte de población de Trabajo Social."
                 error={errors.atencionBrindada?.message}
               />
+              <TextareaInput
+                label="Diagnóstico"
+                registro={register('diagnostico')}
+                rows={2}
+                maxLength={DIAGNOSTICO_MAX}
+                className="field-sizing-content min-h-16"
+                ayuda="Sale en el reporte de personas atendidas."
+                error={errors.diagnostico?.message}
+              />
               <div>
                 <TextareaInput
                   label="Enfoque terapéutico"
@@ -331,7 +341,6 @@ export default function RegistroConsulta() {
                   </p>
                 )}
               </div>
-              <TextareaInput label="Recomendaciones" registro={register('recomendaciones')} opcional error={errors.recomendaciones?.message} />
               <TextareaInput label="Acuerdos" registro={register('acuerdos')} opcional error={errors.acuerdos?.message} />
               <TextareaInput label="Observaciones" registro={register('observaciones')} opcional error={errors.observaciones?.message} />
             </div>

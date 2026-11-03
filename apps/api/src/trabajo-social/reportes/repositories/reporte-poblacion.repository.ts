@@ -40,12 +40,13 @@ function ctePersonas(filtro: FiltroReportePoblacion): Prisma.Sql {
     ? Prisma.sql`
       UNION ALL
       SELECT c.id, c.numero, c.fecha, c."createdAt", c."tipoRegistro", c."tipologiaDelito",
-             false, n.id, n.nombres, n.apellidos, NULL, n."fechaNacimiento", n.genero::text,
+             false, n.id, h.nombres, h.apellidos, NULL, h."fechaNacimiento", h.genero::text,
              c."grupoEtnico", c.municipio, c."departamentoOtro", c."municipioOtro", c."ubicacionGeografica",
              NULL, c."areaResidencia", NULL, NULL, c."idiomaAtencion",
-             c."atendidaPorNombre", c."atendidaPorPuesto", c.sede
+             c."atendidaPorNombre", c."atendidaPorPuesto", c.sede, n.consecutivo
       FROM casos c
-      JOIN "Nino" n ON n."expedienteId" = c.id`
+      JOIN "Nino" n ON n."expedienteId" = c.id
+      JOIN "HijoUsuaria" h ON h.id = n."hijoId"`
     : Prisma.empty;
   return Prisma.sql`
     ${cteCasos(filtro)},
@@ -55,7 +56,7 @@ function ctePersonas(filtro: FiltroReportePoblacion): Prisma.Sql {
              NULL::text AS "generoNino", c."grupoEtnico", c.municipio, c."departamentoOtro", c."municipioOtro",
              c."ubicacionGeografica",
              c.telefono, c."areaResidencia", c.ocupacion, c."condicionMaternidad", c."idiomaAtencion",
-             c."atendidaPorNombre", c."atendidaPorPuesto", c.sede
+             c."atendidaPorNombre", c."atendidaPorPuesto", c.sede, 0 AS consecutivo
       FROM casos c
       ${ninos}
     ),
@@ -182,7 +183,7 @@ export class ReportePoblacionRepository implements IReportePoblacionRepository {
       ) propia
       WINDOW w AS (
         ORDER BY p.fecha, p."createdAt", p."expedienteId", p."esUsuaria" DESC,
-                 p."fechaNacimiento", p."ninoId"
+                 p.consecutivo
       )
       ORDER BY numero
       ${porLimite}

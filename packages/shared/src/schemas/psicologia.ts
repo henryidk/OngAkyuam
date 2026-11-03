@@ -39,6 +39,9 @@ export type ClinicaPsicologia = z.infer<typeof clinicaPsicologiaSchema>
 /** Largo máximo del enfoque terapéutico de una sesión. */
 export const ENFOQUE_TERAPEUTICO_MAX = 2000
 
+/** Largo máximo del diagnóstico de una sesión. */
+export const DIAGNOSTICO_MAX = 2000
+
 // ---- Rediseño: cita sin modalidad ni lugar, cierre, visibilidad y "¿Qué sigue?" ----
 
 /** Contador de concurrencia optimista: el cliente devuelve la versión que leyó. */
@@ -134,7 +137,8 @@ export const registroConsultaSchema = z
     estado: estadoCitaPsicologicaSchema,
     temas: z.string(),
     intervencion: z.string(),
-    recomendaciones: z.string(),
+    /** Obligatorio al terminar el registro de una sesión atendida; sale en el Excel de personas atendidas. */
+    diagnostico: z.string().trim().max(DIAGNOSTICO_MAX, `Máximo ${DIAGNOSTICO_MAX} caracteres`),
     acuerdos: z.string(),
     observaciones: z.string(),
     motivoNoAsistencia: z.string(),
@@ -170,6 +174,10 @@ export const registroConsultaSchema = z
     (datos) => datos.borrador || datos.estado !== 'ATENDIDA' || datos.atencionBrindada.length > 0,
     { message: 'Escribe la atención brindada en la sesión.', path: ['atencionBrindada'] },
   )
+  .refine((datos) => datos.borrador || datos.estado !== 'ATENDIDA' || datos.diagnostico.length > 0, {
+    message: 'Escribe el diagnóstico de la sesión.',
+    path: ['diagnostico'],
+  })
   // Un borrador puede quedar sin clínica; una sesión atendida ya registrada, no.
   .refine((datos) => datos.borrador || datos.estado !== 'ATENDIDA' || datos.clinica !== null, {
     message: 'Elige la clínica donde se atendió la sesión.',
@@ -300,7 +308,9 @@ export interface CitaResumen {
   motivoNoAsistencia: string | null
   temas: string | null
   intervencion: string | null
+  /** Solo de sesiones registradas antes de que se dejara de pedir. */
   recomendaciones: string | null
+  diagnostico: string | null
   clinica: ClinicaPsicologia | null
   enfoqueTerapeutico: string | null
   atencionBrindada: string | null
@@ -653,7 +663,9 @@ export interface SesionProcesoDto {
   persona: PersonaAtendidaDto
   temas: string | null
   intervencion: string | null
+  /** Solo de sesiones registradas antes de que se dejara de pedir. */
   recomendaciones: string | null
+  diagnostico: string | null
   acuerdos: string | null
   observaciones: string | null
   motivoNoAsistencia: string | null

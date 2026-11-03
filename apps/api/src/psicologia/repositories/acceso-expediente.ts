@@ -64,9 +64,11 @@ export function sesionPorRegistrar(
 }
 
 /**
- * Proceso sin cerrar de una persona: la usuaria (en cualquiera de sus expedientes) o un hijo/a.
- * Sostiene "un solo proceso abierto por persona"; la base lo garantiza dentro de un expediente
- * y esta condición lo cubre entre expedientes de la misma usuaria.
+ * Proceso sin cerrar de una persona, en cualquiera de los expedientes de la usuaria: ella misma
+ * o un hijo/a (que es el mismo `HijoUsuaria` en cada caso donde aparece, aunque cada caso tenga
+ * su propio enlace `ninoId`). Sostiene "un solo proceso abierto por persona"; para hijos/as la
+ * base lo respalda con `AtencionPsicologica_activa_hijo_uq`, para la usuaria solo esta condición
+ * dentro de las transacciones Serializable que abren procesos.
  */
 export function procesoAbiertoDePersona(persona: {
   usuariaId: string;
@@ -78,7 +80,10 @@ export function procesoAbiertoDePersona(persona: {
         ninoId: null,
         expediente: { usuariaId: persona.usuariaId },
       }
-    : { estado: { not: 'CIERRE' }, ninoId: persona.ninoId };
+    : {
+        estado: { not: 'CIERRE' },
+        hijo: { casos: { some: { id: persona.ninoId } } },
+      };
 }
 
 /**

@@ -31,6 +31,7 @@ function crearCita(overrides: Partial<CitaResumen> = {}): CitaResumen {
     temas: null,
     intervencion: null,
     recomendaciones: null,
+    diagnostico: null,
     clinica: null,
     enfoqueTerapeutico: null,
     atencionBrindada: null,
@@ -82,6 +83,7 @@ describe('RegistroConsultaService', () => {
         proximaCitaId: null,
       }),
       listarCitasEnRango: jest.fn(),
+      primerasSesionesAtendidas: jest.fn(),
       obtenerDetalle: jest.fn(),
       buscarUltimaClinica: jest.fn().mockResolvedValue(null),
     };
@@ -112,7 +114,7 @@ describe('RegistroConsultaService', () => {
     estado: 'ATENDIDA' as const,
     temas: '',
     intervencion: '',
-    recomendaciones: '',
+    diagnostico: '',
     acuerdos: '',
     observaciones: '',
     motivoNoAsistencia: '',
@@ -200,7 +202,7 @@ describe('RegistroConsultaService', () => {
         expect.objectContaining({
           temas: null,
           intervencion: null,
-          recomendaciones: null,
+          diagnostico: null,
           acuerdos: null,
           observaciones: null,
           motivoNoAsistencia: null,

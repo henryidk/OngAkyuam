@@ -82,7 +82,9 @@ export class DocumentosMedicosRepository implements IDocumentosMedicosRepository
         consulta: {
           select: {
             fechaHora: true,
-            nino: { select: { nombres: true, apellidos: true } },
+            nino: {
+              select: { hijo: { select: { nombres: true, apellidos: true } } },
+            },
             atencion: {
               select: {
                 expediente: {
@@ -102,7 +104,7 @@ export class DocumentosMedicosRepository implements IDocumentosMedicosRepository
       createdAt: documento.createdAt.toISOString(),
       fechaConsulta: fechaCalendarioGT(consulta.fechaHora),
       personaNombre: nombreCompleto(
-        consulta.nino ?? consulta.atencion.expediente.usuaria,
+        consulta.nino?.hijo ?? consulta.atencion.expediente.usuaria,
       ),
     }));
   }

@@ -41,8 +41,6 @@ interface CitaSeed {
   hora: string;
   estado: EstadoCitaPsicologica;
   duracionMinutos?: number;
-  /** La cita es del hijo/a registrado en el expediente, no de la usuaria. */
-  deNino?: boolean;
 }
 
 interface CasoSeed {
@@ -138,7 +136,7 @@ const CASOS: CasoSeed[] = [
       { dias: -35, hora: '10:00', estado: 'ATENDIDA', duracionMinutos: 60 },
       { dias: -28, hora: '10:00', estado: 'ATENDIDA' },
       { dias: -21, hora: '10:00', estado: 'NO_ASISTIO' },
-      { dias: -14, hora: '10:00', estado: 'ATENDIDA', deNino: true },
+      { dias: -14, hora: '10:00', estado: 'ATENDIDA' },
       { dias: 0, hora: '15:00', estado: 'PROGRAMADA' },
     ],
   },
@@ -251,15 +249,19 @@ async function crearCaso(
         ninos: datos.nino
           ? {
               create: {
-                nombres: datos.nino.nombres,
-                apellidos: datos.nino.apellidos,
-                fechaNacimiento: new Date(datos.nino.fechaNacimiento),
-                genero: 'MUJER',
+                hijo: {
+                  create: {
+                    usuaria: { connect: { id: usuaria.id } },
+                    nombres: datos.nino.nombres,
+                    apellidos: datos.nino.apellidos,
+                    fechaNacimiento: new Date(datos.nino.fechaNacimiento),
+                    genero: 'MUJER',
+                  },
+                },
               },
             }
           : undefined,
       },
-      include: { ninos: { select: { id: true } } },
     });
     const referido = await tx.referidoArea.create({
       data: {
@@ -343,7 +345,6 @@ async function crearCaso(
         duracionMinutos: cita.duracionMinutos ?? 45,
         tipo: indice === 0 ? 'PRIMERA_ATENCION' : 'SEGUIMIENTO',
         estado: cita.estado,
-        ninoId: cita.deNino ? (expediente.ninos[0]?.id ?? null) : null,
         temas:
           cita.estado === 'ATENDIDA'
             ? 'Dato ficticio: temas abordados en la sesión.'

@@ -32,6 +32,7 @@ const SESION = {
   temas: 'Nota clínica de prueba',
   intervencion: null,
   recomendaciones: null,
+  diagnostico: null,
   acuerdos: null,
   observaciones: null,
   motivoNoAsistencia: null,

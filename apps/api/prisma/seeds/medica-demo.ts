@@ -253,10 +253,15 @@ async function crearCaso(
         ninos: datos.nino
           ? {
               create: {
-                nombres: datos.nino.nombres,
-                apellidos: datos.nino.apellidos,
-                fechaNacimiento: new Date(datos.nino.fechaNacimiento),
-                genero: 'MUJER',
+                hijo: {
+                  create: {
+                    usuaria: { connect: { id: usuaria.id } },
+                    nombres: datos.nino.nombres,
+                    apellidos: datos.nino.apellidos,
+                    fechaNacimiento: new Date(datos.nino.fechaNacimiento),
+                    genero: 'MUJER',
+                  },
+                },
               },
             }
           : undefined,

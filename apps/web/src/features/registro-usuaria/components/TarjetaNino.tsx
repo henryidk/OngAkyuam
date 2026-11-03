@@ -40,6 +40,9 @@ export default function TarjetaNino({ form, indice, expandido, onExpandir, onCol
           {nino.fechaNacimiento && (
             <span className="shrink-0 text-xs text-gray-500">Nacimiento {formatFechaGT(nino.fechaNacimiento)}</span>
           )}
+          {nino.hijoId && (
+            <span className="shrink-0 rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">Ya registrado</span>
+          )}
           {tieneErrores && <span className="shrink-0 text-xs font-medium text-red-600">Datos incompletos</span>}
         </button>
         <div className="flex shrink-0 items-center gap-1">
@@ -81,6 +84,11 @@ export default function TarjetaNino({ form, indice, expandido, onExpandir, onCol
           </button>
         </div>
       </div>
+      {nino.hijoId && (
+        <p className="mb-2 text-xs text-gray-500">
+          Ya vino en otro caso: si corrige un dato, queda corregido en todos sus casos.
+        </p>
+      )}
       <div className="grid gap-3 sm:grid-cols-2">
         <TextoInput
           label="Nombres"

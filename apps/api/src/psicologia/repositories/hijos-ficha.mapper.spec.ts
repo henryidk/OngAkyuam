@@ -1,15 +1,22 @@
 import { hijoDeFicha, type NinoConProcesos } from './hijos-ficha.mapper';
 
-function nino(cambios: Partial<NinoConProcesos> = {}): NinoConProcesos {
+function nino(
+  cambios: Partial<Omit<NinoConProcesos, 'hijo'>> & {
+    genero?: NinoConProcesos['hijo']['genero'];
+  } = {},
+): NinoConProcesos {
+  const { genero = 'MUJER', ...enlace } = cambios;
   return {
     id: 'nino-1',
     consecutivo: 2,
-    nombres: 'Ana',
-    apellidos: 'Pérez López',
-    fechaNacimiento: new Date('2021-07-02T00:00:00.000Z'),
-    genero: 'MUJER',
+    hijo: {
+      nombres: 'Ana',
+      apellidos: 'Pérez López',
+      fechaNacimiento: new Date('2021-07-02T00:00:00.000Z'),
+      genero,
+    },
     atencionesPsicologicas: [],
-    ...cambios,
+    ...enlace,
   };
 }
 

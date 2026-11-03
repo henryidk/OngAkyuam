@@ -188,6 +188,7 @@ export class UsuariasRepository implements IUsuariasRepository {
     const usuaria = await this.prisma.usuaria.findUnique({
       where: { id },
       include: {
+        hijos: { orderBy: [{ createdAt: 'asc' }, { id: 'asc' }] },
         expedientes: {
           // Mismo orden que `caso_activo` de la lista: el primero es el caso activo.
           orderBy: [{ fecha: 'desc' }, { createdAt: 'desc' }],
@@ -224,6 +225,13 @@ export class UsuariasRepository implements IUsuariasRepository {
       ubicacionGeografica: usuaria.ubicacionGeografica,
       areaResidencia: usuaria.areaResidencia,
       ocupacion: usuaria.ocupacion,
+      hijos: usuaria.hijos.map((hijo) => ({
+        hijoId: hijo.id,
+        nombres: hijo.nombres,
+        apellidos: hijo.apellidos,
+        fechaNacimiento: fechaColumnaISO(hijo.fechaNacimiento),
+        genero: hijo.genero === 'MUJER' ? ('M' as const) : ('H' as const),
+      })),
       casos: usuaria.expedientes.map((expediente) => ({
         id: expediente.id,
         numero: expediente.numero,

@@ -242,11 +242,16 @@ async function main(): Promise<void> {
         const hijo = HIJOS[clave];
         const creado = await tx.nino.create({
           data: {
-            expedienteId: expediente.id,
-            nombres: hijo.nombres,
-            apellidos: hijo.apellidos,
-            fechaNacimiento: new Date(hijo.fechaNacimiento),
-            genero: hijo.genero,
+            expediente: { connect: { id: expediente.id } },
+            hijo: {
+              create: {
+                usuaria: { connect: { id: expediente.usuariaId } },
+                nombres: hijo.nombres,
+                apellidos: hijo.apellidos,
+                fechaNacimiento: new Date(hijo.fechaNacimiento),
+                genero: hijo.genero,
+              },
+            },
           },
         });
         if (clave !== 'mateo') ninoId[clave] = creado.id;

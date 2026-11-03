@@ -162,7 +162,13 @@ const fechaNacimientoNinoSchema = fechaCalendarioSchema.refine(
   `Debe ser menor de ${EDAD_MAXIMA_NINOS} años`,
 )
 
+/**
+ * Un hijo/a que acompaña a la usuaria en este caso. `hijoId` = uno que ya vino en un caso
+ * anterior (sus datos se corrigen con lo que se envía); sin él, es un hijo/a nuevo. El servidor
+ * valida que `hijoId` sea de esa usuaria.
+ */
 export const ninoSchema = z.object({
+  hijoId: z.string().uuid().optional(),
   nombres: nombrePersonaSchema,
   apellidos: nombrePersonaSchema,
   fechaNacimiento: fechaNacimientoNinoSchema,
@@ -201,6 +207,13 @@ export const datosCasoSchema = z
     message: 'Solo se registran niñas y niños cuando la usuaria es Interna (solicita albergue)',
     path: ['ninos'],
   })
+  .refine(
+    (datos) => {
+      const ids = datos.ninos.flatMap((nino) => (nino.hijoId ? [nino.hijoId] : []))
+      return new Set(ids).size === ids.length
+    },
+    { message: 'El mismo hijo/a aparece dos veces en el caso', path: ['ninos'] },
+  )
 
 /** Para una usuaria nueva: identidad completa + su primer caso, en un solo submit. */
 export const registroUsuariaNuevaSchema = z.object({
@@ -283,6 +296,12 @@ export interface ExpedienteResumenCaso {
   enAlbergue: boolean
 }
 
+/**
+ * Un hijo/a que la usuaria ya trajo en algún caso. Es la misma persona en todos sus casos: al
+ * registrar uno nuevo se elige de aquí (se envía su `hijoId`) en vez de escribirlo otra vez.
+ */
+export type HijoConocido = Omit<Nino, 'hijoId'> & { hijoId: string }
+
 /** Identidad de la usuaria + todos sus casos — el hub de la sección "Expediente". */
 export interface UsuariaExpedienteHub {
   id: string
@@ -302,6 +321,8 @@ export interface UsuariaExpedienteHub {
   ocupacion: string
   /** Más reciente primero; el primero es el caso activo. */
   casos: ExpedienteResumenCaso[]
+  /** Hijos/as registrados en cualquiera de sus casos, del primero que se registró al último. */
+  hijos: HijoConocido[]
   /** Estado del caso activo y de cada área referida en él; `null` si la usuaria no tiene casos. */
   casoActivo: ({ id: string } & EstadoCasoTs) | null
 }

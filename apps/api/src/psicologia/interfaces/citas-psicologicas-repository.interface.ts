@@ -46,7 +46,7 @@ export interface RegistrarConsultaParams {
   estado: EstadoCitaPsicologica | undefined;
   temas: string | null;
   intervencion: string | null;
-  recomendaciones: string | null;
+  diagnostico: string | null;
   acuerdos: string | null;
   observaciones: string | null;
   motivoNoAsistencia: string | null;
@@ -67,7 +67,8 @@ export interface ConsultaRegistrada {
 
 /**
  * Fila mínima para los agregados de indicadores y el reporte. Lleva los datos demográficos que
- * capturó Trabajo Social, pero nunca nombres; el corte de mes en GT se calcula en el dominio.
+ * capturó Trabajo Social, pero nunca el nombre de la persona atendida (solo el de la profesional);
+ * el corte de mes en GT se calcula en el dominio.
  */
 export interface CitaParaAgregado {
   fechaHora: Date;
@@ -83,6 +84,18 @@ export interface CitaParaAgregado {
   municipio: (typeof MUNICIPIOS_ALTA_VERAPAZ)[number] | null;
   tipologias: (typeof TIPOLOGIAS_DELITO)[number][];
   procesoCodigo: string;
+  procesoId: string;
+  /** El proceso está cerrado (Cierre): en el reporte sale "Concluido"; si no, "En atención". */
+  procesoConcluido: boolean;
+  /** "YYYY-MM-DD" del expediente más antiguo de la usuaria: cuándo Trabajo Social la registró por primera vez. */
+  fechaPrimerRegistro: string;
+  /** Instante en que este proceso entró a Psicología: la referencia que lo originó o, sin ella, su apertura. */
+  ingresoProceso: Date;
+  numeroExpediente: string;
+  diagnostico: string | null;
+  enfoqueTerapeutico: string | null;
+  /** Quien atendió la sesión, con "(licenciada)" o "(practicante)". */
+  profesional: string;
 }
 
 export interface ListarCitasEnRangoParams {
@@ -142,6 +155,11 @@ export interface ICitasPsicologicasRepository {
   listarCitasEnRango(
     params: ListarCitasEnRangoParams,
   ): Promise<CitaParaAgregado[]>;
+  /**
+   * Instante de la primera sesión atendida de cada proceso, sin importar el año (un proceso del
+   * reporte pudo empezar antes). Los procesos sin sesiones atendidas no aparecen en el mapa.
+   */
+  primerasSesionesAtendidas(procesoIds: string[]): Promise<Map<string, Date>>;
   /** Permalink de una cita — `null` solo si desaparece entre el guard de acceso y esta lectura. */
   obtenerDetalle(citaId: string): Promise<DetalleCitaGuardado | null>;
   /** Clínica de la sesión más reciente que registró esta psicóloga; `null` si nunca anotó una. */

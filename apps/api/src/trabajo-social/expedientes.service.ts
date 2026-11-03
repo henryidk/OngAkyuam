@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -18,6 +19,7 @@ import { AuditService } from '../auth/services/audit.service';
 import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import {
   DpiUsuariaDuplicadoError,
+  HijoDeOtraUsuariaError,
   EXPEDIENTES_REPOSITORY,
   UsuariaNoEncontradaError,
 } from './interfaces/expedientes-repository.interface';
@@ -64,6 +66,12 @@ export class ExpedientesService {
         datosCaso: this.mapearDatosCaso(datos.datosCaso, contexto.usuarioId),
       });
     } catch (error) {
+      if (error instanceof HijoDeOtraUsuariaError) {
+        // Una usuaria nueva no tiene hijos/as registrados: cualquier `hijoId` es ajeno.
+        throw new BadRequestException(
+          'Uno de los hijos/as indicados no pertenece a la usuaria',
+        );
+      }
       if (error instanceof DpiUsuariaDuplicadoError) {
         // Mensaje genérico a propósito — no filtra si la usuaria existente coincide en nombre,
         // solo indica que hay que buscarla primero (evita enumeración, ver CLAUDE.md).
@@ -91,6 +99,11 @@ export class ExpedientesService {
     } catch (error) {
       if (error instanceof UsuariaNoEncontradaError) {
         throw new NotFoundException('Usuaria no encontrada');
+      }
+      if (error instanceof HijoDeOtraUsuariaError) {
+        throw new BadRequestException(
+          'Uno de los hijos/as indicados no pertenece a la usuaria',
+        );
       }
       throw error;
     }
@@ -191,6 +204,7 @@ export class ExpedientesService {
           }
         : null,
       ninos: datosCaso.ninos.map((nino) => ({
+        hijoId: nino.hijoId ?? null,
         nombres: nino.nombres,
         apellidos: nino.apellidos,
         fechaNacimiento: nino.fechaNacimiento,

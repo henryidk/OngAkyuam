@@ -329,8 +329,9 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
           proceso.expedienteId,
         );
 
-        // "Un solo proceso abierto por persona" cruza expedientes en el caso de la usuaria: la
-        // base no puede garantizarlo con un índice, así que se comprueba aquí, serializable.
+        // "Un solo proceso abierto por persona" cruza expedientes. Para un hijo/a la base lo
+        // respalda (`AtencionPsicologica_activa_hijo_uq`); para la usuaria no hay índice que lo
+        // cubra, así que se comprueba aquí, serializable, para las dos.
         const otroAbierto = await tx.atencionPsicologica.findFirst({
           where: {
             id: { not: proceso.id },

@@ -22,7 +22,9 @@ export class ReportesMedicaRepository implements IReportesMedicaRepository {
       select: {
         id: true,
         fechaHora: true,
-        nino: { select: { id: true, fechaNacimiento: true } },
+        nino: {
+          select: { id: true, hijo: { select: { fechaNacimiento: true } } },
+        },
         atencion: {
           select: {
             consultas: {
@@ -56,7 +58,7 @@ export class ReportesMedicaRepository implements IReportesMedicaRepository {
         usuariaId: usuaria.id,
         ninoId: fila.nino?.id ?? null,
         fechaNacimiento: fechaColumnaISO(
-          (fila.nino ?? usuaria).fechaNacimiento,
+          (fila.nino?.hijo ?? usuaria).fechaNacimiento,
         ),
         grupoEtnico: usuaria.grupoEtnico,
         municipio: usuaria.municipio,

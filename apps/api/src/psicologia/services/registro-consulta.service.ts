@@ -99,7 +99,7 @@ export class RegistroConsultaService {
       estado: datos.borrador ? undefined : datos.estado,
       temas: vacioANulo(datos.temas),
       intervencion: vacioANulo(datos.intervencion),
-      recomendaciones: vacioANulo(datos.recomendaciones),
+      diagnostico: vacioANulo(datos.diagnostico),
       acuerdos: vacioANulo(datos.acuerdos),
       observaciones: vacioANulo(datos.observaciones),
       motivoNoAsistencia: vacioANulo(datos.motivoNoAsistencia),
@@ -114,7 +114,7 @@ export class RegistroConsultaService {
       throw new ConflictException(MENSAJE_SESION_NO_REGISTRABLE);
     }
 
-    // Nunca temas/intervención/enfoque/recomendaciones/motivoNoAsistencia en `detalles` — texto clínico
+    // Nunca temas/intervención/enfoque/diagnóstico/motivoNoAsistencia en `detalles` — texto clínico
     // libre, el audit log guarda IDs/enums, nunca texto libre personal.
     await this.auditService.registrar({
       usuarioId: contexto.usuarioId,

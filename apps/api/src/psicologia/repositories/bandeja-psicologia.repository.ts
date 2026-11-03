@@ -27,7 +27,7 @@ import {
   nombreCompleto,
   personasDelExpediente,
   personasParaAbrir,
-  SELECT_PERSONA,
+  SELECT_HIJO,
 } from './personas';
 
 /** Tope de seguridad de las dos colas: son listas de trabajo, no un historial. */
@@ -48,8 +48,8 @@ const SELECT_EXPEDIENTE_COLA = {
     },
   },
   ninos: {
-    select: { id: true, nombres: true, apellidos: true, fechaNacimiento: true },
-    orderBy: { fechaNacimiento: 'asc' },
+    select: { id: true, ...SELECT_HIJO },
+    orderBy: { consecutivo: 'asc' },
   },
 } satisfies Prisma.ExpedienteSelect;
 
@@ -161,7 +161,7 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
               select: {
                 id: true,
                 consecutivo: true,
-                ...SELECT_PERSONA,
+                ...SELECT_HIJO,
                 atencionesPsicologicas: {
                   where: PROCESO_EN_CURSO,
                   select: SELECT_QUIEN_ATIENDE,

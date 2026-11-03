@@ -52,10 +52,13 @@ describe('reglas de acceso de Psicología', () => {
       });
     });
 
-    it('de un hijo/a, mira solo los suyos', () => {
+    it('de un hijo/a, mira los suyos en todos los casos donde aparece (no solo este enlace)', () => {
       expect(
         procesoAbiertoDePersona({ usuariaId: 'u1', ninoId: 'n1' }),
-      ).toEqual({ estado: { not: 'CIERRE' }, ninoId: 'n1' });
+      ).toEqual({
+        estado: { not: 'CIERRE' },
+        hijo: { casos: { some: { id: 'n1' } } },
+      });
     });
   });
 

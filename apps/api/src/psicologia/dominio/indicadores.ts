@@ -10,6 +10,7 @@ import {
   ETIQUETAS_TIPOLOGIA_DELITO,
   fechaCalendarioGT,
   GRUPOS_ETNICOS,
+  PUESTO_PRACTICANTE,
   MUNICIPIOS_ALTA_VERAPAZ,
   serieDoceMeses,
   TIPOLOGIAS_DELITO,
@@ -28,9 +29,19 @@ const RANGOS_EDAD = Object.keys(ETIQUETAS_RANGO_EDAD) as RangoEdad[];
 
 type Tipologia = CitaParaAgregado['tipologias'][number];
 
+/** Quien atendió, como sale en el reporte: "Nombre (licenciada)" o "Nombre (practicante)". */
+export function nombreProfesional(profesional: {
+  nombreCompleto: string;
+  puesto: string | null;
+}): string {
+  const cargo =
+    profesional.puesto === PUESTO_PRACTICANTE ? 'practicante' : 'licenciada';
+  return `${profesional.nombreCompleto} (${cargo})`;
+}
+
 /**
- * Una persona (usuaria o hijo/a) con al menos una sesión atendida en el periodo. No lleva
- * nombre: los reportes de Psicología son estadísticos.
+ * Una persona (usuaria o hijo/a) con al menos una sesión atendida en el periodo. No lleva su
+ * nombre. Proceso, diagnóstico, enfoque y profesional son los de su sesión atendida más reciente.
  */
 export interface PersonaAtendida {
   esHijo: boolean;
@@ -47,6 +58,38 @@ export interface PersonaAtendida {
   /** "YYYY-MM-DD" en hora de Guatemala. */
   primeraSesion: string;
   ultimaSesion: string;
+  numeroExpediente: string;
+  /**
+   * El proceso de la sesión atendida más reciente del periodo. `seguimiento`: la usuaria ya
+   * estaba registrada desde un día anterior al ingreso de este proceso a Psicología; si no, es
+   * su primer ingreso.
+   */
+  procesoReciente: { id: string; concluido: boolean; seguimiento: boolean };
+  /** El último anotado en ese proceso (las sesiones previas a que se pidiera no lo tienen). */
+  diagnostico: string | null;
+  enfoqueTerapeutico: string | null;
+  profesional: string;
+}
+
+/**
+ * Por día de calendario en GT: registrarla y referirla en la misma visita es su primer
+ * ingreso; si ya estaba registrada desde un día anterior, es seguimiento.
+ */
+export function esSeguimiento(
+  fechaPrimerRegistro: string,
+  ingresoProceso: Date,
+): boolean {
+  return fechaPrimerRegistro < fechaCalendarioGT(ingresoProceso);
+}
+
+function datosProceso(
+  cita: CitaParaAgregado,
+): PersonaAtendida['procesoReciente'] {
+  return {
+    id: cita.procesoId,
+    concluido: cita.procesoConcluido,
+    seguimiento: esSeguimiento(cita.fechaPrimerRegistro, cita.ingresoProceso),
+  };
 }
 
 function clavePersona(cita: CitaParaAgregado): string {
@@ -86,11 +129,27 @@ export function personasAtendidas(
         inasistencias: 0,
         primeraSesion: dia,
         ultimaSesion: dia,
+        numeroExpediente: cita.numeroExpediente,
+        procesoReciente: datosProceso(cita),
+        diagnostico: null,
+        enfoqueTerapeutico: null,
+        profesional: cita.profesional,
       };
       personas.set(clave, persona);
     }
     persona.sesiones += 1;
     persona.ultimaSesion = dia;
+    if (persona.procesoReciente.id !== cita.procesoId) {
+      // Otro proceso: lo clínico del anterior no se arrastra.
+      persona.procesoReciente = datosProceso(cita);
+      persona.diagnostico = null;
+      persona.enfoqueTerapeutico = null;
+    }
+    persona.diagnostico = cita.diagnostico ?? persona.diagnostico;
+    persona.enfoqueTerapeutico =
+      cita.enfoqueTerapeutico ?? persona.enfoqueTerapeutico;
+    persona.profesional = cita.profesional;
+    persona.numeroExpediente = cita.numeroExpediente;
     agregarSinRepetir(persona.tipologias, cita.tipologias);
     agregarSinRepetir(persona.procesos, [cita.procesoCodigo]);
   }

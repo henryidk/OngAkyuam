@@ -15,6 +15,7 @@ import type {
 } from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  SELECT_HIJO,
   SELECT_PERSONA,
   edad,
   nombreCompleto,
@@ -96,14 +97,18 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
             },
             select: {
               id: true,
-              nino: { select: { nombres: true, apellidos: true } },
+              nino: {
+                select: {
+                  hijo: { select: { nombres: true, apellidos: true } },
+                },
+              },
             },
           });
           consultas.push({
             consultaId: consulta.id,
             ninoId: registro.ninoId,
             personaNombre: nombreCompleto(
-              consulta.nino ?? atencion.expediente.usuaria,
+              consulta.nino?.hijo ?? atencion.expediente.usuaria,
             ),
             documentosAsociados: registro.loteDocumentos
               ? await this.asociarLote(
@@ -172,8 +177,8 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
               },
             },
             ninos: {
-              select: { id: true, ...SELECT_PERSONA },
-              orderBy: { fechaNacimiento: 'asc' },
+              select: { id: true, ...SELECT_HIJO },
+              orderBy: { consecutivo: 'asc' },
             },
           },
         },
@@ -220,7 +225,7 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
         : null,
       personas: [
         persona(expediente.usuaria, null),
-        ...expediente.ninos.map((nino) => persona(nino, nino.id)),
+        ...expediente.ninos.map((nino) => persona(nino.hijo, nino.id)),
       ],
     };
   }

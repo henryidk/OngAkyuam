@@ -17,6 +17,7 @@ import {
 } from '../../common/busqueda-usuarias';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  SELECT_HIJO,
   SELECT_PERSONA,
   nombreCompleto,
   personaAtendida,
@@ -40,7 +41,7 @@ const SELECT_HISTORIAL = {
   id: true,
   fechaHora: true,
   citaId: true,
-  nino: { select: { id: true, ...SELECT_PERSONA } },
+  nino: { select: { id: true, ...SELECT_HIJO } },
   atencion: {
     select: {
       consecutivo: true,
