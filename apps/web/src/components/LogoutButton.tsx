@@ -1,17 +1,23 @@
+import { LogOut } from 'lucide-react'
 import { useState } from 'react'
 import { hayGuardiaSalida, pedirConfirmacionSalida } from '../lib/guardiaSalida'
 import { useAuthStore } from '../store/auth.store'
 import ConfirmModal from './ui/ConfirmModal'
 
 interface LogoutButtonProps {
-  /** 'claro' = uso por defecto en headers sobre fondo blanco. 'oscuro' = sidebars/superficies oscuras. */
-  variante?: 'claro' | 'oscuro'
+  /**
+   * 'claro' = uso por defecto en headers sobre fondo blanco. 'oscuro' = sidebars/superficies oscuras.
+   * 'enlace' = discreto, con ícono, para pantallas de acceso (p. ej. cambio de contraseña).
+   */
+  variante?: 'claro' | 'oscuro' | 'enlace'
 }
 
 const ESTILOS_VARIANTE = {
   claro: 'rounded border px-3 py-1 text-sm disabled:opacity-50',
   oscuro:
     'w-full rounded-lg border border-white/10 px-3 py-2 text-sm font-medium text-brand-200 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50',
+  enlace:
+    'inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 disabled:opacity-50',
 } as const
 
 export default function LogoutButton({ variante = 'claro' }: LogoutButtonProps) {
@@ -47,6 +53,7 @@ export default function LogoutButton({ variante = 'claro' }: LogoutButtonProps) 
   return (
     <>
       <button type="button" onClick={alPulsar} disabled={isLoggingOut} className={ESTILOS_VARIANTE[variante]}>
+        {variante === 'enlace' && <LogOut className="h-4 w-4" />}
         {isLoggingOut ? 'Cerrando sesión…' : 'Cerrar sesión'}
       </button>
       <ConfirmModal
