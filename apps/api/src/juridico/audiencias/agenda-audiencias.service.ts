@@ -1,13 +1,18 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   AUDIENCIAS_PAGE_SIZE,
+  DIAS_ANTICIPACION_AVISO_AUDIENCIA,
+  fechaCalendarioGT,
   finDiaGT,
+  sumarDiasGT,
   inicioDiaGT,
   type AudienciaDetalleDto,
   type AudienciasPaginadas,
   type DisponibilidadAudienciasDto,
   type DisponibilidadAudienciasQuery,
   type BuscarAudienciasDatos,
+  type ResumenAudienciasDatos,
+  type ResumenAudienciasDto,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
 import { RELOJ, type IReloj } from '../../common/reloj';
@@ -45,6 +50,45 @@ export class AgendaAudienciasService {
       ahora: this.reloj.ahora(),
     });
     return { items, total, page: query.page, pageSize: AUDIENCIAS_PAGE_SIZE };
+  }
+
+  /**
+   * Cifras de la cabecera. Solo totales (una fila por consulta), sin auditoría de lectura: igual
+   * que el Inicio, no muestran ningún expediente.
+   */
+  async resumen(
+    query: ResumenAudienciasDatos,
+    usuarioId: string,
+  ): Promise<ResumenAudienciasDto> {
+    const ahora = this.reloj.ahora();
+    const hoy = fechaCalendarioGT(ahora);
+    const filtro = {
+      responsableId: query.mias ? undefined : query.responsableId,
+      responsableUsuarioId: query.mias ? usuarioId : undefined,
+      page: 1,
+      pageSize: 1,
+      ahora,
+    };
+    const [restantesHoy, semana, pendientes] = await Promise.all([
+      this.agendaRepository.listar({
+        ...filtro,
+        vista: 'proximas',
+        hasta: finDiaGT(hoy),
+      }),
+      this.agendaRepository.listar({
+        ...filtro,
+        vista: 'proximas',
+        hasta: finDiaGT(sumarDiasGT(hoy, DIAS_ANTICIPACION_AVISO_AUDIENCIA)),
+      }),
+      // Pendientes viene de la más antigua a la más reciente: la primera es la que más espera.
+      this.agendaRepository.listar({ ...filtro, vista: 'pendientes' }),
+    ]);
+    return {
+      hoy: restantesHoy.total,
+      semana: semana.total,
+      pendientes: pendientes.total,
+      pendienteMasAntigua: pendientes.items[0]?.fecha ?? null,
+    };
   }
 
   async disponibilidad(

@@ -42,6 +42,8 @@ describe('agruparPorDia', () => {
       ['Mañana', false, ['c']],
       ['Viernes 23 de octubre', false, ['d']],
     ])
+    // "Hoy" y "Mañana" llevan la fecha completa; las demás ya la dicen.
+    expect(grupos.map((grupo) => grupo.detalle)).toEqual(['Martes 20 de octubre', 'Miércoles 21 de octubre', null])
   })
 
   it('sin filas no hay grupos', () => {

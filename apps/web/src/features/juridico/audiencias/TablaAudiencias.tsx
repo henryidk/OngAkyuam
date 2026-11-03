@@ -3,7 +3,16 @@ import { hoyGT, type AccionAudiencia, type AudienciaFilaDto, type VistaAudiencia
 import FilaAudiencia from './FilaAudiencia'
 import { agruparPorDia } from './formato'
 
-const COLUMNAS = ['Usuaria', 'No. interno', 'No. judicial', 'Fecha', 'Hora', 'Responsable', 'Estado']
+/**
+ * Cada pestaña muestra solo lo que ayuda a decidir en ella. En Próximas la fecha ya está en el
+ * encabezado del día y el estado siempre es "Próxima"; en Pendientes todas esperan resultado: esas
+ * columnas solo repetían información.
+ */
+export const COLUMNAS_VISTA: Record<VistaAudiencias, string[]> = {
+  proximas: ['Hora', 'Usuaria', 'Proceso', 'Responsable'],
+  pendientes: ['Fue el', 'Usuaria', 'Proceso', 'Responsable'],
+  historial: ['Fecha', 'Usuaria', 'Proceso', 'Responsable', 'Estado'],
+}
 
 interface TablaAudienciasProps {
   items: AudienciaFilaDto[] | null
@@ -13,13 +22,13 @@ interface TablaAudienciasProps {
   onAccion: (accion: AccionAudiencia, audiencia: AudienciaFilaDto) => void
 }
 
-function FilasEsqueleto() {
+function FilasEsqueleto({ columnas }: { columnas: number }) {
   return (
     <>
       {Array.from({ length: 5 }, (_, indice) => (
         <tr key={indice} className="border-t border-gray-100">
-          {[...COLUMNAS, 'acciones'].map((columna) => (
-            <td key={columna} className="px-3 py-3">
+          {Array.from({ length: columnas }, (_, columna) => (
+            <td key={columna} className="px-4 py-4">
               <div className="h-4 animate-pulse rounded bg-gray-100" />
             </td>
           ))}
@@ -29,43 +38,47 @@ function FilasEsqueleto() {
   )
 }
 
+function textoCantidad(total: number): string {
+  return `${total} ${total === 1 ? 'audiencia' : 'audiencias'}`
+}
+
 /** Próximas se agrupa por día con "Hoy" resaltado; las otras pestañas son una lista corrida. */
 export default function TablaAudiencias({ items, vista, atenuada, onAccion }: TablaAudienciasProps) {
+  const columnas = COLUMNAS_VISTA[vista]
   const fila = (audiencia: AudienciaFilaDto) => (
     <FilaAudiencia key={audiencia.id} audiencia={audiencia} vista={vista} onAccion={onAccion} />
   )
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[920px] text-left">
-        <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
+      <table className="w-full min-w-[760px] text-left">
+        <thead className="bg-gray-50 text-xs font-medium text-gray-500">
           <tr>
-            {COLUMNAS.map((columna) => (
-              <th key={columna} scope="col" className="whitespace-nowrap px-3 py-2.5 font-medium">
+            {columnas.map((columna) => (
+              <th key={columna} scope="col" className="whitespace-nowrap px-4 py-2.5 font-medium">
                 {columna}
               </th>
             ))}
-            <th scope="col" className="px-3 py-2.5 text-right font-medium">
+            <th scope="col" className="px-4 py-2.5 text-right font-medium">
               <span className="sr-only">Acciones</span>
             </th>
           </tr>
         </thead>
         <tbody className={atenuada ? 'opacity-60' : undefined}>
-          {!items && <FilasEsqueleto />}
+          {!items && <FilasEsqueleto columnas={columnas.length + 1} />}
           {items && vista !== 'proximas' && items.map(fila)}
           {items &&
             vista === 'proximas' &&
             agruparPorDia(items, hoyGT()).map((grupo) => (
               <Fragment key={grupo.fecha}>
-                <tr className={`border-t border-gray-200 ${grupo.esHoy ? 'bg-[#f7f3fc]' : 'bg-[#fcfcfd]'}`}>
-                  <th
-                    scope="colgroup"
-                    colSpan={COLUMNAS.length + 1}
-                    className={`px-4 py-2 text-[13px] font-semibold ${grupo.esHoy ? 'text-[#5b3985]' : 'text-gray-700'}`}
-                  >
-                    {grupo.etiqueta}
-                    <span className="ml-2 font-normal text-gray-500">
-                      · {grupo.items.length} {grupo.items.length === 1 ? 'audiencia' : 'audiencias'}
+                <tr className={`border-t border-gray-200 ${grupo.esHoy ? 'bg-brand-50' : 'bg-gray-50/70'}`}>
+                  <th scope="colgroup" colSpan={columnas.length + 1} className="px-4 py-2 text-left">
+                    <span className="flex items-baseline justify-between gap-3">
+                      <span className={`text-sm font-semibold ${grupo.esHoy ? 'text-brand-700' : 'text-gray-800'}`}>
+                        {grupo.etiqueta}
+                        {grupo.detalle && <span className="ml-2 font-normal text-gray-500">{grupo.detalle}</span>}
+                      </span>
+                      <span className="text-xs font-normal text-gray-500">{textoCantidad(grupo.items.length)}</span>
                     </span>
                   </th>
                 </tr>

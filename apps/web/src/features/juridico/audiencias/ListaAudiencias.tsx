@@ -10,16 +10,17 @@ import {
   type VistaAudiencias,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import { listarAudiencias } from '../api/audiencias.api'
+import { listarAudiencias, obtenerResumenAudiencias } from '../api/audiencias.api'
 import { useContextoJuridico } from '../compartido/contexto'
 import { ErrorVista } from '../compartido/EstadosVista'
 import Paginacion from '../compartido/Paginacion'
 import { useRecurso } from '../compartido/useRecurso'
 import { RUTAS_JURIDICO } from '../rutas'
 import type { ModalAudiencia } from './caso'
-import { aplicarCambios, leerFiltros, queryDesdeFiltros, type FiltrosAudiencias as Filtros } from './filtros'
+import { aplicarCambios, leerFiltros, queryDesdeFiltros, textoRangoProximas, type FiltrosAudiencias as Filtros } from './filtros'
 import FiltrosAudiencias from './FiltrosAudiencias'
 import ModalesAudiencia from './ModalesAudiencia'
+import PestanasResumen from './PestanasResumen'
 import TablaAudiencias from './TablaAudiencias'
 
 const ESPERA_BUSQUEDA_MS = 350
@@ -30,32 +31,6 @@ const SIN_RESULTADOS: Record<VistaAudiencias, string> = {
   proximas: 'No hay audiencias próximas.',
   pendientes: 'No hay audiencias pendientes de resultado.',
   historial: 'No hay audiencias en ese rango de fechas.',
-}
-
-function Pestanas({ vista, pendientes, onElegir }: { vista: VistaAudiencias; pendientes: number | null; onElegir: (vista: VistaAudiencias) => void }) {
-  const opciones: [VistaAudiencias, string][] = [
-    ['proximas', 'Próximas'],
-    ['pendientes', pendientes ? `Pendientes de resultado (${pendientes})` : 'Pendientes de resultado'],
-    ['historial', 'Historial'],
-  ]
-  return (
-    <div role="tablist" aria-label="Audiencias" className="flex gap-5 border-b border-gray-200">
-      {opciones.map(([valor, etiqueta]) => (
-        <button
-          key={valor}
-          type="button"
-          role="tab"
-          aria-selected={vista === valor}
-          onClick={() => onElegir(valor)}
-          className={`-mb-px border-b-2 px-0.5 pb-2.5 text-[13.5px] font-medium ${
-            vista === valor ? 'border-brand-600 text-brand-700' : 'border-transparent text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          {etiqueta}
-        </button>
-      ))}
-    </div>
-  )
 }
 
 /** "Mostrando 21–40 de 85 audiencias". */
@@ -72,9 +47,10 @@ function textoConteo(pagina: number, pageSize: number, total: number, enPagina: 
  */
 export default function ListaAudiencias() {
   useTituloPagina({ titulo: 'Audiencias' })
-  const { resumen, recargarResumen } = useContextoJuridico()
+  const { recargarResumen } = useContextoJuridico()
   const [params, setParams] = useSearchParams()
-  const filtros = useMemo(() => leerFiltros(params, hoyGT()), [params])
+  const hoy = hoyGT()
+  const filtros = useMemo(() => leerFiltros(params, hoy), [params, hoy])
   const [modal, setModal] = useState<ModalAudiencia | null>(null)
 
   const tablaRef = useRef<HTMLElement>(null)
@@ -106,11 +82,20 @@ export default function ListaAudiencias() {
   )
   const { datos, error, cargando, recargar } = useRecurso(cargar)
 
+  // Las cifras siguen el filtro de responsable de la lista, nunca el texto buscado.
+  const responsableId = filtros.mias ? undefined : filtros.responsableId || undefined
+  const cargarResumen = useCallback(
+    () => obtenerResumenAudiencias({ responsableId, mias: filtros.mias ? 'true' : undefined }),
+    [responsableId, filtros.mias],
+  )
+  const { datos: cifras, recargar: recargarCifras } = useRecurso(cargarResumen)
+
   const onAccion = useCallback((accion: AccionAudiencia, audiencia: AudienciaFilaDto) => setModal({ tipo: accion, audiencia }), [])
   const onCambios = useCallback(() => {
     void recargar()
+    void recargarCifras()
     recargarResumen()
-  }, [recargar, recargarResumen])
+  }, [recargar, recargarCifras, recargarResumen])
 
   // Una página que ya no existe (se registraron resultados, o la URL quedó vieja) lleva a la última.
   const ultimaPagina = datos ? Math.max(1, Math.ceil(datos.total / datos.pageSize)) : 1
@@ -123,8 +108,28 @@ export default function ListaAudiencias() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-4">
-      <Pestanas vista={filtros.vista} pendientes={resumen?.audienciasPendientes ?? null} onElegir={(vista) => cambiar({ vista })} />
+      <PestanasResumen vista={filtros.vista} resumen={cifras} onElegir={(vista) => cambiar({ vista })} />
+      {filtros.vista === 'pendientes' && (
+        <p className="text-sm text-gray-600">
+          Estas audiencias ya pasaron. Registra qué ocurrió en cada una para que el proceso quede al día; las más antiguas van primero.
+        </p>
+      )}
       <FiltrosAudiencias filtros={filtros} texto={texto} onTexto={setTexto} onCambiar={cambiar} />
+      {filtros.rangoProximas && (
+        // Llega así desde la notificación ("Mañana: 2 audiencias"): se dice qué se está viendo y cómo volver.
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-2 text-[13px] text-brand-800">
+          <span>
+            Mostrando solo las audiencias <strong className="font-semibold">{textoRangoProximas(filtros.rangoProximas, hoy)}</strong>.
+          </span>
+          <button
+            type="button"
+            onClick={() => cambiar({ desde: '', hasta: '' })}
+            className="font-medium text-brand-700 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+          >
+            Ver todas las próximas
+          </button>
+        </div>
+      )}
       {textoCorto && <p className="text-xs text-gray-500">Escribe al menos {LARGO_MINIMO_BUSQUEDA_PROCESOS} caracteres.</p>}
       {errorRango && (
         <p role="alert" className="text-sm text-red-600">

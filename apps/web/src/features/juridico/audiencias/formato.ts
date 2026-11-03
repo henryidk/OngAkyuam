@@ -22,6 +22,8 @@ export function etiquetaDia(fecha: string, hoy: string): string {
 export interface GrupoDia<T> {
   fecha: string
   etiqueta: string
+  /** Con "Hoy" y "Mañana", la fecha completa para no tener que calcularla ("Miércoles 4 de noviembre"). */
+  detalle: string | null
   esHoy: boolean
   items: T[]
 }
@@ -34,7 +36,15 @@ export function agruparPorDia<T extends { fecha: string }>(items: T[], hoy: stri
     if (ultimo?.fecha === item.fecha) {
       ultimo.items.push(item)
     } else {
-      grupos.push({ fecha: item.fecha, etiqueta: etiquetaDia(item.fecha, hoy), esHoy: item.fecha === hoy, items: [item] })
+      const etiqueta = etiquetaDia(item.fecha, hoy)
+      const relativa = etiqueta === 'Hoy' || etiqueta === 'Mañana'
+      grupos.push({
+        fecha: item.fecha,
+        etiqueta,
+        detalle: relativa ? formatFechaLargaGT(item.fecha) : null,
+        esHoy: item.fecha === hoy,
+        items: [item],
+      })
     }
   }
   return grupos

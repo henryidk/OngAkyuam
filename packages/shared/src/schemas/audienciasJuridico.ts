@@ -177,6 +177,32 @@ export const disponibilidadAudienciasQuerySchema = z.object({
 })
 export type DisponibilidadAudienciasQuery = z.infer<typeof disponibilidadAudienciasQuerySchema>
 
+/**
+ * `GET /juridico/audiencias/resumen`: las cifras siguen el mismo filtro de responsable que la
+ * lista (nunca el texto buscado, que no viaja en la URL).
+ */
+export const resumenAudienciasQuerySchema = z.object({
+  responsableId: z.uuid().optional(),
+  mias: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((valor) => valor === 'true'),
+})
+export type ResumenAudienciasQuery = z.input<typeof resumenAudienciasQuerySchema>
+export type ResumenAudienciasDatos = z.output<typeof resumenAudienciasQuerySchema>
+
+/** Cifras de la cabecera de Audiencias. */
+export interface ResumenAudienciasDto {
+  /** Las que aún quedan hoy. */
+  hoy: number
+  /** De ahora al fin del día hoy + 7 (incluye las de hoy). */
+  semana: number
+  /** Ya pasaron y siguen sin resultado. */
+  pendientes: number
+  /** Fecha ("YYYY-MM-DD") de la pendiente más antigua; `null` si no hay. */
+  pendienteMasAntigua: string | null
+}
+
 // ---- DTOs de respuesta ----
 
 /** Otra audiencia de la cadena de reprogramación ("Reprogramada → 04/11/2026 09:00"). */

@@ -26,6 +26,7 @@ import {
   observacionesAudienciaSchema,
   registrarResultadoAudienciaSchema,
   reprogramarAudienciaSchema,
+  resumenAudienciasQuerySchema,
   type AgendarAudienciaInput,
   type BuscarAudienciasDatos,
   type CambiarResponsableAudienciaInput,
@@ -33,6 +34,7 @@ import {
   type ObservacionesAudienciaInput,
   type RegistrarResultadoAudienciaInput,
   type ReprogramarAudienciaInput,
+  type ResumenAudienciasDatos,
 } from '@akyuam/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -74,6 +76,17 @@ export class AudienciasController {
     @CurrentUser() usuario: AuthenticatedUser,
   ) {
     return this.agendaService.listar(query, usuario.id);
+  }
+
+  /** Cifras de la cabecera (próximas, hoy y pendientes de resultado). Solo ids en la URL. */
+  @Get('audiencias/resumen')
+  @Header('Cache-Control', 'no-store')
+  resumen(
+    @Query(new ZodValidationPipe(resumenAudienciasQuerySchema))
+    query: ResumenAudienciasDatos,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.agendaService.resumen(query, usuario.id);
   }
 
   @Get('audiencias/disponibilidad')

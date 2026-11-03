@@ -1,6 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ForbiddenException } from '@nestjs/common';
-import { AUDIENCIAS_PAGE_SIZE } from '@akyuam/shared';
+import {
+  AUDIENCIAS_PAGE_SIZE,
+  fechaCalendarioGT,
+  finDiaGT,
+  sumarDiasGT,
+  type AudienciaFilaDto,
+} from '@akyuam/shared';
 import type { IAgendaAudienciasRepository } from '../interfaces/agenda-audiencias-repository.interface';
 import {
   ABOGADA_ID,
@@ -96,6 +102,58 @@ describe('AgendaAudienciasService', () => {
       fecha: '2026-10-22',
       responsableId: ABOGADA_ID,
       audiencias: [],
+    });
+  });
+
+  describe('resumen', () => {
+    it('cuenta hoy, los próximos 7 días y las pendientes, con la pendiente más antigua', async () => {
+      agenda.listar
+        .mockResolvedValueOnce({ items: [], total: 2 })
+        .mockResolvedValueOnce({ items: [], total: 6 })
+        .mockResolvedValueOnce({
+          items: [{ fecha: '2026-09-20' } as AudienciaFilaDto],
+          total: 10,
+        });
+
+      const resumen = await service.resumen({ mias: false }, 'usuario-1');
+
+      const hoy = fechaCalendarioGT(AHORA);
+      expect(resumen).toEqual({
+        hoy: 2,
+        semana: 6,
+        pendientes: 10,
+        pendienteMasAntigua: '2026-09-20',
+      });
+      expect(agenda.listar.mock.calls.map(([params]) => params)).toEqual([
+        expect.objectContaining({
+          vista: 'proximas',
+          hasta: finDiaGT(hoy),
+          pageSize: 1,
+        }),
+        expect.objectContaining({
+          vista: 'proximas',
+          hasta: finDiaGT(sumarDiasGT(hoy, 7)),
+          pageSize: 1,
+        }),
+        expect.objectContaining({ vista: 'pendientes', pageSize: 1 }),
+      ]);
+    });
+
+    it('sigue el filtro de responsable: "Solo mías" gana sobre la elegida', async () => {
+      await service.resumen(
+        { mias: true, responsableId: ABOGADA_ID },
+        'usuario-1',
+      );
+
+      for (const [params] of agenda.listar.mock.calls) {
+        expect(params.responsableId).toBeUndefined();
+        expect(params.responsableUsuarioId).toBe('usuario-1');
+      }
+    });
+
+    it('sin pendientes, no hay más antigua', async () => {
+      const resumen = await service.resumen({ mias: false }, 'usuario-1');
+      expect(resumen.pendienteMasAntigua).toBeNull();
     });
   });
 

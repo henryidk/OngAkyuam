@@ -12,6 +12,8 @@ import type {
   ObservacionesAudienciaInput,
   RegistrarResultadoAudienciaInput,
   ReprogramarAudienciaInput,
+  ResumenAudienciasDto,
+  ResumenAudienciasQuery,
 } from '@akyuam/shared'
 import { api } from '../../../lib/api'
 
@@ -22,6 +24,11 @@ import { api } from '../../../lib/api'
 /** POST de solo lectura: el texto buscado puede ser el nombre de una usuaria y no debe ir en la URL. */
 export function listarAudiencias(datos: BuscarAudienciasInput) {
   return api.post<AudienciasPaginadas>('/juridico/audiencias/busqueda', datos).then((res) => res.data)
+}
+
+/** Cifras de la cabecera. Solo ids en la URL (responsable), nunca texto buscado. */
+export function obtenerResumenAudiencias(query: ResumenAudienciasQuery) {
+  return api.get<ResumenAudienciasDto>('/juridico/audiencias/resumen', { params: query }).then((res) => res.data)
 }
 
 /** Lo que ya tiene la responsable ese día, para avisar antes de chocar con otra audiencia. */
