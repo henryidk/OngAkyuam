@@ -36,6 +36,7 @@ export interface FichaPersonalRow {
   id: string;
   area: Rol;
   tipo: string;
+  activo: boolean;
   usuarioId: string | null;
 }
 

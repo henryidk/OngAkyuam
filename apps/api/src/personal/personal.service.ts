@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   NotFoundException,
@@ -16,6 +17,9 @@ import type { AuthenticatedUser } from '../auth/interfaces/jwt-payload.interface
 import type { ContextoAuditoria } from '../common/types/contexto-auditoria';
 import { PERSONAL_REPOSITORY } from './interfaces/personal-repository.interface';
 import type { IPersonalRepository } from './interfaces/personal-repository.interface';
+
+export const MENSAJE_FICHA_ENLAZADA =
+  'Esta ficha está enlazada a una cuenta: su nombre y su estado se cambian desde Usuarios';
 
 @Injectable()
 export class PersonalService {
@@ -74,6 +78,19 @@ export class PersonalService {
     datos: EditarPersonalInput,
     contexto: ContextoAuditoria,
   ): Promise<PersonalDto> {
+    const ficha = await this.personalRepository.buscarPorId(id);
+    if (!ficha) {
+      throw new NotFoundException('Personal no encontrado');
+    }
+    // Si la ficha está enlazada, la cuenta manda: nombre y estado se cambian desde Usuarios
+    // (la base lo exige también, trigger `personal_sincronizado`).
+    if (
+      ficha.usuarioId &&
+      (ficha.nombre !== datos.nombre || ficha.activo !== datos.activo)
+    ) {
+      throw new ConflictException(MENSAJE_FICHA_ENLAZADA);
+    }
+
     const personal = await this.personalRepository.editar({
       id,
       nombre: datos.nombre,

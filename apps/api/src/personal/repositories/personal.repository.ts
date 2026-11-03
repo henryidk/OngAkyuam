@@ -6,6 +6,7 @@ import type {
   BuscarActivoParams,
   CrearPersonalParams,
   EditarPersonalParams,
+  FichaEditable,
   IPersonalRepository,
   ListarPersonalParams,
 } from '../interfaces/personal-repository.interface';
@@ -46,6 +47,13 @@ export class PersonalRepository implements IPersonalRepository {
       data: { area: params.area, tipo: params.tipo, nombre: params.nombre },
     });
     return mapear(personal);
+  }
+
+  async buscarPorId(id: string): Promise<FichaEditable | null> {
+    return this.prisma.personal.findUnique({
+      where: { id },
+      select: { nombre: true, activo: true, usuarioId: true },
+    });
   }
 
   async editar(params: EditarPersonalParams): Promise<PersonalDto | null> {

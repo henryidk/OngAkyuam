@@ -19,6 +19,7 @@ import {
   crearExpediente,
   crearProceso,
   crearUsuario,
+  numeroExpedienteFicticio,
   sesionDe,
   type Sesion,
 } from './fixtures';
@@ -173,7 +174,7 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
           prisma.$executeRaw`
             INSERT INTO "Expediente" (id, numero, "usuariaId", fecha, "tipoRegistro", "tipologiaDelito", "creadoPorId", "updatedAt",
                                       "condicionMaternidad", "idiomaAtencion")
-            VALUES (gen_random_uuid(), ${`E2E-SIN-${usuaria.id.slice(0, 8)}`}, ${usuaria.id}, '2026-01-01',
+            VALUES (gen_random_uuid(), ${numeroExpedienteFicticio()}, ${usuaria.id}, '2026-01-01',
                     'EXTERNA', ${tipologia}::"TipologiaDelito"[], ${trabajoSocial.id}, now(),
                     'NORMAL', 'ESPANOL')`,
         ).rejects.toThrow(/Expediente_tipologia_obligatoria_chk/);

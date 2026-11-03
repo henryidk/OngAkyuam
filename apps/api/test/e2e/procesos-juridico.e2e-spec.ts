@@ -219,7 +219,7 @@ describe('Jurídico · procesos: No. judicial, carpetas por año, búsqueda y ci
   });
 
   describe('búsqueda por No. interno completo (H1)', () => {
-    /** Las E2E numeran "E2E-…"; aquí hace falta la forma real "NN-AAAA", única por corrida. */
+    /** Las E2E numeran con el año ficticio 2099; aquí hace falta un número del año del caso, único por corrida. */
     async function expedienteConNumeroReal(referidoA: Rol[] = ['JURIDICO']) {
       const { expediente } = await expedienteReferido(referidoA);
       const numero = `9${randomInt(10_000_000).toString().padStart(7, '0')}-2026`;

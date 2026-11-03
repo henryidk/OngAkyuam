@@ -14,11 +14,13 @@ import {
   crearNino,
   crearUsuario,
   sesionDe,
+  numeroExpedienteFicticio,
 } from './fixtures';
 
 /**
  * Reportes de la etapa 3:
  *  · Trabajo Social: "Usuaria nueva" = la fecha de su primer expediente (de todos) cae en el rango.
+ *    Queda registrado en la respuesta (fila, total y filtro), pero no va en el Excel.
  *  · Psicología: el Excel de personas atendidas va por rango desde/hasta y solo con mis procesos.
  * Cada prueba usa un año ficticio propio (209x) y compara contra el reporte de antes de crear
  * sus datos, para no depender de otras suites ni de corridas anteriores sobre la misma base.
@@ -56,7 +58,7 @@ describe('Reportes: usuarias nuevas (TS) y rango del Excel de Psicología (e2e)'
       data: {
         condicionMaternidad: 'NORMAL',
         idiomaAtencion: 'QEQCHI',
-        numero: `E2E-${Math.random().toString(16).slice(2, 10)}`,
+        numero: numeroExpedienteFicticio(),
         usuariaId,
         fecha: new Date(fecha),
         tipoRegistro: 'EXTERNA',
@@ -179,7 +181,7 @@ describe('Reportes: usuarias nuevas (TS) y rango del Excel de Psicología (e2e)'
       expect(reporte.totales.usuarias).toBe(antes.totales.usuarias + 1);
     });
 
-    it('el Excel lleva la columna "Usuaria nueva" al final', async () => {
+    it('el Excel no lleva la columna "Usuaria nueva": el dato solo queda registrado', async () => {
       const { expediente } = await crearExpediente(prisma, ts.id, []);
       await fechar(expediente.id, '2095-04-04');
       const sesion = sesionDe(app, ts);
@@ -201,10 +203,9 @@ describe('Reportes: usuarias nuevas (TS) y rango del Excel de Psicología (e2e)'
         respuesta.body as Parameters<typeof libro.xlsx.load>[0],
       );
       const hoja = libro.worksheets[0];
-      const encabezados = encabezadosDe(hoja, 'Usuaria nueva');
-      expect(encabezados.at(-1)).toBe('Usuaria nueva');
-      const ultimaFila = hoja.getRow(hoja.rowCount);
-      expect(ultimaFila.getCell(encabezados.length).value).toBe('Sí');
+      const encabezados = encabezadosDe(hoja, 'Médica: atención brindada');
+      expect(encabezados.at(-1)).toBe('Médica: atención brindada');
+      expect(encabezados).not.toContain('Usuaria nueva');
     });
 
     it('otra área no puede pedir el reporte de Trabajo Social', async () => {

@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PersonalService } from './personal.service';
 import type { IPersonalRepository } from './interfaces/personal-repository.interface';
 import type { AuditService } from '../auth/services/audit.service';
@@ -33,6 +37,11 @@ describe('PersonalService', () => {
       crear: jest.fn(),
       editar: jest.fn(),
       buscarActivo: jest.fn(),
+      buscarPorId: jest.fn().mockResolvedValue({
+        nombre: 'Nombre anterior',
+        activo: true,
+        usuarioId: null,
+      }),
     };
     auditService = {
       registrar: jest.fn(),
@@ -128,13 +137,34 @@ describe('PersonalService', () => {
 
   describe('editar', () => {
     it('lanza NotFoundException si el id no existe', async () => {
-      personalRepository.editar.mockResolvedValue(null);
+      personalRepository.buscarPorId.mockResolvedValue(null);
 
       await expect(
         service.editar('no-existe', { nombre: 'X', activo: false }, contexto),
       ).rejects.toBeInstanceOf(NotFoundException);
       expect(auditService.registrar).not.toHaveBeenCalled();
+      expect(personalRepository.editar).not.toHaveBeenCalled();
     });
+
+    it.each([
+      ['el nombre', { nombre: 'Otro nombre', activo: true }],
+      ['el estado', { nombre: 'Nombre de la cuenta', activo: false }],
+    ])(
+      'una ficha enlazada a una cuenta no cambia %s por su cuenta (409)',
+      async (_campo, datos) => {
+        personalRepository.buscarPorId.mockResolvedValue({
+          nombre: 'Nombre de la cuenta',
+          activo: true,
+          usuarioId: 'cuenta-1',
+        });
+
+        await expect(
+          service.editar('p-1', datos, contexto),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(personalRepository.editar).not.toHaveBeenCalled();
+        expect(auditService.registrar).not.toHaveBeenCalled();
+      },
+    );
 
     it('edita y audita solo el estado activo, sin el nombre', async () => {
       personalRepository.editar.mockResolvedValue({

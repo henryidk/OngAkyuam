@@ -22,6 +22,13 @@ export interface EditarPersonalParams {
   activo: boolean;
 }
 
+export interface FichaEditable {
+  nombre: string;
+  activo: boolean;
+  /** Cuenta enlazada; si hay una, nombre y estado se cambian desde la cuenta. */
+  usuarioId: string | null;
+}
+
 export interface BuscarActivoParams {
   id: string;
   area: Rol;
@@ -32,6 +39,8 @@ export interface BuscarActivoParams {
 export interface IPersonalRepository {
   listar(params: ListarPersonalParams): Promise<PersonalDto[]>;
   crear(params: CrearPersonalParams): Promise<PersonalDto>;
+  /** Lo necesario para decidir si una ficha se puede editar; `null` si no existe. */
+  buscarPorId(id: string): Promise<FichaEditable | null>;
   /** `null` si el id no corresponde a un registro de `Personal` existente. */
   editar(params: EditarPersonalParams): Promise<PersonalDto | null>;
   /**

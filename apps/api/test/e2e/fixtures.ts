@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomInt, randomUUID } from 'node:crypto';
 import type { INestApplication } from '@nestjs/common';
 import type { Rol } from '@prisma/client';
 import {
@@ -47,6 +47,14 @@ function sufijo(): string {
   return randomBytes(4).toString('hex');
 }
 
+/**
+ * Número de expediente con la forma real "NN-AAAA" (la base lo exige con
+ * `Expediente_numero_formato_chk`). El año 2099 lo separa de cualquier número de verdad.
+ */
+export function numeroExpedienteFicticio(): string {
+  return `${randomInt(10_000_000, 100_000_000)}-2099`;
+}
+
 export async function crearUsuario(prisma: PrismaService, rol: Rol) {
   return prisma.usuario.create({
     data: {
@@ -81,7 +89,7 @@ export async function crearExpediente(
     data: {
       condicionMaternidad: 'NORMAL',
       idiomaAtencion: 'QEQCHI',
-      numero: `E2E-${sufijo()}`,
+      numero: numeroExpedienteFicticio(),
       usuariaId: usuaria.id,
       fecha: new Date('2026-01-01'),
       tipoRegistro: 'EXTERNA',

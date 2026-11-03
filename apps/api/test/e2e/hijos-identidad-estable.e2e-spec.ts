@@ -11,6 +11,7 @@ import {
   crearNino,
   crearUsuario,
   sesionDe,
+  numeroExpedienteFicticio,
 } from './fixtures';
 
 /**
@@ -42,7 +43,7 @@ describe('Hijos/as con identidad estable (e2e)', () => {
       data: {
         condicionMaternidad: 'NORMAL',
         idiomaAtencion: 'QEQCHI',
-        numero: `E2E-${Math.random().toString(16).slice(2, 10)}`,
+        numero: numeroExpedienteFicticio(),
         usuariaId,
         fecha: new Date('2026-02-01'),
         tipoRegistro: 'INTERNA',

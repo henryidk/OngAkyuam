@@ -7,8 +7,8 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import {
-  CATALOGOS_TIPO_PERSONAL,
   PUESTOS_POR_AREA,
+  usaFichaPersonal,
   type CrearUsuarioInput,
   type CrearUsuarioResultado,
   type EditarUsuarioInput,
@@ -276,7 +276,11 @@ export class UsuariosService {
     return { modo: 'existente', id: datos.personalId };
   }
 
-  /** La ficha debe ser del área y del puesto de la cuenta, y no estar enlazada a otra. */
+  /**
+   * La ficha debe ser del área y del puesto de la cuenta, estar activa y no estar enlazada a
+   * otra. Al enlazarla, la base le copia el nombre y el estado de la cuenta (trigger
+   * `personal_sincronizado`): desde ahí la cuenta manda.
+   */
   private async validarFichaLibre(
     personalId: string,
     cuenta: { rol: CrearUsuarioInput['rol']; puesto?: string | null },
@@ -293,6 +297,9 @@ export class UsuariosService {
       throw new BadRequestException(
         'La ficha de personal es de otro puesto que la cuenta',
       );
+    }
+    if (!ficha.activo && ficha.usuarioId !== usuarioId) {
+      throw new BadRequestException('La ficha de personal está inactiva');
     }
     if (ficha.usuarioId && ficha.usuarioId !== usuarioId) {
       throw new ConflictException(
@@ -340,18 +347,4 @@ export class UsuariosService {
       data: { revoked: true, revokedAt: new Date() },
     });
   }
-}
-
-/**
- * Solo los puestos del catálogo de personal del área llevan ficha (en Jurídico, abogada y
- * procuradora): una practicante de Jurídico no se asigna a procesos, así que no tiene ficha.
- * Las cuentas viejas sin puesto se tratan como del catálogo.
- */
-function usaFichaPersonal(
-  rol: CrearUsuarioInput['rol'],
-  puesto?: string | null,
-): boolean {
-  const catalogo =
-    CATALOGOS_TIPO_PERSONAL[rol as keyof typeof CATALOGOS_TIPO_PERSONAL];
-  return !!catalogo && (!puesto || catalogo.includes(puesto));
 }

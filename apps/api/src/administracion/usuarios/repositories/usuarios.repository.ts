@@ -186,7 +186,13 @@ export class UsuariosRepository implements IUsuariosRepository {
   async buscarFichaPersonal(id: string): Promise<FichaPersonalRow | null> {
     return this.prisma.personal.findUnique({
       where: { id },
-      select: { id: true, area: true, tipo: true, usuarioId: true },
+      select: {
+        id: true,
+        area: true,
+        tipo: true,
+        activo: true,
+        usuarioId: true,
+      },
     });
   }
 

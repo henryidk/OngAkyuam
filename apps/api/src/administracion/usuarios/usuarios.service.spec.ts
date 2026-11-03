@@ -301,6 +301,7 @@ describe('UsuariosService', () => {
       area: 'JURIDICO' as const,
       tipo: 'ABOGADA',
       usuarioId: null,
+      activo: true,
       ...parcial,
     });
 
@@ -391,6 +392,7 @@ describe('UsuariosService', () => {
         BadRequestException,
       ],
       ['ya es de otra cuenta', ficha({ usuarioId: 'otra' }), ConflictException],
+      ['está inactiva', ficha({ activo: false }), BadRequestException],
     ])('no crea la cuenta si la ficha %s', async (_caso, encontrada, error) => {
       usuariosRepository.buscarFichaPersonal.mockResolvedValue(encontrada);
 

@@ -13,3 +13,15 @@ export const CATALOGOS_TIPO_PERSONAL: Partial<
 > = {
   JURIDICO: TIPOS_PERSONAL_JURIDICO,
 }
+
+/**
+ * Si una cuenta lleva ficha de personal: solo los puestos del catálogo de su área (en Jurídico,
+ * abogada y procuradora). Una practicante de Jurídico no se asigna a procesos, así que no tiene
+ * ficha. Las cuentas viejas sin puesto se tratan como del catálogo. La usan la API y la web,
+ * para que el selector de ficha aparezca exactamente cuando la API la acepta.
+ */
+export function usaFichaPersonal(rol: string | null | undefined, puesto?: string | null): boolean {
+  if (!rol) return false
+  const catalogo = CATALOGOS_TIPO_PERSONAL[rol as keyof typeof CATALOGOS_TIPO_PERSONAL]
+  return !!catalogo && (!puesto || catalogo.includes(puesto))
+}
