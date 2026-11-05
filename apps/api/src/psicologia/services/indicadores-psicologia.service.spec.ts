@@ -27,6 +27,7 @@ function crearCitaAgregado(
     diagnostico: 'Ansiedad',
     enfoqueTerapeutico: 'Sistémico',
     profesional: 'Psicóloga Ficticia (licenciada)',
+    clinica: 'CLINICA_1',
     ...overrides,
   };
 }
@@ -56,6 +57,8 @@ describe('IndicadoresPsicologiaService', () => {
       contarCasosActivos: jest.fn(),
       contarIniciadosEnRango: jest.fn(),
       contarCerradosEnRango: jest.fn(),
+      contarCerradosPorMotivo: jest.fn().mockResolvedValue([]),
+      listarPsicologas: jest.fn().mockResolvedValue([]),
     };
     citasRepository = {
       buscarAccesoCita: jest.fn(),
@@ -97,8 +100,18 @@ describe('IndicadoresPsicologiaService', () => {
     jest.useRealTimers();
   });
 
-  const consultar = () =>
-    service.obtenerIndicadores({ anio: 2026 }, 'psicologa-a', contexto);
+  const SIN_FILTROS = {
+    profesional: 'MIOS',
+    estadoProceso: 'TODOS',
+    incluirNinos: true,
+  } as const;
+
+  const consultar = (filtros: Partial<typeof SIN_FILTROS> | object = {}) =>
+    service.obtenerIndicadores(
+      { anio: 2026, ...SIN_FILTROS, ...filtros },
+      'psicologa-a',
+      contexto,
+    );
 
   describe('obtenerIndicadores', () => {
     it('pide el rango de citas con cortes de año completo en GT (1 ene - 31 dic), no en UTC', async () => {
@@ -294,15 +307,112 @@ describe('IndicadoresPsicologiaService', () => {
       expect(auditService.registrar).toHaveBeenCalledWith(
         expect.objectContaining({
           accion: 'INDICADORES_PSICOLOGIA_CONSULTADOS',
-          detalles: { anio: 2026 },
+          detalles: { anio: 2026, ...SIN_FILTROS },
         }),
       );
+    });
+
+    describe('filtros', () => {
+      it('"Todo el equipo" no acota a ninguna psicóloga (null) en citas ni en conteos', async () => {
+        await consultar({ profesional: 'EQUIPO' });
+
+        expect(
+          citasRepository.listarCitasEnRango.mock.calls[0][0].psicologaId,
+        ).toBeNull();
+        expect(atencionRepository.contarCasosActivos).toHaveBeenCalledWith(
+          null,
+        );
+        expect(atencionRepository.fechaPrimerProceso).toHaveBeenCalledWith(
+          null,
+        );
+      });
+
+      it('con el id de una psicóloga, acota a ella y no a quien consulta', async () => {
+        const otra = '5f0c1d7e-8a4b-4c2d-9e1f-0a1b2c3d4e5f';
+        await consultar({ profesional: otra });
+
+        expect(
+          citasRepository.listarCitasEnRango.mock.calls[0][0].psicologaId,
+        ).toBe(otra);
+        expect(atencionRepository.contarCasosActivos).toHaveBeenCalledWith(
+          otra,
+        );
+      });
+
+      it('sin hijas e hijos, solo cuenta a las usuarias', async () => {
+        citasRepository.listarCitasEnRango.mockResolvedValue([
+          crearCitaAgregado(),
+          crearCitaAgregado({
+            ninoId: 'nino-1',
+            fechaNacimiento: '2015-03-01',
+          }),
+        ]);
+
+        const { anual } = await consultar({ incluirNinos: false });
+
+        expect(anual.personasAtendidas).toBe(1);
+        expect(anual.sesionesRealizadas).toBe(1);
+      });
+
+      it('por estado del proceso, separa los concluidos de los que siguen en atención', async () => {
+        citasRepository.listarCitasEnRango.mockResolvedValue([
+          crearCitaAgregado(),
+          crearCitaAgregado({
+            usuariaId: 'usuaria-2',
+            procesoId: 'proceso-2',
+            procesoConcluido: true,
+          }),
+        ]);
+
+        expect(
+          (await consultar({ estadoProceso: 'CONCLUIDOS' })).anual
+            .personasAtendidas,
+        ).toBe(1);
+        expect(
+          (await consultar({ estadoProceso: 'EN_ATENCION' })).anual
+            .personasAtendidas,
+        ).toBe(1);
+        expect((await consultar()).anual.personasAtendidas).toBe(2);
+      });
+    });
+
+    it('cuenta las sesiones atendidas por clínica, con "Sin anotar" para las antiguas', async () => {
+      citasRepository.listarCitasEnRango.mockResolvedValue([
+        crearCitaAgregado(),
+        crearCitaAgregado({ clinica: 'CLINICA_2' }),
+        crearCitaAgregado({ clinica: null }),
+        // Una inasistencia no es una sesión en ninguna clínica.
+        crearCitaAgregado({ estado: 'NO_ASISTIO', clinica: null }),
+      ]);
+
+      const { sesionesPorClinica } = (await consultar()).anual.desgloses;
+
+      expect(total(sesionesPorClinica, 'CLINICA_1')).toBe(1);
+      expect(total(sesionesPorClinica, 'CLINICA_2')).toBe(1);
+      expect(total(sesionesPorClinica, 'SIN_ANOTAR')).toBe(1);
+    });
+
+    it('desglosa los cierres por motivo, con todos los motivos aunque tengan 0', async () => {
+      atencionRepository.contarCerradosPorMotivo.mockResolvedValue([
+        { motivo: 'OBJETIVOS_CUMPLIDOS', total: 3 },
+        { motivo: null, total: 1 },
+      ]);
+
+      const { cierresPorMotivo } = await consultar();
+
+      expect(total(cierresPorMotivo, 'OBJETIVOS_CUMPLIDOS')).toBe(3);
+      expect(total(cierresPorMotivo, 'DEJO_DE_ASISTIR')).toBe(0);
+      expect(total(cierresPorMotivo, 'SIN_ANOTAR')).toBe(1);
     });
   });
 
   describe('exportar', () => {
     const exportar = (desde = '2026-01-01', hasta = '2026-12-31') =>
-      service.exportar({ desde, hasta }, 'psicologa-a', contexto);
+      service.exportar(
+        { desde, hasta, ...SIN_FILTROS },
+        'psicologa-a',
+        contexto,
+      );
 
     it('pide solo las citas de la psicóloga que descarga', async () => {
       await exportar();
@@ -459,7 +569,92 @@ describe('IndicadoresPsicologiaService', () => {
       expect(auditService.registrar).toHaveBeenCalledWith(
         expect.objectContaining({
           accion: 'REPORTE_PSICOLOGIA_EXPORTADO',
-          detalles: { desde: '2026-02-01', hasta: '2026-06-30', filas: 1 },
+          detalles: {
+            desde: '2026-02-01',
+            hasta: '2026-06-30',
+            ...SIN_FILTROS,
+            filas: 1,
+          },
+        }),
+      );
+    });
+  });
+
+  describe('listarPersonas', () => {
+    const listar = (pagina = 1) =>
+      service.listarPersonas(
+        { desde: '2026-01-01', hasta: '2026-12-31', ...SIN_FILTROS, pagina },
+        'psicologa-a',
+        contexto,
+      );
+
+    /** `n` personas distintas: una usuaria por expediente. */
+    const citasDePersonas = (n: number) =>
+      Array.from({ length: n }, (_, i) =>
+        crearCitaAgregado({
+          usuariaId: `usuaria-${i}`,
+          expedienteNumero: `${String(i + 1).padStart(2, '0')}-2026`,
+          procesoId: `proceso-${i}`,
+        }),
+      );
+
+    it('entrega las mismas filas que el Excel, ya como objetos con etiquetas', async () => {
+      citasRepository.listarCitasEnRango.mockResolvedValue([
+        crearCitaAgregado(),
+      ]);
+
+      const { filas, total, pagina } = await listar();
+
+      expect(total).toBe(1);
+      expect(pagina).toBe(1);
+      expect(filas[0]).toEqual(
+        expect.objectContaining({
+          numero: 1,
+          persona: 'Usuaria',
+          grupoEtnico: 'Maya',
+          municipio: 'Cobán',
+          estado: 'En atención',
+        }),
+      );
+    });
+
+    it('pagina de 25 en 25 y numera de forma continua', async () => {
+      citasRepository.listarCitasEnRango.mockResolvedValue(citasDePersonas(30));
+
+      const { filas, total, pagina } = await listar(2);
+
+      expect(total).toBe(30);
+      expect(pagina).toBe(2);
+      expect(filas).toHaveLength(5);
+      expect(filas[0].numero).toBe(26);
+    });
+
+    it('si la página quedó fuera (cambiaron los filtros), entrega la última', async () => {
+      citasRepository.listarCitasEnRango.mockResolvedValue(citasDePersonas(3));
+
+      const { filas, pagina } = await listar(4);
+
+      expect(pagina).toBe(1);
+      expect(filas).toHaveLength(3);
+    });
+
+    it('audita rango, filtros, página y total, nunca el contenido de las filas', async () => {
+      citasRepository.listarCitasEnRango.mockResolvedValue([
+        crearCitaAgregado(),
+      ]);
+
+      await listar();
+
+      expect(auditService.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'PERSONAS_ATENDIDAS_PSICOLOGIA_CONSULTADAS',
+          detalles: {
+            desde: '2026-01-01',
+            hasta: '2026-12-31',
+            ...SIN_FILTROS,
+            pagina: 1,
+            total: 1,
+          },
         }),
       );
     });

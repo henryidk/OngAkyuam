@@ -23,7 +23,7 @@ import type { ConteoReporte } from './trabajoSocial.js'
 import type { VistaMedicaParaPsicologia } from './medica.js'
 import { diasEntreFechasGT } from '../timezone.js'
 import { ATENCION_BRINDADA_MAX } from '../dominio/poblacionBeneficiada.js'
-import { desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE, fechaReporteSchema } from './query.js'
+import { booleanoQuerySchema, desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE, fechaReporteSchema } from './query.js'
 
 /** "YYYY-MM-DD" — mismo criterio que registroUsuaria.ts: fecha de calendario pura, nunca Date. */
 const fechaCalendarioSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Fecha inválida')
@@ -194,20 +194,85 @@ export const rangoFechasQuerySchema = z.object({
 })
 export type RangoFechasQuery = z.infer<typeof rangoFechasQuerySchema>
 
-/** `GET /psicologia/indicadores` — siempre "mis" casos del año consultado (§5.5, §7.4 del plan). */
+/** Estado del proceso en los reportes: el mismo "Estado" que sale en la columna del Excel. */
+export const ESTADOS_PROCESO_REPORTE_PSICOLOGIA = ['TODOS', 'EN_ATENCION', 'CONCLUIDOS'] as const
+export type EstadoProcesoReportePsicologia = (typeof ESTADOS_PROCESO_REPORTE_PSICOLOGIA)[number]
+
+/**
+ * Filtros comunes de las estadísticas y del Excel de Psicología. `profesional`: "MIOS" (lo mío),
+ * "EQUIPO" (toda el área) o el id de una psicóloga. Cualquier psicóloga puede ver lo del equipo.
+ */
+const filtrosReportePsicologia = {
+  profesional: z.union([z.enum(ALCANCES_PSICOLOGIA), z.string().uuid()]).default('EQUIPO'),
+  estadoProceso: z.enum(ESTADOS_PROCESO_REPORTE_PSICOLOGIA).default('TODOS'),
+  incluirNinos: booleanoQuerySchema.default(true),
+}
+
+/** `GET /psicologia/indicadores` — cifras del año consultado, con los filtros de arriba. */
 export const indicadoresQuerySchema = z.object({
   anio: z.coerce.number().int().min(2000).max(2100),
+  ...filtrosReportePsicologia,
 })
 export type IndicadoresQuery = z.infer<typeof indicadoresQuerySchema>
 
 /**
- * `GET /psicologia/indicadores.xlsx` — Excel de "mis" personas atendidas entre dos fechas de
- * calendario (inclusive, en hora de Guatemala). Misma validación de fechas que los reportes de TS.
+ * `GET /psicologia/indicadores.xlsx` — Excel de personas atendidas entre dos fechas de calendario
+ * (inclusive, en hora de Guatemala), con los mismos filtros que las estadísticas.
  */
+const rangoReportePsicologia = {
+  desde: fechaReporteSchema,
+  hasta: fechaReporteSchema,
+  ...filtrosReportePsicologia,
+}
+
 export const exportarPsicologiaQuerySchema = z
-  .object({ desde: fechaReporteSchema, hasta: fechaReporteSchema })
+  .object(rangoReportePsicologia)
   .refine(desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE)
 export type ExportarPsicologiaQuery = z.infer<typeof exportarPsicologiaQuerySchema>
+
+/** Filas por página de la tabla "Personas atendidas" (la vista previa del Excel). */
+export const FILAS_POR_PAGINA_PERSONAS_PSICOLOGIA = 25
+
+/** `GET /psicologia/indicadores/personas` — una página de las mismas filas del Excel. */
+export const personasAtendidasPsicologiaQuerySchema = z
+  .object({ ...rangoReportePsicologia, pagina: z.coerce.number().int().min(1).max(10_000).default(1) })
+  .refine(desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE)
+export type PersonasAtendidasPsicologiaQuery = z.infer<typeof personasAtendidasPsicologiaQuerySchema>
+
+/**
+ * Una fila del Excel de personas atendidas, ya con etiquetas legibles. Sin el nombre de la persona
+ * atendida; sí el de la profesional. Diagnóstico y enfoque son texto clínico: nunca van a la bitácora.
+ */
+export interface FilaPersonaAtendidaPsicologia {
+  numero: number
+  persona: 'Usuaria' | 'Hija/o'
+  expedienteNumero: string
+  /** Códigos de proceso separados por coma. */
+  procesos: string
+  edad: number
+  rangoEdad: string
+  grupoEtnico: string
+  municipio: string
+  tipologia: string
+  diagnostico: string
+  enfoqueTerapeutico: string
+  /** Semana del mes (1-5) en que empezó la atención del proceso. */
+  semanaAtencion: number
+  sesiones: number
+  inasistencias: number
+  /** "YYYY-MM-DD" en hora de Guatemala. */
+  primeraSesion: string
+  ultimaSesion: string
+  estado: 'Concluido' | 'En atención'
+  responsable: string
+}
+
+export interface PersonasAtendidasPsicologia {
+  filas: FilaPersonaAtendidaPsicologia[]
+  /** Personas de todo el filtro, para la paginación y la pestaña. */
+  total: number
+  pagina: number
+}
 
 // ---- Rediseño: queries de Procesos, Usuarias y huecos de la agenda ----
 
@@ -219,7 +284,10 @@ export type FiltroProcesosPsicologia = z.infer<typeof filtroProcesosPsicologiaSc
 export const alcancePsicologiaSchema = z.enum(ALCANCES_PSICOLOGIA)
 export type AlcancePsicologia = z.infer<typeof alcancePsicologiaSchema>
 
-/** `GET /psicologia/procesos` — mis procesos o los de toda el área (`de`), paginados por cursor. */
+/**
+ * Cuerpo de `POST /psicologia/procesos/busqueda` — mis procesos o los de toda el área (`de`),
+ * paginados por cursor. `q` puede identificar a una sobreviviente: nunca viaja en la URL.
+ */
 export const listarProcesosPsicologiaQuerySchema = z.object({
   filtro: filtroProcesosPsicologiaSchema.default('ACTIVOS'),
   de: alcancePsicologiaSchema.default('MIOS'),
@@ -235,7 +303,10 @@ export type SesionesProcesoPsicologiaQuery = z.infer<typeof sesionesProcesoPsico
 export const filtroUsuariasPsicologiaSchema = z.enum(FILTROS_USUARIAS_PSICOLOGIA)
 export type FiltroUsuariasPsicologia = z.infer<typeof filtroUsuariasPsicologiaSchema>
 
-/** `GET /psicologia/usuarias` — referidas sin tomar (de cualquier psicóloga) o tomadas por mí. */
+/**
+ * Cuerpo de `POST /psicologia/usuarias/busqueda` — referidas sin tomar (de cualquier psicóloga) o
+ * tomadas por mí. `q` puede ser un nombre o un DPI: nunca viaja en la URL.
+ */
 export const listarUsuariasPsicologiaQuerySchema = z.object({
   filtro: filtroUsuariasPsicologiaSchema.optional(),
   q: z.string().trim().max(BUSQUEDA_PSICOLOGIA_MAX).optional(),
@@ -385,6 +456,8 @@ export interface DesglosesIndicadores {
   municipio: ConteoReporte[]
   citasPorEstado: ConteoReporte[]
   citasPorTipo: ConteoReporte[]
+  /** Sesiones atendidas en cada consultorio (las anteriores a que se pidiera salen "Sin anotar"). */
+  sesionesPorClinica: ConteoReporte[]
 }
 
 /** Cifras de un periodo (el año completo o uno de sus meses). */
@@ -398,17 +471,28 @@ export interface PeriodoIndicadores {
   desgloses: DesglosesIndicadores
 }
 
+/** Una psicóloga del área, para el filtro de los reportes (activas e inactivas). */
+export interface ProfesionalReportePsicologia {
+  id: string
+  nombre: string
+  activo: boolean
+}
+
 /**
- * `GET /psicologia/indicadores` — siempre "mis" procesos del año consultado. Solo cifras: nunca
- * nombres ni datos de una persona.
+ * `GET /psicologia/indicadores` — cifras del año consultado (mías, del equipo o de una psicóloga).
+ * Solo cifras: nunca nombres ni datos de una persona atendida.
  */
 export interface IndicadoresPsicologia {
   anio: number
-  /** Del año en curso hacia atrás, hasta el de mi primer proceso. */
+  /** Del año en curso hacia atrás, hasta el del primer proceso del alcance elegido. */
   aniosDisponibles: number[]
   procesosActivos: number
   procesosIniciadosEnElAnio: number
   procesosCerradosEnElAnio: number
+  /** Procesos cerrados en el año, por motivo de cierre (los antiguos sin motivo salen "Sin anotar"). */
+  cierresPorMotivo: ConteoReporte[]
+  /** Para el filtro "Psicóloga". */
+  profesionales: ProfesionalReportePsicologia[]
   anual: PeriodoIndicadores
   /** Los 12 meses, de enero a diciembre, con ceros donde no hubo atención. */
   meses: PeriodoIndicadores[]

@@ -2,11 +2,13 @@ import {
   Body,
   Controller,
   Get,
+  Header,
+  HttpCode,
+  HttpStatus,
   Headers,
   Param,
   ParseUUIDPipe,
   Post,
-  Query,
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
@@ -36,9 +38,17 @@ export class UsuariasPsicologiaController {
     private readonly aperturaService: AperturaProcesoService,
   ) {}
 
-  @Get()
+  /**
+   * Lista de trabajo. Es POST de solo lectura porque `q` puede ser el nombre o el DPI de una
+   * sobreviviente: en el cuerpo no queda en logs de acceso ni en el historial del navegador.
+   */
+  @Post('busqueda')
+  @HttpCode(HttpStatus.OK)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
   listar(
-    @Query(new ZodValidationPipe(listarUsuariasPsicologiaQuerySchema))
+    @Body(new ZodValidationPipe(listarUsuariasPsicologiaQuerySchema))
     query: ListarUsuariasPsicologiaQuery,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {

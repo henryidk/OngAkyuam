@@ -1,6 +1,8 @@
 import {
   calcularRangoEdad,
+  CLINICAS_PSICOLOGIA,
   edadEnFecha,
+  ETIQUETAS_CLINICA_PSICOLOGIA,
   ESTADOS_CITA_PSICOLOGICA,
   ETIQUETAS_ESTADO_CITA_PSICOLOGICA,
   ETIQUETAS_GRUPO_ETNICO,
@@ -16,6 +18,7 @@ import {
   TIPOLOGIAS_DELITO,
   TIPOS_CITA_PSICOLOGICA,
   type ConteoReporte,
+  type EstadoProcesoReportePsicologia,
   type PeriodoIndicadores,
   type RangoEdad,
   formatearResponsable,
@@ -27,6 +30,32 @@ export const MUNICIPIO_FUERA = 'FUERA_DE_ALTA_VERAPAZ';
 const ETIQUETA_MUNICIPIO_FUERA = 'Fuera de Alta Verapaz';
 
 const RANGOS_EDAD = Object.keys(ETIQUETAS_RANGO_EDAD) as RangoEdad[];
+
+/** Sesiones atendidas antes de que se pidiera el consultorio. */
+export const SIN_ANOTAR = 'SIN_ANOTAR';
+export const ETIQUETA_SIN_ANOTAR = 'Sin anotar';
+
+/** Filtros que se aplican sobre las citas ya leídas (la psicóloga se filtra en la consulta). */
+export interface FiltrosCitasReporte {
+  estadoProceso: EstadoProcesoReportePsicologia;
+  incluirNinos: boolean;
+}
+
+/**
+ * Deja solo las citas que entran en el reporte. El estado es el del proceso hoy (igual que la
+ * columna "Estado" del Excel), no el que tenía cuando ocurrió la cita.
+ */
+export function filtrarCitas(
+  citas: CitaParaAgregado[],
+  filtros: FiltrosCitasReporte,
+): CitaParaAgregado[] {
+  return citas.filter(
+    (cita) =>
+      (filtros.incluirNinos || cita.ninoId === null) &&
+      (filtros.estadoProceso === 'TODOS' ||
+        (filtros.estadoProceso === 'CONCLUIDOS') === cita.procesoConcluido),
+  );
+}
 
 type Tipologia = CitaParaAgregado['tipologias'][number];
 
@@ -216,6 +245,13 @@ export function resumirPeriodo(citas: CitaParaAgregado[]): PeriodoIndicadores {
         TIPOS_CITA_PSICOLOGICA,
         ETIQUETAS_TIPO_CITA_PSICOLOGICA,
         citas.map((c) => c.tipo),
+      ),
+      sesionesPorClinica: desglose(
+        [...CLINICAS_PSICOLOGIA, SIN_ANOTAR],
+        { ...ETIQUETAS_CLINICA_PSICOLOGIA, [SIN_ANOTAR]: ETIQUETA_SIN_ANOTAR },
+        citas
+          .filter((c) => c.estado === 'ATENDIDA')
+          .map((c) => c.clinica ?? SIN_ANOTAR),
       ),
     },
   };

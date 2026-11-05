@@ -92,10 +92,13 @@ export interface CitaParaAgregado {
   enfoqueTerapeutico: string | null;
   /** Quien atendió la sesión, con "(licenciada)" o "(practicante)". */
   profesional: string;
+  /** Consultorio de la sesión atendida; `null` si no se anotó (o la cita no se atendió). */
+  clinica: ClinicaPsicologia | null;
 }
 
 export interface ListarCitasEnRangoParams {
-  psicologaId: string;
+  /** La dueña de los procesos, o `null` para toda el área. */
+  psicologaId: string | null;
   desde: Date;
   hasta: Date;
 }

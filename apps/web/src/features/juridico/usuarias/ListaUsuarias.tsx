@@ -13,7 +13,7 @@ import { useTituloPagina } from '../../../components/TituloPagina'
 import EmptyState from '../../../components/ui/EmptyState'
 import { listarUsuarias } from '../api/juridico.api'
 import { ErrorVista } from '../compartido/EstadosVista'
-import Paginacion from '../compartido/Paginacion'
+import Paginacion from '../../../components/ui/Paginacion'
 import { useRecurso } from '../compartido/useRecurso'
 import { RUTAS_JURIDICO } from '../rutas'
 

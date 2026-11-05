@@ -10,11 +10,11 @@ import {
   type FiltroUsuariasPsicologia,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import Button from '../../../components/ui/Button'
 import EmptyState from '../../../components/ui/EmptyState'
 import { ErrorVista } from '../../../components/ui/EstadosVista'
 import { useRecurso } from '../../../lib/useRecurso'
 import { rangoEdadCorto } from '../../trabajo-social/usuarias/filaUsuaria'
+import Paginacion from '../../../components/ui/Paginacion'
 import { listarUsuarias } from '../api/psicologia.api'
 import InsigniaReferencia from '../compartido/InsigniaReferencia'
 import { RUTAS_PSICOLOGIA } from '../rutas'
@@ -222,22 +222,18 @@ export default function ListaUsuarias() {
           )}
 
           {lista && totalPaginas > 1 && (
-            <div className="flex items-center justify-between border-t border-gray-100 px-4 py-2.5 text-xs text-gray-500">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3 text-[13px] text-gray-500">
               <span className="tabular-nums">
-                Página {lista.pagina} de {totalPaginas} · {lista.total} usuarias
+                Mostrando {(lista.pagina - 1) * lista.porPagina + 1}–{(lista.pagina - 1) * lista.porPagina + lista.filas.length} de{' '}
+                {lista.total} {lista.total === 1 ? 'usuaria' : 'usuarias'}
               </span>
-              <div className="flex gap-2">
-                <Button variante="secondary" disabled={pagina <= 1} onClick={() => actualizarParams({ pagina: pagina - 1 })}>
-                  Anterior
-                </Button>
-                <Button
-                  variante="secondary"
-                  disabled={pagina >= totalPaginas}
-                  onClick={() => actualizarParams({ pagina: pagina + 1 })}
-                >
-                  Siguiente
-                </Button>
-              </div>
+              <Paginacion
+                etiqueta="Paginación de usuarias"
+                pagina={lista.pagina}
+                pageSize={lista.porPagina}
+                total={lista.total}
+                onCambiar={(nueva) => actualizarParams({ pagina: nueva })}
+              />
             </div>
           )}
         </section>

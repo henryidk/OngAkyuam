@@ -17,7 +17,7 @@ import { BITACORA_POR_PAGINA, hoyGT, type DocumentoProcesoDto, type EntradaBitac
 import Button from '../../../components/ui/Button'
 import EmptyState from '../../../components/ui/EmptyState'
 import { useToast } from '../../../components/ui/Toast'
-import Paginacion from '../compartido/Paginacion'
+import Paginacion from '../../../components/ui/Paginacion'
 import DocumentosAdjuntos from '../documentos/DocumentosAdjuntos'
 import ModalActualizarDocumento from '../documentos/ModalActualizarDocumento'
 import { useAbrirDocumento } from '../documentos/useAbrirDocumento'

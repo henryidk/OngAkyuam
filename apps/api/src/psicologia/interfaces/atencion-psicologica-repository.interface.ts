@@ -1,3 +1,8 @@
+import type {
+  MotivoCierrePsicologia,
+  ProfesionalReportePsicologia,
+} from '@akyuam/shared';
+
 export const ATENCION_PSICOLOGICA_REPOSITORY = Symbol(
   'ATENCION_PSICOLOGICA_REPOSITORY',
 );
@@ -26,20 +31,32 @@ export interface IAtencionPsicologicaRepository {
    * revela a quién pertenece un caso ya tomado — el llamador solo distingue `TOMADO`/`YA_TOMADO`.
    */
   tomarCaso(params: TomarCasoParams): Promise<ResultadoTomarCaso>;
-  /** Cuándo tomó esta psicóloga su primer proceso; `null` si aún no tiene ninguno. */
-  fechaPrimerProceso(psicologaId: string): Promise<Date | null>;
-  /** Casos activos (estado != CIERRE) tomados por esta psicóloga — "casos activos" de indicadores. */
-  contarCasosActivos(psicologaId: string): Promise<number>;
-  /** Casos tomados por esta psicóloga cuya atención se creó dentro del rango — "procesos iniciados" de indicadores. */
+  /*
+   * Indicadores: `psicologaId` = la dueña de los procesos, o `null` para toda el área (cualquier
+   * psicóloga puede ver las cifras del equipo).
+   */
+  /** Cuándo se tomó el primer proceso del alcance; `null` si aún no hay ninguno. */
+  fechaPrimerProceso(psicologaId: string | null): Promise<Date | null>;
+  /** Casos activos (estado != CIERRE) — "casos activos" de indicadores. */
+  contarCasosActivos(psicologaId: string | null): Promise<number>;
+  /** Casos cuya atención se creó dentro del rango — "procesos iniciados" de indicadores. */
   contarIniciadosEnRango(
-    psicologaId: string,
+    psicologaId: string | null,
     desde: Date,
     hasta: Date,
   ): Promise<number>;
-  /** Casos tomados por esta psicóloga cerrados dentro del rango — "procesos cerrados" de indicadores. */
+  /** Casos cerrados dentro del rango — "procesos cerrados" de indicadores. */
   contarCerradosEnRango(
-    psicologaId: string,
+    psicologaId: string | null,
     desde: Date,
     hasta: Date,
   ): Promise<number>;
+  /** Casos cerrados dentro del rango, agrupados por motivo (`null` = cerrado sin motivo anotado). */
+  contarCerradosPorMotivo(
+    psicologaId: string | null,
+    desde: Date,
+    hasta: Date,
+  ): Promise<{ motivo: MotivoCierrePsicologia | null; total: number }[]>;
+  /** Cuentas del área de Psicología (activas e inactivas), para el filtro de los reportes. */
+  listarPsicologas(): Promise<ProfesionalReportePsicologia[]>;
 }

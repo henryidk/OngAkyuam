@@ -22,7 +22,7 @@ import FilaProceso from './FilaProceso'
 import FiltroCarpetas from './FiltroCarpetas'
 import { anioDesdeUrl, opcionesCarpetas, type Carpeta } from './formato'
 import ModalNumeroJudicial from '../compartido/ModalNumeroJudicial'
-import Paginacion from '../compartido/Paginacion'
+import Paginacion from '../../../components/ui/Paginacion'
 
 const ESPERA_BUSQUEDA_MS = 350
 /**

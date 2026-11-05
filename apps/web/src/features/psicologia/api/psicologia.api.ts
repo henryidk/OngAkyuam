@@ -20,6 +20,8 @@ import type {
   IndicadoresPsicologia,
   ExportarPsicologiaQuery,
   IndicadoresQuery,
+  PersonasAtendidasPsicologia,
+  PersonasAtendidasPsicologiaQuery,
   ListaUsuariasPsicologia,
   ListarProcesosPsicologiaQuery,
   ListarUsuariasPsicologiaQuery,
@@ -123,7 +125,7 @@ export function marcarNoAsistio(citaId: string) {
  * son opcionales: el servidor aplica "Activos" y "Míos" por defecto.
  */
 export function listarProcesos(query: Partial<ListarProcesosPsicologiaQuery>) {
-  return api.get<ProcesosPsicologiaPaginados>('/psicologia/procesos', { params: query }).then((res) => res.data)
+  return api.post<ProcesosPsicologiaPaginados>('/psicologia/procesos/busqueda', query).then((res) => res.data)
 }
 
 export function obtenerProceso(procesoId: string) {
@@ -154,7 +156,7 @@ export function obtenerUrlDocumentoCita(citaId: string) {
 
 /** Usuarias referidas a Psicología. `q` es un nombre, un DPI o un número de expediente. */
 export function listarUsuarias(query: Partial<ListarUsuariasPsicologiaQuery>) {
-  return api.get<ListaUsuariasPsicologia>('/psicologia/usuarias', { params: query }).then((res) => res.data)
+  return api.post<ListaUsuariasPsicologia>('/psicologia/usuarias/busqueda', query).then((res) => res.data)
 }
 
 export function obtenerFichaUsuaria(usuariaId: string) {
@@ -220,6 +222,13 @@ export function subirDocumentoCita(citaId: string, archivo: File, onProgreso: (p
 
 export function obtenerIndicadores(query: IndicadoresQuery) {
   return api.get<IndicadoresPsicologia>('/psicologia/indicadores', { params: query }).then((res) => res.data)
+}
+
+/** Las filas del Excel en pantalla, de 25 en 25. Solo ids, fechas y catálogos en la URL. */
+export function listarPersonasAtendidas(query: PersonasAtendidasPsicologiaQuery) {
+  return api
+    .get<PersonasAtendidasPsicologia>('/psicologia/indicadores/personas', { params: query })
+    .then((res) => res.data)
 }
 
 /** El Excel de personas atendidas, como `Blob` en memoria: nunca se guarda una copia en el servidor. */

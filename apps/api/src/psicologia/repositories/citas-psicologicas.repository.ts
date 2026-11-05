@@ -226,11 +226,14 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     const citas = await this.prisma.citaPsicologica.findMany({
       where: {
         fechaHora: { gte: params.desde, lte: params.hasta },
-        atencion: { psicologaAsignadaId: params.psicologaId },
+        ...(params.psicologaId
+          ? { atencion: { psicologaAsignadaId: params.psicologaId } }
+          : {}),
       },
       orderBy: [{ fechaHora: 'asc' }, { id: 'asc' }],
       select: {
         fechaHora: true,
+        clinica: true,
         estado: true,
         tipo: true,
         ninoId: true,
@@ -290,6 +293,7 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         diagnostico: cita.diagnostico,
         enfoqueTerapeutico: cita.enfoqueTerapeutico,
         profesional: nombreProfesional(cita.atendidoPor),
+        clinica: cita.clinica,
       };
     });
   }

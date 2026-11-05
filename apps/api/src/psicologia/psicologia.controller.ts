@@ -19,9 +19,11 @@ import {
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
   exportarPsicologiaQuerySchema,
   indicadoresQuerySchema,
+  personasAtendidasPsicologiaQuerySchema,
   registroConsultaSchema,
   type ExportarPsicologiaQuery,
   type IndicadoresQuery,
+  type PersonasAtendidasPsicologiaQuery,
   type RegistroConsultaInput,
 } from '@akyuam/shared';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -99,6 +101,21 @@ export class PsicologiaController {
       usuario.id,
       contexto,
     );
+  }
+
+  /**
+   * Las filas del Excel en pantalla, de 25 en 25. Lleva texto clínico (diagnóstico, enfoque):
+   * nunca se guarda en caché del navegador ni de un proxy.
+   */
+  @Get('indicadores/personas')
+  @Header('Cache-Control', 'no-store')
+  listarPersonasAtendidas(
+    @Query(new ZodValidationPipe(personasAtendidasPsicologiaQuerySchema))
+    query: PersonasAtendidasPsicologiaQuery,
+    @CurrentUser() usuario: AuthenticatedUser,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.indicadoresService.listarPersonas(query, usuario.id, contexto);
   }
 
   /** Excel de personas atendidas entre dos fechas. Pocas descargas por minuto: genera un archivo completo. */

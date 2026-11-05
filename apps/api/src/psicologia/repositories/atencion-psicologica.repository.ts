@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import type {
+  MotivoCierrePsicologia,
+  ProfesionalReportePsicologia,
+} from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   IAtencionPsicologicaRepository,
@@ -11,6 +15,13 @@ import {
   conReintentos,
   siguienteConsecutivoProceso,
 } from './transaccion-psicologia';
+
+/** Procesos de una psicóloga, o de toda el área si es `null`. */
+function delAlcance(
+  psicologaId: string | null,
+): Prisma.AtencionPsicologicaWhereInput {
+  return psicologaId ? { psicologaAsignadaId: psicologaId } : {};
+}
 
 @Injectable()
 export class AtencionPsicologicaRepository implements IAtencionPsicologicaRepository {
@@ -106,45 +117,78 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
     return 'TOMADO';
   }
 
-  async fechaPrimerProceso(psicologaId: string): Promise<Date | null> {
+  async fechaPrimerProceso(psicologaId: string | null): Promise<Date | null> {
     const primero = await this.prisma.atencionPsicologica.findFirst({
-      where: { psicologaAsignadaId: psicologaId },
+      where: delAlcance(psicologaId),
       orderBy: { createdAt: 'asc' },
       select: { createdAt: true },
     });
     return primero?.createdAt ?? null;
   }
 
-  async contarCasosActivos(psicologaId: string): Promise<number> {
+  async contarCasosActivos(psicologaId: string | null): Promise<number> {
     return this.prisma.atencionPsicologica.count({
-      where: { psicologaAsignadaId: psicologaId, estado: { not: 'CIERRE' } },
+      where: { ...delAlcance(psicologaId), estado: { not: 'CIERRE' } },
     });
   }
 
   async contarIniciadosEnRango(
-    psicologaId: string,
+    psicologaId: string | null,
     desde: Date,
     hasta: Date,
   ): Promise<number> {
     return this.prisma.atencionPsicologica.count({
       where: {
-        psicologaAsignadaId: psicologaId,
+        ...delAlcance(psicologaId),
         createdAt: { gte: desde, lte: hasta },
       },
     });
   }
 
   async contarCerradosEnRango(
-    psicologaId: string,
+    psicologaId: string | null,
     desde: Date,
     hasta: Date,
   ): Promise<number> {
     return this.prisma.atencionPsicologica.count({
       where: {
-        psicologaAsignadaId: psicologaId,
+        ...delAlcance(psicologaId),
         estado: 'CIERRE',
         fechaCierre: { gte: desde, lte: hasta },
       },
     });
+  }
+
+  async contarCerradosPorMotivo(
+    psicologaId: string | null,
+    desde: Date,
+    hasta: Date,
+  ): Promise<{ motivo: MotivoCierrePsicologia | null; total: number }[]> {
+    const grupos = await this.prisma.atencionPsicologica.groupBy({
+      by: ['motivoCierreCatalogo'],
+      where: {
+        ...delAlcance(psicologaId),
+        estado: 'CIERRE',
+        fechaCierre: { gte: desde, lte: hasta },
+      },
+      _count: { _all: true },
+    });
+    return grupos.map((grupo) => ({
+      motivo: grupo.motivoCierreCatalogo,
+      total: grupo._count._all,
+    }));
+  }
+
+  async listarPsicologas(): Promise<ProfesionalReportePsicologia[]> {
+    const cuentas = await this.prisma.usuario.findMany({
+      where: { rol: 'PSICOLOGIA' },
+      orderBy: { nombreCompleto: 'asc' },
+      select: { id: true, nombreCompleto: true, isActive: true },
+    });
+    return cuentas.map((cuenta) => ({
+      id: cuenta.id,
+      nombre: cuenta.nombreCompleto,
+      activo: cuenta.isActive,
+    }));
   }
 }

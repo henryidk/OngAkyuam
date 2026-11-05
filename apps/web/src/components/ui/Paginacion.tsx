@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
-import Button from '../../../components/ui/Button'
+import Button from './Button'
 
 interface PaginacionProps {
   /** Nombre accesible del bloque, ej. "Paginación de procesos". */
