@@ -57,7 +57,12 @@ export type ResultadoActualizarDatos =
 /** El detalle sin bitácora ni carpetas: esas las aportan sus propios repositorios. */
 export type ProcesoDetalleBase = Omit<
   ProcesoDetalle,
-  'accionesDisponibles' | 'bitacora' | 'carpetas' | 'otrosProcesosUsuaria'
+  | 'accionesDisponibles'
+  | 'bitacora'
+  | 'bitacoraTotal'
+  | 'totalActuaciones'
+  | 'carpetas'
+  | 'otrosProcesosUsuaria'
 >;
 
 // Interfaz chica (ISP): lectura y datos generales de procesos. Crear, transicionar, bitácora

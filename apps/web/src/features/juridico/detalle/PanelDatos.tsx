@@ -1,10 +1,9 @@
 import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import { UserPlus } from 'lucide-react'
+import { Pencil, Plus, UserPlus } from 'lucide-react'
 import {
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
   editarDatosProcesoSchema,
-  formatFechaGT,
   type PersonalAsignado,
   type PersonalDto,
   type ProcesoDetalle,
@@ -20,6 +19,8 @@ const CLASE_TARJETA = 'rounded-xl bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]
 
 interface PanelDatosProps {
   proceso: ProcesoDetalle
+  /** Abre el modal para agregar o corregir el No. judicial. */
+  onNumeroJudicial: () => void
   /** Se guardó: avisar y refrescar el proceso. */
   onGuardado: (mensaje: string) => void
   /** 409: otra persona cambió el proceso; refrescar para leer la versión nueva. */
@@ -130,6 +131,47 @@ function Fila({ etiqueta, children }: { etiqueta: string; children: ReactNode })
   )
 }
 
+/**
+ * Suele traer el juzgado o la fiscalía junto al número: va apilado (etiqueta arriba, valor abajo)
+ * para que un texto largo se lea de corrido. Sin capturar, la fila es el botón para agregarlo.
+ */
+function FilaNumeroJudicial({ numero, onEditar }: { numero: string | null; onEditar: () => void }) {
+  if (!numero) {
+    return (
+      <div>
+        <dt className="text-[13px] text-gray-500">No. judicial</dt>
+        <dd className="mt-1">
+          <button
+            type="button"
+            onClick={onEditar}
+            className="inline-flex items-center gap-1 rounded-full border border-dashed border-brand-600 px-2.5 py-0.5 text-xs font-medium text-brand-700 hover:bg-brand-50"
+          >
+            <Plus size={12} aria-hidden="true" />
+            Agregar No. judicial
+          </button>
+        </dd>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <dt className="flex items-center justify-between gap-2 text-[13px] text-gray-500">
+        No. judicial
+        <button
+          type="button"
+          onClick={onEditar}
+          aria-label="Corregir No. judicial"
+          title="Corregir No. judicial"
+          className="-m-1 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-brand-700"
+        >
+          <Pencil size={13} aria-hidden="true" />
+        </button>
+      </dt>
+      <dd className="mt-0.5 text-[13px] leading-snug text-pretty break-words text-gray-900">{numero}</dd>
+    </div>
+  )
+}
+
 function iniciales(nombre: string): string {
   return nombre
     .split(/\s+/)
@@ -155,18 +197,18 @@ function MiembroEquipo({
         <button
           type="button"
           onClick={onAsignar}
-          className="flex w-full items-center gap-2.5 rounded-lg border border-dashed border-gray-300 px-2.5 py-2 text-left text-[13px] text-gray-600 hover:border-brand-500 hover:bg-brand-50 hover:text-brand-700"
+          className="group flex w-full items-center gap-2.5 rounded-lg py-1 text-left text-[13px] font-medium text-brand-700"
         >
-          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-gray-100">
+          <span className="flex h-8 w-8 flex-none items-center justify-center rounded-full border border-dashed border-gray-300 text-gray-500 group-hover:border-brand-500 group-hover:bg-brand-50 group-hover:text-brand-700">
             <UserPlus className="h-4 w-4" aria-hidden="true" />
           </span>
-          Asignar {cargo.toLowerCase()}
+          <span className="group-hover:underline">Asignar {cargo.toLowerCase()}</span>
         </button>
       </li>
     )
   }
   return (
-    <li className="flex items-center gap-2.5 px-2.5 py-1">
+    <li className="flex items-center gap-2.5 py-1">
       <span
         aria-hidden="true"
         className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-700"
@@ -182,10 +224,10 @@ function MiembroEquipo({
 }
 
 /**
- * Datos del proceso. El No. interno y el No. judicial (con su acción) ya están en la cabecera: aquí
- * no se repiten. El equipo (abogada y procuradora) se asigna dentro de la misma tarjeta.
+ * El contexto fijo del proceso: quién lo lleva y sus datos (No. judicial, fechas, origen). La
+ * cabecera dice qué proceso es; aquí va lo que se consulta de vez en cuando, sin repetirse.
  */
-export default function PanelDatos({ proceso, onGuardado, onConflicto }: PanelDatosProps) {
+export default function PanelDatos({ proceso, onNumeroJudicial, onGuardado, onConflicto }: PanelDatosProps) {
   const [editando, setEditando] = useState(false)
 
   if (editando) {
@@ -204,7 +246,7 @@ export default function PanelDatos({ proceso, onGuardado, onConflicto }: PanelDa
 
   return (
     <section className={`${CLASE_TARJETA} border border-gray-200 px-[18px] py-4`}>
-      <div className="mb-2 flex items-baseline justify-between gap-3">
+      <div className="mb-2.5 flex items-baseline justify-between gap-3">
         <h3 className="text-sm font-semibold text-gray-900">Equipo responsable</h3>
         {(proceso.abogada || proceso.procuradora) && (
           <button type="button" onClick={() => setEditando(true)} className={CLASE_ACCION}>
@@ -212,21 +254,14 @@ export default function PanelDatos({ proceso, onGuardado, onConflicto }: PanelDa
           </button>
         )}
       </div>
-      <ul className="-mx-2.5 space-y-1.5">
+      <ul className="space-y-1.5">
         <MiembroEquipo cargo="Abogada" persona={proceso.abogada} onAsignar={() => setEditando(true)} />
         <MiembroEquipo cargo="Procuradora" persona={proceso.procuradora} onAsignar={() => setEditando(true)} />
       </ul>
 
-      <h3 className="mb-3 mt-4 border-t border-gray-100 pt-4 text-sm font-semibold text-gray-900">Datos del proceso</h3>
-      <dl className="space-y-2.5">
-        <Fila etiqueta="Inicio">
-          <span className="tabular-nums">{formatFechaGT(proceso.fechaInicio)}</span>
-        </Fila>
-        {proceso.fechaCierre && (
-          <Fila etiqueta="Cierre">
-            <span className="tabular-nums">{formatFechaGT(proceso.fechaCierre)}</span>
-          </Fila>
-        )}
+      <h3 className="mt-5 mb-3 border-t border-gray-100 pt-5 text-sm font-semibold text-gray-900">Datos del proceso</h3>
+      <dl className="space-y-3">
+        <FilaNumeroJudicial numero={proceso.numeroJudicial} onEditar={onNumeroJudicial} />
         {proceso.procesoOrigen && (
           <Fila etiqueta="Origen">
             <Link to={RUTAS_JURIDICO.proceso(proceso.procesoOrigen.id)} className="group block">

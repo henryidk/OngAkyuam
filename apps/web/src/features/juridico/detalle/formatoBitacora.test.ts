@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { EntradaBitacoraDto } from '@akyuam/shared'
-import { agruparBitacora, bloqueFecha, hora12DeInstante, textoCuando, textoDiaRelativo, tituloDia } from './formatoBitacora'
+import { agruparBitacora, bloqueFecha, categoriaActuacion, hora12DeInstante, textoCuando, textoDiaRelativo, tituloDia } from './formatoBitacora'
 
 // Datos ficticios. 2026-10-23 es viernes; Guatemala va 6 horas detrás de UTC.
 const HOY = '2026-10-23'
@@ -55,5 +55,22 @@ describe('textos de fecha', () => {
     expect(bloqueFecha('2026-10-28')).toEqual({ mes: 'OCT', dia: '28', diaSemana: 'mié' })
     expect(bloqueFecha('2026-01-04')).toEqual({ mes: 'ENE', dia: '4', diaSemana: 'dom' })
     expect(hora12DeInstante('2026-10-23T15:30:00.000Z')).toBe('9:30 a. m.')
+  })
+})
+
+describe('categoriaActuacion', () => {
+  it('reconoce el tipo libre sin importar mayúsculas ni tildes', () => {
+    expect(categoriaActuacion('Resolución')).toBe('resolucion')
+    expect(categoriaActuacion('resolucion')).toBe('resolucion')
+    expect(categoriaActuacion('  Memorial   de evacuación ')).toBe('escrito')
+    expect(categoriaActuacion('Notificación')).toBe('notificacion')
+    expect(categoriaActuacion('AUDIENCIA')).toBe('audiencia')
+    expect(categoriaActuacion('Contacto con usuaria')).toBe('contacto')
+    expect(categoriaActuacion('Diligencia')).toBe('diligencia')
+  })
+
+  it('lo que no reconoce queda como "otra"', () => {
+    expect(categoriaActuacion('actuacion ejemplo')).toBe('otra')
+    expect(categoriaActuacion('')).toBe('otra')
   })
 })

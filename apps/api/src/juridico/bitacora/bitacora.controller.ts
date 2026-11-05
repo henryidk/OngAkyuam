@@ -1,10 +1,12 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -12,6 +14,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Throttle } from '@nestjs/throttler';
 import {
+  bitacoraQuerySchema,
+  type BitacoraQuery,
   DOCUMENTO_TAMANIO_MAXIMO_BYTES,
   registrarActuacionSchema,
   type RegistrarActuacionInput,
@@ -29,6 +33,16 @@ import { BitacoraService } from './bitacora.service';
 @Roles('JURIDICO')
 export class BitacoraController {
   constructor(private readonly bitacoraService: BitacoraService) {}
+
+  /** Una página de la bitácora (`?pagina=N`); la primera viaja con el detalle del proceso. */
+  @Get('bitacora')
+  listarPagina(
+    @Param('procesoId', ParseUUIDPipe) procesoId: string,
+    @Query(new ZodValidationPipe(bitacoraQuerySchema)) query: BitacoraQuery,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+  ) {
+    return this.bitacoraService.listarPagina(procesoId, query, contexto);
+  }
 
   @Post('bitacora')
   registrarActuacion(

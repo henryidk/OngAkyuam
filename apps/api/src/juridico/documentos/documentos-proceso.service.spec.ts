@@ -104,7 +104,10 @@ describe('DocumentosProcesoService', () => {
     bitacora = {
       registrar: jest.fn().mockResolvedValue({ id: 'entrada-1' }),
       actualizarContenido: jest.fn().mockResolvedValue(undefined),
-      listarPorProceso: jest.fn(),
+      listarPagina: jest
+        .fn()
+        .mockResolvedValue({ entradas: [], pagina: 1, total: 0 }),
+      contarActuaciones: jest.fn().mockResolvedValue(0),
       buscarEnProceso: jest.fn(),
     };
     storage = {

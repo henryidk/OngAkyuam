@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import {
+  FILAS_POR_PAGINA_REPORTE_JURIDICO,
   formatFechaGT,
   hoyGT,
   reporteProcesosJuridicoQuerySchema,
@@ -13,6 +14,7 @@ import { guardarArchivo } from '../../../lib/archivos'
 import { descargarReporteProcesos, listarPersonalJuridico } from '../api/juridico.api'
 import { CLASES_BARRA, CLASES_BARRA_FORMA } from '../compartido/colores'
 import { useContextoJuridico } from '../compartido/contexto'
+import Paginacion from '../compartido/Paginacion'
 import FiltrosReporteJuridico from './FiltrosReporteJuridico'
 import TablaReporteJuridico from './TablaReporteJuridico'
 import { useReporteProcesos } from './useReporteProcesos'
@@ -68,8 +70,16 @@ export default function ReportesJuridico() {
   const filtrosValidos = validacion.success ? validacion.data : null
   const errorFiltros = validacion.success ? null : (validacion.error.issues[0]?.message ?? 'Filtros inválidos')
 
-  const { reporte, cargando, error } = useReporteProcesos(filtrosValidos)
+  const { reporte, cargando, error, cambiarPagina } = useReporteProcesos(filtrosValidos)
   const hayProcesos = (reporte?.totales.procesos ?? 0) > 0
+  const tabla = useRef<HTMLElement>(null)
+
+  // Al cambiar de página se sube al inicio de la tabla: la página nueva se lee desde su primera fila.
+  function irAPagina(pagina: number) {
+    cambiarPagina(pagina)
+    const sinMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    tabla.current?.scrollIntoView({ behavior: sinMovimiento ? 'auto' : 'smooth', block: 'start' })
+  }
 
   async function descargar() {
     if (!filtrosValidos) return
@@ -127,7 +137,8 @@ export default function ReportesJuridico() {
       </div>
 
       <section
-        className={`overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-opacity ${
+        ref={tabla}
+        className={`scroll-mt-4 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-opacity ${
           cargando && reporte ? 'opacity-60' : ''
         }`}
         aria-busy={cargando}
@@ -139,9 +150,7 @@ export default function ReportesJuridico() {
           {reporte && (
             <p className="text-[13px] text-gray-500">
               {plural(reporte.totales.procesos, 'proceso', 'procesos')} de{' '}
-              {plural(reporte.totales.usuarias, 'usuaria', 'usuarias')} · vista previa de las columnas del Excel
-              {reporte.totales.procesos > reporte.vistaPrevia.length &&
-                ` (primeras ${reporte.vistaPrevia.length} filas)`}
+              {plural(reporte.totales.usuarias, 'usuaria', 'usuarias')} · mismas columnas que el Excel
             </p>
           )}
         </div>
@@ -165,7 +174,26 @@ export default function ReportesJuridico() {
             />
           </div>
         )}
-        {reporte && hayProcesos && <TablaReporteJuridico filas={reporte.vistaPrevia} />}
+        {reporte && hayProcesos && (
+          <>
+            <TablaReporteJuridico filas={reporte.vistaPrevia} />
+            {reporte.totales.procesos > FILAS_POR_PAGINA_REPORTE_JURIDICO && (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-5 py-3 text-[13px] text-gray-500">
+                <span className="tabular-nums">
+                  Mostrando {reporte.vistaPrevia[0]?.numero}–{reporte.vistaPrevia.at(-1)?.numero} de{' '}
+                  {plural(reporte.totales.procesos, 'proceso', 'procesos')}
+                </span>
+                <Paginacion
+                  etiqueta="Paginación del reporte"
+                  pagina={reporte.pagina}
+                  pageSize={FILAS_POR_PAGINA_REPORTE_JURIDICO}
+                  total={reporte.totales.procesos}
+                  onCambiar={irAPagina}
+                />
+              </div>
+            )}
+          </>
+        )}
       </section>
     </div>
   )

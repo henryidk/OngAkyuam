@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { ForbiddenException } from '@nestjs/common';
-import { CARPETA_ACTUACIONES, registrarActuacionSchema } from '@akyuam/shared';
+import {
+  BITACORA_POR_PAGINA,
+  CARPETA_ACTUACIONES,
+  bitacoraQuerySchema,
+  registrarActuacionSchema,
+} from '@akyuam/shared';
 import {
   MENSAJE_SIN_ACCESO_ACTUACION,
   MENSAJE_SIN_ACCESO_PROCESO,
@@ -46,7 +51,10 @@ describe('BitacoraService', () => {
         }),
       ),
       actualizarContenido: jest.fn(),
-      listarPorProceso: jest.fn(),
+      listarPagina: jest
+        .fn()
+        .mockResolvedValue({ entradas: [], pagina: 1, total: 0 }),
+      contarActuaciones: jest.fn().mockResolvedValue(0),
       buscarEnProceso: jest.fn().mockResolvedValue({ esSistema: false }),
     };
     carpetas = { obtenerOCrear: jest.fn().mockResolvedValue(CARPETA_ID) };
@@ -84,6 +92,55 @@ describe('BitacoraService', () => {
         ),
       ).rejects.toThrow(new ForbiddenException(MENSAJE_SIN_ACCESO_PROCESO));
       expect(bitacora.registrar).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('ver una página', () => {
+    const query = { pagina: 3 };
+
+    it('pide esa página del proceso y deja constancia en la auditoría', async () => {
+      const audit = crearAuditService();
+      service = new BitacoraService(
+        bitacora,
+        carpetas as unknown as ICarpetasRepository,
+        documentosService as unknown as DocumentosProcesoService,
+        crearAcceso(procesosRepository),
+        audit,
+      );
+      await service.listarPagina(PROCESO_ID, query, contexto);
+
+      expect(bitacora.listarPagina).toHaveBeenCalledWith(PROCESO_ID, {
+        pagina: 3,
+        porPagina: BITACORA_POR_PAGINA,
+      });
+      expect(audit.registrar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          accion: 'BITACORA_PROCESO_CONSULTADA',
+          entidadId: PROCESO_ID,
+          detalles: expect.objectContaining({ pagina: 3 }) as unknown,
+        }),
+      );
+    });
+
+    it('403 sin acceso al proceso, sin leer la bitácora', async () => {
+      procesosRepository.buscarAccesoProceso.mockResolvedValue(null);
+      await expect(
+        service.listarPagina(PROCESO_ID, query, contexto),
+      ).rejects.toThrow(new ForbiddenException(MENSAJE_SIN_ACCESO_PROCESO));
+      expect(bitacora.listarPagina).not.toHaveBeenCalled();
+    });
+
+    it('rechaza páginas que no son enteros positivos', () => {
+      expect(bitacoraQuerySchema.safeParse({ pagina: '0' }).success).toBe(
+        false,
+      );
+      expect(bitacoraQuerySchema.safeParse({ pagina: '-2' }).success).toBe(
+        false,
+      );
+      expect(bitacoraQuerySchema.safeParse({ pagina: '1.5' }).success).toBe(
+        false,
+      );
+      expect(bitacoraQuerySchema.parse({})).toEqual({ pagina: 1 });
     });
   });
 

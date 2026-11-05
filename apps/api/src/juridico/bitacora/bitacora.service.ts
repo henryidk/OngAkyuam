@@ -1,6 +1,9 @@
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common';
 import {
   CARPETA_ACTUACIONES,
+  BITACORA_POR_PAGINA,
+  type BitacoraPaginaDto,
+  type BitacoraQuery,
   type DocumentoProcesoDto,
   type EntradaBitacoraDto,
   type RegistrarActuacionInput,
@@ -60,6 +63,32 @@ export class BitacoraService {
     );
 
     return entrada;
+  }
+
+  /** Una página de la bitácora; la primera ya viaja con el detalle del proceso. */
+  async listarPagina(
+    procesoId: string,
+    query: BitacoraQuery,
+    contexto: ContextoAuditoria,
+  ): Promise<BitacoraPaginaDto> {
+    await this.acceso.exigirProceso(procesoId);
+
+    // El filtro por proceso va dentro de la consulta: una página nunca trae entradas ajenas.
+    const pagina = await this.bitacoraRepository.listarPagina(procesoId, {
+      pagina: query.pagina,
+      porPagina: BITACORA_POR_PAGINA,
+    });
+
+    await this.auditService.registrar(
+      eventoAuditoria(contexto, {
+        accion: 'BITACORA_PROCESO_CONSULTADA',
+        entidad: 'ProcesoJuridico',
+        entidadId: procesoId,
+        detalles: { pagina: query.pagina, entradas: pagina.entradas.length },
+      }),
+    );
+
+    return pagina;
   }
 
   /**

@@ -55,10 +55,12 @@ export class ReporteProcesosRepository implements IReporteProcesosRepository {
 
   filas(
     filtro: FiltroReporteProcesos,
-    limite: number | null,
+    pagina: { pagina: number; porPagina: number } | null,
   ): Promise<FilaProcesoRow[]> {
-    const porLimite =
-      limite === null ? Prisma.empty : Prisma.sql`LIMIT ${limite}`;
+    const porPagina =
+      pagina === null
+        ? Prisma.empty
+        : Prisma.sql`LIMIT ${pagina.porPagina} OFFSET ${(pagina.pagina - 1) * pagina.porPagina}`;
     // Por fecha de inicio; el instante de registro y el id desempatan para que el correlativo
     // sea estable entre la vista previa y el Excel.
     return this.prisma.$queryRaw<FilaProcesoRow[]>(Prisma.sql`
@@ -86,7 +88,7 @@ export class ReporteProcesosRepository implements IReporteProcesosRepository {
       ) av ON true
       WINDOW w AS (ORDER BY p."fechaInicio", p."createdAt", p.id)
       ORDER BY numero
-      ${porLimite}
+      ${porPagina}
     `);
   }
 

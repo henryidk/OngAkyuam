@@ -1,3 +1,4 @@
+import { Check } from 'lucide-react'
 import {
   ETIQUETAS_FASE,
   FASES_PROCESO_JURIDICO,
@@ -35,27 +36,53 @@ export function BarraAvanceCompacta({ fase, estado }: BarraAvanceProps) {
   )
 }
 
-/** Los tres pasos del proceso en una línea (punto, tramo, punto) dentro de la cabecera del detalle. */
-export default function BarraAvance({ fase, estado }: BarraAvanceProps) {
+interface PasosProcesoProps extends BarraAvanceProps {
+  /** Una línea de contexto bajo cada fase (fecha de inicio, último avance, cierre). */
+  detalles: Record<FaseProcesoJuridico, string>
+}
+
+/**
+ * Los tres pasos del proceso repartidos a lo ancho de la cabecera: hecho (con check), actual (anillo
+ * con punto) y pendiente (círculo vacío). El color sigue al estado: morado en trámite, gris en
+ * pausa, ámbar si se abandonó, verde al finalizar.
+ */
+export default function BarraAvance({ fase, estado, detalles }: PasosProcesoProps) {
   const actual = FASES_PROCESO_JURIDICO.indexOf(fase)
+  const terminado = fase === 'FINALIZADO'
+  const ultimo = FASES_PROCESO_JURIDICO.length - 1
   return (
-    <ol className="flex flex-wrap items-center gap-2 text-[13px]" aria-label="Avance del proceso">
+    <ol className="grid grid-cols-[1fr_1fr_auto]" aria-label="Avance del proceso">
       {FASES_PROCESO_JURIDICO.map((paso, indice) => {
-        const alcanzado = indice <= actual
+        const hecho = indice < actual || (terminado && indice === actual)
+        const enCurso = indice === actual && !terminado
+        const alcanzado = hecho || enCurso
         return (
-          <li key={paso} className="flex items-center gap-2" aria-current={indice === actual ? 'step' : undefined}>
-            {indice > 0 && (
-              <span aria-hidden="true" className={`h-0.5 w-6 sm:w-10 ${alcanzado ? CLASES_BARRA[estado] : 'bg-gray-200'}`} />
-            )}
-            <span
-              aria-hidden="true"
-              className={`h-2.5 w-2.5 shrink-0 rounded-full border-2 ${
-                alcanzado ? `${CLASES_BARRA[estado]} ${CLASES_BORDE_PASO[estado]}` : 'border-gray-300 bg-white'
-              }`}
-            />
-            <span className={`whitespace-nowrap ${alcanzado ? 'font-semibold text-gray-900' : 'text-gray-500'}`}>
+          <li key={paso} className="min-w-0" aria-current={indice === actual ? 'step' : undefined}>
+            <div className="flex items-center">
+              <span
+                aria-hidden="true"
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                  hecho
+                    ? `${CLASES_BARRA[estado]} ${CLASES_BORDE_PASO[estado]} text-white`
+                    : enCurso
+                      ? `bg-white ${CLASES_BORDE_PASO[estado]}`
+                      : 'border-gray-300 bg-white'
+                }`}
+              >
+                {hecho && <Check size={12} strokeWidth={3} />}
+                {enCurso && <span className={`h-2 w-2 rounded-full ${CLASES_BARRA[estado]}`} />}
+              </span>
+              {indice < ultimo && (
+                <span
+                  aria-hidden="true"
+                  className={`mx-2 h-0.5 flex-1 rounded-full ${indice < actual ? CLASES_BARRA[estado] : 'bg-gray-200'}`}
+                />
+              )}
+            </div>
+            <p className={`mt-2 pr-3 text-[13px] ${alcanzado ? 'font-semibold text-gray-900' : 'font-medium text-gray-500'}`}>
               {ETIQUETAS_FASE[paso]}
-            </span>
+            </p>
+            <p className="mt-0.5 pr-3 text-xs text-gray-500 tabular-nums">{detalles[paso]}</p>
           </li>
         )
       })}

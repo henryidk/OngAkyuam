@@ -171,6 +171,16 @@ export const renombrarDocumentoProcesoSchema = z.object({
 })
 export type RenombrarDocumentoProcesoInput = z.infer<typeof renombrarDocumentoProcesoSchema>
 
+// ---- Bitácora paginada ----
+/** Entradas por página de la bitácora: poco texto por pantalla, la página no se alarga. */
+export const BITACORA_POR_PAGINA = 20
+
+/** `GET /juridico/procesos/:id/bitacora?pagina=N`: la página N, 1 = las más recientes. */
+export const bitacoraQuerySchema = z.object({
+  pagina: z.coerce.number().int().min(1).max(10_000).default(1),
+})
+export type BitacoraQuery = z.infer<typeof bitacoraQuerySchema>
+
 export const MODOS_URL_DOCUMENTO = ['descarga', 'vista'] as const
 export const urlDocumentoProcesoQuerySchema = z.object({
   modo: z.enum(MODOS_URL_DOCUMENTO).default('descarga'),
@@ -294,6 +304,14 @@ export interface EntradaBitacoraDto {
   documentos: DocumentoProcesoDto[]
 }
 
+/** Una página de la bitácora. Si se pide una página que ya no existe, llega vacía con el total real. */
+export interface BitacoraPaginaDto {
+  entradas: EntradaBitacoraDto[]
+  pagina: number
+  /** Entradas de todo el proceso (actuaciones y eventos del sistema), para calcular las páginas. */
+  total: number
+}
+
 export interface DocumentoProcesoDto {
   id: string
   carpetaId: string
@@ -328,8 +346,12 @@ export interface ProcesoDetalle extends ProcesoResumen {
   suspensionVigente: SuspensionDto | null
   /** Lo que la máquina de estados permite ahora: el frontend no reimplementa las reglas. */
   accionesDisponibles: AccionProceso[]
-  /** Las más recientes primero. */
+  /** Primera página de la bitácora, las más recientes primero. */
   bitacora: EntradaBitacoraDto[]
+  /** Entradas de toda la bitácora; las demás páginas se piden con `GET .../bitacora?pagina=N`. */
+  bitacoraTotal: number
+  /** Actuaciones del equipo en todo el proceso (sin eventos del sistema), no solo en la página. */
+  totalActuaciones: number
   carpetas: CarpetaDto[]
   otrosProcesosUsuaria: ProcesoResumen[]
   /** Las que se cancelarían al finalizar o abandonar: el modal las lista antes de confirmar. */
@@ -594,6 +616,18 @@ export const reporteProcesosJuridicoQuerySchema = filtroCarteraReporteSchema
   .superRefine(validarRangoCartera)
 export type ReporteProcesosJuridicoQuery = z.infer<typeof reporteProcesosJuridicoQuerySchema>
 
+/** Filas por página de la tabla del reporte B en pantalla; el Excel siempre lleva todas. */
+export const FILAS_POR_PAGINA_REPORTE_JURIDICO = 20
+
+/**
+ * Página de la tabla del reporte B (`GET /juridico/reportes/procesos?pagina=2`). Va aparte de los
+ * filtros porque el Excel no la usa. Es un número, no identifica a nadie: puede ir en la URL.
+ */
+export const paginaReporteJuridicoQuerySchema = z.object({
+  pagina: z.coerce.number().int().min(1).max(10_000).default(1),
+})
+export type PaginaReporteJuridicoQuery = z.infer<typeof paginaReporteJuridicoQuerySchema>
+
 /** `GET /juridico/reportes/poblacion-beneficiada` y su `.xlsx` (reporte A). */
 export const reportePoblacionJuridicoQuerySchema = filtroCarteraReporteSchema.superRefine(validarRangoCartera)
 export type ReportePoblacionJuridicoQuery = z.infer<typeof reportePoblacionJuridicoQuerySchema>
@@ -635,7 +669,10 @@ export interface FilaReporteJuridico {
   estado: EstadoVisibleProceso
 }
 
-/** `GET /juridico/reportes/procesos`: totales, desgloses y las primeras filas. */
+/**
+ * `GET /juridico/reportes/procesos`: totales y desgloses de todo lo filtrado, y una página de
+ * filas (`FILAS_POR_PAGINA_REPORTE_JURIDICO`). El total de filas es `totales.procesos`.
+ */
 export interface ReporteProcesosJuridico {
   /** `180 procesos · 62 expedientes · 60 usuarias` (planaudiencias.md §3.3). */
   totales: { procesos: number; expedientes: number; usuarias: number }
@@ -645,6 +682,8 @@ export interface ReporteProcesosJuridico {
     formaFinalizacion: ConteoReporte[]
     categoria: ConteoReporte[]
   }
+  /** Página que se devolvió en `vistaPrevia`, desde 1. */
+  pagina: number
   vistaPrevia: FilaReporteJuridico[]
 }
 

@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  BITACORA_POR_PAGINA,
   type EditarDatosProcesoInput,
   type BuscarProcesosDatos,
   type ProcesoDetalle,
@@ -68,12 +69,17 @@ export class ProcesosService {
   ): Promise<ProcesoDetalle> {
     const acceso = await this.acceso.exigirProceso(procesoId);
 
-    const [base, bitacora, carpetas, procesosUsuaria] = await Promise.all([
-      this.procesosRepository.obtenerDetalleBase(procesoId),
-      this.bitacoraRepository.listarPorProceso(procesoId),
-      this.carpetasRepository.listarConDocumentos(procesoId),
-      this.procesosRepository.listarPorUsuaria(acceso.usuariaId),
-    ]);
+    const [base, bitacora, totalActuaciones, carpetas, procesosUsuaria] =
+      await Promise.all([
+        this.procesosRepository.obtenerDetalleBase(procesoId),
+        this.bitacoraRepository.listarPagina(procesoId, {
+          pagina: 1,
+          porPagina: BITACORA_POR_PAGINA,
+        }),
+        this.bitacoraRepository.contarActuaciones(procesoId),
+        this.carpetasRepository.listarConDocumentos(procesoId),
+        this.procesosRepository.listarPorUsuaria(acceso.usuariaId),
+      ]);
     if (!base) {
       // El acceso se confirmó justo arriba: aquí solo cabe una carrera con un borrado.
       throw new NotFoundException('Proceso no encontrado');
@@ -90,7 +96,9 @@ export class ProcesosService {
     return {
       ...base,
       accionesDisponibles: accionesDisponibles(base),
-      bitacora,
+      bitacora: bitacora.entradas,
+      bitacoraTotal: bitacora.total,
+      totalActuaciones,
       carpetas,
       otrosProcesosUsuaria: procesosUsuaria.filter(
         (proceso) => proceso.id !== procesoId,

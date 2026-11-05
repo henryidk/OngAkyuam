@@ -190,36 +190,34 @@ export default function DetalleProceso() {
 
   return (
     // Mismo ancho que la lista de procesos: al entrar a uno el contenido no salta de lugar.
-    <div className="mx-auto max-w-[1440px] space-y-5">
-      <CabeceraProceso
-        proceso={proceso}
-        onAgendar={admiteAudiencias(proceso) ? () => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) }) : null}
-        onActuacion={abrirActuacion}
-        onNumeroJudicial={abrirNumeroJudicial}
-        onFinalizar={() => setModal('finalizar')}
-        onSuspender={() => setModal('suspender')}
-        onAbandonar={() => setModal('abandono')}
-      />
-
-      <Banners proceso={proceso} onReactivar={() => setModal('reactivar')} />
-
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="min-w-0 space-y-4">
-          <Outlet context={contexto} />
-        </div>
-
-        <aside className="space-y-4">
-          <PanelDatos
-            proceso={proceso}
-            onGuardado={(mensaje) => {
-              mostrar(mensaje)
-              refrescar()
-            }}
-            onConflicto={refrescar}
-          />
-          <OtrosProcesos key={proceso.id} procesos={proceso.otrosProcesosUsuaria} usuariaId={proceso.usuaria.id} />
-        </aside>
+    // Dos columnas desde arriba: a la izquierda el trabajo (cabecera, pestañas y su contenido); a la
+    // derecha el contexto que no cambia entre pestañas (equipo, datos, otros procesos).
+    <div className="mx-auto grid max-w-[1440px] grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-4">
+        <CabeceraProceso
+          proceso={proceso}
+          onAgendar={admiteAudiencias(proceso) ? () => setModalAudiencia({ tipo: 'AGENDAR', caso: casoDesdeProceso(proceso) }) : null}
+          onActuacion={abrirActuacion}
+          onFinalizar={() => setModal('finalizar')}
+          onSuspender={() => setModal('suspender')}
+          onAbandonar={() => setModal('abandono')}
+        />
+        <Banners proceso={proceso} onReactivar={() => setModal('reactivar')} />
+        <Outlet context={contexto} />
       </div>
+
+      <aside aria-label="Contexto del proceso" className="space-y-4">
+        <PanelDatos
+          proceso={proceso}
+          onNumeroJudicial={abrirNumeroJudicial}
+          onGuardado={(mensaje) => {
+            mostrar(mensaje)
+            refrescar()
+          }}
+          onConflicto={refrescar}
+        />
+        <OtrosProcesos key={proceso.id} procesos={proceso.otrosProcesosUsuaria} usuariaId={proceso.usuaria.id} />
+      </aside>
 
       {modal === 'actuacion' && <ModalActuacion {...propsModal} />}
       {modal === 'finalizar' && <ModalFinalizar {...propsModal} />}

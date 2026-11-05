@@ -7,8 +7,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  paginaReporteJuridicoQuerySchema,
   reportePoblacionJuridicoQuerySchema,
   reporteProcesosJuridicoQuerySchema,
+  type PaginaReporteJuridicoQuery,
   type ReportePoblacionJuridicoQuery,
   type ReporteProcesosJuridicoQuery,
 } from '@akyuam/shared';
@@ -65,9 +67,12 @@ export class ReportesJuridicoController {
   async vistaPrevia(
     @Query(new ZodValidationPipe(reporteProcesosJuridicoQuerySchema))
     query: ReporteProcesosJuridicoQuery,
+    // El mismo query string: cada schema toma sus campos e ignora los del otro.
+    @Query(new ZodValidationPipe(paginaReporteJuridicoQuerySchema))
+    pagina: PaginaReporteJuridicoQuery,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.reporteProcesos.vistaPrevia(query, contexto);
+    return this.reporteProcesos.vistaPrevia(query, pagina, contexto);
   }
 
   @Get('procesos.xlsx')

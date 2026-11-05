@@ -1,4 +1,4 @@
-import type { EntradaBitacoraDto } from '@akyuam/shared';
+import type { BitacoraPaginaDto, EntradaBitacoraDto } from '@akyuam/shared';
 
 export const BITACORA_REPOSITORY = Symbol('BITACORA_REPOSITORY');
 
@@ -17,8 +17,13 @@ export interface IBitacoraRepository {
   registrar(params: RegistrarEntradaParams): Promise<EntradaBitacoraDto>;
   /** Reescribe el texto de una entrada de sistema (p. ej. el conteo de una tanda de subida). */
   actualizarContenido(entradaId: string, contenido: string): Promise<void>;
-  /** Las más recientes primero, con tope. */
-  listarPorProceso(procesoId: string): Promise<EntradaBitacoraDto[]>;
+  /** La página `pagina` (1 = las más recientes), con el total de páginas del proceso. */
+  listarPagina(
+    procesoId: string,
+    opciones: { pagina: number; porPagina: number },
+  ): Promise<BitacoraPaginaDto>;
+  /** Actuaciones del equipo en todo el proceso (sin los eventos del sistema). */
+  contarActuaciones(procesoId: string): Promise<number>;
   /**
    * `esSistema` de la entrada si existe **y** es de ese proceso; `null` si no. Nunca se busca
    * solo por su id.

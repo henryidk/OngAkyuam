@@ -11,7 +11,6 @@ import {
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import EmptyState from '../../../components/ui/EmptyState'
-import { rangoEdadCorto } from '../../trabajo-social/usuarias/filaUsuaria'
 import { listarUsuarias } from '../api/juridico.api'
 import { ErrorVista } from '../compartido/EstadosVista'
 import Paginacion from '../compartido/Paginacion'
@@ -199,7 +198,7 @@ export default function ListaUsuarias() {
                         {fila.dpi && <p className="text-xs tabular-nums text-gray-500">DPI {fila.dpi}</p>}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-sm tabular-nums text-gray-700">
-                        {fila.edad} · {rangoEdadCorto(fila.edad)}
+                        {fila.edad}
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {pildora ? (

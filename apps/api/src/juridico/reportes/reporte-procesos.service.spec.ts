@@ -1,4 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import {
+  FILAS_POR_PAGINA_REPORTE_JURIDICO,
+  paginaReporteJuridicoQuerySchema,
+} from '@akyuam/shared';
 import type { AuditService } from '../../auth/services/audit.service';
 import type { IExportadorHojaCalculo } from '../../common/hoja-calculo/exportador-hoja-calculo.interface';
 import type {
@@ -267,7 +271,7 @@ describe('ReporteProcesosService', () => {
   });
 
   it('traduce los filtros: todos los años con rango, estado, responsable y tipo concretos', async () => {
-    await service.vistaPrevia(query, contexto);
+    await service.vistaPrevia(query, { pagina: 1 }, contexto);
 
     expect(repositorio.conteos).toHaveBeenCalledWith({
       anio: null,
@@ -286,6 +290,7 @@ describe('ReporteProcesosService', () => {
         hasta: '2020-12-31',
         estado: 'TODOS',
       },
+      { pagina: 1 },
       contexto,
     );
 
@@ -298,8 +303,8 @@ describe('ReporteProcesosService', () => {
     });
   });
 
-  it('la vista previa trae totales y audita solo los filtros', async () => {
-    const reporte = await service.vistaPrevia(query, contexto);
+  it('la vista previa trae totales y audita solo los filtros y la página', async () => {
+    const reporte = await service.vistaPrevia(query, { pagina: 3 }, contexto);
 
     expect(reporte.totales).toEqual({
       procesos: 4,
@@ -319,11 +324,34 @@ describe('ReporteProcesosService', () => {
           estado: 'FINALIZADO',
           responsableId: ABOGADA_ID,
           tipo: 'DIVORCIO_MUTUO_ACUERDO',
+          pagina: 3,
         },
       }),
     );
     expect(JSON.stringify(auditService.registrar.mock.calls)).not.toContain(
       'Ana Prueba',
+    );
+  });
+
+  it('pide solo la página indicada; totales y desgloses siguen siendo de todo lo filtrado', async () => {
+    const reporte = await service.vistaPrevia(query, { pagina: 2 }, contexto);
+
+    expect(repositorio.filas).toHaveBeenCalledWith(expect.anything(), {
+      pagina: 2,
+      porPagina: FILAS_POR_PAGINA_REPORTE_JURIDICO,
+    });
+    expect(reporte.pagina).toBe(2);
+    expect(reporte.totales.procesos).toBe(4);
+  });
+
+  it('rechaza páginas que no son enteros positivos', () => {
+    for (const pagina of ['0', '-1', '1.5', 'abc']) {
+      expect(
+        paginaReporteJuridicoQuerySchema.safeParse({ pagina }).success,
+      ).toBe(false);
+    }
+    expect(paginaReporteJuridicoQuerySchema.parse({ estado: 'TODOS' })).toEqual(
+      { pagina: 1 },
     );
   });
 

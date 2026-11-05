@@ -1,5 +1,7 @@
 import type {
   AvisosAudienciasDto,
+  BitacoraPaginaDto,
+  BitacoraQuery,
   ReporteProcesosJuridico,
   ReporteProcesosJuridicoQuery,
   InicioJuridicoDto,
@@ -102,6 +104,13 @@ export function reactivarProceso(procesoId: string, version: number) {
 }
 
 // ---- Bitácora ----
+
+/** Una página de la bitácora; la primera ya viene con el detalle del proceso. */
+export function listarBitacoraPagina(procesoId: string, query: BitacoraQuery) {
+  return api
+    .get<BitacoraPaginaDto>(`/juridico/procesos/${procesoId}/bitacora`, { params: query })
+    .then((res) => res.data)
+}
 
 export function registrarActuacion(procesoId: string, datos: RegistrarActuacionInput) {
   return api.post<EntradaBitacoraDto>(`/juridico/procesos/${procesoId}/bitacora`, datos).then((res) => res.data)
@@ -241,8 +250,11 @@ export function listarPersonalJuridico() {
 const RUTA_REPORTE_PROCESOS = '/juridico/reportes/procesos'
 
 /** Totales, desgloses y las primeras filas del reporte de procesos. */
-export function obtenerReporteProcesos(query: ReporteProcesosJuridicoQuery) {
-  return api.get<ReporteProcesosJuridico>(RUTA_REPORTE_PROCESOS, { params: query }).then((res) => res.data)
+/** Totales y desgloses de todo lo filtrado, y la `pagina` indicada de la tabla. */
+export function obtenerReporteProcesos(query: ReporteProcesosJuridicoQuery, pagina: number) {
+  return api
+    .get<ReporteProcesosJuridico>(RUTA_REPORTE_PROCESOS, { params: { ...query, pagina } })
+    .then((res) => res.data)
 }
 
 /** El Excel completo, como `Blob` en memoria: nunca se guarda una copia en el servidor. */

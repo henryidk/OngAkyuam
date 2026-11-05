@@ -79,3 +79,22 @@ export function textoCuando(fecha: string, hoy: string): string {
   if (dias === -1) return 'ayer'
   return dias > 0 ? `en ${dias} días` : `hace ${-dias} días`
 }
+
+export type CategoriaActuacion = 'resolucion' | 'escrito' | 'notificacion' | 'audiencia' | 'contacto' | 'diligencia' | 'otra'
+
+// El tipo es texto libre ("Memorial de evacuación", "resolucion"…): se reconoce por palabra clave,
+// sin mayúsculas ni tildes. Lo que no encaja queda como "otra" y conserva el ícono genérico.
+const PALABRAS_CATEGORIA: [CategoriaActuacion, string[]][] = [
+  ['resolucion', ['resolucion', 'sentencia', 'auto ', 'decreto']],
+  ['notificacion', ['notificacion', 'cedula', 'citacion', 'emplazamiento']],
+  ['audiencia', ['audiencia', 'juicio oral']],
+  ['contacto', ['contacto', 'llamada', 'reunion', 'entrevista', 'usuaria']],
+  ['escrito', ['escrito', 'memorial', 'demanda', 'solicitud', 'oficio']],
+  ['diligencia', ['diligencia', 'visita', 'gestion', 'tramite']],
+]
+
+/** Familia de una actuación según su tipo escrito a mano, para darle un ícono reconocible. */
+export function categoriaActuacion(tipo: string): CategoriaActuacion {
+  const normal = `${tipo.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()} `
+  return PALABRAS_CATEGORIA.find(([, palabras]) => palabras.some((p) => normal.includes(p)))?.[0] ?? 'otra'
+}

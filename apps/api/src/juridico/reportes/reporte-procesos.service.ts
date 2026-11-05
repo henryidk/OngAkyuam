@@ -11,13 +11,14 @@ import {
   etiquetaProceso,
   etiquetasTipologia,
   fechaCalendarioGT,
-  FILAS_VISTA_PREVIA_REPORTE,
+  FILAS_POR_PAGINA_REPORTE_JURIDICO,
   formatFechaGT,
   FORMAS_FINALIZACION_PROCESO,
   procedenciaParaReporte,
   type AvanceReporte,
   type ConteoReporte,
   type FilaReporteJuridico,
+  type PaginaReporteJuridicoQuery,
   type ReporteProcesosJuridico,
   type ReporteProcesosJuridicoQuery,
   formatearResponsable,
@@ -215,11 +216,15 @@ export class ReporteProcesosService {
 
   async vistaPrevia(
     query: ReporteProcesosJuridicoQuery,
+    { pagina }: PaginaReporteJuridicoQuery,
     contexto: ContextoAuditoria,
   ): Promise<ReporteProcesosJuridico> {
     const filtro = aFiltro(query);
     const [filas, conteos, personas] = await Promise.all([
-      this.repositorio.filas(filtro, FILAS_VISTA_PREVIA_REPORTE),
+      this.repositorio.filas(filtro, {
+        pagina,
+        porPagina: FILAS_POR_PAGINA_REPORTE_JURIDICO,
+      }),
       this.repositorio.conteos(filtro),
       this.repositorio.totalesPersonas(filtro),
     ]);
@@ -232,7 +237,7 @@ export class ReporteProcesosService {
       entidad: 'Reporte',
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
-      detalles: detallesAuditoria(filtro),
+      detalles: { ...detallesAuditoria(filtro), pagina },
     });
 
     return {
@@ -241,6 +246,7 @@ export class ReporteProcesosService {
         ...personas,
       },
       desgloses: armarDesgloses(conteos),
+      pagina,
       vistaPrevia: filas.map(aFilaReporte),
     };
   }

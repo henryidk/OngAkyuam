@@ -63,10 +63,13 @@ export interface TotalesPersonasRow {
 }
 
 export interface IReporteProcesosRepository {
-  /** Procesos del reporte en orden; `limite` null = todos (exportación). */
+  /**
+   * Procesos del reporte en orden; `pagina` null = todos (exportación). El correlativo `numero`
+   * es el del reporte completo, no se reinicia en cada página.
+   */
   filas(
     filtro: FiltroReporteProcesos,
-    limite: number | null,
+    pagina: { pagina: number; porPagina: number } | null,
   ): Promise<FilaProcesoRow[]>;
   conteos(filtro: FiltroReporteProcesos): Promise<ConteoProcesosRow[]>;
   totalesPersonas(filtro: FiltroReporteProcesos): Promise<TotalesPersonasRow>;
