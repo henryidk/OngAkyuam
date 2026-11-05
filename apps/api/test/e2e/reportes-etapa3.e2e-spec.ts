@@ -252,11 +252,13 @@ describe('Reportes: usuarias nuevas (TS) y rango del Excel de Psicología (e2e)'
       profesional: Usuario,
       desde: string,
       hasta: string,
+      // Sin filtro el servidor usa "Todos los procesos" (EQUIPO).
+      filtros: { profesional?: string } = {},
     ) {
       const sesion = sesionDe(app, profesional);
       const respuesta = await request(app.getHttpServer())
         .get('/api/psicologia/indicadores.xlsx')
-        .query({ desde, hasta })
+        .query({ desde, hasta, ...filtros })
         .set('Cookie', sesion.cookie)
         .buffer(true)
         .parse((res, callback) => {
@@ -287,7 +289,9 @@ describe('Reportes: usuarias nuevas (TS) y rango del Excel de Psicología (e2e)'
         '2096-03-15T15:00:00.000Z',
       );
 
-      const respuesta = await descargar(psicologa, '2096-03-01', '2096-03-31');
+      const respuesta = await descargar(psicologa, '2096-03-01', '2096-03-31', {
+        profesional: 'MIOS',
+      });
 
       expect(respuesta.status).toBe(200);
       expect(respuesta.headers['content-disposition']).toContain(
@@ -316,6 +320,36 @@ describe('Reportes: usuarias nuevas (TS) y rango del Excel de Psicología (e2e)'
         expect.arrayContaining(['No. expediente', 'Estado', 'Responsable']),
       );
       expect(encabezados).not.toContain('Ingreso');
+    });
+
+    it('sin filtro trae todos los procesos del equipo, también los de otra psicóloga', async () => {
+      const mio = await sesionAtendida(psicologa, '2096-05-10T15:00:00.000Z');
+      const deOtra = await sesionAtendida(
+        otraPsicologa,
+        '2096-05-12T15:00:00.000Z',
+      );
+
+      const respuesta = await descargar(psicologa, '2096-05-01', '2096-05-31');
+
+      expect(respuesta.status).toBe(200);
+      const libro = new Workbook();
+      await libro.xlsx.load(
+        respuesta.body as Parameters<typeof libro.xlsx.load>[0],
+      );
+      const hoja = libro.worksheets[0];
+      const columna =
+        encabezadosDe(hoja, 'No. expediente').indexOf('No. expediente') + 1;
+      const numeros: unknown[] = [];
+      hoja.eachRow((fila, indice) => {
+        if (indice > filaEncabezado(hoja, 'No. expediente')) {
+          numeros.push(fila.getCell(columna).value);
+        }
+      });
+
+      // `arrayContaining`: la base de e2e puede traer procesos del equipo de otras corridas.
+      expect(numeros).toEqual(
+        expect.arrayContaining([mio.numero, deOtra.numero]),
+      );
     });
 
     it('rechaza un rango con "Desde" después de "Hasta"', async () => {

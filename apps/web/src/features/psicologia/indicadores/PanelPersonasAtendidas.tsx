@@ -7,7 +7,7 @@ import { guardarArchivo } from '../../../lib/archivos'
 import { useRecurso } from '../../../lib/useRecurso'
 import Paginacion from '../../../components/ui/Paginacion'
 import { descargarIndicadores, listarPersonasAtendidas } from '../api/psicologia.api'
-import type { FiltrosPsicologia } from './FiltrosIndicadores'
+import type { FiltrosPsicologia } from './filtros'
 import TablaPersonasAtendidas from './TablaPersonasAtendidas'
 
 const CLASES_FECHA =
@@ -44,8 +44,14 @@ export default function PanelPersonasAtendidas({ filtros, rango, onCambiarRango,
   const consulta = validacion.success ? validacion.data : null
   const errorRango = validacion.success ? null : (validacion.error.issues[0]?.message ?? 'Rango inválido')
 
-  // Otro periodo u otros filtros: de vuelta a la primera página.
-  useEffect(() => setPagina(1), [consulta?.desde, consulta?.hasta, filtros])
+  // Otro periodo u otros filtros: de vuelta a la primera página. Se ajusta durante el render (no en un
+  // efecto) para no pedir al servidor una página que ya no corresponde.
+  const claveConsulta = consulta ? JSON.stringify(consulta) : ''
+  const [claveVista, setClaveVista] = useState(claveConsulta)
+  if (claveVista !== claveConsulta) {
+    setClaveVista(claveConsulta)
+    setPagina(1)
+  }
 
   const cargar = useCallback(
     () => (consulta ? listarPersonasAtendidas({ ...consulta, pagina }) : Promise.resolve(null)),

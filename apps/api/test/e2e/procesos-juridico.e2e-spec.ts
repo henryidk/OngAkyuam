@@ -649,16 +649,19 @@ describe('Jurídico · procesos: No. judicial, carpetas por año, búsqueda y ci
         tamanioBytes: pdf.length,
         subidoPorId: juridico.id,
       };
+      // Claves únicas: `claveR2` es única y la base de e2e puede reutilizarse entre corridas.
+      const clavePrimera = `e2e/primera-${randomUUID()}`;
+      const claveSegunda = `e2e/segunda-${randomUUID()}`;
 
       const primero = await repositorio.reemplazarArchivo({
         ...datos,
         claveAnterior: documento.claveR2,
-        claveR2: 'e2e/primera',
+        claveR2: clavePrimera,
       });
       const segundo = await repositorio.reemplazarArchivo({
         ...datos,
         claveAnterior: documento.claveR2,
-        claveR2: 'e2e/segunda',
+        claveR2: claveSegunda,
       });
 
       expect(primero).toMatchObject({
@@ -668,7 +671,7 @@ describe('Jurídico · procesos: No. judicial, carpetas por año, búsqueda y ci
         nombreArchivo: 'nuevo.pdf',
       });
       expect(segundo).toBeNull();
-      await sinCambios({ id: documento.id, claveR2: 'e2e/primera' });
+      await sinCambios({ id: documento.id, claveR2: clavePrimera });
     });
   });
 });

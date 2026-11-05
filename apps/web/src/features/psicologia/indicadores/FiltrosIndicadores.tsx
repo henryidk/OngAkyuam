@@ -1,13 +1,5 @@
-import type { EstadoProcesoReportePsicologia, IndicadoresQuery } from '@akyuam/shared'
-
-/** Los filtros que comparten las cifras y el Excel (el periodo va aparte). */
-export type FiltrosPsicologia = Pick<IndicadoresQuery, 'profesional' | 'estadoProceso' | 'incluirNinos'>
-
-export const FILTROS_INICIALES: FiltrosPsicologia = {
-  profesional: 'EQUIPO',
-  estadoProceso: 'TODOS',
-  incluirNinos: true,
-}
+import type { EstadoProcesoReportePsicologia } from '@akyuam/shared'
+import type { FiltrosPsicologia } from './filtros'
 
 const OPCIONES_ESTADO: { valor: EstadoProcesoReportePsicologia; etiqueta: string }[] = [
   { valor: 'TODOS', etiqueta: 'Todos' },
