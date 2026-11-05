@@ -14,7 +14,6 @@ function crearCitaAgregado(
   return {
     fechaHora: new Date('2026-06-15T15:00:00.000Z'),
     estado: 'ATENDIDA',
-    tipo: 'SEGUIMIENTO',
     usuariaId: 'usuaria-1',
     ninoId: null,
     fechaNacimiento: '1990-01-10',
@@ -194,8 +193,7 @@ describe('IndicadoresPsicologiaService', () => {
 
       expect(anual.personasAtendidas).toBe(0);
       expect(anual.inasistencias).toBe(1);
-      expect(anual.citas).toBe(2);
-      expect(total(anual.desgloses.municipio, 'COBAN')).toBe(0);
+      expect(total(anual.desgloses.grupoEtnico, 'MAYA')).toBe(0);
     });
 
     it('los desgloses cuentan personas distintas y cuadran con el total de personas', async () => {
@@ -215,11 +213,10 @@ describe('IndicadoresPsicologiaService', () => {
         conteos.reduce((acumulado, conteo) => acumulado + conteo.total, 0);
 
       expect(anual.personasAtendidas).toBe(2);
-      expect(suma(anual.desgloses.municipio)).toBe(2);
       expect(suma(anual.desgloses.grupoEtnico)).toBe(2);
       expect(suma(anual.desgloses.rangoEdad)).toBe(2);
-      expect(total(anual.desgloses.municipio, 'COBAN')).toBe(1);
-      expect(total(anual.desgloses.municipio, 'FUERA_DE_ALTA_VERAPAZ')).toBe(1);
+      expect(total(anual.desgloses.grupoEtnico, 'MAYA')).toBe(1);
+      expect(total(anual.desgloses.grupoEtnico, 'LADINO')).toBe(1);
       // Una persona con dos tipologías suma en ambas.
       expect(total(anual.desgloses.tipologia, 'FISICA')).toBe(2);
       expect(total(anual.desgloses.tipologia, 'SEXUAL')).toBe(1);
@@ -227,44 +224,24 @@ describe('IndicadoresPsicologiaService', () => {
 
     it('entrega etiquetas legibles, nunca solo la clave del catálogo', async () => {
       citasRepository.listarCitasEnRango.mockResolvedValue([
-        crearCitaAgregado({ municipio: 'SAN_CRISTOBAL_VERAPAZ' }),
+        crearCitaAgregado(),
       ]);
 
       const { anual } = await consultar();
 
       expect(
-        anual.desgloses.municipio.find(
-          (conteo) => conteo.clave === 'SAN_CRISTOBAL_VERAPAZ',
-        )?.etiqueta,
-      ).toBe('San Cristóbal Verapaz');
+        anual.desgloses.grupoEtnico.find((conteo) => conteo.clave === 'MAYA')
+          ?.etiqueta,
+      ).toBe('Maya');
       const { desgloses } = anual;
       const etiquetas = [
         ...desgloses.rangoEdad,
         ...desgloses.grupoEtnico,
         ...desgloses.tipologia,
-        ...desgloses.municipio,
-        ...desgloses.citasPorEstado,
-        ...desgloses.citasPorTipo,
       ].map((conteo) => conteo.etiqueta);
       for (const etiqueta of etiquetas) {
         expect(etiqueta).not.toMatch(/_/);
       }
-    });
-
-    it('cuenta las citas por estado y por tipo', async () => {
-      citasRepository.listarCitasEnRango.mockResolvedValue([
-        crearCitaAgregado({ estado: 'ATENDIDA', tipo: 'PRIMERA_ATENCION' }),
-        crearCitaAgregado({ estado: 'NO_ASISTIO' }),
-        crearCitaAgregado({ estado: 'NO_ASISTIO' }),
-        crearCitaAgregado({ estado: 'PROGRAMADA' }),
-      ]);
-
-      const { anual } = await consultar();
-
-      expect(total(anual.desgloses.citasPorEstado, 'NO_ASISTIO')).toBe(2);
-      expect(total(anual.desgloses.citasPorEstado, 'ATENDIDA')).toBe(1);
-      expect(total(anual.desgloses.citasPorTipo, 'PRIMERA_ATENCION')).toBe(1);
-      expect(total(anual.desgloses.citasPorTipo, 'SEGUIMIENTO')).toBe(3);
     });
 
     it('ofrece los años desde mi primer proceso hasta el actual, del más reciente al más antiguo', async () => {

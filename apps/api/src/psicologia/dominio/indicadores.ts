@@ -1,20 +1,14 @@
 import {
   calcularRangoEdad,
   edadEnFecha,
-  ESTADOS_CITA_PSICOLOGICA,
-  ETIQUETAS_ESTADO_CITA_PSICOLOGICA,
   ETIQUETAS_GRUPO_ETNICO,
-  ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   ETIQUETAS_RANGO_EDAD,
-  ETIQUETAS_TIPO_CITA_PSICOLOGICA,
   ETIQUETAS_TIPOLOGIA_DELITO,
   fechaCalendarioGT,
   GRUPOS_ETNICOS,
   PUESTO_PRACTICANTE,
-  MUNICIPIOS_ALTA_VERAPAZ,
   serieDoceMeses,
   TIPOLOGIAS_DELITO,
-  TIPOS_CITA_PSICOLOGICA,
   type ConteoReporte,
   type EstadoProcesoReportePsicologia,
   type PeriodoIndicadores,
@@ -23,9 +17,8 @@ import {
 } from '@akyuam/shared';
 import type { CitaParaAgregado } from '../interfaces/citas-psicologicas-repository.interface';
 
-/** Municipio de quien no vive en Alta Verapaz: no se desglosa, va en un solo renglón. */
+/** Municipio de quien no vive en Alta Verapaz: en el Excel sale "Fuera de Alta Verapaz". */
 export const MUNICIPIO_FUERA = 'FUERA_DE_ALTA_VERAPAZ';
-const ETIQUETA_MUNICIPIO_FUERA = 'Fuera de Alta Verapaz';
 
 const RANGOS_EDAD = Object.keys(ETIQUETAS_RANGO_EDAD) as RangoEdad[];
 
@@ -198,14 +191,13 @@ function desglose<K extends string>(
   }));
 }
 
-/** Cifras de un periodo: personas distintas por dimensión y citas por estado y tipo. */
+/** Cifras de un periodo: sesiones, inasistencias y personas distintas por dimensión. */
 export function resumirPeriodo(citas: CitaParaAgregado[]): PeriodoIndicadores {
   const personas = personasAtendidas(citas);
   return {
     personasAtendidas: personas.length,
     sesionesRealizadas: citas.filter((c) => c.estado === 'ATENDIDA').length,
     inasistencias: citas.filter((c) => c.estado === 'NO_ASISTIO').length,
-    citas: citas.length,
     desgloses: {
       rangoEdad: desglose(
         RANGOS_EDAD,
@@ -221,24 +213,6 @@ export function resumirPeriodo(citas: CitaParaAgregado[]): PeriodoIndicadores {
         TIPOLOGIAS_DELITO,
         ETIQUETAS_TIPOLOGIA_DELITO,
         personas.flatMap((p) => p.tipologias),
-      ),
-      municipio: desglose(
-        [...MUNICIPIOS_ALTA_VERAPAZ, MUNICIPIO_FUERA],
-        {
-          ...ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
-          [MUNICIPIO_FUERA]: ETIQUETA_MUNICIPIO_FUERA,
-        },
-        personas.map((p) => p.municipio),
-      ),
-      citasPorEstado: desglose(
-        ESTADOS_CITA_PSICOLOGICA,
-        ETIQUETAS_ESTADO_CITA_PSICOLOGICA,
-        citas.map((c) => c.estado),
-      ),
-      citasPorTipo: desglose(
-        TIPOS_CITA_PSICOLOGICA,
-        ETIQUETAS_TIPO_CITA_PSICOLOGICA,
-        citas.map((c) => c.tipo),
       ),
     },
   };

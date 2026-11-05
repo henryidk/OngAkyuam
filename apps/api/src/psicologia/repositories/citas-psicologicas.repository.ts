@@ -234,7 +234,6 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       select: {
         fechaHora: true,
         estado: true,
-        tipo: true,
         ninoId: true,
         atencionId: true,
         diagnostico: true,
@@ -274,7 +273,6 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       return {
         fechaHora: cita.fechaHora,
         estado: cita.estado,
-        tipo: cita.tipo,
         usuariaId: expediente.usuariaId,
         ninoId: cita.ninoId,
         fechaNacimiento: fechaColumnaISO(persona.fechaNacimiento),

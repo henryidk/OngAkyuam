@@ -447,16 +447,13 @@ export interface ConsultaRegistradaDto {
 }
 
 /**
- * Desgloses de un periodo. Los cuatro primeros cuentan **personas atendidas distintas** (una
- * persona con dos tipologías suma en ambas); los dos últimos cuentan **citas**.
+ * Desgloses de un periodo: cuentan **personas atendidas distintas** (una persona con dos
+ * tipologías suma en ambas). El municipio va por persona en el Excel, no como desglose.
  */
 export interface DesglosesIndicadores {
   rangoEdad: ConteoReporte[]
   grupoEtnico: ConteoReporte[]
   tipologia: ConteoReporte[]
-  municipio: ConteoReporte[]
-  citasPorEstado: ConteoReporte[]
-  citasPorTipo: ConteoReporte[]
 }
 
 /** Cifras de un periodo (el año completo o uno de sus meses). */
@@ -465,8 +462,6 @@ export interface PeriodoIndicadores {
   personasAtendidas: number
   sesionesRealizadas: number
   inasistencias: number
-  /** Todas las citas del periodo, en cualquier estado. */
-  citas: number
   desgloses: DesglosesIndicadores
 }
 

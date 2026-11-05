@@ -6,7 +6,6 @@ import type {
   GRUPOS_ETNICOS,
   MUNICIPIOS_ALTA_VERAPAZ,
   TIPOLOGIAS_DELITO,
-  TipoCitaPsicologica,
 } from '@akyuam/shared';
 
 export const CITAS_PSICOLOGICAS_REPOSITORY = Symbol(
@@ -73,7 +72,6 @@ export interface ConsultaRegistrada {
 export interface CitaParaAgregado {
   fechaHora: Date;
   estado: EstadoCitaPsicologica;
-  tipo: TipoCitaPsicologica;
   usuariaId: string;
   /** null = se atendió a la usuaria. */
   ninoId: string | null;
