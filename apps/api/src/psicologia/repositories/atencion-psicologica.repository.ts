@@ -1,9 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type {
-  MotivoCierrePsicologia,
-  ProfesionalReportePsicologia,
-} from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   IAtencionPsicologicaRepository,
@@ -157,38 +153,5 @@ export class AtencionPsicologicaRepository implements IAtencionPsicologicaReposi
         fechaCierre: { gte: desde, lte: hasta },
       },
     });
-  }
-
-  async contarCerradosPorMotivo(
-    psicologaId: string | null,
-    desde: Date,
-    hasta: Date,
-  ): Promise<{ motivo: MotivoCierrePsicologia | null; total: number }[]> {
-    const grupos = await this.prisma.atencionPsicologica.groupBy({
-      by: ['motivoCierreCatalogo'],
-      where: {
-        ...delAlcance(psicologaId),
-        estado: 'CIERRE',
-        fechaCierre: { gte: desde, lte: hasta },
-      },
-      _count: { _all: true },
-    });
-    return grupos.map((grupo) => ({
-      motivo: grupo.motivoCierreCatalogo,
-      total: grupo._count._all,
-    }));
-  }
-
-  async listarPsicologas(): Promise<ProfesionalReportePsicologia[]> {
-    const cuentas = await this.prisma.usuario.findMany({
-      where: { rol: 'PSICOLOGIA' },
-      orderBy: { nombreCompleto: 'asc' },
-      select: { id: true, nombreCompleto: true, isActive: true },
-    });
-    return cuentas.map((cuenta) => ({
-      id: cuenta.id,
-      nombre: cuenta.nombreCompleto,
-      activo: cuenta.isActive,
-    }));
   }
 }

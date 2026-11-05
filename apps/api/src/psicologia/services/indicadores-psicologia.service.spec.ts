@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { indicadoresQuerySchema } from '@akyuam/shared';
 import { IndicadoresPsicologiaService } from './indicadores-psicologia.service';
 import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
@@ -27,7 +28,6 @@ function crearCitaAgregado(
     diagnostico: 'Ansiedad',
     enfoqueTerapeutico: 'Sistémico',
     profesional: 'Psicóloga Ficticia (licenciada)',
-    clinica: 'CLINICA_1',
     ...overrides,
   };
 }
@@ -57,8 +57,6 @@ describe('IndicadoresPsicologiaService', () => {
       contarCasosActivos: jest.fn(),
       contarIniciadosEnRango: jest.fn(),
       contarCerradosEnRango: jest.fn(),
-      contarCerradosPorMotivo: jest.fn().mockResolvedValue([]),
-      listarPsicologas: jest.fn().mockResolvedValue([]),
     };
     citasRepository = {
       buscarAccesoCita: jest.fn(),
@@ -327,15 +325,15 @@ describe('IndicadoresPsicologiaService', () => {
         );
       });
 
-      it('con el id de una psicóloga, acota a ella y no a quien consulta', async () => {
+      it('solo acepta "Mis procesos" o "Todos los procesos": no se elige una psicóloga concreta', () => {
         const otra = '5f0c1d7e-8a4b-4c2d-9e1f-0a1b2c3d4e5f';
-        await consultar({ profesional: otra });
 
         expect(
-          citasRepository.listarCitasEnRango.mock.calls[0][0].psicologaId,
-        ).toBe(otra);
-        expect(atencionRepository.contarCasosActivos).toHaveBeenCalledWith(
-          otra,
+          indicadoresQuerySchema.safeParse({ anio: 2026, profesional: otra })
+            .success,
+        ).toBe(false);
+        expect(indicadoresQuerySchema.parse({ anio: 2026 }).profesional).toBe(
+          'EQUIPO',
         );
       });
 
@@ -374,35 +372,6 @@ describe('IndicadoresPsicologiaService', () => {
         ).toBe(1);
         expect((await consultar()).anual.personasAtendidas).toBe(2);
       });
-    });
-
-    it('cuenta las sesiones atendidas por clínica, con "Sin anotar" para las antiguas', async () => {
-      citasRepository.listarCitasEnRango.mockResolvedValue([
-        crearCitaAgregado(),
-        crearCitaAgregado({ clinica: 'CLINICA_2' }),
-        crearCitaAgregado({ clinica: null }),
-        // Una inasistencia no es una sesión en ninguna clínica.
-        crearCitaAgregado({ estado: 'NO_ASISTIO', clinica: null }),
-      ]);
-
-      const { sesionesPorClinica } = (await consultar()).anual.desgloses;
-
-      expect(total(sesionesPorClinica, 'CLINICA_1')).toBe(1);
-      expect(total(sesionesPorClinica, 'CLINICA_2')).toBe(1);
-      expect(total(sesionesPorClinica, 'SIN_ANOTAR')).toBe(1);
-    });
-
-    it('desglosa los cierres por motivo, con todos los motivos aunque tengan 0', async () => {
-      atencionRepository.contarCerradosPorMotivo.mockResolvedValue([
-        { motivo: 'OBJETIVOS_CUMPLIDOS', total: 3 },
-        { motivo: null, total: 1 },
-      ]);
-
-      const { cierresPorMotivo } = await consultar();
-
-      expect(total(cierresPorMotivo, 'OBJETIVOS_CUMPLIDOS')).toBe(3);
-      expect(total(cierresPorMotivo, 'DEJO_DE_ASISTIR')).toBe(0);
-      expect(total(cierresPorMotivo, 'SIN_ANOTAR')).toBe(1);
     });
   });
 

@@ -233,7 +233,6 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
       orderBy: [{ fechaHora: 'asc' }, { id: 'asc' }],
       select: {
         fechaHora: true,
-        clinica: true,
         estado: true,
         tipo: true,
         ninoId: true,
@@ -293,7 +292,6 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
         diagnostico: cita.diagnostico,
         enfoqueTerapeutico: cita.enfoqueTerapeutico,
         profesional: nombreProfesional(cita.atendidoPor),
-        clinica: cita.clinica,
       };
     });
   }

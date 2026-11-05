@@ -199,11 +199,12 @@ export const ESTADOS_PROCESO_REPORTE_PSICOLOGIA = ['TODOS', 'EN_ATENCION', 'CONC
 export type EstadoProcesoReportePsicologia = (typeof ESTADOS_PROCESO_REPORTE_PSICOLOGIA)[number]
 
 /**
- * Filtros comunes de las estadísticas y del Excel de Psicología. `profesional`: "MIOS" (lo mío),
- * "EQUIPO" (toda el área) o el id de una psicóloga. Cualquier psicóloga puede ver lo del equipo.
+ * Filtros comunes de las estadísticas y del Excel de Psicología. `profesional`: "EQUIPO" (todos los
+ * procesos del área, por defecto) o "MIOS" (los de quien consulta). Cualquier psicóloga puede ver
+ * lo del equipo; no se elige una psicóloga concreta.
  */
 const filtrosReportePsicologia = {
-  profesional: z.union([z.enum(ALCANCES_PSICOLOGIA), z.string().uuid()]).default('EQUIPO'),
+  profesional: z.enum(ALCANCES_PSICOLOGIA).default('EQUIPO'),
   estadoProceso: z.enum(ESTADOS_PROCESO_REPORTE_PSICOLOGIA).default('TODOS'),
   incluirNinos: booleanoQuerySchema.default(true),
 }
@@ -456,8 +457,6 @@ export interface DesglosesIndicadores {
   municipio: ConteoReporte[]
   citasPorEstado: ConteoReporte[]
   citasPorTipo: ConteoReporte[]
-  /** Sesiones atendidas en cada consultorio (las anteriores a que se pidiera salen "Sin anotar"). */
-  sesionesPorClinica: ConteoReporte[]
 }
 
 /** Cifras de un periodo (el año completo o uno de sus meses). */
@@ -471,15 +470,8 @@ export interface PeriodoIndicadores {
   desgloses: DesglosesIndicadores
 }
 
-/** Una psicóloga del área, para el filtro de los reportes (activas e inactivas). */
-export interface ProfesionalReportePsicologia {
-  id: string
-  nombre: string
-  activo: boolean
-}
-
 /**
- * `GET /psicologia/indicadores` — cifras del año consultado (mías, del equipo o de una psicóloga).
+ * `GET /psicologia/indicadores` — cifras del año consultado (mis procesos o los del equipo).
  * Solo cifras: nunca nombres ni datos de una persona atendida.
  */
 export interface IndicadoresPsicologia {
@@ -489,10 +481,6 @@ export interface IndicadoresPsicologia {
   procesosActivos: number
   procesosIniciadosEnElAnio: number
   procesosCerradosEnElAnio: number
-  /** Procesos cerrados en el año, por motivo de cierre (los antiguos sin motivo salen "Sin anotar"). */
-  cierresPorMotivo: ConteoReporte[]
-  /** Para el filtro "Psicóloga". */
-  profesionales: ProfesionalReportePsicologia[]
   anual: PeriodoIndicadores
   /** Los 12 meses, de enero a diciembre, con ceros donde no hubo atención. */
   meses: PeriodoIndicadores[]

@@ -4,7 +4,6 @@ import {
   anioCalendarioGT,
   aniosEntre,
   ETIQUETAS_GRUPO_ETNICO,
-  ETIQUETAS_MOTIVO_CIERRE_PSICOLOGIA,
   ETIQUETAS_MUNICIPIO_ALTA_VERAPAZ,
   ETIQUETAS_RANGO_EDAD,
   ETIQUETAS_TIPOLOGIA_DELITO,
@@ -13,9 +12,7 @@ import {
   fechaCalendarioGT,
   inicioDiaGT,
   inicioMesGT,
-  MOTIVOS_CIERRE_PSICOLOGIA,
   semanaDelMesGT,
-  type ConteoReporte,
   FILAS_POR_PAGINA_PERSONAS_PSICOLOGIA,
   type ExportarPsicologiaQuery,
   type FilaPersonaAtendidaPsicologia,
@@ -33,11 +30,9 @@ import type {
 } from '../../common/hoja-calculo/exportador-hoja-calculo.interface';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import {
-  ETIQUETA_SIN_ANOTAR,
   filtrarCitas,
   MUNICIPIO_FUERA,
   personasAtendidas,
-  SIN_ANOTAR,
   resumirAnio,
   type PersonaAtendida,
 } from '../dominio/indicadores';
@@ -141,14 +136,12 @@ export function aFilaHoja(
   ];
 }
 
-/** "MIOS" = quien consulta; "EQUIPO" = toda el área (`null`); si no, el id de una psicóloga. */
+/** "MIOS" = quien consulta; "EQUIPO" = toda el área (`null`). */
 export function resolverPsicologa(
   profesional: IndicadoresQuery['profesional'],
   usuarioId: string,
 ): string | null {
-  if (profesional === 'MIOS') return usuarioId;
-  if (profesional === 'EQUIPO') return null;
-  return profesional;
+  return profesional === 'MIOS' ? usuarioId : null;
 }
 
 /** Los filtros en la bitácora: ids y valores de catálogo, nunca datos de una persona atendida. */
@@ -165,25 +158,6 @@ function filtrosAuditados(
   };
 }
 
-/** Todos los motivos del catálogo, aunque tengan 0, y "Sin anotar" para los cierres antiguos. */
-function desgloseCierres(
-  grupos: {
-    motivo: (typeof MOTIVOS_CIERRE_PSICOLOGIA)[number] | null;
-    total: number;
-  }[],
-): ConteoReporte[] {
-  const total = (motivo: string | null) =>
-    grupos.find((grupo) => grupo.motivo === motivo)?.total ?? 0;
-  return [
-    ...MOTIVOS_CIERRE_PSICOLOGIA.map((motivo) => ({
-      clave: motivo,
-      etiqueta: ETIQUETAS_MOTIVO_CIERRE_PSICOLOGIA[motivo],
-      total: total(motivo),
-    })),
-    { clave: SIN_ANOTAR, etiqueta: ETIQUETA_SIN_ANOTAR, total: total(null) },
-  ];
-}
-
 @Injectable()
 export class IndicadoresPsicologiaService {
   constructor(
@@ -197,10 +171,10 @@ export class IndicadoresPsicologiaService {
   ) {}
 
   /**
-   * Cifras del año de mis procesos, de los del equipo o de los de una psicóloga (cualquier
-   * psicóloga puede ver las del área). Las cifras salen de una sola consulta de las citas del
+   * Cifras del año de mis procesos o de los del equipo (cualquier psicóloga puede ver las del
+   * área). Las cifras salen de una sola consulta de las citas del
    * año, agregada en memoria por el dominio (el corte de mes es en hora de Guatemala, nunca con
-   * `date_trunc` en la base). Los conteos de procesos solo dependen de la psicóloga elegida.
+   * `date_trunc` en la base). Los conteos de procesos solo dependen de "Mis procesos" / "Todos".
    */
   async obtenerIndicadores(
     query: IndicadoresQuery,
@@ -215,21 +189,13 @@ export class IndicadoresPsicologiaService {
       procesosActivos,
       procesosIniciadosEnElAnio,
       procesosCerradosEnElAnio,
-      cerradosPorMotivo,
       primerProceso,
-      profesionales,
       citas,
     ] = await Promise.all([
       this.atencionRepository.contarCasosActivos(psicologaId),
       this.atencionRepository.contarIniciadosEnRango(psicologaId, desde, hasta),
       this.atencionRepository.contarCerradosEnRango(psicologaId, desde, hasta),
-      this.atencionRepository.contarCerradosPorMotivo(
-        psicologaId,
-        desde,
-        hasta,
-      ),
       this.atencionRepository.fechaPrimerProceso(psicologaId),
-      this.atencionRepository.listarPsicologas(),
       this.citasRepository.listarCitasEnRango({ psicologaId, desde, hasta }),
     ]);
 
@@ -243,8 +209,6 @@ export class IndicadoresPsicologiaService {
       procesosActivos,
       procesosIniciadosEnElAnio,
       procesosCerradosEnElAnio,
-      cierresPorMotivo: desgloseCierres(cerradosPorMotivo),
-      profesionales,
       ...resumirAnio(filtrarCitas(citas, query)),
     };
 

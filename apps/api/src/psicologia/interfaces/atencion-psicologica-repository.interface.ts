@@ -1,8 +1,3 @@
-import type {
-  MotivoCierrePsicologia,
-  ProfesionalReportePsicologia,
-} from '@akyuam/shared';
-
 export const ATENCION_PSICOLOGICA_REPOSITORY = Symbol(
   'ATENCION_PSICOLOGICA_REPOSITORY',
 );
@@ -51,12 +46,4 @@ export interface IAtencionPsicologicaRepository {
     desde: Date,
     hasta: Date,
   ): Promise<number>;
-  /** Casos cerrados dentro del rango, agrupados por motivo (`null` = cerrado sin motivo anotado). */
-  contarCerradosPorMotivo(
-    psicologaId: string | null,
-    desde: Date,
-    hasta: Date,
-  ): Promise<{ motivo: MotivoCierrePsicologia | null; total: number }[]>;
-  /** Cuentas del área de Psicología (activas e inactivas), para el filtro de los reportes. */
-  listarPsicologas(): Promise<ProfesionalReportePsicologia[]>;
 }
