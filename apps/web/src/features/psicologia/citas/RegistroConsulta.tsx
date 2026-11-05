@@ -305,9 +305,8 @@ export default function RegistroConsulta() {
 
         {estado === 'ATENDIDA' ? (
           <>
+            {/* Primero lo obligatorio (atención brindada y diagnóstico), después lo opcional. */}
             <div className="space-y-4">
-              <TextareaInput label="Temas abordados" registro={register('temas')} opcional error={errors.temas?.message} />
-              <TextareaInput label="Intervención" registro={register('intervencion')} opcional error={errors.intervencion?.message} />
               <TextareaInput
                 label="Atención brindada"
                 registro={register('atencionBrindada')}
@@ -325,6 +324,8 @@ export default function RegistroConsulta() {
                 ayuda="Sale en el reporte de personas atendidas."
                 error={errors.diagnostico?.message}
               />
+              <TextareaInput label="Temas abordados" registro={register('temas')} opcional error={errors.temas?.message} />
+              <TextareaInput label="Intervención" registro={register('intervencion')} opcional error={errors.intervencion?.message} />
               <div>
                 <TextareaInput
                   label="Enfoque terapéutico"
@@ -332,7 +333,8 @@ export default function RegistroConsulta() {
                   rows={2}
                   maxLength={ENFOQUE_TERAPEUTICO_MAX}
                   className="field-sizing-content min-h-16"
-                  ayuda="Opcional. Por ejemplo: cognitivo-conductual, sistémico, centrado en el trauma."
+                  opcional
+                  ayuda="Por ejemplo: cognitivo-conductual, sistémico, centrado en el trauma."
                   error={errors.enfoqueTerapeutico?.message}
                 />
                 {largoEnfoque >= AVISO_LIMITE_ENFOQUE && (
