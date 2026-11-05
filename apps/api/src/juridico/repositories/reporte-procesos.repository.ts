@@ -9,6 +9,7 @@ import {
 } from '../compartido/sql';
 import type {
   ConteoProcesosRow,
+  ConteoResponsableRow,
   FilaProcesoRow,
   FiltroReporteProcesos,
   IReporteProcesosRepository,
@@ -35,7 +36,7 @@ function cteProcesos(filtro: FiltroReporteProcesos): Prisma.Sql {
              e."tipologiaDelito",
              u.nombres, u.apellidos, u.telefono, u."fechaNacimiento", u."grupoEtnico", u.municipio,
              u."departamentoOtro", u."municipioOtro", u."ubicacionGeografica",
-             ab.nombre AS abogada, pr.nombre AS procuradora
+             p."abogadaId", p."procuradoraId", ab.nombre AS abogada, pr.nombre AS procuradora
       FROM "ProcesoJuridico" p
       JOIN "Expediente" e ON e.id = p."expedienteId"
       JOIN "Usuaria" u ON u.id = e."usuariaId"
@@ -99,6 +100,27 @@ export class ReporteProcesosRepository implements IReporteProcesosRepository {
              p.tipo::text AS tipo, count(*)::int AS total
       FROM procesos p
       GROUP BY p.estado, p."formaFinalizacion", p.tipo
+    `);
+  }
+
+  conteosPorResponsable(
+    filtro: FiltroReporteProcesos,
+  ): Promise<ConteoResponsableRow[]> {
+    // Cada proceso aporta una fila por persona asignada; los que no tienen a nadie van juntos.
+    return this.prisma.$queryRaw<ConteoResponsableRow[]>(Prisma.sql`
+      WITH ${cteProcesos(filtro)}
+      SELECT a."personalId", a.nombre, a.cargo, count(*)::int AS total
+      FROM procesos p
+      CROSS JOIN LATERAL (
+        VALUES (p."abogadaId", p.abogada, 'abogada'),
+               (p."procuradoraId", p.procuradora, 'procuradora')
+      ) AS a("personalId", nombre, cargo)
+      WHERE a."personalId" IS NOT NULL
+      GROUP BY a."personalId", a.nombre, a.cargo
+      UNION ALL
+      SELECT NULL, NULL, NULL, count(*)::int
+      FROM procesos p
+      WHERE p."abogadaId" IS NULL AND p."procuradoraId" IS NULL
     `);
   }
 

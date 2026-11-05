@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import {
   CATEGORIA_POR_TIPO_PROCESO,
   CATEGORIAS_PROCESO_JURIDICO,
+  ESTADO_EN_REPORTE_PROCESO,
   ESTADOS_VISIBLES_PROCESO,
   ETIQUETAS_CATEGORIA_PROCESO,
   ETIQUETAS_ESTADO_VISIBLE,
@@ -35,6 +36,7 @@ import type {
 import { REPORTE_PROCESOS_REPOSITORY } from '../interfaces/reporte-procesos-repository.interface';
 import type {
   ConteoProcesosRow,
+  ConteoResponsableRow,
   FilaProcesoRow,
   FiltroReporteProcesos,
   IReporteProcesosRepository,
@@ -112,11 +114,40 @@ function sumarPor<K extends string>(
 }
 
 /**
+ * Carga por responsable: de más a menos procesos (y por nombre al empatar), "Sin asignar" al final.
+ * Solo quien tiene procesos entre los filtrados: el personal varía, no es un catálogo fijo.
+ */
+export function desgloseResponsables(
+  conteos: ConteoResponsableRow[],
+): ConteoReporte[] {
+  const asignadas = conteos
+    .filter((conteo) => conteo.personalId !== null && conteo.total > 0)
+    .map((conteo) => ({
+      clave: conteo.personalId as string,
+      etiqueta: formatearResponsable(conteo.nombre, conteo.cargo),
+      total: conteo.total,
+    }))
+    .sort(
+      (a, b) => b.total - a.total || a.etiqueta.localeCompare(b.etiqueta, 'es'),
+    );
+  const sinAsignar = conteos
+    .filter((conteo) => conteo.personalId === null)
+    .reduce((suma, conteo) => suma + conteo.total, 0);
+  return sinAsignar > 0
+    ? [
+        ...asignadas,
+        { clave: 'SIN_ASIGNAR', etiqueta: SIN_RESPONSABLE, total: sinAsignar },
+      ]
+    : asignadas;
+}
+
+/**
  * Desgloses a partir de los conteos ya agrupados en SQL. Todas las categorías del catálogo,
  * aunque tengan 0: así las barras no cambian de lugar de un periodo a otro.
  */
 export function armarDesgloses(
   conteos: ConteoProcesosRow[],
+  porResponsable: ConteoResponsableRow[] = [],
 ): ReporteProcesosJuridico['desgloses'] {
   const porEstado = sumarPor(conteos, (c) => c.estado);
   const porForma = sumarPor(conteos, (c) =>
@@ -146,7 +177,12 @@ export function armarDesgloses(
       total: porCategoria.get(clave) ?? 0,
     }),
   );
-  return { estado, formaFinalizacion, categoria };
+  return {
+    estado,
+    formaFinalizacion,
+    categoria,
+    responsable: desgloseResponsables(porResponsable),
+  };
 }
 
 /** Columnas del Excel, en el orden que pidió Jurídico; la vista previa usa el mismo. */
@@ -198,7 +234,7 @@ export function aFilaHoja(fila: FilaReporteJuridico): ValorCeldaHoja[] {
     fila.edad,
     fila.tipologia,
     fila.procedencia,
-    ETIQUETAS_ESTADO_VISIBLE[fila.estado],
+    ESTADO_EN_REPORTE_PROCESO[fila.estado],
   ];
 }
 
@@ -218,12 +254,13 @@ export class ReporteProcesosService {
     contexto: ContextoAuditoria,
   ): Promise<ReporteProcesosJuridico> {
     const filtro = aFiltro(query);
-    const [filas, conteos, personas] = await Promise.all([
+    const [filas, conteos, porResponsable, personas] = await Promise.all([
       this.repositorio.filas(filtro, {
         pagina,
         porPagina: FILAS_POR_PAGINA_REPORTE_JURIDICO,
       }),
       this.repositorio.conteos(filtro),
+      this.repositorio.conteosPorResponsable(filtro),
       this.repositorio.totalesPersonas(filtro),
     ]);
 
@@ -243,7 +280,7 @@ export class ReporteProcesosService {
         procesos: conteos.reduce((suma, conteo) => suma + conteo.total, 0),
         ...personas,
       },
-      desgloses: armarDesgloses(conteos),
+      desgloses: armarDesgloses(conteos, porResponsable),
       pagina,
       vistaPrevia: filas.map(aFilaReporte),
     };

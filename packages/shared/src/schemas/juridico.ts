@@ -574,9 +574,10 @@ export const FILTROS_ESTADO_REPORTE_JURIDICO = ['TODOS', ...ESTADOS_VISIBLES_PRO
 export type FiltroEstadoReporteJuridico = (typeof FILTROS_ESTADO_REPORTE_JURIDICO)[number]
 
 /**
- * Filtro de año de los dos reportes: la carpeta de un año (año del expediente) o, sin año, todos
- * los años entre Desde y Hasta, que ahí son obligatorios y se comparan contra la fecha de inicio
- * (del proceso o del expediente), inclusive.
+ * Filtro de periodo del reporte: la carpeta de un año (año del expediente) y/o Desde–Hasta sobre la
+ * fecha de inicio del proceso, inclusive. Sin año ("todos los años") las dos fechas son
+ * obligatorias; con una carpeta son opcionales y acotan los procesos de esa carpeta (vacías = toda
+ * la carpeta, también los procesos que empezaron en años posteriores).
  */
 const filtroCarteraReporteSchema = z.object({
   anio: anioExpedienteSchema.optional(),
@@ -588,9 +589,8 @@ function validarRangoCartera(
   query: z.infer<typeof filtroCarteraReporteSchema>,
   contexto: z.RefinementCtx,
 ): void {
-  if (query.anio !== undefined) return
-  if (!query.desde) contexto.addIssue({ code: 'custom', message: 'Indique la fecha "Desde"', path: ['desde'] })
-  if (!query.hasta) contexto.addIssue({ code: 'custom', message: 'Indique la fecha "Hasta"', path: ['hasta'] })
+  if (query.anio === undefined && !query.desde) contexto.addIssue({ code: 'custom', message: 'Indique la fecha "Desde"', path: ['desde'] })
+  if (query.anio === undefined && !query.hasta) contexto.addIssue({ code: 'custom', message: 'Indique la fecha "Hasta"', path: ['hasta'] })
   // "YYYY-MM-DD" se ordena igual como texto que como fecha.
   if (query.desde && query.hasta && query.desde > query.hasta) {
     contexto.addIssue({
@@ -664,7 +664,10 @@ export interface FilaReporteJuridico {
   tipologia: string
   /** "Aldea Chicoj, San Pedro Carchá, Alta Verapaz": lo que se haya registrado, de lo particular a lo general. */
   procedencia: string
-  /** En trámite, Suspendido, Finalizado o Abandonado: el mismo estado que se ve en Procesos. */
+  /**
+   * En trámite, Suspendido, Finalizado o Abandonado: el mismo estado que se ve en Procesos (filtro y
+   * desglose). El Excel y la tabla lo muestran como Activo/Concluido con `ESTADO_EN_REPORTE_PROCESO`.
+   */
   estado: EstadoVisibleProceso
 }
 
@@ -680,6 +683,12 @@ export interface ReporteProcesosJuridico {
     /** Solo procesos finalizados. */
     formaFinalizacion: ConteoReporte[]
     categoria: ConteoReporte[]
+    /**
+     * Carga por abogada o procuradora: procesos de cada una entre los filtrados, de más a menos, y
+     * al final los que no tienen a nadie asignado. Un proceso con abogada y procuradora cuenta para
+     * las dos, así que la suma puede pasar del total de procesos. Solo aparece quien tiene alguno.
+     */
+    responsable: ConteoReporte[]
   }
   /** Página que se devolvió en `vistaPrevia`, desde 1. */
   pagina: number

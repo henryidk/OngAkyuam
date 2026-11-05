@@ -212,6 +212,19 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
         procuradora: procuradora.nombre,
         tipologia: 'Psicológica',
       });
+      // La abogada lleva los dos procesos; la procuradora, el que comparte con ella.
+      expect(todos.desgloses.responsable).toEqual([
+        {
+          clave: abogada.id,
+          etiqueta: `${abogada.nombre} (abogada)`,
+          total: 2,
+        },
+        {
+          clave: procuradora.id,
+          etiqueta: `${procuradora.nombre} (procuradora)`,
+          total: 1,
+        },
+      ]);
 
       // La procuradora solo ve el proceso que tiene asignado.
       const deProcuradora = (
@@ -230,6 +243,24 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
         ).expect(200)
       ).body as ReporteProcesosJuridico;
       expect(porTipo.vistaPrevia.map((f) => f.codigoProceso)).toEqual([
+        `${expediente.numero} · Proceso 2`,
+      ]);
+
+      // Con carpeta, Desde/Hasta acotan por fecha de inicio y cada una es opcional.
+      const carpetaDesde = (
+        await pedir(
+          `/api/juridico/reportes/procesos?anio=${anio}&desde=${anio}-01-01&responsableId=${abogada.id}`,
+        ).expect(200)
+      ).body as ReporteProcesosJuridico;
+      expect(carpetaDesde.vistaPrevia.map((f) => f.codigoProceso)).toEqual([
+        expediente.numero,
+      ]);
+      const carpetaHasta = (
+        await pedir(
+          `/api/juridico/reportes/procesos?anio=${anio}&hasta=${anio - 1}-12-31&responsableId=${abogada.id}`,
+        ).expect(200)
+      ).body as ReporteProcesosJuridico;
+      expect(carpetaHasta.vistaPrevia.map((f) => f.codigoProceso)).toEqual([
         `${expediente.numero} · Proceso 2`,
       ]);
 

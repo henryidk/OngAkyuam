@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import {
+  anioActualGT,
   FILAS_POR_PAGINA_REPORTE_JURIDICO,
   formatFechaGT,
-  hoyGT,
   reporteProcesosJuridicoQuerySchema,
   type PersonalDto,
   type ReporteProcesosJuridicoQuery,
@@ -20,22 +20,34 @@ import TablaReporteJuridico from './TablaReporteJuridico'
 import { useReporteProcesos } from './useReporteProcesos'
 
 /**
- * Por defecto, todos los años con los procesos iniciados del 1 de enero del año en curso hasta hoy
- * (hora de Guatemala). Al elegir una carpeta (año del expediente) el rango ya no aplica.
+ * Por defecto, la carpeta del año en curso (hora de Guatemala) sin fechas: todos sus procesos. Las
+ * fechas, si se llenan, acotan esa carpeta por fecha de inicio del proceso.
  */
 function filtrosIniciales(): ReporteProcesosJuridicoQuery {
-  const hoy = hoyGT()
-  return { desde: `${hoy.slice(0, 4)}-01-01`, hasta: hoy, estado: 'TODOS' }
+  return { anio: anioActualGT(), estado: 'TODOS' }
 }
 
-/** "Carpeta 2014" o "15/01/2026 – 30/10/2026": lo mismo que usa el nombre del Excel. */
+/** "Expedientes de 2026", "Expedientes de 2026 · desde 01/03/2026" o "15/01/2026 – 30/10/2026". */
 function tituloPeriodo(filtros: ReporteProcesosJuridicoQuery): string {
-  if (filtros.anio) return `Expedientes de ${filtros.anio}`
-  return `${formatFechaGT(filtros.desde || hoyGT())} – ${formatFechaGT(filtros.hasta || hoyGT())}`
+  const { desde, hasta } = filtros
+  const fechas =
+    desde && hasta
+      ? `${formatFechaGT(desde)} – ${formatFechaGT(hasta)}`
+      : desde
+        ? `desde ${formatFechaGT(desde)}`
+        : hasta
+          ? `hasta ${formatFechaGT(hasta)}`
+          : ''
+  if (!filtros.anio) return fechas
+  return fechas ? `Expedientes de ${filtros.anio} · ${fechas}` : `Expedientes de ${filtros.anio}`
 }
 
+/** Igual que el nombre que pone el backend: carpeta, rango o los dos. */
 function nombreArchivo(filtros: ReporteProcesosJuridicoQuery): string {
-  return `procesos-juridicos_${filtros.anio ?? `${filtros.desde}_${filtros.hasta}`}.xlsx`
+  const partes: string[] = []
+  if (filtros.anio) partes.push(String(filtros.anio))
+  if (filtros.desde || filtros.hasta) partes.push(`${filtros.desde ?? 'inicio'}_${filtros.hasta ?? 'hoy'}`)
+  return `procesos-juridicos_${partes.join('_')}.xlsx`
 }
 
 function plural(cantidad: number, singular: string, varios: string) {
@@ -121,6 +133,7 @@ export default function ReportesJuridico() {
             <DesgloseEsqueleto />
             <DesgloseEsqueleto />
             <DesgloseEsqueleto />
+            <DesgloseEsqueleto />
           </>
         ) : (
           <>
@@ -132,6 +145,8 @@ export default function ReportesJuridico() {
               etiquetaAncha
             />
             <DesgloseBarras titulo="Categoría de proceso" conteos={reporte.desgloses.categoria} etiquetaAncha />
+            {/* Un proceso con abogada y procuradora cuenta para las dos. */}
+            <DesgloseBarras titulo="Carga por responsable" conteos={reporte.desgloses.responsable} etiquetaAncha />
           </>
         )}
       </div>
@@ -167,7 +182,7 @@ export default function ReportesJuridico() {
               Icono={FileSpreadsheet}
               titulo="No hay procesos con estos filtros"
               descripcion={
-                filtros.anio
+                filtros.anio && !filtros.desde && !filtros.hasta
                   ? 'Prueba con otro año, estado o responsable.'
                   : 'Prueba con otro rango de fechas, estado o responsable.'
               }

@@ -15,6 +15,7 @@ import {
   aFilaReporte,
   armarDesgloses,
   COLUMNAS_PROCESOS,
+  desgloseResponsables,
   ReporteProcesosService,
   textoAvance,
   textoResponsables,
@@ -164,8 +165,66 @@ describe('aFilaHoja', () => {
       31,
       'Física, Psicológica',
       'Aldea Ficticia, Cobán, Alta Verapaz',
-      'Suspendido',
+      // Suspendido es una pausa: el proceso sigue abierto.
+      'Activo',
     ]);
+  });
+
+  it.each([
+    ['EN_TRAMITE', 'Activo'],
+    ['SUSPENDIDO', 'Activo'],
+    ['FINALIZADO', 'Concluido'],
+    ['ABANDONADO', 'Concluido'],
+  ] as const)('el estado %s sale como %s en el Excel', (estado, esperado) => {
+    const celdas = aFilaHoja(aFilaReporte(proceso({ estado })));
+    expect(celdas[celdas.length - 1]).toBe(esperado);
+  });
+});
+
+describe('desgloseResponsables', () => {
+  it('ordena de más a menos, desempata por nombre y deja "Sin asignar" al final', () => {
+    expect(
+      desgloseResponsables([
+        { personalId: null, nombre: null, cargo: null, total: 2 },
+        {
+          personalId: 'p1',
+          nombre: 'Zoila Ficticia',
+          cargo: 'procuradora',
+          total: 3,
+        },
+        {
+          personalId: 'a1',
+          nombre: 'Ana Ficticia',
+          cargo: 'abogada',
+          total: 3,
+        },
+        {
+          personalId: 'a2',
+          nombre: 'Berta Ficticia',
+          cargo: 'abogada',
+          total: 5,
+        },
+      ]),
+    ).toEqual([
+      { clave: 'a2', etiqueta: 'Berta Ficticia (abogada)', total: 5 },
+      { clave: 'a1', etiqueta: 'Ana Ficticia (abogada)', total: 3 },
+      { clave: 'p1', etiqueta: 'Zoila Ficticia (procuradora)', total: 3 },
+      { clave: 'SIN_ASIGNAR', etiqueta: 'Sin asignar', total: 2 },
+    ]);
+  });
+
+  it('omite "Sin asignar" cuando todos los procesos tienen responsable', () => {
+    expect(
+      desgloseResponsables([
+        { personalId: null, nombre: null, cargo: null, total: 0 },
+        {
+          personalId: 'a1',
+          nombre: 'Ana Ficticia',
+          cargo: 'abogada',
+          total: 1,
+        },
+      ]),
+    ).toEqual([{ clave: 'a1', etiqueta: 'Ana Ficticia (abogada)', total: 1 }]);
   });
 });
 
@@ -256,6 +315,14 @@ describe('ReporteProcesosService', () => {
           total: 4,
         },
       ]),
+      conteosPorResponsable: jest.fn().mockResolvedValue([
+        {
+          personalId: ABOGADA_ID,
+          nombre: 'Abogada Ficticia',
+          cargo: 'abogada',
+          total: 4,
+        },
+      ]),
       totalesPersonas: jest
         .fn()
         .mockResolvedValue({ expedientes: 3, usuarias: 2 }),
@@ -281,14 +348,24 @@ describe('ReporteProcesosService', () => {
     });
   });
 
-  it('con una carpeta ignora el rango; "Todos", sin responsable y sin tipo se traducen a null', async () => {
+  it('con una carpeta las fechas acotan sus procesos y cada una es opcional', async () => {
     await service.vistaPrevia(
-      {
+      { anio: 2014, desde: '2016-01-01', estado: 'TODOS' },
+      { pagina: 1 },
+      contexto,
+    );
+
+    expect(repositorio.conteos).toHaveBeenCalledWith(
+      expect.objectContaining({
         anio: 2014,
-        desde: '2020-01-01',
-        hasta: '2020-12-31',
-        estado: 'TODOS',
-      },
+        rango: { desde: '2016-01-01', hasta: null },
+      }),
+    );
+  });
+
+  it('carpeta sin fechas; "Todos", sin responsable y sin tipo se traducen a null', async () => {
+    await service.vistaPrevia(
+      { anio: 2014, estado: 'TODOS' },
       { pagina: 1 },
       contexto,
     );
@@ -311,6 +388,12 @@ describe('ReporteProcesosService', () => {
       usuarias: 2,
     });
     expect(reporte.vistaPrevia).toHaveLength(1);
+    expect(reporte.desgloses.responsable).toEqual([
+      { clave: ABOGADA_ID, etiqueta: 'Abogada Ficticia (abogada)', total: 4 },
+    ]);
+    expect(repositorio.conteosPorResponsable).toHaveBeenCalledWith(
+      repositorio.conteos.mock.calls[0][0],
+    );
     expect(auditService.registrar).toHaveBeenCalledWith(
       expect.objectContaining({
         accion: 'REPORTE_CONSULTADO',

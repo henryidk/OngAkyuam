@@ -64,23 +64,38 @@ export function carpetaAnioSql(
   return Prisma.sql`(${fechaExpediente} >= make_date(${anio}::int, 1, 1) AND ${fechaExpediente} < make_date(${anio}::int + 1, 1, 1))`;
 }
 
-/** Filtro de año de los reportes: una carpeta o, sin año, todos los años dentro del rango. */
+/**
+ * Periodo de los reportes: una carpeta (año del expediente) y/o un rango sobre la fecha de inicio
+ * del proceso. Sin año el rango trae las dos fechas (el schema las exige); con carpeta cada una es
+ * opcional.
+ */
 export interface FiltroCarteraReporte {
   /** null = todos los años. */
   anio: number | null;
-  /** Solo sin año: "YYYY-MM-DD", inclusive. */
-  rango: { desde: string; hasta: string } | null;
+  /** "YYYY-MM-DD", inclusive; null en un extremo = sin límite de ese lado. */
+  rango: { desde: string | null; hasta: string | null } | null;
 }
 
 export function carteraReporteSql(
   filtro: FiltroCarteraReporte,
   columnas: ColumnasCarteraSql = COLUMNAS_CARTERA_PROCESO,
 ): Prisma.Sql {
+  const condiciones: Prisma.Sql[] = [];
   if (filtro.anio !== null) {
-    return carpetaAnioSql(filtro.anio, columnas.fechaExpediente);
+    condiciones.push(carpetaAnioSql(filtro.anio, columnas.fechaExpediente));
   }
-  return filtro.rango
-    ? Prisma.sql`(${columnas.fechaInicio} BETWEEN ${filtro.rango.desde}::date AND ${filtro.rango.hasta}::date)`
+  if (filtro.rango?.desde) {
+    condiciones.push(
+      Prisma.sql`${columnas.fechaInicio} >= ${filtro.rango.desde}::date`,
+    );
+  }
+  if (filtro.rango?.hasta) {
+    condiciones.push(
+      Prisma.sql`${columnas.fechaInicio} <= ${filtro.rango.hasta}::date`,
+    );
+  }
+  return condiciones.length > 0
+    ? Prisma.sql`(${Prisma.join(condiciones, ' AND ')})`
     : Prisma.sql`TRUE`;
 }
 

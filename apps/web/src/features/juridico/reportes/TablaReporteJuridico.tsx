@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import {
-  ETIQUETAS_ESTADO_VISIBLE,
+  ESTADO_EN_REPORTE_PROCESO,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
   SIN_RESPONSABLE,
   formatFechaGT,
@@ -70,7 +70,7 @@ const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNod
     titulo: 'Procedencia',
     valor: (fila) => (fila.procedencia ? <TextoLargo ancho="min-w-[180px] max-w-[240px]">{fila.procedencia}</TextoLargo> : '—'),
   },
-  { titulo: 'Estado', valor: (fila) => ETIQUETAS_ESTADO_VISIBLE[fila.estado] },
+  { titulo: 'Estado', valor: (fila) => ESTADO_EN_REPORTE_PROCESO[fila.estado] },
 ]
 
 export default function TablaReporteJuridico({ filas }: { filas: FilaReporteJuridico[] }) {

@@ -75,6 +75,23 @@ export const ETIQUETAS_ESTADO_VISIBLE: Record<(typeof ESTADOS_VISIBLES_PROCESO)[
   ABANDONADO: 'Abandonado',
 }
 
+/**
+ * Columna "Estado" del Excel de procesos (y de su tabla en pantalla): solo Activo o Concluido
+ * (pedido por la ONG el 2026-11-05). Es la misma regla que `esProcesoActivo()` y
+ * `PROCESO_ABIERTO_SQL` en el resto del sistema:
+ * - Concluido: finalizado (convenio, sentencia, desistimiento u otros) o abandonado. Así lo confirmó
+ *   el plan del módulo ("cuenta como finalizado si está cerrado o tiene un abandono"), y al abandonar
+ *   se cancelan las audiencias programadas igual que al finalizar.
+ * - Activo: en trámite o suspendido. La suspensión es una pausa: el proceso sigue abierto, conserva
+ *   sus audiencias y al reactivarlo vuelve a trámite.
+ */
+export const ESTADO_EN_REPORTE_PROCESO: Record<(typeof ESTADOS_VISIBLES_PROCESO)[number], 'Activo' | 'Concluido'> = {
+  EN_TRAMITE: 'Activo',
+  SUSPENDIDO: 'Activo',
+  FINALIZADO: 'Concluido',
+  ABANDONADO: 'Concluido',
+}
+
 export const FORMAS_FINALIZACION_PROCESO = ['CONVENIO', 'SENTENCIA', 'DESISTIMIENTO', 'OTROS'] as const
 
 export const ETIQUETAS_FORMA_FINALIZACION: Record<(typeof FORMAS_FINALIZACION_PROCESO)[number], string> = {

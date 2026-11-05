@@ -56,6 +56,17 @@ export interface ConteoProcesosRow {
   total: number;
 }
 
+/**
+ * Procesos por persona asignada (abogada o procuradora). La fila con `personalId` null son los
+ * procesos sin nadie asignado.
+ */
+export interface ConteoResponsableRow {
+  personalId: string | null;
+  nombre: string | null;
+  cargo: 'abogada' | 'procuradora' | null;
+  total: number;
+}
+
 /** Expedientes y usuarias distintos entre los procesos del reporte (§3.3). */
 export interface TotalesPersonasRow {
   expedientes: number;
@@ -72,5 +83,8 @@ export interface IReporteProcesosRepository {
     pagina: { pagina: number; porPagina: number } | null,
   ): Promise<FilaProcesoRow[]>;
   conteos(filtro: FiltroReporteProcesos): Promise<ConteoProcesosRow[]>;
+  conteosPorResponsable(
+    filtro: FiltroReporteProcesos,
+  ): Promise<ConteoResponsableRow[]>;
   totalesPersonas(filtro: FiltroReporteProcesos): Promise<TotalesPersonasRow>;
 }
