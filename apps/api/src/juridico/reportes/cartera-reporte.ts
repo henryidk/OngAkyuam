@@ -1,6 +1,6 @@
 import type { FiltroCarteraReporte } from '../compartido/sql';
 
-// Lo que comparten los dos reportes de Jurídico (planaudiencias.md §8.6): el filtro de año,
+// Lo del reporte de procesos de Jurídico (planaudiencias.md §8.6): el filtro de año,
 // cómo se audita y cómo se nombra el archivo.
 
 export interface ArchivoReporte {
@@ -9,7 +9,7 @@ export interface ArchivoReporte {
   tipoContenido: string;
 }
 
-/** Los campos de año que traen los dos queries de reporte. */
+/** Los campos de año del query del reporte. */
 export interface QueryCarteraReporte {
   anio?: number;
   desde?: string;

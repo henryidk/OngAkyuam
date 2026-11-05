@@ -153,11 +153,10 @@ export function armarDesgloses(
 export const COLUMNAS_PROCESOS: ColumnaHoja[] = [
   { titulo: 'No.', ancho: 6, tipo: 'numero' },
   { titulo: 'No. expediente', ancho: 12, tipo: 'texto' },
-  { titulo: 'Proceso', ancho: 20, tipo: 'texto' },
   { titulo: 'Nombre de la usuaria', ancho: 32, tipo: 'texto' },
   { titulo: 'Teléfono', ancho: 14, tipo: 'texto' },
   { titulo: 'Tipo de proceso', ancho: 34, tipo: 'texto' },
-  { titulo: 'No. judicial', ancho: 40, tipo: 'texto' },
+  { titulo: 'No. de expediente del juzgado', ancho: 40, tipo: 'texto' },
   { titulo: 'Avance en el trámite del proceso', ancho: 60, tipo: 'texto' },
   { titulo: 'Responsable', ancho: 36, tipo: 'texto' },
   { titulo: 'Etnia', ancho: 16, tipo: 'texto' },
@@ -189,7 +188,6 @@ export function aFilaHoja(fila: FilaReporteJuridico): ValorCeldaHoja[] {
   return [
     fila.numero,
     fila.expedienteNumero,
-    fila.codigoProceso,
     fila.usuaria,
     fila.telefono ?? '',
     ETIQUETAS_TIPO_PROCESO_JURIDICO[fila.tipo],

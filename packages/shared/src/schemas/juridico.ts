@@ -601,7 +601,7 @@ function validarRangoCartera(
   }
 }
 
-/** `GET /juridico/reportes/procesos` (vista previa y agregados) y su `.xlsx` (reporte B). */
+/** `GET /juridico/reportes/procesos` (vista previa y agregados) y su `.xlsx`. */
 export const reporteProcesosJuridicoQuerySchema = filtroCarteraReporteSchema
   .extend({
     estado: z.enum(FILTROS_ESTADO_REPORTE_JURIDICO).default('TODOS'),
@@ -616,21 +616,17 @@ export const reporteProcesosJuridicoQuerySchema = filtroCarteraReporteSchema
   .superRefine(validarRangoCartera)
 export type ReporteProcesosJuridicoQuery = z.infer<typeof reporteProcesosJuridicoQuerySchema>
 
-/** Filas por página de la tabla del reporte B en pantalla; el Excel siempre lleva todas. */
+/** Filas por página de la tabla del reporte de procesos en pantalla; el Excel siempre lleva todas. */
 export const FILAS_POR_PAGINA_REPORTE_JURIDICO = 20
 
 /**
- * Página de la tabla del reporte B (`GET /juridico/reportes/procesos?pagina=2`). Va aparte de los
+ * Página de la tabla del reporte de procesos (`GET /juridico/reportes/procesos?pagina=2`). Va aparte de los
  * filtros porque el Excel no la usa. Es un número, no identifica a nadie: puede ir en la URL.
  */
 export const paginaReporteJuridicoQuerySchema = z.object({
   pagina: z.coerce.number().int().min(1).max(10_000).default(1),
 })
 export type PaginaReporteJuridicoQuery = z.infer<typeof paginaReporteJuridicoQuerySchema>
-
-/** `GET /juridico/reportes/poblacion-beneficiada` y su `.xlsx` (reporte A). */
-export const reportePoblacionJuridicoQuerySchema = filtroCarteraReporteSchema.superRefine(validarRangoCartera)
-export type ReportePoblacionJuridicoQuery = z.infer<typeof reportePoblacionJuridicoQuerySchema>
 
 /** El avance más reciente que registró una persona (no las entradas automáticas del sistema). */
 export interface AvanceReporte {
@@ -641,7 +637,7 @@ export interface AvanceReporte {
 }
 
 /**
- * Una fila del reporte B = un proceso, para la coordinación del trabajo diario. Los datos de la
+ * Una fila del reporte de procesos = un proceso, para la coordinación del trabajo diario. Los datos de la
  * usuaria (teléfono, etnia, edad, tipología, procedencia) los registra Trabajo Social.
  */
 export interface FilaReporteJuridico {
@@ -649,7 +645,10 @@ export interface FilaReporteJuridico {
   numero: number
   /** No. del expediente, siempre puro: "05-2026". */
   expedienteNumero: string
-  /** Código del proceso: "05-2026" o, desde el segundo, "05-2026 · Proceso 2". */
+  /**
+   * Código del proceso: "05-2026" o, desde el segundo, "05-2026 · Proceso 2". No es columna del
+   * Excel ni de la tabla; sirve para distinguir dos procesos del mismo expediente.
+   */
   codigoProceso: string
   usuaria: string
   telefono: string | null
@@ -685,32 +684,4 @@ export interface ReporteProcesosJuridico {
   /** Página que se devolvió en `vistaPrevia`, desde 1. */
   pagina: number
   vistaPrevia: FilaReporteJuridico[]
-}
-
-/**
- * Una fila del reporte A = un expediente atendido por Jurídico, con las 13 columnas del formato
- * de la ONG en su orden. Los datos son los de la usuaria.
- */
-export interface FilaPoblacionJuridico {
-  numero: number
-  /** Inicio del primer proceso jurídico del expediente o, si todavía no tiene, la fecha del referido. */
-  dia: string
-  departamento: string
-  municipio: string
-  expedienteNumero: string
-  fechaNacimiento: string
-  /** Años cumplidos al "Día": la edad que tenía cuando la atendieron. */
-  edad: number
-  nombreApellido: string
-  dpi: string | null
-  rangoEdad: string
-  grupoEtnico: string
-  ubicacionGeografica: string
-  tipologia: string
-}
-
-/** `GET /juridico/reportes/poblacion-beneficiada`: totales y las primeras filas. */
-export interface ReportePoblacionJuridico {
-  totales: { expedientes: number; usuarias: number }
-  vistaPrevia: FilaPoblacionJuridico[]
 }

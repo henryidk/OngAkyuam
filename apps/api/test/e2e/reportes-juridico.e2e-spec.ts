@@ -4,11 +4,8 @@ import type { Rol, Usuario } from '@prisma/client';
 import {
   anioCalendarioGT,
   fechaCalendarioGT,
-  type FilaPoblacionJuridico,
-  type ReportePoblacionJuridico,
   type ReporteProcesosJuridico,
 } from '@akyuam/shared';
-import { Workbook } from 'exceljs';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { PrismaService } from '../../src/prisma/prisma.service';
@@ -19,7 +16,6 @@ import {
   crearExpediente,
   crearProceso,
   crearUsuario,
-  numeroExpedienteFicticio,
   sesionDe,
   type Sesion,
 } from './fixtures';
@@ -34,17 +30,12 @@ const OTROS_ROLES: Rol[] = [
 const RUTAS = [
   '/api/juridico/reportes/procesos?anio=2026',
   '/api/juridico/reportes/procesos.xlsx?anio=2026',
-  '/api/juridico/reportes/poblacion-beneficiada?anio=2026',
-  '/api/juridico/reportes/poblacion-beneficiada.xlsx?anio=2026',
 ];
 
 const TIPO_XLSX =
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-/** Columna "No. expediente" del Excel de población beneficiada (1 = primera columna). */
-const COLUMNA_NUMERO_CASO = 5;
-
-describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () => {
+describe('Jurídico · reporte de procesos (e2e)', () => {
   let app: INestApplication<App>;
   let prisma: PrismaService;
   let juridico: Usuario;
@@ -76,28 +67,6 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
       .get(ruta)
       .set('Cookie', sesion.cookie)
       .set('X-CSRF-Token', sesion.csrf);
-  }
-
-  /** Descarga el Excel y devuelve los "No. expediente" que trae. */
-  async function casosEnExcel(query: string): Promise<string[]> {
-    const respuesta = await pedir(
-      `/api/juridico/reportes/poblacion-beneficiada.xlsx?${query}`,
-    )
-      .buffer(true)
-      .parse((res, listo) => {
-        const partes: Buffer[] = [];
-        res.on('data', (parte: Buffer) => partes.push(parte));
-        res.on('end', () => listo(null, Buffer.concat(partes)));
-      })
-      .expect(200);
-    const libro = new Workbook();
-    await libro.xlsx.load(respuesta.body as Buffer);
-    const hoja = libro.worksheets[0];
-    const casos: string[] = [];
-    hoja.eachRow((fila, numero) => {
-      if (numero > 1) casos.push(fila.getCell(COLUMNA_NUMERO_CASO).text);
-    });
-    return casos;
   }
 
   /**
@@ -138,150 +107,28 @@ describe('Jurídico · reportes: población beneficiada y procesos (e2e)', () =>
   }
 
   describe('acceso', () => {
-    it('sin sesión responde 401 en los cuatro endpoints', async () => {
+    it('sin sesión responde 401 en los dos endpoints', async () => {
       for (const ruta of RUTAS) {
         await request(app.getHttpServer()).get(ruta).expect(401);
       }
     });
 
-    it.each(OTROS_ROLES)(
-      '%s recibe 403 en los cuatro endpoints',
-      async (rol) => {
-        for (const ruta of RUTAS) {
-          await pedir(ruta, sesiones.get(rol)).expect(403);
-        }
-      },
-    );
+    it.each(OTROS_ROLES)('%s recibe 403 en los dos endpoints', async (rol) => {
+      for (const ruta of RUTAS) {
+        await pedir(ruta, sesiones.get(rol)).expect(403);
+      }
+    });
 
     it('sin carpeta exige el rango de fechas, y un año fuera de rango no se acepta', async () => {
       await pedir('/api/juridico/reportes/procesos').expect(400);
       await pedir(
-        '/api/juridico/reportes/poblacion-beneficiada?desde=2026-05-01&hasta=2026-04-01',
+        '/api/juridico/reportes/procesos?desde=2026-05-01&hasta=2026-04-01',
       ).expect(400);
       await pedir('/api/juridico/reportes/procesos?anio=1989').expect(400);
     });
   });
 
-  describe('A · población beneficiada', () => {
-    it.each([
-      ['vacía', []],
-      ['nula', null],
-    ] as const)(
-      'la base rechaza un expediente con la tipología %s',
-      async (_caso, tipologia) => {
-        const { usuaria } = await crearExpediente(prisma, trabajoSocial.id, []);
-        await expect(
-          prisma.$executeRaw`
-            INSERT INTO "Expediente" (id, numero, "usuariaId", fecha, "tipoRegistro", "tipologiaDelito", "creadoPorId", "updatedAt",
-                                      "condicionMaternidad", "idiomaAtencion")
-            VALUES (gen_random_uuid(), ${numeroExpedienteFicticio()}, ${usuaria.id}, '2026-01-01',
-                    'EXTERNA', ${tipologia}::"TipologiaDelito"[], ${trabajoSocial.id}, now(),
-                    'NORMAL', 'ESPANOL')`,
-        ).rejects.toThrow(/Expediente_tipologia_obligatoria_chk/);
-      },
-    );
-
-    it('cada carpeta trae los expedientes de su año, sigan abiertos o no y aunque se retomen después', async () => {
-      const anioAntiguo = anio - 12;
-      const expedienteAntiguo = `${anioAntiguo}-07-15`;
-      // Expediente de hace 12 años con un proceso que se retomó este año.
-      const retomado = await expedienteConProcesos(
-        [{ fechaInicio: hoy }],
-        expedienteAntiguo,
-      );
-      const antiguoCerrado = await expedienteConProcesos(
-        [{ fechaInicio: expedienteAntiguo, cerrado: true }],
-        expedienteAntiguo,
-      );
-      const delAnio = await expedienteConProcesos([{ fechaInicio: hoy }]);
-      // Referido a Jurídico sin proceso todavía: va en la carpeta del año de su expediente.
-      const sinProceso = await expedienteConProcesos([]);
-      // Nunca referido a Jurídico: aunque tenga proceso, no es de este módulo.
-      const noReferido = await crearExpediente(prisma, trabajoSocial.id, [
-        'PSICOLOGIA',
-      ]);
-      await crearProceso(prisma, noReferido.expediente.id, juridico.id, {
-        fechaInicio: new Date(hoy),
-      });
-
-      const antiguoExcel = await casosEnExcel(`anio=${anioAntiguo}`);
-      const delAnioExcel = await casosEnExcel(`anio=${anio}`);
-      const numero = (caso: { expediente: { numero: string } }) =>
-        caso.expediente.numero;
-
-      expect(antiguoExcel).toEqual(
-        expect.arrayContaining([numero(retomado), numero(antiguoCerrado)]),
-      );
-      expect(delAnioExcel).toEqual(
-        expect.arrayContaining([numero(delAnio), numero(sinProceso)]),
-      );
-      for (const fuera of [delAnio, sinProceso, noReferido]) {
-        expect(antiguoExcel).not.toContain(numero(fuera));
-      }
-      for (const fuera of [retomado, antiguoCerrado, noReferido]) {
-        expect(delAnioExcel).not.toContain(numero(fuera));
-      }
-    });
-
-    it('la edad es la que tenía al "Día" y la vista previa trae las 13 columnas', async () => {
-      // Un día al azar del siglo pasado: casi nadie más tiene casos ese día.
-      const anioDia = 1931 + randomInt(69);
-      const dia = `${anioDia}-06-14`;
-      const { expediente, usuaria } = await expedienteConProcesos([
-        { fechaInicio: dia, cerrado: true },
-      ]);
-      await prisma.usuaria.update({
-        where: { id: usuaria.id },
-        // Cumple 30 un día después del "Día": tenía 29.
-        data: {
-          fechaNacimiento: new Date(`${anioDia - 30}-06-15`),
-          municipio: 'COBAN',
-        },
-      });
-      await prisma.expediente.update({
-        where: { id: expediente.id },
-        data: { tipologiaDelito: ['FISICA', 'PSICOLOGICA'] },
-      });
-
-      const respuesta = await pedir(
-        `/api/juridico/reportes/poblacion-beneficiada?desde=${dia}&hasta=${dia}`,
-      ).expect(200);
-      const reporte = respuesta.body as ReportePoblacionJuridico;
-      const fila = reporte.vistaPrevia.find(
-        (f) => f.expedienteNumero === expediente.numero,
-      );
-
-      expect(respuesta.headers['cache-control']).toBe('no-store');
-      expect(reporte.totales.expedientes).toBeGreaterThanOrEqual(1);
-      expect(fila).toMatchObject<Partial<FilaPoblacionJuridico>>({
-        dia,
-        departamento: 'Alta Verapaz',
-        municipio: 'Cobán',
-        fechaNacimiento: `${anioDia - 30}-06-15`,
-        edad: 29,
-        rangoEdad: '14 a 30 años',
-        nombreApellido: `${usuaria.nombres} ${usuaria.apellidos}`,
-        dpi: null,
-        tipologia: 'Física, Psicológica',
-      });
-      expect(Object.keys(fila ?? {})).toHaveLength(13);
-
-      // La auditoría guarda los filtros, nunca los nombres.
-      const evento = await prisma.auditLog.findFirst({
-        where: { usuarioId: juridico.id, accion: 'REPORTE_CONSULTADO' },
-        orderBy: { createdAt: 'desc' },
-      });
-      expect(evento?.detalles).toMatchObject({
-        reporte: 'POBLACION_JURIDICO',
-        anio: null,
-        desde: dia,
-        hasta: dia,
-      });
-      expect(JSON.stringify(evento?.detalles)).not.toContain(MARCA);
-    });
-  });
-
-  describe('B · procesos', () => {
+  describe('procesos', () => {
     it('trae totales, responsables y el último avance, y filtra por responsable, carpeta y tipo', async () => {
       const abogada = await crearAbogada(prisma);
       const procuradora = await prisma.personal.create({

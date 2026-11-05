@@ -35,7 +35,6 @@ function Responsables({ fila }: { fila: FilaReporteJuridico }) {
 const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNode }[] = [
   { titulo: 'No.', valor: (fila) => fila.numero },
   { titulo: 'No. expediente', valor: (fila) => fila.expedienteNumero },
-  { titulo: 'Proceso', valor: (fila) => fila.codigoProceso },
   { titulo: 'Nombre de la usuaria', valor: (fila) => fila.usuaria },
   { titulo: 'Teléfono', valor: (fila) => fila.telefono ?? '—' },
   {
@@ -43,7 +42,7 @@ const COLUMNAS: { titulo: string; valor: (fila: FilaReporteJuridico) => ReactNod
     valor: (fila) => <TextoLargo ancho="min-w-[180px] max-w-[240px]">{ETIQUETAS_TIPO_PROCESO_JURIDICO[fila.tipo]}</TextoLargo>,
   },
   {
-    titulo: 'No. judicial',
+    titulo: 'No. de expediente del juzgado',
     valor: (fila) =>
       fila.numeroJudicial ? <TextoLargo ancho="min-w-[200px] max-w-[260px]">{fila.numeroJudicial}</TextoLargo> : '—',
   },

@@ -154,7 +154,6 @@ describe('aFilaHoja', () => {
     expect(celdas).toEqual([
       1,
       '05-2026',
-      '05-2026 · Proceso 2',
       'Ana Prueba Ficticia',
       '',
       expect.any(String),
