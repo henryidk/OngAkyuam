@@ -2,11 +2,9 @@ import { Download } from 'lucide-react'
 import {
   hoyGT,
   type FiltroEstadoReporteJuridico,
-  type PersonalDto,
   type ReporteProcesosJuridicoQuery,
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
-import OpcionesPersonal from '../compartido/OpcionesPersonal'
 
 const OPCIONES_ESTADO: { valor: FiltroEstadoReporteJuridico; etiqueta: string }[] = [
   { valor: 'TODOS', etiqueta: 'Todos' },
@@ -32,8 +30,6 @@ function conAnio(filtros: ReporteProcesosJuridicoQuery, anio: number | undefined
 interface FiltrosReporteJuridicoProps {
   filtros: ReporteProcesosJuridicoQuery
   onCambiar: (filtros: ReporteProcesosJuridicoQuery) => void
-  /** Abogadas y procuradoras, activas e inactivas: un reporte de años anteriores puede necesitar a quien ya no está. */
-  personal: PersonalDto[]
   /** Años de los expedientes de Jurídico, del más reciente al más antiguo (las carpetas de la lista). */
   anios: number[]
   onDescargar: () => void
@@ -44,7 +40,6 @@ interface FiltrosReporteJuridicoProps {
 export default function FiltrosReporteJuridico({
   filtros,
   onCambiar,
-  personal,
   anios,
   onDescargar,
   descargando,
@@ -110,12 +105,12 @@ export default function FiltrosReporteJuridico({
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-gray-600">Responsable</span>
         <select
-          value={filtros.responsableId ?? ''}
-          onChange={(event) => onCambiar({ ...filtros, responsableId: event.target.value || undefined })}
+          value={filtros.mios ? 'mios' : ''}
+          onChange={(event) => onCambiar({ ...filtros, mios: event.target.value === 'mios' || undefined })}
           className={CLASES_CAMPO}
         >
           <option value="">Todo el personal</option>
-          <OpcionesPersonal personal={personal} />
+          <option value="mios">Mis procesos</option>
         </select>
       </label>
       <Button

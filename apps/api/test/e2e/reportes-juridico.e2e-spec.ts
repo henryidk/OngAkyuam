@@ -129,13 +129,22 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
   });
 
   describe('procesos', () => {
-    it('trae totales, responsables y el último avance, y filtra por responsable, carpeta y tipo', async () => {
-      const abogada = await crearAbogada(prisma);
+    it('trae totales, responsables y el último avance, y filtra "Mis procesos", carpeta y tipo', async () => {
+      // Cada responsable con su propia cuenta: "Mis procesos" sale de la sesión, no de un id.
+      const cuentaAbogada = await crearUsuario(prisma, 'JURIDICO');
+      const cuentaProcuradora = await crearUsuario(prisma, 'JURIDICO');
+      const sesionAbogada = sesionDe(app, cuentaAbogada);
+      const sesionProcuradora = sesionDe(app, cuentaProcuradora);
+      const abogada = await prisma.personal.update({
+        where: { id: (await crearAbogada(prisma)).id },
+        data: { usuarioId: cuentaAbogada.id },
+      });
       const procuradora = await prisma.personal.create({
         data: {
           area: 'JURIDICO',
           tipo: 'PROCURADORA',
           nombre: `${MARCA} Procuradora ${randomInt(1e9)}`,
+          usuarioId: cuentaProcuradora.id,
         },
       });
       const { expediente, usuaria } = await expedienteConProcesos([
@@ -181,7 +190,8 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
 
       const todos = (
         await pedir(
-          `/api/juridico/reportes/procesos?desde=2000-01-01&hasta=${hoy}&responsableId=${abogada.id}`,
+          `/api/juridico/reportes/procesos?desde=2000-01-01&hasta=${hoy}&mios=true`,
+          sesionAbogada,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
 
@@ -226,10 +236,11 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
         },
       ]);
 
-      // La procuradora solo ve el proceso que tiene asignado.
+      // En "Mis procesos" la procuradora solo ve el proceso que tiene asignado.
       const deProcuradora = (
         await pedir(
-          `/api/juridico/reportes/procesos?desde=2000-01-01&hasta=${hoy}&responsableId=${procuradora.id}`,
+          `/api/juridico/reportes/procesos?desde=2000-01-01&hasta=${hoy}&mios=true`,
+          sesionProcuradora,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
       expect(deProcuradora.vistaPrevia.map((f) => f.codigoProceso)).toEqual([
@@ -239,7 +250,8 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
       // Los dos procesos van en la carpeta del expediente, aunque uno empezó hace dos años.
       const porTipo = (
         await pedir(
-          `/api/juridico/reportes/procesos?anio=${anio}&responsableId=${abogada.id}&tipo=DIVORCIO_MUTUO_ACUERDO`,
+          `/api/juridico/reportes/procesos?anio=${anio}&mios=true&tipo=DIVORCIO_MUTUO_ACUERDO`,
+          sesionAbogada,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
       expect(porTipo.vistaPrevia.map((f) => f.codigoProceso)).toEqual([
@@ -249,7 +261,8 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
       // Con carpeta, Desde/Hasta acotan por fecha de inicio y cada una es opcional.
       const carpetaDesde = (
         await pedir(
-          `/api/juridico/reportes/procesos?anio=${anio}&desde=${anio}-01-01&responsableId=${abogada.id}`,
+          `/api/juridico/reportes/procesos?anio=${anio}&desde=${anio}-01-01&mios=true`,
+          sesionAbogada,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
       expect(carpetaDesde.vistaPrevia.map((f) => f.codigoProceso)).toEqual([
@@ -257,7 +270,8 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
       ]);
       const carpetaHasta = (
         await pedir(
-          `/api/juridico/reportes/procesos?anio=${anio}&hasta=${anio - 1}-12-31&responsableId=${abogada.id}`,
+          `/api/juridico/reportes/procesos?anio=${anio}&hasta=${anio - 1}-12-31&mios=true`,
+          sesionAbogada,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
       expect(carpetaHasta.vistaPrevia.map((f) => f.codigoProceso)).toEqual([
@@ -266,16 +280,19 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
 
       const otraCarpeta = (
         await pedir(
-          `/api/juridico/reportes/procesos?anio=${anio - 2}&responsableId=${abogada.id}`,
+          `/api/juridico/reportes/procesos?anio=${anio - 2}&mios=true`,
+          sesionAbogada,
         ).expect(200)
       ).body as ReporteProcesosJuridico;
       expect(otraCarpeta.totales.procesos).toBe(0);
     });
 
     it('el Excel se descarga sin caché, con un nombre sin datos personales, y se audita', async () => {
-      const abogada = await crearAbogada(prisma);
+      // Una cuenta sin procesos asignados: "Mis procesos" sale vacío.
+      const cuenta = await crearUsuario(prisma, 'JURIDICO');
       const respuesta = await pedir(
-        `/api/juridico/reportes/procesos.xlsx?anio=${anio}&responsableId=${abogada.id}`,
+        `/api/juridico/reportes/procesos.xlsx?anio=${anio}&mios=true`,
+        sesionDe(app, cuenta),
       ).expect(200);
 
       expect(respuesta.headers['content-type']).toContain(TIPO_XLSX);
@@ -284,13 +301,13 @@ describe('Jurídico · reporte de procesos (e2e)', () => {
         `attachment; filename="procesos-juridicos_${anio}.xlsx"`,
       );
       const evento = await prisma.auditLog.findFirst({
-        where: { usuarioId: juridico.id, accion: 'REPORTE_JURIDICO_EXPORTADO' },
+        where: { usuarioId: cuenta.id, accion: 'REPORTE_JURIDICO_EXPORTADO' },
         orderBy: { createdAt: 'desc' },
       });
       expect(evento?.detalles).toMatchObject({
         reporte: 'PROCESOS_JURIDICOS',
         anio,
-        responsableId: abogada.id,
+        mios: true,
         filas: 0,
       });
     });

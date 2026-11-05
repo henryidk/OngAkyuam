@@ -15,8 +15,11 @@ export const REPORTE_PROCESOS_REPOSITORY = Symbol(
 export interface FiltroReporteProcesos extends FiltroCarteraReporte {
   /** null = todos los estados. */
   estado: EstadoVisibleProceso | null;
-  /** Abogada o procuradora del proceso; null = todo el personal, incluidos los procesos sin asignar. */
-  responsableId: string | null;
+  /**
+   * Cuenta cuyos procesos se piden (asignada como abogada o procuradora); null = todo el personal,
+   * incluidos los procesos sin asignar.
+   */
+  asignadoAUsuarioId: string | null;
   /** null = todos los tipos. */
   tipo: TipoProcesoJuridico | null;
 }

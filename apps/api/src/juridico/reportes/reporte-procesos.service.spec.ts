@@ -292,7 +292,7 @@ describe('ReporteProcesosService', () => {
     desde: '2026-01-01',
     hasta: '2026-10-05',
     estado: 'FINALIZADO',
-    responsableId: ABOGADA_ID,
+    mios: true,
     tipo: 'DIVORCIO_MUTUO_ACUERDO',
   } as const;
 
@@ -336,14 +336,14 @@ describe('ReporteProcesosService', () => {
     service = crearServicio();
   });
 
-  it('traduce los filtros: todos los años con rango, estado, responsable y tipo concretos', async () => {
+  it('traduce los filtros: "Mis procesos" usa la cuenta de la sesión, con rango, estado y tipo', async () => {
     await service.vistaPrevia(query, { pagina: 1 }, contexto);
 
     expect(repositorio.conteos).toHaveBeenCalledWith({
       anio: null,
       rango: { desde: '2026-01-01', hasta: '2026-10-05' },
       estado: 'FINALIZADO',
-      responsableId: ABOGADA_ID,
+      asignadoAUsuarioId: contexto.usuarioId,
       tipo: 'DIVORCIO_MUTUO_ACUERDO',
     });
   });
@@ -374,7 +374,7 @@ describe('ReporteProcesosService', () => {
       anio: 2014,
       rango: null,
       estado: null,
-      responsableId: null,
+      asignadoAUsuarioId: null,
       tipo: null,
     });
   });
@@ -404,7 +404,7 @@ describe('ReporteProcesosService', () => {
           desde: '2026-01-01',
           hasta: '2026-10-05',
           estado: 'FINALIZADO',
-          responsableId: ABOGADA_ID,
+          mios: true,
           tipo: 'DIVORCIO_MUTUO_ACUERDO',
           pagina: 3,
         },

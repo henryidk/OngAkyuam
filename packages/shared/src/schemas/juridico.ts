@@ -606,10 +606,10 @@ export const reporteProcesosJuridicoQuerySchema = filtroCarteraReporteSchema
   .extend({
     estado: z.enum(FILTROS_ESTADO_REPORTE_JURIDICO).default('TODOS'),
     /**
-     * Abogada o procuradora asignada al proceso. Sin valor = todo el personal, incluidos los
-     * procesos sin nadie asignado.
+     * Solo los procesos asignados a la cuenta que consulta (como abogada o procuradora). Sin valor =
+     * todo el personal, incluidos los procesos sin nadie asignado. Igual que `mios` en Procesos.
      */
-    responsableId: z.uuid().optional(),
+    mios: booleanoQuerySchema.optional(),
     /** Sin valor = todos los tipos de proceso. */
     tipo: z.enum(TIPOS_PROCESO_JURIDICO).optional(),
   })

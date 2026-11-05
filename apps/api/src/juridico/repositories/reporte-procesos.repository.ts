@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  asignadoASql,
   carteraReporteSql,
   ESTADO_VISIBLE_SQL,
   PROCESO_ABIERTO_SQL,
@@ -21,8 +22,8 @@ function cteProcesos(filtro: FiltroReporteProcesos): Prisma.Sql {
   const porEstado = filtro.estado
     ? Prisma.sql`AND ${ESTADO_VISIBLE_SQL} = ${filtro.estado}`
     : Prisma.empty;
-  const porResponsable = filtro.responsableId
-    ? Prisma.sql`AND ${filtro.responsableId} IN (p."abogadaId", p."procuradoraId")`
+  const porResponsable = filtro.asignadoAUsuarioId
+    ? Prisma.sql`AND ${asignadoASql(filtro.asignadoAUsuarioId)}`
     : Prisma.empty;
   const porTipo = filtro.tipo
     ? Prisma.sql`AND p.tipo = ${filtro.tipo}::"TipoProcesoJuridico"`

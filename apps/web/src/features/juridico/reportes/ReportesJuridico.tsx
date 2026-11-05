@@ -1,17 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { FileSpreadsheet } from 'lucide-react'
 import {
   anioActualGT,
   FILAS_POR_PAGINA_REPORTE_JURIDICO,
   formatFechaGT,
   reporteProcesosJuridicoQuerySchema,
-  type PersonalDto,
   type ReporteProcesosJuridicoQuery,
 } from '@akyuam/shared'
 import DesgloseBarras, { DesgloseEsqueleto } from '../../../components/reportes/DesgloseBarras'
 import EmptyState from '../../../components/ui/EmptyState'
 import { guardarArchivo } from '../../../lib/archivos'
-import { descargarReporteProcesos, listarPersonalJuridico } from '../api/juridico.api'
+import { descargarReporteProcesos } from '../api/juridico.api'
 import { CLASES_BARRA, CLASES_BARRA_FORMA } from '../compartido/colores'
 import { useContextoJuridico } from '../compartido/contexto'
 import Paginacion from '../../../components/ui/Paginacion'
@@ -57,25 +56,9 @@ function plural(cantidad: number, singular: string, varios: string) {
 /** Reportes de Jurídico: procesos con desgloses, vista previa y Excel. */
 export default function ReportesJuridico() {
   const [filtros, setFiltros] = useState<ReporteProcesosJuridicoQuery>(filtrosIniciales)
-  const [personal, setPersonal] = useState<PersonalDto[]>([])
   const [descargando, setDescargando] = useState(false)
   const { resumen } = useContextoJuridico()
   const [errorDescarga, setErrorDescarga] = useState<string | null>(null)
-
-  // Activas primero; si la lista falla, el filtro queda en "Todo el personal" y el reporte sigue funcionando.
-  useEffect(() => {
-    let cancelado = false
-    listarPersonalJuridico()
-      .then((lista) => {
-        if (cancelado) return
-        lista.sort((a, b) => Number(b.activo) - Number(a.activo) || a.nombre.localeCompare(b.nombre, 'es'))
-        setPersonal(lista)
-      })
-      .catch(() => undefined)
-    return () => {
-      cancelado = true
-    }
-  }, [])
 
   // El mismo schema que valida el backend: fechas reales y "Desde" antes de "Hasta".
   const validacion = useMemo(() => reporteProcesosJuridicoQuerySchema.safeParse(filtros), [filtros])
@@ -113,7 +96,6 @@ export default function ReportesJuridico() {
       <FiltrosReporteJuridico
         filtros={filtros}
         onCambiar={setFiltros}
-        personal={personal}
         anios={resumen?.aniosExpedientes ?? []}
         onDescargar={() => void descargar()}
         descargando={descargando}

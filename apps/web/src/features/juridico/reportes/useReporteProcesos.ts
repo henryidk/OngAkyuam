@@ -25,10 +25,10 @@ export function useReporteProcesos(filtros: ReporteProcesosJuridicoQuery | null)
   const desde = filtros?.desde
   const hasta = filtros?.hasta
   const estado = filtros?.estado
-  const responsableId = filtros?.responsableId
+  const mios = filtros?.mios
   const tipo = filtros?.tipo
 
-  const clave = JSON.stringify([anio, desde, hasta, estado, responsableId, tipo])
+  const clave = JSON.stringify([anio, desde, hasta, estado, mios, tipo])
   const pagina = eleccion.clave === clave ? eleccion.pagina : 1
 
   useEffect(() => {
@@ -38,9 +38,8 @@ export function useReporteProcesos(filtros: ReporteProcesosJuridicoQuery | null)
     let cancelado = false
     setCargando(true)
     setError(null)
-    // Con carpeta el rango no aplica: no se envía, para que la consulta sea solo por año.
-    const periodo = anio ? { anio } : { desde, hasta }
-    obtenerReporteProcesos({ ...periodo, estado, responsableId, tipo }, pagina)
+    // Con carpeta, las fechas (si las hay) acotan sus procesos: se envían las dos cosas.
+    obtenerReporteProcesos({ anio, desde, hasta, estado, mios, tipo }, pagina)
       .then((datos) => {
         if (cancelado) return
         // La página dejó de existir (otra persona cerró o reasignó procesos): a la última que sí hay.
@@ -59,7 +58,7 @@ export function useReporteProcesos(filtros: ReporteProcesosJuridicoQuery | null)
     return () => {
       cancelado = true
     }
-  }, [anio, desde, hasta, estado, responsableId, tipo, pagina, clave])
+  }, [anio, desde, hasta, estado, mios, tipo, pagina, clave])
 
   function cambiarPagina(nueva: number) {
     setEleccion({ clave, pagina: nueva })

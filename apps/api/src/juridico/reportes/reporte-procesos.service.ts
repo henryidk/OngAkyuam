@@ -48,11 +48,15 @@ import {
   type ArchivoReporte,
 } from './cartera-reporte';
 
-function aFiltro(query: ReporteProcesosJuridicoQuery): FiltroReporteProcesos {
+/** "Mis procesos" se resuelve con la cuenta de la sesión, nunca con un id que mande el navegador. */
+function aFiltro(
+  query: ReporteProcesosJuridicoQuery,
+  usuarioId: string,
+): FiltroReporteProcesos {
   return {
     ...aFiltroCartera(query),
     estado: query.estado === 'TODOS' ? null : query.estado,
-    responsableId: query.responsableId ?? null,
+    asignadoAUsuarioId: query.mios ? usuarioId : null,
     tipo: query.tipo ?? null,
   };
 }
@@ -63,7 +67,7 @@ function detallesAuditoria(filtro: FiltroReporteProcesos) {
     reporte: 'PROCESOS_JURIDICOS',
     ...detallesCartera(filtro),
     estado: filtro.estado ?? 'TODOS',
-    responsableId: filtro.responsableId,
+    mios: filtro.asignadoAUsuarioId !== null,
     tipo: filtro.tipo,
   };
 }
@@ -253,7 +257,7 @@ export class ReporteProcesosService {
     { pagina }: PaginaReporteJuridicoQuery,
     contexto: ContextoAuditoria,
   ): Promise<ReporteProcesosJuridico> {
-    const filtro = aFiltro(query);
+    const filtro = aFiltro(query, contexto.usuarioId);
     const [filas, conteos, porResponsable, personas] = await Promise.all([
       this.repositorio.filas(filtro, {
         pagina,
@@ -290,7 +294,7 @@ export class ReporteProcesosService {
     query: ReporteProcesosJuridicoQuery,
     contexto: ContextoAuditoria,
   ): Promise<ArchivoReporte> {
-    const filtro = aFiltro(query);
+    const filtro = aFiltro(query, contexto.usuarioId);
     const filas = await this.repositorio.filas(filtro, null);
     const contenido = await this.exportador.generar({
       nombreHoja: 'Procesos jurídicos',
