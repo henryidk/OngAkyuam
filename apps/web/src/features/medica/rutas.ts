@@ -44,6 +44,6 @@ export const RUTAS_MEDICA = {
   /** Registrar consulta desde una cita (`cita`) o, de forma excepcional, sin cita (`usuaria`). */
   nuevaConsulta: (params: { cita?: string; usuaria?: string; origen: OrigenConsulta }) =>
     conQuery('/medica/consultas/nueva', params),
-  reportes: (anio?: number, mes?: number) =>
-    conQuery('/medica/reportes', { anio: anio?.toString(), mes: mes?.toString() }),
+  /** `vista`: la pestaña de Reportes; el informe de la ONG es la de por defecto y no deja huella. */
+  reportes: (vista?: 'indicadores') => conQuery('/medica/reportes', { vista }),
 }

@@ -5,18 +5,18 @@ import {
   ETIQUETAS_RANGO_EDAD_INFORME_MEDICA,
   formatFechaGT,
   GRUPOS_ETNICOS,
-  hoyGT,
-  informeAtencionMedicaQuerySchema,
   RANGOS_EDAD_INFORME_MEDICA,
   type CifrasInformeAtencionMedica,
   type InformeAtencionMedicaQuery,
 } from '@akyuam/shared'
+import { Download } from 'lucide-react'
+import Button from '../../../components/ui/Button'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
 import { guardarArchivo } from '../../../lib/archivos'
 import { useRecurso } from '../../../lib/useRecurso'
 import { descargarInformeAtencion, obtenerInformeAtencion } from '../api/medica.api'
-import { CLASE_CAMPO, CLASE_TARJETA } from '../compartido/estilos'
+import { CLASE_TARJETA } from '../compartido/estilos'
 
 const CLASE_TH = 'border border-[#e3e6ea] px-2 py-1.5 text-center text-[11.5px] font-semibold text-[#374151]'
 const CLASE_TD = 'border border-[#e3e6ea] px-2 py-1.5 text-center tabular-nums text-[#1c2430]'
@@ -33,26 +33,14 @@ function celdas(cifras: CifrasInformeAtencionMedica) {
 
 /**
  * Informe de atención con el formato que entregó la ONG: renglones por tipo de atención y columnas
- * por sexo, pertenencia étnica y edad. El periodo vive en el estado de la pantalla, no en la URL.
+ * por sexo, pertenencia étnica y edad. El periodo lo elige la pantalla de Reportes (no la URL).
  */
-export default function InformeAtencion() {
+export default function InformeAtencion({ periodo }: { periodo: InformeAtencionMedicaQuery }) {
   const { mostrar } = useToast()
-  const [hoy] = useState(hoyGT)
-  // Por defecto, el mes en curso hasta hoy.
-  const [campos, setCampos] = useState<InformeAtencionMedicaQuery>(() => ({ desde: `${hoy.slice(0, 8)}01`, hasta: hoy }))
-  const [periodo, setPeriodo] = useState(campos)
   const [descargando, setDescargando] = useState(false)
 
-  const valido = informeAtencionMedicaQuerySchema.safeParse(campos)
   const cargar = useCallback(() => obtenerInformeAtencion(periodo), [periodo])
   const { datos: informe, error, recargar } = useRecurso(cargar)
-
-  function cambiar(cambios: Partial<InformeAtencionMedicaQuery>) {
-    const nuevos = { ...campos, ...cambios }
-    setCampos(nuevos)
-    // Solo se pide con un rango completo y en orden; mientras tanto se sigue viendo el anterior.
-    if (informeAtencionMedicaQuerySchema.safeParse(nuevos).success) setPeriodo(nuevos)
-  }
 
   async function descargar() {
     setDescargando(true)
@@ -67,50 +55,21 @@ export default function InformeAtencion() {
   }
 
   return (
-    <section className={`${CLASE_TARJETA} flex flex-col gap-3.5 px-5 py-4`}>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex flex-col gap-px">
-          <h2 className="text-base font-semibold text-[#1c2430]">Informe de atención</h2>
-          <p className="text-xs text-[#5b6573]">
+    <section aria-labelledby="titulo-informe" className={`${CLASE_TARJETA} flex flex-col gap-4 px-5 py-4`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex flex-col gap-0.5">
+          <h2 id="titulo-informe" className="text-base font-semibold text-[#1c2430]">
+            Informe de atención
+          </h2>
+          <p className="text-[13px] text-[#5b6573]">
             Formato de la ONG · del {formatFechaGT(periodo.desde)} al {formatFechaGT(periodo.hasta)}
           </p>
         </div>
-        <div className="flex flex-wrap items-end gap-2.5">
-          <label className="flex flex-col gap-1 text-xs font-medium text-[#5b6573]">
-            Desde
-            <input
-              type="date"
-              value={campos.desde}
-              max={hoy}
-              onChange={(evento) => cambiar({ desde: evento.target.value })}
-              className={`${CLASE_CAMPO} w-[150px] py-1.5`}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-medium text-[#5b6573]">
-            Hasta
-            <input
-              type="date"
-              value={campos.hasta}
-              max={hoy}
-              onChange={(evento) => cambiar({ hasta: evento.target.value })}
-              className={`${CLASE_CAMPO} w-[150px] py-1.5`}
-            />
-          </label>
-          <button
-            type="button"
-            disabled={descargando || !informe}
-            onClick={() => void descargar()}
-            className="whitespace-nowrap rounded-md border border-[#d5dadf] bg-white px-3.5 py-2 text-[13px] font-medium text-[#1c2430] hover:bg-[#f8f9fa] disabled:opacity-60"
-          >
-            {descargando ? 'Generando…' : 'Descargar Excel'}
-          </button>
-        </div>
+        <Button variante="primary" tamano="md" cargando={descargando} disabled={!informe} onClick={() => void descargar()}>
+          {!descargando && <Download aria-hidden="true" className="h-4 w-4" />}
+          {descargando ? 'Generando…' : 'Descargar informe (Excel)'}
+        </Button>
       </div>
-      {!valido.success && (
-        <p role="alert" className="text-[13px] text-[#9b2c20]">
-          {valido.error.issues[0]?.message ?? 'Revisa las fechas.'}
-        </p>
-      )}
 
       {error ? (
         <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="el informe" onReintentar={() => void recargar()} />
@@ -121,7 +80,7 @@ export default function InformeAtencion() {
           <table className="w-full min-w-[860px] border-collapse text-[13px]">
             <thead className="bg-[#f8f9fa]">
               <tr>
-                <th rowSpan={2} scope="col" className={`${CLASE_TH} text-left`}>
+                <th rowSpan={2} scope="col" className={`${CLASE_TH} sticky left-0 z-10 bg-[#f8f9fa] text-left`}>
                   Atención
                 </th>
                 <th colSpan={2} scope="colgroup" className={CLASE_TH}>
@@ -159,7 +118,7 @@ export default function InformeAtencion() {
             <tbody>
               {informe.filas.map((fila) => (
                 <tr key={fila.clave}>
-                  <th scope="row" className="border border-[#e3e6ea] px-2.5 py-1.5 text-left font-normal text-[#1c2430]">
+                  <th scope="row" className="sticky left-0 z-10 border border-[#e3e6ea] bg-white px-2.5 py-2 text-left font-normal text-[#1c2430]">
                     {ETIQUETAS_FILA_INFORME_ATENCION_MEDICA[fila.clave]}
                   </th>
                   {celdas(fila).map((valor, indice) => (
@@ -170,7 +129,7 @@ export default function InformeAtencion() {
                 </tr>
               ))}
               <tr className="bg-[#f8f9fa] font-semibold">
-                <th scope="row" className="border border-[#e3e6ea] px-2.5 py-1.5 text-left text-[#1c2430]">
+                <th scope="row" className="sticky left-0 z-10 border border-[#e3e6ea] bg-[#f8f9fa] px-2.5 py-2 text-left text-[#1c2430]">
                   TOTALES
                 </th>
                 {celdas(informe.totales).map((valor, indice) => (
@@ -183,11 +142,11 @@ export default function InformeAtencion() {
           </table>
         </div>
       )}
-      <p className="text-xs text-[#5b6573]">
-        Etnia según el registro de Trabajo Social (hijos e hijas con la de su madre). Edad al día de la primera consulta del
-        periodo. Una persona puede aparecer en más de un renglón (por ejemplo, de nuevo ingreso y albergada), así que los
-        totales suman renglones, como en el formato.
-      </p>
+      <ul className="flex max-w-[75ch] list-disc flex-col gap-0.5 pl-4 text-xs text-[#5b6573] marker:text-[#9aa4b0]">
+        <li>Etnia según el registro de Trabajo Social; hijos e hijas con la de su madre.</li>
+        <li>Edad al día de la primera consulta del periodo.</li>
+        <li>Una persona puede estar en más de un renglón (por ejemplo, nuevo ingreso y albergada): los totales suman renglones, como el formato.</li>
+      </ul>
     </section>
   )
 }

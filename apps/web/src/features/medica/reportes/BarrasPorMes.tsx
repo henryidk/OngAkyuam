@@ -9,72 +9,76 @@ interface BarrasPorMesProps {
   onElegir: (indice: number | null) => void
 }
 
-function Leyenda({ color, texto }: { color: string; texto: string }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-sm ${color}`} />
-      {texto}
-    </span>
-  )
+function plural(cantidad: number, singular: string, pluralizado: string) {
+  return `${cantidad} ${cantidad === 1 ? singular : pluralizado}`
 }
 
-/** Consultas y personas atendidas por mes. Al hacer clic en un mes, el detalle se filtra a ese mes. */
+/** Consultas por mes. Al tocar un mes, las cifras y desgloses de abajo pasan a ese mes; tocarlo otra vez lo quita. */
 export default function BarrasPorMes({ meses, elegido, onElegir }: BarrasPorMesProps) {
-  const maximo = Math.max(1, ...meses.map((periodo) => Math.max(periodo.consultas, periodo.personasAtendidas)))
-  const alto = (valor: number) => `${Math.round((valor / maximo) * 100)}%`
-  const variosAnios = meses.some((periodo) => periodo.anio !== meses[0]?.anio)
-  const columnas = { gridTemplateColumns: `repeat(${meses.length}, minmax(0, 1fr))` }
+  const maximo = Math.max(1, ...meses.map((mes) => mes.consultas))
+  const variosAnios = meses.some((mes) => mes.anio !== meses[0]?.anio)
+  // Columnas de ancho acotado: con pocos meses las barras no quedan perdidas en un lienzo enorme.
+  const columnas = { gridTemplateColumns: `repeat(${meses.length}, minmax(36px, 76px))` }
+  const mesElegido = elegido !== null ? meses[elegido] : null
 
   return (
-    <section className={`${CLASE_TARJETA} flex flex-col gap-3.5 px-5 py-4`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-[#1c2430]">Por mes</h2>
-        <div className="flex flex-wrap items-center gap-3.5 text-xs text-[#5b6573]">
-          <Leyenda color="bg-[#7346a5]" texto="Consultas" />
-          <Leyenda color="bg-[#cdb6ea]" texto="Personas atendidas" />
-          {elegido !== null && (
-            <button type="button" onClick={() => onElegir(null)} className="font-medium text-brand-700 hover:underline">
-              Ver todo el periodo
-            </button>
+    <section aria-labelledby="titulo-barras" className={`${CLASE_TARJETA} flex flex-col gap-3.5 px-5 py-[18px]`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-2.5">
+        <h2 id="titulo-barras" className="text-sm font-semibold text-[#1c2430]">
+          Consultas por mes
+        </h2>
+        <p aria-live="polite" className="flex flex-wrap items-baseline gap-x-3 text-[12.5px] text-[#5b6573]">
+          {mesElegido ? (
+            <>
+              <span>
+                {nombreMesGT(mesElegido.mes)} {mesElegido.anio}: {plural(mesElegido.consultas, 'consulta', 'consultas')} ·{' '}
+                {plural(mesElegido.personasAtendidas, 'persona', 'personas')}
+              </span>
+              <button type="button" onClick={() => onElegir(null)} className="font-medium text-brand-700 underline underline-offset-2 hover:text-brand-800">
+                Ver todo el periodo
+              </button>
+            </>
+          ) : (
+            'Toca un mes para ver su detalle'
           )}
-        </div>
+        </p>
       </div>
-      <div className="overflow-x-auto">
-        <div className="min-w-[520px]">
-          <div className="grid h-[180px] items-end gap-1.5" style={columnas}>
-            {meses.map((periodo, indice) => {
-              const esElegido = elegido === indice
-              const nombre = `${nombreMesGT(periodo.mes)} ${periodo.anio}`
-              const resumen = `${nombre}: ${periodo.consultas} consultas, ${periodo.personasAtendidas} personas`
+
+      <div className="overflow-x-auto overflow-y-hidden">
+        <div className="w-fit min-w-full">
+          <div className="grid h-[160px] items-end justify-center gap-2 sm:gap-4" style={columnas}>
+            {meses.map((mes, indice) => {
+              const activo = elegido === indice
+              const nombre = `${nombreMesGT(mes.mes)} ${mes.anio}`
               return (
                 <button
-                  key={`${periodo.anio}-${periodo.mes}`}
+                  key={`${mes.anio}-${mes.mes}`}
                   type="button"
-                  aria-pressed={esElegido}
-                  aria-label={resumen}
-                  title={resumen}
-                  onClick={() => onElegir(esElegido ? null : indice)}
-                  className={`flex h-full flex-col justify-end gap-1 rounded-md px-0.5 pt-1 ${
-                    esElegido ? 'bg-[#f2ecfa]' : 'hover:bg-[#f8f9fa]'
-                  } ${elegido !== null && !esElegido ? 'opacity-45' : ''}`}
+                  aria-pressed={activo}
+                  aria-label={`${nombre}: ${plural(mes.consultas, 'consulta', 'consultas')}, ${plural(mes.personasAtendidas, 'persona', 'personas')}`}
+                  onClick={() => onElegir(activo ? null : indice)}
+                  className="group flex h-full min-w-0 flex-col items-center justify-end gap-1 rounded-t"
                 >
-                  <span className="text-[11px] font-semibold tabular-nums text-[#374151]">{periodo.consultas}</span>
-                  <span aria-hidden="true" className="flex h-[130px] items-end justify-center gap-0.5">
-                    <span className="w-2/5 max-w-[14px] rounded-t-sm bg-[#7346a5]" style={{ height: alto(periodo.consultas) }} />
-                    <span className="w-2/5 max-w-[14px] rounded-t-sm bg-[#cdb6ea]" style={{ height: alto(periodo.personasAtendidas) }} />
-                  </span>
+                  <span className="text-[11.5px] font-semibold tabular-nums text-[#1c2430]">{mes.consultas}</span>
+                  <span
+                    aria-hidden="true"
+                    style={{ height: `${Math.round((mes.consultas / maximo) * 100)}%` }}
+                    className={`w-full max-w-[38px] rounded-t transition-colors ${mes.consultas === 0 ? 'min-h-[2px]' : 'min-h-[6px]'} ${
+                      activo ? 'bg-brand-950' : elegido !== null ? 'bg-brand-200 group-hover:bg-brand-400' : 'bg-brand-500 group-hover:bg-brand-600'
+                    }`}
+                  />
                 </button>
               )
             })}
           </div>
-          <div aria-hidden="true" className="mt-1 grid gap-1.5" style={columnas}>
-            {meses.map((periodo, indice) => (
+          <div aria-hidden="true" className="grid justify-center gap-2 border-t border-[#e3e6ea] pt-1.5 sm:gap-4" style={columnas}>
+            {meses.map((mes, indice) => (
               <span
-                key={`${periodo.anio}-${periodo.mes}`}
-                className={`text-center text-[11.5px] leading-tight ${elegido === indice ? 'font-bold text-[#5b3985]' : 'font-medium text-[#5b6573]'}`}
+                key={`${mes.anio}-${mes.mes}`}
+                className={`text-center text-[11px] leading-tight sm:text-xs ${elegido === indice ? 'font-semibold text-[#1c2430]' : 'text-[#5b6573]'}`}
               >
-                {nombreMesGT(periodo.mes).slice(0, 3)}
-                {variosAnios && <span className="block text-[10.5px]">{periodo.anio}</span>}
+                {nombreMesGT(mes.mes).slice(0, 3)}
+                {variosAnios && <span className="block text-[10.5px]">{mes.anio}</span>}
               </span>
             ))}
           </div>
