@@ -8,11 +8,12 @@ import {
   fechaCalendarioGT,
   GRUPOS_ETNICOS,
   MUNICIPIOS_ALTA_VERAPAZ,
-  serieDoceMeses,
   TIPOLOGIAS_DELITO,
   UMBRAL_ANONIMATO,
   type ConteoReporte,
+  type MesIndicadoresMedica,
   type PeriodoMedica,
+  type PersonaReporteMedica,
   type RangoEdad,
 } from '@akyuam/shared';
 
@@ -136,26 +137,64 @@ export function resumirPeriodo(
   };
 }
 
-/** El año y sus 12 meses. El mes se corta en hora de Guatemala. */
-export function resumirAnio(consultas: readonly ConsultaParaAgregado[]): {
-  anual: PeriodoMedica;
-  meses: PeriodoMedica[];
-} {
-  const porMes = new Map<number, ConsultaParaAgregado[]>();
-  for (const consulta of consultas) {
-    const mes = Number(fechaCalendarioGT(consulta.fechaHora).slice(5, 7));
-    const delMes = porMes.get(mes) ?? [];
-    delMes.push(consulta);
-    porMes.set(mes, delMes);
+/** Cada mes de calendario que toca el rango "YYYY-MM-DD", en orden. */
+export function mesesDelRango(
+  desde: string,
+  hasta: string,
+): { anio: number; mes: number }[] {
+  const [anioFin, mesFin] = hasta.split('-').map(Number);
+  let [anio, mes] = desde.split('-').map(Number);
+  const meses: { anio: number; mes: number }[] = [];
+  while (anio < anioFin || (anio === anioFin && mes <= mesFin)) {
+    meses.push({ anio, mes });
+    mes += 1;
+    if (mes > 12) {
+      mes = 1;
+      anio += 1;
+    }
   }
-  const resumenes = new Map<number, PeriodoMedica>();
-  for (const [mes, delMes] of porMes) {
-    resumenes.set(mes, resumirPeriodo(delMes));
+  return meses;
+}
+
+/**
+ * Todo el periodo y cada uno de sus meses, aunque vengan en cero: las columnas del Excel y las
+ * barras de la pantalla no cambian según haya o no consultas. El mes se corta en hora de Guatemala.
+ */
+export function resumirRango(
+  consultas: readonly ConsultaParaAgregado[],
+  desde: string,
+  hasta: string,
+): { total: PeriodoMedica; meses: MesIndicadoresMedica[] } {
+  const porMes = new Map<string, ConsultaParaAgregado[]>();
+  for (const consulta of consultas) {
+    const clave = fechaCalendarioGT(consulta.fechaHora).slice(0, 7);
+    const delMes = porMes.get(clave) ?? [];
+    delMes.push(consulta);
+    porMes.set(clave, delMes);
   }
   return {
-    anual: resumirPeriodo(consultas),
-    meses: serieDoceMeses(resumenes, () => resumirPeriodo([])),
+    total: resumirPeriodo(consultas),
+    meses: mesesDelRango(desde, hasta).map(({ anio, mes }) => ({
+      anio,
+      mes,
+      ...resumirPeriodo(
+        porMes.get(`${anio}-${String(mes).padStart(2, '0')}`) ?? [],
+      ),
+    })),
   };
+}
+
+/** Filtros de persona y de primeras consultas (el de "Mis consultas" se resuelve en la base). */
+export function filtrarConsultas(
+  consultas: readonly ConsultaParaAgregado[],
+  filtros: { persona: PersonaReporteMedica; soloPrimeras: boolean },
+): ConsultaParaAgregado[] {
+  return consultas.filter(
+    (consulta) =>
+      (filtros.persona === 'TODAS' ||
+        (filtros.persona === 'HIJOS') === (consulta.ninoId !== null)) &&
+      (!filtros.soloPrimeras || consulta.esPrimera),
+  );
 }
 
 /**

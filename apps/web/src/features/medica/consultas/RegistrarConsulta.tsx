@@ -3,12 +3,15 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   DURACION_CITA_MEDICA_MIN,
   ETIQUETAS_DURACION_CITA_MEDICA,
+  ETIQUETAS_MODALIDAD_CONSULTA_MEDICA,
+  MODALIDADES_CONSULTA_MEDICA,
   formatFechaGT,
   hoyGT,
   registrarConsultaMedicaSchema,
   type CampoSignoFormulario,
   type ContextoConsultaMedicaDto,
   type DuracionCitaMedica,
+  type ModalidadConsultaMedica,
   type RegistrarConsultaMedicaInput,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
@@ -100,6 +103,8 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
   const [activa, setActiva] = useState(() => clavePersona(personas[0]))
   const claveActiva = personas.some((persona) => clavePersona(persona) === activa) ? activa : clavePersona(personas[0])
 
+  // Una sola para toda la visita; el informe de atención cuenta aparte las telefónicas.
+  const [modalidad, setModalidad] = useState<ModalidadConsultaMedica>('PRESENCIAL')
   const duracion = (cita?.duracionMin ?? DURACION_CITA_MEDICA_MIN) as DuracionCitaMedica
   const [proxima, setProxima] = useState<ProximaElegida | null>(null)
   const [modalProxima, setModalProxima] = useState(false)
@@ -114,7 +119,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
 
   const documentosDe = (clave: string) => documentos[clave] ?? SIN_DOCUMENTOS
   const cambiosDe = (clave: string) => tieneCambios(estados[clave], inicio[clave], documentosDe(clave).cantidad)
-  const hayCambios = proxima !== null || montadas.some((persona) => cambiosDe(clavePersona(persona)))
+  const hayCambios = proxima !== null || modalidad !== 'PRESENCIAL' || montadas.some((persona) => cambiosDe(clavePersona(persona)))
 
   const estadosPestana: Record<string, EstadoPestana> = {}
   for (const persona of personas) {
@@ -181,6 +186,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
     const datos: RegistrarConsultaMedicaInput = {
       citaId: cita?.id ?? null,
       atencionId: contexto.atencionId,
+      modalidad,
       registros: personas.map((persona) => {
         const clave = clavePersona(persona)
         const estado = estados[clave]
@@ -250,6 +256,29 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
           {varias && ` · ${personas.length} personas`}
         </p>
       </header>
+
+      <section className={`${CLASE_TARJETA} flex flex-wrap items-center justify-between gap-3 px-5 py-3.5`}>
+        <h2 id="modalidad-consulta" className="text-sm font-semibold text-[#1c2430]">
+          ¿Cómo fue la consulta?
+        </h2>
+        <div role="radiogroup" aria-labelledby="modalidad-consulta" className="flex overflow-hidden rounded-md border border-[#d5dadf] bg-white">
+          {MODALIDADES_CONSULTA_MEDICA.map((opcion) => (
+            <button
+              key={opcion}
+              type="button"
+              role="radio"
+              aria-checked={modalidad === opcion}
+              disabled={guardando}
+              onClick={() => setModalidad(opcion)}
+              className={`px-3.5 py-2 text-[13px] font-semibold ${
+                modalidad === opcion ? 'bg-[#7346a5] text-white' : 'bg-white text-[#374151] hover:bg-[#f8f9fa]'
+              } disabled:opacity-60`}
+            >
+              {ETIQUETAS_MODALIDAD_CONSULTA_MEDICA[opcion]}
+            </button>
+          ))}
+        </div>
+      </section>
 
       {!cita && contexto.personas.length > 1 && (
         <section className={`${CLASE_TARJETA} px-5 py-[18px]`}>

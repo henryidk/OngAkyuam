@@ -1,7 +1,8 @@
 import {
   cifraAnonima,
   MUNICIPIO_FUERA,
-  resumirAnio,
+  filtrarConsultas,
+  resumirRango,
   resumirPeriodo,
   type ConsultaParaAgregado,
 } from './indicadores';
@@ -61,13 +62,42 @@ describe('indicadores de Medicina', () => {
 
   it('el mes se corta en hora de Guatemala', () => {
     // 2026-04-01 03:00 UTC es todavía 31 de marzo en Guatemala.
-    const { anual, meses } = resumirAnio([
-      consulta({ fechaHora: new Date('2026-04-01T03:00:00.000Z') }),
+    const { total, meses } = resumirRango(
+      [consulta({ fechaHora: new Date('2026-04-01T03:00:00.000Z') })],
+      '2026-03-01',
+      '2026-04-30',
+    );
+    expect(total.consultas).toBe(1);
+    expect(meses.map((m) => [m.mes, m.consultas])).toEqual([
+      [3, 1],
+      [4, 0],
     ]);
-    expect(anual.consultas).toBe(1);
-    expect(meses).toHaveLength(12);
-    expect(meses[2].consultas).toBe(1);
-    expect(meses[3].consultas).toBe(0);
+  });
+
+  it('trae cada mes que toca el rango, aunque cruce de año y venga en cero', () => {
+    const { meses } = resumirRango([], '2025-11-15', '2026-02-03');
+    expect(meses.map((m) => `${m.anio}-${m.mes}`)).toEqual([
+      '2025-11',
+      '2025-12',
+      '2026-1',
+      '2026-2',
+    ]);
+    expect(meses.every((m) => m.consultas === 0)).toBe(true);
+  });
+
+  it('filtra por usuarias, por hijos/as y por primeras consultas', () => {
+    const consultas = [
+      consulta({ esPrimera: true }),
+      consulta(),
+      consulta({ ninoId: 'n1' }),
+    ];
+    const contar = (filtros: Parameters<typeof filtrarConsultas>[1]) =>
+      filtrarConsultas(consultas, filtros).length;
+    expect(contar({ persona: 'TODAS', soloPrimeras: false })).toBe(3);
+    expect(contar({ persona: 'USUARIAS', soloPrimeras: false })).toBe(2);
+    expect(contar({ persona: 'HIJOS', soloPrimeras: false })).toBe(1);
+    expect(contar({ persona: 'TODAS', soloPrimeras: true })).toBe(1);
+    expect(contar({ persona: 'HIJOS', soloPrimeras: true })).toBe(0);
   });
 
   it('cifraAnonima oculta 1 y 2, publica el 0 y desde 3', () => {

@@ -858,6 +858,12 @@ enum ModalidadCita {
   VIRTUAL
 }
 
+// Cómo se dio una consulta médica. Las anteriores al campo quedan como presenciales.
+enum ModalidadConsultaMedica {
+  PRESENCIAL
+  TELEFONICA
+}
+
 enum EstadoCitaPsicologica {
   PROGRAMADA
   ATENDIDA
@@ -1037,34 +1043,36 @@ model CitaMedicaPersona {
 // Consulta registrada. Los rangos de los signos vitales los valida también un CHECK
 // ("ConsultaMedica_rangos_chk") con los mismos valores de `RANGOS_SIGNOS_VITALES` en shared.
 model ConsultaMedica {
-  id                 String         @id @default(uuid())
+  id                 String                  @id @default(uuid())
   atencionId         String
-  atencion           AtencionMedica @relation(fields: [atencionId], references: [id], onDelete: Restrict)
+  atencion           AtencionMedica          @relation(fields: [atencionId], references: [id], onDelete: Restrict)
   // Una consulta por persona de la cita: único por (citaId, ninoId), con índices parciales en la
   // migración medica_unicos_parciales_persona (las consultas sin cita no chocan entre sí).
   citaId             String?
-  cita               CitaMedica?    @relation(fields: [citaId], references: [id], onDelete: Restrict)
+  cita               CitaMedica?             @relation(fields: [citaId], references: [id], onDelete: Restrict)
   ninoId             String?
-  nino               Nino?          @relation(fields: [ninoId], references: [id], onDelete: Restrict)
-  fechaHora          DateTime       @db.Timestamptz(3)
-  motivoConsulta     String?        @db.VarChar(2000)
-  presionSistolica   Int?           @db.SmallInt
-  presionDiastolica  Int?           @db.SmallInt
-  frecuenciaCardiaca Int?           @db.SmallInt
-  frecuenciaResp     Int?           @db.SmallInt
-  temperaturaC       Decimal?       @db.Decimal(4, 1)
-  saturacionO2       Int?           @db.SmallInt
-  glucosaMgDl        Int?           @db.SmallInt
-  pesoKg             Decimal?       @db.Decimal(5, 2)
-  tallaM             Decimal?       @db.Decimal(3, 2)
-  diagnostico        String         @db.VarChar(2000)
-  planTratamiento    String?        @db.VarChar(4000)
-  recetaLaboratorios String?        @db.VarChar(4000)
+  nino               Nino?                   @relation(fields: [ninoId], references: [id], onDelete: Restrict)
+  fechaHora          DateTime                @db.Timestamptz(3)
+  motivoConsulta     String?                 @db.VarChar(2000)
+  presionSistolica   Int?                    @db.SmallInt
+  presionDiastolica  Int?                    @db.SmallInt
+  frecuenciaCardiaca Int?                    @db.SmallInt
+  frecuenciaResp     Int?                    @db.SmallInt
+  temperaturaC       Decimal?                @db.Decimal(4, 1)
+  saturacionO2       Int?                    @db.SmallInt
+  glucosaMgDl        Int?                    @db.SmallInt
+  pesoKg             Decimal?                @db.Decimal(5, 2)
+  tallaM             Decimal?                @db.Decimal(3, 2)
+  diagnostico        String                  @db.VarChar(2000)
+  planTratamiento    String?                 @db.VarChar(4000)
+  recetaLaboratorios String?                 @db.VarChar(4000)
   // Lo que se le brindó en la consulta, para el reporte de población beneficiada (lo ve Trabajo Social).
-  atencionBrindada   String         @db.VarChar(300)
+  atencionBrindada   String                  @db.VarChar(300)
+  // Presencial o por teléfono; el informe de atención de Médica cuenta las telefónicas aparte.
+  modalidad          ModalidadConsultaMedica @default(PRESENCIAL)
   registradaPorId    String
-  registradaPor      Usuario        @relation(fields: [registradaPorId], references: [id], onDelete: Restrict)
-  createdAt          DateTime       @default(now()) @db.Timestamptz(3)
+  registradaPor      Usuario                 @relation(fields: [registradaPorId], references: [id], onDelete: Restrict)
+  createdAt          DateTime                @default(now()) @db.Timestamptz(3)
 
   documentos DocumentoMedico[]
 

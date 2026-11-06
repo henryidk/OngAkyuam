@@ -1,11 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
-  anioActualGT,
-  anioCalendarioGT,
-  aniosEntre,
-  finMesGT,
-  inicioMesGT,
+  ETIQUETAS_ALCANCE_REPORTE_MEDICA,
+  ETIQUETAS_PERSONA_REPORTE_MEDICA,
+  finDiaGT,
+  formatFechaGT,
+  inicioDiaGT,
   nombreMesGT,
+  UMBRAL_ANONIMATO,
 } from '@akyuam/shared';
 import type {
   ConteoReporte,
@@ -24,7 +25,11 @@ import {
   type ValorCeldaHoja,
 } from '../../common/hoja-calculo/exportador-hoja-calculo.interface';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
-import { cifraAnonima, resumirAnio } from '../dominio/indicadores';
+import {
+  cifraAnonima,
+  filtrarConsultas,
+  resumirRango,
+} from '../dominio/indicadores';
 import {
   REPORTES_MEDICA_REPOSITORY,
   type IReportesMedicaRepository,
@@ -36,19 +41,6 @@ export interface ArchivoReporteMedica {
   tipoContenido: string;
 }
 
-const MESES = Array.from({ length: 12 }, (_, i) => i + 1);
-
-const COLUMNAS: ColumnaHoja[] = [
-  { titulo: 'Indicador', ancho: 26, tipo: 'texto' },
-  { titulo: 'Categoría', ancho: 34, tipo: 'texto' },
-  ...MESES.map((mes): ColumnaHoja => ({
-    titulo: nombreMesGT(mes).slice(0, 3),
-    ancho: 7,
-    tipo: 'numero',
-  })),
-  { titulo: 'Año', ancho: 8, tipo: 'numero' },
-];
-
 const DESGLOSES: { clave: keyof PeriodoMedica['desgloses']; titulo: string }[] =
   [
     { clave: 'rangoEdad', titulo: 'Personas por rango de edad' },
@@ -58,8 +50,8 @@ const DESGLOSES: { clave: keyof PeriodoMedica['desgloses']; titulo: string }[] =
   ];
 
 /**
- * Indicadores de Medicina: solo cifras agregadas, nunca filas por persona. Una sola consulta
- * de las consultas del año, agregada en memoria por el dominio.
+ * Indicadores de Medicina: solo cifras agregadas, nunca filas por persona. La pantalla y el
+ * Excel salen del mismo cálculo, con el mismo periodo y los mismos filtros.
  */
 @Injectable()
 export class IndicadoresMedicaService {
@@ -75,40 +67,42 @@ export class IndicadoresMedicaService {
     query: ReportesMedicaQuery,
     contexto: ContextoAuditoria,
   ): Promise<IndicadoresMedica> {
-    const [consultas, enAtencionAhora, primera] = await Promise.all([
-      this.reportesRepository.consultasEntre(
-        inicioMesGT(query.anio, 1),
-        finMesGT(query.anio, 12),
-      ),
+    const [resumen, enAtencionAhora] = await Promise.all([
+      this.resumir(query, contexto),
       this.reportesRepository.contarActivas(),
-      this.reportesRepository.primeraConsulta(),
     ]);
-    const anioActual = anioActualGT();
     await this.auditService.registrar(
-      eventoReporte(contexto, 'INDICADORES_MEDICA_CONSULTADOS', query.anio),
+      eventoReporte(contexto, 'INDICADORES_MEDICA_CONSULTADOS', query),
     );
     return {
-      anio: query.anio,
-      aniosDisponibles: aniosEntre(
-        primera ? anioCalendarioGT(primera) : anioActual,
-        anioActual,
-      ),
+      desde: query.desde,
+      hasta: query.hasta,
       enAtencionAhora,
-      ...resumirAnio(consultas),
+      ...resumen,
     };
   }
 
-  /** Excel de agregados: una fila por indicador, columnas por mes, cifras pequeñas como "<3". */
+  /**
+   * Excel de agregados: una fila por indicador, una columna por mes del periodo y el total.
+   * Al pie, el periodo y los filtros con que se generó, para que el archivo se entienda solo.
+   */
   async exportar(
     query: ReportesMedicaQuery,
     contexto: ContextoAuditoria,
   ): Promise<ArchivoReporteMedica> {
-    const { anual, meses } = resumirAnio(
-      await this.reportesRepository.consultasEntre(
-        inicioMesGT(query.anio, 1),
-        finMesGT(query.anio, 12),
-      ),
-    );
+    const { total, meses } = await this.resumir(query, contexto);
+    const variosAnios = meses.some((mes) => mes.anio !== meses[0].anio);
+
+    const columnas: ColumnaHoja[] = [
+      { titulo: 'Indicador', ancho: 30, tipo: 'texto' },
+      { titulo: 'Categoría', ancho: 38, tipo: 'texto' },
+      ...meses.map(({ anio, mes }): ColumnaHoja => ({
+        titulo: `${nombreMesGT(mes).slice(0, 3)}${variosAnios ? ` ${anio}` : ''}`,
+        ancho: variosAnios ? 10 : 7,
+        tipo: 'numero',
+      })),
+      { titulo: 'Total', ancho: 8, tipo: 'numero' },
+    ];
 
     const fila = (
       indicador: string,
@@ -118,7 +112,7 @@ export class IndicadoresMedicaService {
       indicador,
       categoria,
       ...meses.map((mes) => cifraAnonima(valor(mes))),
-      cifraAnonima(valor(anual)),
+      cifraAnonima(valor(total)),
     ];
 
     const filas: ValorCeldaHoja[][] = [
@@ -127,7 +121,7 @@ export class IndicadoresMedicaService {
       fila('Personas atendidas', 'Total', (p) => p.personasAtendidas),
     ];
     for (const { clave, titulo } of DESGLOSES) {
-      for (const [indice, conteo] of anual.desgloses[clave].entries()) {
+      for (const [indice, conteo] of total.desgloses[clave].entries()) {
         filas.push(
           fila(titulo, conteo.etiqueta, (p) =>
             totalDe(p.desgloses[clave], indice),
@@ -135,20 +129,59 @@ export class IndicadoresMedicaService {
         );
       }
     }
+    filas.push(
+      [],
+      [
+        'Periodo',
+        `Del ${formatFechaGT(query.desde)} al ${formatFechaGT(query.hasta)}`,
+      ],
+      ['Personas', ETIQUETAS_PERSONA_REPORTE_MEDICA[query.persona]],
+      [
+        'Personal',
+        query.alcance === 'MIAS'
+          ? `Consultas registradas por ${contexto.username}`
+          : ETIQUETAS_ALCANCE_REPORTE_MEDICA.TODO,
+      ],
+      [
+        'Tipo de consulta',
+        query.soloPrimeras ? 'Solo primeras consultas' : 'Todas las consultas',
+      ],
+      [
+        'Nota',
+        `Las cifras menores de ${UMBRAL_ANONIMATO} se muestran como "<${UMBRAL_ANONIMATO}" para no identificar a nadie.`,
+      ],
+    );
 
     const contenido = await this.exportador.generar({
-      nombreHoja: `Medicina ${query.anio}`,
-      columnas: COLUMNAS,
+      nombreHoja: 'Medicina',
+      columnas,
       filas,
     });
     await this.auditService.registrar(
-      eventoReporte(contexto, 'REPORTE_MEDICA_EXPORTADO', query.anio),
+      eventoReporte(contexto, 'REPORTE_MEDICA_EXPORTADO', query),
     );
     return {
       contenido,
-      nombreArchivo: `medicina-indicadores_${query.anio}.${this.exportador.extension}`,
+      nombreArchivo: `medicina-indicadores_${query.desde}_${query.hasta}.${this.exportador.extension}`,
       tipoContenido: this.exportador.tipoContenido,
     };
+  }
+
+  /** "Mis consultas" se resuelve con la sesión, nunca con un id que mande el navegador. */
+  private async resumir(
+    query: ReportesMedicaQuery,
+    contexto: ContextoAuditoria,
+  ) {
+    const consultas = await this.reportesRepository.consultasEntre(
+      inicioDiaGT(query.desde),
+      finDiaGT(query.hasta),
+      query.alcance === 'MIAS' ? contexto.usuarioId : undefined,
+    );
+    return resumirRango(
+      filtrarConsultas(consultas, query),
+      query.desde,
+      query.hasta,
+    );
   }
 }
 
@@ -157,11 +190,11 @@ function totalDe(conteos: readonly ConteoReporte[], indice: number): number {
   return conteos[indice]?.total ?? 0;
 }
 
-/** Un reporte no es de una entidad: solo el año, nunca datos de una persona. */
+/** Un reporte no es de una entidad: solo el periodo y los filtros, nunca datos de una persona. */
 function eventoReporte(
   contexto: ContextoAuditoria,
   accion: string,
-  anio: number,
+  query: ReportesMedicaQuery,
 ): RegistrarAuditoriaParams {
   return {
     usuarioId: contexto.usuarioId,
@@ -170,6 +203,12 @@ function eventoReporte(
     userAgent: contexto.userAgent,
     accion,
     entidad: 'Reporte',
-    detalles: { anio },
+    detalles: {
+      desde: query.desde,
+      hasta: query.hasta,
+      persona: query.persona,
+      alcance: query.alcance,
+      soloPrimeras: query.soloPrimeras,
+    },
   };
 }

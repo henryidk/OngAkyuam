@@ -13,6 +13,7 @@ import {
   FILTROS_PACIENTES_MEDICA,
   MESES_MAX_AGENDA_MEDICA,
   MAX_DIAS_RANGO_HISTORIAL_MEDICA,
+  MODALIDADES_CONSULTA_MEDICA,
   MOTIVO_CONSULTA_MEDICA_MAX,
   MOTIVOS_ALTA_MEDICA,
   NOMBRE_DOCUMENTO_MEDICO_MAX,
@@ -20,8 +21,13 @@ import {
   PLAN_TRATAMIENTO_MAX,
   RANGOS_SIGNOS_VITALES,
   RECETA_LABORATORIOS_MAX,
+  type FilaInformeAtencionMedicaClave,
+  type ModalidadConsultaMedica,
+  type RangoEdadInformeMedica,
   type SignoVital,
 } from '../catalogos/medica.js'
+import type { GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
+import { booleanoQuerySchema, desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE, fechaReporteSchema } from './query.js'
 import { diasEntreFechasGT, sumarMesesGT } from '../timezone.js'
 import type { PersonaAtendidaDto } from './psicologia.js'
 import type { ConteoReporte } from './trabajoSocial.js'
@@ -255,6 +261,8 @@ export const registrarConsultaMedicaSchema = z
   .object({
     citaId: z.uuid().nullable(),
     atencionId: z.uuid(),
+    /** La misma para todas las personas de la visita. */
+    modalidad: z.enum(MODALIDADES_CONSULTA_MEDICA).default('PRESENCIAL'),
     registros: z.array(registroPersonaConsultaSchema).min(1, 'Registra al menos a una persona.').max(20),
     /** Próxima consulta (crea la cita en la misma transacción); null = sin próxima por ahora. */
     proxima: proximaConsultaMedicaSchema.nullable(),
@@ -425,11 +433,60 @@ export const contextoConsultaMedicaQuerySchema = z
   .refine((v) => (v.cita ? 1 : 0) + (v.usuaria ? 1 : 0) === 1, 'Indica la cita o la paciente')
 export type ContextoConsultaMedicaQuery = z.infer<typeof contextoConsultaMedicaQuerySchema>
 
-/** `GET /medica/reportes?anio=` y `GET /medica/reportes/excel?anio=`. */
-export const reportesMedicaQuerySchema = z.object({
-  anio: z.coerce.number().int().min(2000).max(2100),
-})
-export type ReportesMedicaQuery = z.infer<typeof reportesMedicaQuerySchema>
+/** A quién se cuenta en los indicadores: las dos, solo las usuarias o solo sus hijos/as. */
+export const PERSONAS_REPORTE_MEDICA = ['TODAS', 'USUARIAS', 'HIJOS'] as const
+export type PersonaReporteMedica = (typeof PERSONAS_REPORTE_MEDICA)[number]
+export const ETIQUETAS_PERSONA_REPORTE_MEDICA: Record<PersonaReporteMedica, string> = {
+  TODAS: 'Usuarias e hijos/as',
+  USUARIAS: 'Solo usuarias',
+  HIJOS: 'Solo hijos/as',
+}
+
+/** "TODO" = consultas de todo el personal; "MIAS" = las que registró quien consulta (sesión). */
+export const ALCANCES_REPORTE_MEDICA = ['TODO', 'MIAS'] as const
+export type AlcanceReporteMedica = (typeof ALCANCES_REPORTE_MEDICA)[number]
+export const ETIQUETAS_ALCANCE_REPORTE_MEDICA: Record<AlcanceReporteMedica, string> = {
+  TODO: 'Todo el personal',
+  MIAS: 'Mis consultas',
+}
+
+/** Columnas por mes del Excel: un periodo de más de 12 meses ya no se lee en una hoja. */
+export const MESES_MAXIMOS_REPORTE_MEDICA = 12
+
+/** Meses de calendario que toca el rango, contando el de inicio y el de fin. */
+export function mesesQueAbarca(desde: string, hasta: string): number {
+  const [anioDesde, mesDesde] = desde.split('-').map(Number)
+  const [anioHasta, mesHasta] = hasta.split('-').map(Number)
+  return (anioHasta - anioDesde) * 12 + (mesHasta - mesDesde) + 1
+}
+
+/**
+ * `GET /medica/reportes` y `GET /medica/reportes/excel`: el mismo periodo y filtros para la
+ * pantalla y el Excel. Por fecha de la consulta, inclusive, en hora de Guatemala.
+ */
+export const reportesMedicaQuerySchema = z
+  .object({
+    desde: fechaReporteSchema,
+    hasta: fechaReporteSchema,
+    persona: z.enum(PERSONAS_REPORTE_MEDICA).default('TODAS'),
+    alcance: z.enum(ALCANCES_REPORTE_MEDICA).default('TODO'),
+    soloPrimeras: booleanoQuerySchema.default(false),
+  })
+  .refine(desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE)
+  .refine((query) => mesesQueAbarca(query.desde, query.hasta) <= MESES_MAXIMOS_REPORTE_MEDICA, {
+    message: `El periodo puede abarcar como máximo ${MESES_MAXIMOS_REPORTE_MEDICA} meses`,
+    path: ['desde'],
+  })
+export type ReportesMedicaQuery = z.output<typeof reportesMedicaQuerySchema>
+
+/**
+ * `GET /medica/reportes/atencion` y `.xlsx` — informe de atención con el formato de la ONG, por
+ * fecha de la consulta (inclusive, en hora de Guatemala).
+ */
+export const informeAtencionMedicaQuerySchema = z
+  .object({ desde: fechaReporteSchema, hasta: fechaReporteSchema })
+  .refine(desdeNoPosteriorAHasta, ERROR_RANGO_REPORTE)
+export type InformeAtencionMedicaQuery = z.infer<typeof informeAtencionMedicaQuerySchema>
 
 // ---- Sugerencia de horario (pura, compartida por los dos modales) ----
 
@@ -733,6 +790,7 @@ export interface ConsultaMedicaDto {
   motivoConsulta: string | null
   diagnostico: string
   atencionBrindada: string
+  modalidad: ModalidadConsultaMedica
   planTratamiento: string | null
   recetaLaboratorios: string | null
   signos: SignosVitalesDto
@@ -860,14 +918,46 @@ export interface PeriodoMedica {
   desgloses: DesglosesMedica
 }
 
-/** `GET /medica/reportes?anio=` — solo cifras, nunca datos de una persona. */
-export interface IndicadoresMedica {
+/** Un mes del periodo. El primero y el último pueden estar cortados por `desde`/`hasta`. */
+export interface MesIndicadoresMedica extends PeriodoMedica {
   anio: number
-  aniosDisponibles: number[]
+  /** 1-12. */
+  mes: number
+}
+
+/** `GET /medica/reportes` — solo cifras, nunca datos de una persona. */
+export interface IndicadoresMedica {
+  desde: string
+  hasta: string
+  /** Atenciones activas hoy en toda el área: no depende del periodo ni de los filtros. */
   enAtencionAhora: number
-  anual: PeriodoMedica
-  /** Los 12 meses, de enero a diciembre. */
-  meses: PeriodoMedica[]
+  /** Todo el periodo (la columna "Total" del Excel). */
+  total: PeriodoMedica
+  /** Cada mes de calendario que toca el periodo, en orden, aunque venga en cero. */
+  meses: MesIndicadoresMedica[]
+}
+
+/** Un renglón del informe de atención: por sexo, pertenencia étnica y edad. */
+export interface CifrasInformeAtencionMedica {
+  mujer: number
+  hombre: number
+  etnia: Record<(typeof GRUPOS_ETNICOS)[number], number>
+  edad: Record<RangoEdadInformeMedica, number>
+  /** mujer + hombre. */
+  total: number
+}
+
+export interface FilaInformeAtencionMedica extends CifrasInformeAtencionMedica {
+  clave: FilaInformeAtencionMedicaClave
+}
+
+/** `GET /medica/reportes/atencion` — solo cifras, nunca datos de una persona. */
+export interface InformeAtencionMedica {
+  desde: string
+  hasta: string
+  filas: FilaInformeAtencionMedica[]
+  /** Suma de los renglones, como en el formato (una persona puede estar en más de uno). */
+  totales: CifrasInformeAtencionMedica
 }
 
 // ---- Lo que Medicina comparte con otras áreas (un DTO por consumidor, §8.3) ----

@@ -1,6 +1,7 @@
 import type {
   ConsultasMedicasPaginaDto,
   ContextoConsultaMedicaDto,
+  ModalidadConsultaMedica,
   SignosVitalesDto,
 } from '@akyuam/shared';
 
@@ -26,6 +27,8 @@ export interface ProximaCitaParams {
 export interface RegistrarConsultaParams {
   atencionId: string;
   citaId: string | null;
+  /** La misma para todas las personas de la visita. */
+  modalidad: ModalidadConsultaMedica;
   /** Un registro por persona atendida; con cita, exactamente las personas pendientes de la cita. */
   registros: RegistroPersonaParams[];
   /** Con cita, el inicio de la cita; sin cita, el momento de guardar. */

@@ -84,6 +84,7 @@ export class RegistroConsultaService {
       .registrar({
         atencionId: datos.atencionId,
         citaId: datos.citaId,
+        modalidad: datos.modalidad,
         registros: datos.registros,
         fechaHora,
         proxima,
@@ -107,6 +108,7 @@ export class RegistroConsultaService {
             expedienteId: atencion.expedienteId,
             atencionId: atencion.atencionId,
             citaId: datos.citaId,
+            modalidad: datos.modalidad,
             personasVisita: registrada.consultas.length,
             documentos: consulta.documentosAsociados,
           },

@@ -1,4 +1,4 @@
-import { type ConsultaMedicaDto, type DocumentoMedicoDto } from '@akyuam/shared'
+import { ETIQUETAS_MODALIDAD_CONSULTA_MEDICA, type ConsultaMedicaDto, type DocumentoMedicoDto } from '@akyuam/shared'
 import { etiquetaFormato } from '../../../lib/documentos/archivoDocumento'
 import AccionesDocumento from './AccionesDocumento'
 import { CLASE_SECCION } from './estilos'
@@ -39,6 +39,12 @@ export default function DetalleConsulta({ consulta }: { consulta: ConsultaMedica
   ]
   return (
     <div className="flex flex-col gap-3.5">
+      {/* Solo se marca la excepción: casi todas son presenciales. */}
+      {consulta.modalidad === 'TELEFONICA' && (
+        <p className="w-fit rounded bg-[#e8f0fb] px-2 py-0.5 text-[12px] font-semibold text-[#1f5aa6]">
+          {ETIQUETAS_MODALIDAD_CONSULTA_MEDICA.TELEFONICA}
+        </p>
+      )}
       {haySignos(consulta.signos) && (
         <div className="flex flex-col gap-2">
           <h4 className={CLASE_SECCION}>Signos vitales</h4>

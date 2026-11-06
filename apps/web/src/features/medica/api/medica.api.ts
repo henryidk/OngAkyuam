@@ -19,7 +19,10 @@ import type {
   FichaPacienteMedicaDto,
   HistorialConsultasMedicaPaginaDto,
   IndicadoresMedica,
+  ReportesMedicaQuery,
   InasistenciaCitaMedicaInput,
+  InformeAtencionMedica,
+  InformeAtencionMedicaQuery,
   InasistenciaRegistradaDto,
   ListarPacientesMedicaQuery,
   PacienteBuscadaMedicaDto,
@@ -212,11 +215,22 @@ export function listarDocumentos(usuariaId: string) {
 
 // ---- Reportes ----
 
-export function obtenerReportes(anio: number) {
-  return api.get<IndicadoresMedica>('/medica/reportes', { params: { anio } }).then((res) => res.data)
+export function obtenerReportes(query: ReportesMedicaQuery) {
+  return api.get<IndicadoresMedica>('/medica/reportes', { params: query }).then((res) => res.data)
+}
+
+/** Informe de atención con el formato de la ONG (solo cifras). */
+export function obtenerInformeAtencion(query: InformeAtencionMedicaQuery) {
+  return api.get<InformeAtencionMedica>('/medica/reportes/atencion', { params: query }).then((res) => res.data)
+}
+
+export function descargarInformeAtencion(query: InformeAtencionMedicaQuery) {
+  return api
+    .get<Blob>('/medica/reportes/atencion.xlsx', { params: query, responseType: 'blob' })
+    .then((res) => res.data)
 }
 
 /** El Excel de agregados, como `Blob` en memoria: nunca se guarda una copia en el servidor. */
-export function descargarReportes(anio: number) {
-  return api.get<Blob>('/medica/reportes/excel', { params: { anio }, responseType: 'blob' }).then((res) => res.data)
+export function descargarReportes(query: ReportesMedicaQuery) {
+  return api.get<Blob>('/medica/reportes/excel', { params: query, responseType: 'blob' }).then((res) => res.data)
 }

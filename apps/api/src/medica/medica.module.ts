@@ -43,6 +43,7 @@ import { REPORTES_MEDICA_REPOSITORY } from './interfaces/reportes-medica-reposit
 import { PacientesMedicaController } from './pacientes/pacientes-medica.controller';
 import { PacientesMedicaService } from './pacientes/pacientes-medica.service';
 import { IndicadoresMedicaService } from './reportes/indicadores-medica.service';
+import { InformeAtencionMedicaService } from './reportes/informe-atencion-medica.service';
 import { ReportesMedicaController } from './reportes/reportes-medica.controller';
 import { AccesoMedicaRepository } from './repositories/acceso-medica.repository';
 import { AgendaMedicaRepository } from './repositories/agenda-medica.repository';
@@ -95,6 +96,7 @@ import { VisibilidadMedicaReader } from './visibilidad/visibilidad-medica.reader
     VisibilidadService,
     PacientesMedicaService,
     IndicadoresMedicaService,
+    InformeAtencionMedicaService,
     { provide: RELOJ, useClass: RelojSistema },
     { provide: EXPORTADOR_HOJA_CALCULO, useClass: ExcelJsExportador },
     { provide: ACCESO_MEDICA_REPOSITORY, useClass: AccesoMedicaRepository },

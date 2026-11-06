@@ -88,6 +88,7 @@ export class ConsultasMedicasRepository implements IConsultasMedicasRepository {
               citaId: params.citaId,
               ninoId: registro.ninoId,
               fechaHora: params.fechaHora,
+              modalidad: params.modalidad,
               motivoConsulta: registro.motivoConsulta,
               ...registro.signos,
               diagnostico: registro.diagnostico,

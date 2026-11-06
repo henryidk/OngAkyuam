@@ -175,6 +175,55 @@ export const MAX_DIAS_RANGO_HISTORIAL_MEDICA = 366
  */
 export const UMBRAL_ANONIMATO = 3
 
+// ---- Modalidad de la consulta ----
+
+/** Cómo se dio la consulta. Las registradas antes de existir el campo quedan como presenciales. */
+export const MODALIDADES_CONSULTA_MEDICA = ['PRESENCIAL', 'TELEFONICA'] as const
+export type ModalidadConsultaMedica = (typeof MODALIDADES_CONSULTA_MEDICA)[number]
+
+export const ETIQUETAS_MODALIDAD_CONSULTA_MEDICA: Record<ModalidadConsultaMedica, string> = {
+  PRESENCIAL: 'Presencial',
+  TELEFONICA: 'Vía telefónica',
+}
+
+// ---- Informe de atención (formato de la ONG) ----
+
+/** Renglones del informe, en el orden del formato. */
+export const FILAS_INFORME_ATENCION_MEDICA = [
+  'NUEVO_INGRESO',
+  'SEGUIMIENTO',
+  'INDIRECTOS',
+  'TELEFONICA',
+  'ALBERGADAS',
+] as const
+export type FilaInformeAtencionMedicaClave = (typeof FILAS_INFORME_ATENCION_MEDICA)[number]
+
+export const ETIQUETAS_FILA_INFORME_ATENCION_MEDICA: Record<FilaInformeAtencionMedicaClave, string> = {
+  NUEVO_INGRESO: 'Usuarias de nuevo ingreso',
+  SEGUIMIENTO: 'Mujeres atendidas de seguimiento',
+  INDIRECTOS: 'Beneficiarias/os indirectos (hijos e hijas de las mujeres atendidas por primera vez)',
+  TELEFONICA: 'Atenciones realizadas vía telefónica',
+  ALBERGADAS: 'Personas albergadas',
+}
+
+/** Rangos de edad del formato de la ONG (distintos de los de Trabajo Social). */
+export const RANGOS_EDAD_INFORME_MEDICA = ['0-15', '16-30', '31-45', '46+'] as const
+export type RangoEdadInformeMedica = (typeof RANGOS_EDAD_INFORME_MEDICA)[number]
+
+export const ETIQUETAS_RANGO_EDAD_INFORME_MEDICA: Record<RangoEdadInformeMedica, string> = {
+  '0-15': '0 a 15',
+  '16-30': '16 a 30',
+  '31-45': '31 a 45',
+  '46+': '46 a más',
+}
+
+export function rangoEdadInformeMedica(edadAnios: number): RangoEdadInformeMedica {
+  if (edadAnios <= 15) return '0-15'
+  if (edadAnios <= 30) return '16-30'
+  if (edadAnios <= 45) return '31-45'
+  return '46+'
+}
+
 // ---- Documentos ----
 
 /** Tiempo de vida de un documento subido antes de guardar la consulta. */
