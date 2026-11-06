@@ -36,10 +36,30 @@ describe('plantillas de eventos', () => {
       'REGISTRO_CONSULTA_GUARDADO',
       'DOCUMENTO_CITA_PSICOLOGICA_SUBIDO',
       'NOTA_AVANCE_AGREGADA',
+      'CONSULTA_MEDICA_REGISTRADA',
+      'CITA_MEDICA_NO_ASISTIO',
+      'HISTORIA_CLINICA_MEDICA_CONSULTADA',
     ]) {
       expect(describirEvento(accion, {})).toBeNull();
       expect(ACCIONES_BITACORA).not.toContain(accion);
     }
+  });
+
+  it('describe el curso de la atención médica, con el motivo del alta', () => {
+    expect(describirEvento('ATENCION_MEDICA_ABIERTA', {})).toEqual({
+      area: 'MEDICA',
+      destacado: true,
+      texto: 'Médica abrió la atención',
+    });
+    expect(describirEvento('CITA_MEDICA_PROGRAMADA', {})?.area).toBe('MEDICA');
+    expect(
+      describirEvento('ATENCION_MEDICA_ALTA', {
+        motivo: 'REFERIDA_OTRA_INSTITUCION',
+      })?.texto,
+    ).toBe('Médica cerró la atención (referida a otra institución)');
+    expect(
+      describirEvento('ATENCION_MEDICA_ALTA', { motivo: 'NO_EXISTE' })?.texto,
+    ).toBe('Médica cerró la atención');
   });
 
   it('describe el cambio de datos personales con etiquetas de campo, sin repetirlas', () => {

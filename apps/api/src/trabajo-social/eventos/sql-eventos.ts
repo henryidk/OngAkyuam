@@ -44,6 +44,19 @@ export function cteEventos(
       JOIN "CitaPsicologica" c ON c."atencionId" = ap.id
       JOIN "AuditLog" a ON a.entidad = 'CitaPsicologica' AND a."entidadId" = c.id
       WHERE ${condicionExpediente} AND ${filtroAccion}
+      UNION ALL
+      SELECT ${columnas}
+      FROM "Expediente" e
+      JOIN "AtencionMedica" am ON am."expedienteId" = e.id
+      JOIN "AuditLog" a ON a.entidad = 'AtencionMedica' AND a."entidadId" = am.id
+      WHERE ${condicionExpediente} AND ${filtroAccion}
+      UNION ALL
+      SELECT ${columnas}
+      FROM "Expediente" e
+      JOIN "AtencionMedica" am ON am."expedienteId" = e.id
+      JOIN "CitaMedica" cm ON cm."atencionId" = am.id
+      JOIN "AuditLog" a ON a.entidad = 'CitaMedica' AND a."entidadId" = cm.id
+      WHERE ${condicionExpediente} AND ${filtroAccion}
     )
   `;
 }

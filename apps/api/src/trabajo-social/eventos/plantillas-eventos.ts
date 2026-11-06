@@ -3,6 +3,7 @@ import {
   ETIQUETAS_CAMPO_IDENTIDAD_USUARIA,
   ETIQUETAS_ESTADO_ATENCION_PSICOLOGICA,
   ETIQUETAS_FORMA_FINALIZACION,
+  ETIQUETAS_MOTIVO_ALTA_MEDICA,
   ETIQUETAS_TIPO_DOCUMENTO,
   ETIQUETAS_TIPO_PROCESO_JURIDICO,
   type AreaAtencion,
@@ -58,7 +59,8 @@ function textoDatosActualizados(detalles: DetallesAuditoria): string {
 
 /**
  * Acción de `AuditLog` → frase en lenguaje natural. Es una lista blanca: lo que no está aquí
- * (lecturas, descargas, notas clínicas, documentos de sesiones de psicología) nunca llega a la
+ * (lecturas, descargas, notas clínicas, consultas médicas, documentos de sesiones de psicología)
+ * nunca llega a la
  * bitácora ni a las novedades. Agregar un evento visible = agregar una entrada.
  */
 const PLANTILLAS: Record<string, PlantillaEvento> = {
@@ -168,6 +170,28 @@ const PLANTILLAS: Record<string, PlantillaEvento> = {
       return estado
         ? `Psicología cambió el estado de la atención a ${estado.toLowerCase()}`
         : 'Psicología cambió el estado de la atención';
+    },
+  },
+  // Médica, igual que Psicología: solo el curso de la atención (abierta, citas, alta). Las
+  // consultas e inasistencias no se muestran: son parte de la atención clínica.
+  ATENCION_MEDICA_ABIERTA: {
+    area: 'MEDICA',
+    destacado: true,
+    texto: () => 'Médica abrió la atención',
+  },
+  CITA_MEDICA_PROGRAMADA: {
+    area: 'MEDICA',
+    destacado: false,
+    texto: () => 'Médica programó una cita',
+  },
+  ATENCION_MEDICA_ALTA: {
+    area: 'MEDICA',
+    destacado: true,
+    texto: (detalles) => {
+      const motivo = etiqueta(ETIQUETAS_MOTIVO_ALTA_MEDICA, detalles?.motivo);
+      return motivo
+        ? `Médica cerró la atención (${motivo.toLowerCase()})`
+        : 'Médica cerró la atención';
     },
   },
 };
