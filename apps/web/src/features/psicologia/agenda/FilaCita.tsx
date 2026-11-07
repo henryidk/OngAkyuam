@@ -87,7 +87,7 @@ export default function FilaCita({ cita, esHoy, principal, enCurso, onNoAsistio,
 
       <div className="ml-auto flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1">
         {registrable && (
-          <Link to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id)} className={claseRegistrar}>
+          <Link to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id, 'agenda')} className={claseRegistrar}>
             {cita.borrador ? 'Continuar registro' : 'Registrar sesión'}
           </Link>
         )}

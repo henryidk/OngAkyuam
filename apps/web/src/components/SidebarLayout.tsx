@@ -17,6 +17,12 @@ export interface ItemNav {
    * sidebar se queda sin nada resaltado en esas pantallas.
    */
   rutasRelacionadas?: string[]
+  /**
+   * Valor de `?origen=` que pertenece a esta sección: una pantalla compartida (registrar una
+   * consulta o una sesión) resalta la sección desde la que se abrió, la misma a la que vuelve al
+   * guardar. Gana sobre la ruta.
+   */
+  origen?: string
   Icono: ComponentType<{ size?: number; strokeWidth?: number; className?: string }>
 }
 
@@ -32,6 +38,12 @@ interface SidebarLayoutProps {
 }
 
 /** Una sola definición de "estoy en esta sección", usada por el resaltado y por el título. */
+function seccionActual(items: ItemNav[], pathname: string, search: string): ItemNav | undefined {
+  const origen = new URLSearchParams(search).get('origen')
+  const porOrigen = origen ? items.find((item) => item.origen === origen) : undefined
+  return porOrigen ?? items.find((item) => estaActivo(item, pathname))
+}
+
 function estaActivo(item: ItemNav, pathname: string) {
   const calzaRutaPrincipal = item.fin ? pathname === item.ruta : pathname.startsWith(item.ruta)
   return calzaRutaPrincipal || (item.rutasRelacionadas?.some((ruta) => pathname.startsWith(ruta)) ?? false)
@@ -59,7 +71,7 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
   const tituloPagina = useTituloPaginaActual()
   const protegerEnlace = useEnlaceProtegido()
 
-  const paginaActual = items.find((item) => estaActivo(item, location.pathname))
+  const paginaActual = seccionActual(items, location.pathname, location.search)
   const titulo = tituloPagina?.titulo ?? paginaActual?.etiqueta ?? subtitulo
   const migas = tituloPagina?.migas
 

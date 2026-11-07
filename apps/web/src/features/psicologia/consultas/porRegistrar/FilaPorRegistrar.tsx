@@ -47,7 +47,7 @@ export default function FilaPorRegistrar({ sesion, atraso, onNoAsistio }: FilaPo
       </div>
       <div className="flex flex-none items-center gap-2">
         <Link
-          to={RUTAS_PSICOLOGIA.registrarConsulta(sesion.citaId)}
+          to={RUTAS_PSICOLOGIA.registrarConsulta(sesion.citaId, 'consultas')}
           aria-label={`${sesion.borrador ? 'Continuar registro' : 'Registrar sesión'} de ${persona.nombreCompleto}`}
           className={BOTON_FILA_RELLENO}
         >

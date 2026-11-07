@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { z } from 'zod'
@@ -35,7 +35,7 @@ import { useRecurso } from '../../../lib/useRecurso'
 import { obtenerDetalleCita, registrarConsulta } from '../api/psicologia.api'
 import { useContextoPsicologia } from '../compartido/contexto'
 import { horaDeInstante } from '../compartido/horas'
-import { RUTAS_PSICOLOGIA } from '../rutas'
+import { RUTAS_PSICOLOGIA, type OrigenSesion } from '../rutas'
 import HojaEvolucion from './HojaEvolucion'
 import QueSigue, { type EstadoQueSigue } from './QueSigue'
 import CodigoProceso from '../compartido/CodigoProceso'
@@ -56,12 +56,32 @@ function queSigueInicial(cita: CitaPsicologicaDetalle): EstadoQueSigue {
   return { tipo: 'NINGUNA', fecha: '', hora: horaDeInstante(cita.fechaHora), duracion }
 }
 
+/** A dónde se vuelve: la pantalla de origen (la Agenda en el día de la cita, Consultas › Por
+ * registrar) o, por defecto, el proceso. */
+function rutaDeOrigen(origen: OrigenSesion, cita: CitaPsicologicaDetalle): string {
+  if (origen === 'agenda') return RUTAS_PSICOLOGIA.agenda(fechaCalendarioGT(new Date(cita.fechaHora)))
+  if (origen === 'consultas') return RUTAS_PSICOLOGIA.consultas('por-registrar')
+  return RUTAS_PSICOLOGIA.proceso(cita.procesoId)
+}
+
+const VOLVER_A: Record<OrigenSesion, string> = {
+  agenda: 'Volver a la agenda',
+  consultas: 'Volver a Consultas',
+  proceso: 'Volver al proceso',
+}
+
 /**
  * Registrar una sesión: en qué quedó la cita, las notas clínicas, la Hoja de evolución escaneada
  * y qué sigue con el proceso. El borrador se guarda en el servidor, no en el navegador.
+ * `?origen=` (agenda | consultas) regresa a esa pantalla al guardar, para seguir con la siguiente
+ * persona sin buscarla otra vez; sin él se vuelve al proceso. Si se eligió "Cerrar proceso" se va
+ * siempre al proceso, porque el cierre se confirma ahí.
  */
 export default function RegistroConsulta() {
   const { citaId } = useParams<{ citaId: string }>()
+  const [params] = useSearchParams()
+  const parametroOrigen = params.get('origen')
+  const origen: OrigenSesion = parametroOrigen === 'agenda' || parametroOrigen === 'consultas' ? parametroOrigen : 'proceso'
   const navigate = useNavigate()
   const { mostrar } = useToast()
   const { recargarResumen } = useContextoPsicologia()
@@ -105,12 +125,17 @@ export default function RegistroConsulta() {
 
   useTituloPagina({
     titulo: 'Registrar sesión',
-    migas: cita
-      ? [
-          { etiqueta: 'Procesos', ruta: RUTAS_PSICOLOGIA.procesos() },
-          { etiqueta: cita.codigoProceso, ruta: RUTAS_PSICOLOGIA.proceso(cita.procesoId) },
-        ]
-      : [{ etiqueta: 'Procesos', ruta: RUTAS_PSICOLOGIA.procesos() }],
+    migas:
+      origen === 'agenda'
+        ? [{ etiqueta: 'Agenda', ruta: cita ? rutaDeOrigen('agenda', cita) : RUTAS_PSICOLOGIA.agenda() }]
+        : origen === 'consultas'
+          ? [{ etiqueta: 'Consultas', ruta: RUTAS_PSICOLOGIA.consultas('por-registrar') }]
+          : cita
+            ? [
+                { etiqueta: 'Procesos', ruta: RUTAS_PSICOLOGIA.procesos() },
+                { etiqueta: cita.codigoProceso, ruta: RUTAS_PSICOLOGIA.proceso(cita.procesoId) },
+              ]
+            : [{ etiqueta: 'Procesos', ruta: RUTAS_PSICOLOGIA.procesos() }],
   })
 
   // Lo que ya estaba guardado (un borrador, o una sesión que se corrige) entra al formulario.
@@ -149,6 +174,7 @@ export default function RegistroConsulta() {
 
   const persona = cita.ninoNombreCompleto ?? cita.usuariaNombreCompleto
   const rutaProceso = RUTAS_PSICOLOGIA.proceso(cita.procesoId)
+  const rutaVolver = rutaDeOrigen(origen, cita)
 
   if (cita.procesoEtapa === 'CIERRE' || cita.estado === 'REPROGRAMADA') {
     return (
@@ -226,9 +252,15 @@ export default function RegistroConsulta() {
       let mensaje = `Sesión registrada · ${ETIQUETAS_ESTADO_CITA_PSICOLOGICA[registrada.cita.estado]}`
       if (registrada.pasoASeguimiento) mensaje += ' · el proceso pasó a Seguimiento'
       if (registrada.proximaCita) mensaje += ` · próxima cita ${formatInstanteGT(registrada.proximaCita.fechaHora)}`
-      mostrar(mensaje)
-      // El cierre nunca es implícito: se abre su modal para que la psicóloga lo confirme.
-      navigate(RUTAS_PSICOLOGIA.proceso(registrada.procesoId, citaId, paso?.tipo === 'CERRAR'))
+      const rutaSesion = RUTAS_PSICOLOGIA.proceso(registrada.procesoId, citaId, paso?.tipo === 'CERRAR')
+      // El cierre nunca es implícito: se abre su modal en el proceso para que la psicóloga lo confirme.
+      if (origen !== 'proceso' && paso?.tipo !== 'CERRAR') {
+        navigate(rutaVolver)
+        mostrar(mensaje, 'success', { etiqueta: 'Ver en el proceso', onClick: () => navigate(rutaSesion) })
+      } else {
+        navigate(rutaSesion)
+        mostrar(mensaje)
+      }
     } catch (err) {
       const cuerpo = axios.isAxiosError(err) ? (err.response?.data as Partial<ConflictoTraslapeCita> | undefined) : undefined
       if (cuerpo?.codigo === CODIGO_TRASLAPE_CITA && cuerpo.detalle) {
@@ -368,8 +400,8 @@ export default function RegistroConsulta() {
         )}
 
         <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
-          <Link to={rutaProceso} className="mr-auto text-sm font-medium text-gray-600 hover:underline">
-            Volver al proceso
+          <Link to={rutaVolver} className="mr-auto text-sm font-medium text-gray-600 hover:underline">
+            {VOLVER_A[origen]}
           </Link>
           {!yaRegistrada && (
             <Button

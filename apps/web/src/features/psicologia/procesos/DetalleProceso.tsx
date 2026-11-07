@@ -83,7 +83,7 @@ function AvisoSinRegistrar({ cita, onNoAsistio }: AvisoSinRegistrarProps) {
       </p>
       <div className="flex flex-wrap gap-2">
         <Link
-          to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id)}
+          to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id, 'proceso')}
           className="inline-flex items-center rounded bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
         >
           Registrar sesión
@@ -343,7 +343,7 @@ export default function DetalleProceso() {
           <div className="flex flex-wrap gap-2">
             {diaProxima === hoy && acciones.includes('REGISTRAR_SESION') && (
               <Link
-                to={RUTAS_PSICOLOGIA.registrarConsulta(proxima.id)}
+                to={RUTAS_PSICOLOGIA.registrarConsulta(proxima.id, 'proceso')}
                 className={`${CLASE_BOTON_OSCURO} bg-white text-gray-900 hover:bg-gray-100`}
               >
                 Registrar sesión
@@ -408,7 +408,7 @@ export default function DetalleProceso() {
           onCerrar={() => setCita(null)}
           onGuardada={(_fecha, mensaje, citaId) => {
             if (cita.destino.tipo === 'PROCESO' && cita.destino.sinCita) {
-              navigate(RUTAS_PSICOLOGIA.registrarConsulta(citaId))
+              navigate(RUTAS_PSICOLOGIA.registrarConsulta(citaId, 'proceso'))
               return
             }
             setCita(null)

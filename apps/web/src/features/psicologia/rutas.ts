@@ -2,6 +2,9 @@ import type { FiltroProcesosPsicologia, FiltroUsuariasPsicologia } from '@akyuam
 
 export type VistaConsultasPsicologia = 'por-registrar' | 'historial'
 
+/** Pantalla desde la que se abrió "Registrar sesión": al guardar o volver se regresa ahí. */
+export type OrigenSesion = 'agenda' | 'consultas' | 'proceso'
+
 /**
  * Constructor único de las URLs del módulo. Ningún componente arma un path de psicología con un
  * template string suelto: cuando una ruta se mueve, se corrige aquí y no en cada pantalla.
@@ -48,5 +51,7 @@ export const RUTAS_PSICOLOGIA = {
   usuariaReferencias: (usuariaId: string) => `/psicologia/usuarias/${usuariaId}/referencias`,
   reportes: () => '/psicologia/reportes',
   detalleCita: (citaId: string) => `/psicologia/citas/${citaId}`,
-  registrarConsulta: (citaId: string) => `/psicologia/citas/${citaId}/atencion`,
+  /** `origen` decide a dónde se vuelve al guardar (sin él, al proceso) y qué se resalta en el menú. */
+  registrarConsulta: (citaId: string, origen?: OrigenSesion) =>
+    conQuery(`/psicologia/citas/${citaId}/atencion`, { origen }),
 }

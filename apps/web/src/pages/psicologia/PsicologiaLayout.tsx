@@ -9,7 +9,8 @@ import { crearSocketArea } from '../../lib/socket'
 
 // El detalle y el registro de una cita cuelgan de "/psicologia/citas", pero son parte de la
 // agenda: `rutasRelacionadas` mantiene resaltado su ítem ahí. Consultas no la lleva: si las dos
-// la tuvieran, se resaltarían ambas.
+// la tuvieran, se resaltarían ambas. `origen` (de RUTAS_PSICOLOGIA.registrarConsulta) resalta en
+// cambio Consultas o Procesos cuando el registro se abrió desde ahí.
 const ITEMS_NAV: ItemNav[] = [
   { ruta: RUTAS_PSICOLOGIA.atencion(), etiqueta: 'Área de atención', fin: false, Icono: Inbox },
   {
@@ -17,10 +18,11 @@ const ITEMS_NAV: ItemNav[] = [
     etiqueta: 'Agenda',
     fin: false,
     rutasRelacionadas: ['/psicologia/citas'],
+    origen: 'agenda',
     Icono: CalendarDays,
   },
-  { ruta: RUTAS_PSICOLOGIA.consultas(), etiqueta: 'Consultas', fin: false, Icono: ClipboardCheck },
-  { ruta: RUTAS_PSICOLOGIA.procesos(), etiqueta: 'Procesos', fin: false, Icono: HeartHandshake },
+  { ruta: RUTAS_PSICOLOGIA.consultas(), etiqueta: 'Consultas', fin: false, origen: 'consultas', Icono: ClipboardCheck },
+  { ruta: RUTAS_PSICOLOGIA.procesos(), etiqueta: 'Procesos', fin: false, origen: 'proceso', Icono: HeartHandshake },
   { ruta: RUTAS_PSICOLOGIA.usuarias(), etiqueta: 'Usuarias', fin: false, Icono: Users },
   { ruta: RUTAS_PSICOLOGIA.reportes(), etiqueta: 'Reportes', fin: false, Icono: BarChart3 },
 ]

@@ -7,11 +7,13 @@ import type { ContextoMedica } from '../../features/medica/compartido/contexto'
 import { RUTAS_MEDICA } from '../../features/medica/rutas'
 import { crearSocketArea } from '../../lib/socket'
 
+// Registrar una consulta vive en /medica/consultas/nueva; `origen` resalta la Agenda o Pacientes
+// cuando se abrió desde ahí (`?origen=` de RUTAS_MEDICA.nuevaConsulta).
 const ITEMS_NAV: ItemNav[] = [
   { ruta: RUTAS_MEDICA.atencion(), etiqueta: 'Área de atención', fin: false, Icono: Inbox },
-  { ruta: '/medica/agenda', etiqueta: 'Agenda', fin: false, Icono: CalendarDays },
+  { ruta: '/medica/agenda', etiqueta: 'Agenda', fin: false, origen: 'agenda', Icono: CalendarDays },
   { ruta: '/medica/consultas', etiqueta: 'Consultas', fin: false, Icono: Stethoscope },
-  { ruta: '/medica/pacientes', etiqueta: 'Pacientes', fin: false, Icono: Users },
+  { ruta: '/medica/pacientes', etiqueta: 'Pacientes', fin: false, origen: 'ficha', Icono: Users },
   { ruta: '/medica/reportes', etiqueta: 'Reportes', fin: false, Icono: BarChart3 },
 ]
 
