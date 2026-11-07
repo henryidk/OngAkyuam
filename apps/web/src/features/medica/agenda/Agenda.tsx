@@ -2,12 +2,15 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowRight, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import {
+  ETIQUETAS_MOTIVO_ALTA_MEDICA,
   hoyGT,
   lunesDeSemanaGT,
   sumarDiasGT,
   type CitaAgendaMedicaDto,
   type CitaMedicaProgramadaDto,
+  type MotivoAltaMedica,
   type ProgramablesMedicaQuery,
+  type SinProximaConsultaDto,
   textoCodigo,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
@@ -22,6 +25,7 @@ import { useRecargaNovedades } from '../compartido/useRecargaNovedades'
 import FilaCita from './FilaCita'
 import ModalInasistencia, { type ResultadoInasistencia } from '../compartido/ModalInasistencia'
 import ModalProgramar from '../compartido/ModalProgramar'
+import ModalAlta from '../atenciones/ModalAlta'
 import { RUTAS_MEDICA } from '../rutas'
 import PanelesAgenda from './PanelesAgenda'
 
@@ -66,6 +70,7 @@ export default function Agenda() {
   const [programar, setProgramar] = useState<ProgramablesMedicaQuery | null>(() => (agendar ? { referidoId: agendar } : null))
   const [reprogramar, setReprogramar] = useState<CitaAgendaMedicaDto | null>(null)
   const [inasistencia, setInasistencia] = useState<CitaAgendaMedicaDto | null>(null)
+  const [alta, setAlta] = useState<SinProximaConsultaDto | null>(null)
 
   useEffect(() => {
     if (!agendar) return
@@ -109,6 +114,13 @@ export default function Agenda() {
     setReprogramar(null)
     setInasistencia(null)
     mostrar(mensaje, 'success', nuevaFecha ? { etiqueta: 'Ver en agenda', onClick: () => irADia(nuevaFecha) } : undefined)
+    recargarTodo()
+    recargarContadores()
+  }
+
+  function trasAlta(paciente: SinProximaConsultaDto, motivo: MotivoAltaMedica) {
+    setAlta(null)
+    mostrar(`${paciente.usuariaNombreCompleto} · atención cerrada · ${ETIQUETAS_MOTIVO_ALTA_MEDICA[motivo]}`)
     recargarTodo()
     recargarContadores()
   }
@@ -210,7 +222,11 @@ export default function Agenda() {
               ))
             )}
           </div>
-          <PanelesAgenda sinProxima={agendaDia.datos.sinProxima} onAgendarPaciente={(usuariaId) => setProgramar({ usuariaId })} />
+          <PanelesAgenda
+            sinProxima={agendaDia.datos.sinProxima}
+            onAgendarPaciente={(usuariaId) => setProgramar({ usuariaId })}
+            onDarDeAlta={setAlta}
+          />
         </div>
       )}
 
@@ -229,6 +245,15 @@ export default function Agenda() {
           modo={reprogramar.estado === 'NO_ASISTIO' ? 'reprogramar' : 'mover'}
           onCerrar={() => setReprogramar(null)}
           onListo={trasReprogramar}
+        />
+      )}
+      {alta && (
+        <ModalAlta
+          atencion={{ id: alta.atencionId, codigo: alta.codigoAtencion, version: alta.atencionVersion }}
+          paciente={alta.usuariaNombreCompleto}
+          motivoInicial="DEJO_DE_ASISTIR"
+          onCerrar={() => setAlta(null)}
+          onListo={(motivo) => trasAlta(alta, motivo)}
         />
       )}
       {inasistencia && (

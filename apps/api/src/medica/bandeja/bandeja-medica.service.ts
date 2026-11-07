@@ -22,15 +22,20 @@ export class BandejaMedicaService {
     return this.lectorPendientes.referenciasPendientes();
   }
 
-  /** La insignia de Consultas cuenta lo mismo que muestra "Por atender": una sola definición. */
+  /**
+   * Cada insignia cuenta lo mismo que muestra su pantalla ("Por atender" en Consultas, "Sin
+   * próxima consulta" en la Agenda): una sola definición.
+   */
   async contadores(): Promise<ContadoresMedicaDto> {
-    const [referencias, porAtender] = await Promise.all([
+    const [referencias, porAtender, sinProxima] = await Promise.all([
       this.lectorPendientes.referenciasPendientes(),
       this.porAtender.listar(),
+      this.lectorPendientes.sinProxima(),
     ]);
     return {
       areaAtencion: referencias.length,
       consultasPorAtender: porAtender.hoy.length + porAtender.atrasadas.length,
+      agendaSinProxima: sinProxima.length,
     };
   }
 }

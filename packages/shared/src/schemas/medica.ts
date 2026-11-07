@@ -582,14 +582,37 @@ export interface SemanaAgendaMedicaDto {
   dias: DiaSemanaAgendaMedicaDto[]
 }
 
+/**
+ * Por qué una paciente en atención está sin próxima consulta: faltó a su última cita (y nadie la
+ * reprogramó) o se atendió y quedó sin fecha.
+ */
+export type MotivoSinProximaMedica = 'NO_ASISTIO' | 'SIN_FECHA'
+
+/**
+ * Meses sin consulta ni cita tras los que una paciente en atención probablemente dejó de venir: la
+ * Agenda la separa y ofrece, además de agendar, dar de alta (regla confirmada 2026-11-07).
+ */
+export const MESES_SIN_VENIR_MEDICA = 2
+
+/** ¿Pasaron `MESES_SIN_VENIR_MEDICA` desde `desde` ("YYYY-MM-DD") hasta `hoy`? */
+export function dejoDeVenirMedica(desde: string, hoy: string): boolean {
+  return sumarMesesGT(desde, MESES_SIN_VENIR_MEDICA) <= hoy
+}
+
 export interface SinProximaConsultaDto {
   usuariaId: string
   expedienteId: string
   atencionId: string
+  /** Versión de la atención: "Dar de alta" desde la Agenda la exige. */
+  atencionVersion: number
   codigoAtencion: string
   usuariaNombreCompleto: string
-  /** Fecha de calendario de la última consulta de la atención, o null si aún no tiene. */
-  ultimaConsulta: string | null
+  motivo: MotivoSinProximaMedica
+  /**
+   * Fecha de calendario del último hecho: la cita a la que faltó o la última consulta (si no tiene
+   * ninguna, el inicio de la atención). La lista viene de la más reciente a la más antigua.
+   */
+  desde: string
 }
 
 /** `GET /medica/agenda/dia?fecha=` — citas del día y los tres paneles laterales. */
@@ -614,6 +637,8 @@ export interface ContadoresMedicaDto {
   areaAtencion: number
   /** Lo de "Por atender" en Consultas: citas de hoy pendientes más las atrasadas sin registrar. */
   consultasPorAtender: number
+  /** Pacientes en atención sin próxima consulta (el panel de la Agenda). */
+  agendaSinProxima: number
 }
 
 /**

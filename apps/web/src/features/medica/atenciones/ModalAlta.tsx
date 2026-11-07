@@ -14,14 +14,18 @@ import ModalMedica from '../compartido/ModalMedica'
 
 interface ModalAltaProps {
   atencion: { id: string; codigo: string; version: number }
+  /** Nombre de la paciente, cuando se abre fuera de su ficha (la Agenda) y no se ve en pantalla. */
+  paciente?: string
+  /** Motivo marcado al abrir (desde la Agenda, una paciente que dejó de venir). */
+  motivoInicial?: MotivoAltaMedica
   onCerrar: () => void
   /** Recibe el motivo para el aviso y cuántas citas futuras se cancelaron. */
   onListo: (motivo: MotivoAltaMedica, citasCanceladas: number) => void
 }
 
 /** Dar de alta: cierra la atención activa y cancela sus consultas futuras. La historia se conserva. */
-export default function ModalAlta({ atencion, onCerrar, onListo }: ModalAltaProps) {
-  const [motivo, setMotivo] = useState<MotivoAltaMedica>('ALTA_MEDICA')
+export default function ModalAlta({ atencion, paciente, motivoInicial = 'ALTA_MEDICA', onCerrar, onListo }: ModalAltaProps) {
+  const [motivo, setMotivo] = useState<MotivoAltaMedica>(motivoInicial)
   const [nota, setNota] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -45,7 +49,7 @@ export default function ModalAlta({ atencion, onCerrar, onListo }: ModalAltaProp
 
   return (
     <ModalMedica
-      titulo={`Dar de alta · ${atencion.codigo}`}
+      titulo={paciente ? `Dar de alta · ${paciente} · ${atencion.codigo}` : `Dar de alta · ${atencion.codigo}`}
       subtitulo="La atención se cierra y se cancelan sus consultas futuras. La historia clínica se conserva; si regresa, se abre una atención nueva."
       ancho={480}
       ocupado={guardando}

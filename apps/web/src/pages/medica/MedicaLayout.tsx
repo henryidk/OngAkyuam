@@ -56,7 +56,8 @@ export default function MedicaLayout() {
       subtitulo="Medicina"
       contadores={
         contadores
-          ? { [RUTAS_MEDICA.atencion()]: contadores.areaAtencion, '/medica/consultas': contadores.consultasPorAtender }
+          ? { [RUTAS_MEDICA.atencion()]: contadores.areaAtencion, '/medica/consultas': contadores.consultasPorAtender,
+              '/medica/agenda': contadores.agendaSinProxima }
           : undefined
       }
       outletContext={contexto}

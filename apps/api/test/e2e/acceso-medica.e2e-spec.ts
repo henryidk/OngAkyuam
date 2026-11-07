@@ -705,6 +705,73 @@ describe('Medicina · acceso (e2e)', () => {
     });
   });
 
+  describe('Agenda: sin próxima consulta', () => {
+    async function sinProxima() {
+      const respuesta = await pedir(
+        'get',
+        `/api/medica/agenda/dia?fecha=${hoyGT()}`,
+        sesionMedica,
+      ).expect(200);
+      return (respuesta.body as DiaAgendaMedicaDto).sinProxima;
+    }
+
+    it('dice por qué está cada paciente y desde cuándo, de la más reciente a la más antigua', async () => {
+      // Atendida el 2026-01-02 (fixture) y sin otra cita.
+      const atendida = await crearExpediente(prisma, medica.id, ['MEDICA']);
+      const { atencion: sinFecha } = await crearAtencionConConsulta(
+        prisma,
+        atendida.expediente.id,
+        medica.id,
+      );
+      // Atendida el 2026-01-02 y luego faltó el 2026-01-20: cuenta la inasistencia.
+      const falto = await crearExpediente(prisma, medica.id, ['MEDICA']);
+      const { atencion: conFalta } = await crearAtencionConConsulta(
+        prisma,
+        falto.expediente.id,
+        medica.id,
+      );
+      await prisma.citaMedica.create({
+        data: {
+          atencionId: conFalta.id,
+          inicio: new Date('2026-01-20T15:00:00.000Z'),
+          duracionMin: 30,
+          estado: 'NO_ASISTIO',
+          creadoPorId: medica.id,
+          personas: { create: [{ ninoId: null }] },
+        },
+      });
+
+      const lista = await sinProxima();
+      const deSinFecha = lista.findIndex((p) => p.atencionId === sinFecha.id);
+      const deConFalta = lista.findIndex((p) => p.atencionId === conFalta.id);
+      expect(lista[deSinFecha]).toEqual(
+        expect.objectContaining({
+          motivo: 'SIN_FECHA',
+          desde: '2026-01-02',
+          atencionVersion: 1,
+        }),
+      );
+      expect(lista[deConFalta]).toEqual(
+        expect.objectContaining({ motivo: 'NO_ASISTIO', desde: '2026-01-20' }),
+      );
+      expect(deConFalta).toBeLessThan(deSinFecha);
+      const fechas = lista.map((p) => p.desde);
+      expect(fechas).toEqual([...fechas].sort().reverse());
+    });
+
+    it('la insignia de la Agenda cuenta las mismas pacientes que la lista', async () => {
+      const lista = await sinProxima();
+      const respuesta = await pedir(
+        'get',
+        '/api/medica/contadores',
+        sesionMedica,
+      ).expect(200);
+      expect(
+        (respuesta.body as { agendaSinProxima: number }).agendaSinProxima,
+      ).toBe(lista.length);
+    });
+  });
+
   describe('documento de otro expediente', () => {
     it('Medicina no firma un documento de un expediente que no le refirieron', async () => {
       // Quedó de una referencia anterior que Trabajo Social ya retiró.

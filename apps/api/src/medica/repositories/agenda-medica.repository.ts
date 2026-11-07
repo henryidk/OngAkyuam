@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import {
   DURACION_CITA_MEDICA_MIN,
   fechaCalendarioGT,
+  fechaColumnaISO,
   horaGT,
   etiquetaAtencion,
 } from '@akyuam/shared';
@@ -244,7 +245,9 @@ export class AgendaMedicaRepository
       },
       select: {
         id: true,
+        version: true,
         consecutivo: true,
+        fechaInicio: true,
         expediente: {
           select: {
             id: true,
@@ -257,22 +260,40 @@ export class AgendaMedicaRepository
           orderBy: { fechaHora: 'desc' },
           take: 1,
         },
+        // La última inasistencia: si es posterior a la última consulta, faltó y sigue sin fecha.
+        citas: {
+          where: { estado: 'NO_ASISTIO' },
+          select: { inicio: true },
+          orderBy: { inicio: 'desc' },
+          take: 1,
+        },
       },
     });
     return atenciones
-      .map((a) => ({
-        usuariaId: a.expediente.usuaria.id,
-        expedienteId: a.expediente.id,
-        atencionId: a.id,
-        codigoAtencion: etiquetaAtencion(a.expediente.numero, a.consecutivo),
-        usuariaNombreCompleto: nombreCompleto(a.expediente.usuaria),
-        ultimaConsulta: a.consultas[0]
-          ? fechaCalendarioGT(a.consultas[0].fechaHora)
-          : null,
-      }))
-      .sort((x, y) =>
-        (x.ultimaConsulta ?? '').localeCompare(y.ultimaConsulta ?? ''),
-      );
+      .map((a): SinProximaConsultaDto => {
+        const consulta = a.consultas[0]?.fechaHora;
+        const falta = a.citas[0]?.inicio;
+        const faltoDespues =
+          falta !== undefined &&
+          (consulta === undefined || falta.getTime() > consulta.getTime());
+        let desde = fechaColumnaISO(a.fechaInicio);
+        if (faltoDespues) {
+          desde = fechaCalendarioGT(falta);
+        } else if (consulta) {
+          desde = fechaCalendarioGT(consulta);
+        }
+        return {
+          usuariaId: a.expediente.usuaria.id,
+          expedienteId: a.expediente.id,
+          atencionId: a.id,
+          atencionVersion: a.version,
+          codigoAtencion: etiquetaAtencion(a.expediente.numero, a.consecutivo),
+          usuariaNombreCompleto: nombreCompleto(a.expediente.usuaria),
+          motivo: faltoDespues ? 'NO_ASISTIO' : 'SIN_FECHA',
+          desde,
+        };
+      })
+      .sort((x, y) => y.desde.localeCompare(x.desde));
   }
 
   async programables(
