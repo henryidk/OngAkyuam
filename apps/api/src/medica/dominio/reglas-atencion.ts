@@ -39,19 +39,45 @@ export function situacionPaciente(
 }
 
 /**
- * "Reprogramar" en una inasistencia: solo si nadie la reprogramó ya, la atención sigue activa y
- * la paciente no tiene otra cita futura (si la tiene, ya está agendada).
+ * Una cita que todavía no empieza y sigue programada, sin consulta registrada, se puede mover a
+ * otro horario (la misma cita cambia de hora; no se crea otra).
  */
-export function puedeReprogramar(cita: {
-  estado: string;
-  reprogramadaA: unknown;
-  atencionActiva: boolean;
-  tieneCitaFutura: boolean;
-}): boolean {
+export function esCitaPorMover(
+  cita: { estado: string; inicio: Date; tieneConsultas: boolean },
+  ahora: Date,
+): boolean {
+  return (
+    cita.estado === 'PROGRAMADA' &&
+    cita.inicio.getTime() > ahora.getTime() &&
+    !cita.tieneConsultas
+  );
+}
+
+/**
+ * "Reprogramar" con la atención activa en dos casos: una cita futura que sigue programada (se
+ * mueve), o una inasistencia que nadie reprogramó y sin otra cita futura de la paciente (si la
+ * tiene, ya está agendada).
+ */
+export function puedeReprogramar(
+  cita: {
+    estado: string;
+    inicio: Date;
+    tieneConsultas: boolean;
+    reprogramadaA: unknown;
+    atencionActiva: boolean;
+    tieneCitaFutura: boolean;
+  },
+  ahora: Date,
+): boolean {
+  if (!cita.atencionActiva) {
+    return false;
+  }
+  if (esCitaPorMover(cita, ahora)) {
+    return true;
+  }
   return (
     cita.estado === 'NO_ASISTIO' &&
     cita.reprogramadaA === null &&
-    cita.atencionActiva &&
     !cita.tieneCitaFutura
   );
 }

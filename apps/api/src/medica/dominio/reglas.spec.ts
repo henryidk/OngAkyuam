@@ -82,19 +82,53 @@ describe('situacionPaciente y reprogramación', () => {
     expect(situacionPaciente(false, false)).toBe('DE_ALTA');
   });
 
-  it('solo se reprograma una inasistencia sin reprogramar, activa y sin cita futura', () => {
-    const base = {
-      estado: 'NO_ASISTIO',
-      reprogramadaA: null,
-      atencionActiva: true,
-      tieneCitaFutura: false,
-    };
-    expect(puedeReprogramar(base)).toBe(true);
-    expect(puedeReprogramar({ ...base, reprogramadaA: { id: 'x' } })).toBe(
-      false,
-    );
-    expect(puedeReprogramar({ ...base, atencionActiva: false })).toBe(false);
-    expect(puedeReprogramar({ ...base, tieneCitaFutura: true })).toBe(false);
-    expect(puedeReprogramar({ ...base, estado: 'ATENDIDA' })).toBe(false);
+  describe('puedeReprogramar', () => {
+    const AHORA = new Date('2026-10-14T15:00:00.000Z');
+    const DESPUES = new Date('2026-10-15T15:00:00.000Z');
+    const ANTES = new Date('2026-10-13T15:00:00.000Z');
+
+    it('una inasistencia sin reprogramar, activa y sin cita futura', () => {
+      const base = {
+        estado: 'NO_ASISTIO',
+        inicio: ANTES,
+        tieneConsultas: false,
+        reprogramadaA: null,
+        atencionActiva: true,
+        tieneCitaFutura: false,
+      };
+      expect(puedeReprogramar(base, AHORA)).toBe(true);
+      expect(
+        puedeReprogramar({ ...base, reprogramadaA: { id: 'x' } }, AHORA),
+      ).toBe(false);
+      expect(puedeReprogramar({ ...base, atencionActiva: false }, AHORA)).toBe(
+        false,
+      );
+      expect(puedeReprogramar({ ...base, tieneCitaFutura: true }, AHORA)).toBe(
+        false,
+      );
+      expect(puedeReprogramar({ ...base, estado: 'ATENDIDA' }, AHORA)).toBe(
+        false,
+      );
+    });
+
+    it('una cita programada que todavía no empieza, aunque sea la cita futura', () => {
+      const base = {
+        estado: 'PROGRAMADA',
+        inicio: DESPUES,
+        tieneConsultas: false,
+        reprogramadaA: null,
+        atencionActiva: true,
+        tieneCitaFutura: true,
+      };
+      expect(puedeReprogramar(base, AHORA)).toBe(true);
+      expect(puedeReprogramar({ ...base, inicio: ANTES }, AHORA)).toBe(false);
+      expect(puedeReprogramar({ ...base, inicio: AHORA }, AHORA)).toBe(false);
+      expect(puedeReprogramar({ ...base, tieneConsultas: true }, AHORA)).toBe(
+        false,
+      );
+      expect(puedeReprogramar({ ...base, atencionActiva: false }, AHORA)).toBe(
+        false,
+      );
+    });
   });
 });

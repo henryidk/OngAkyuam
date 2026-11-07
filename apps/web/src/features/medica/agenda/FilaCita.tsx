@@ -28,8 +28,8 @@ const ENLACE = 'whitespace-nowrap px-1.5 py-[7px] text-[13px] underline underlin
  * Una cita del día. La consulta se registra desde aquí, donde la médica ve a la paciente: las de
  * hoy y las que quedaron sin registrar (la en curso o sin registrar, como acción principal), con
  * las mismas reglas que Consultas › Por atender. Al guardar se vuelve a este día de la agenda.
- * "No asistió" solo cuando la cita ya pasó; una inasistencia se puede reprogramar si la paciente
- * no tiene ya otra cita.
+ * "No asistió" solo cuando la cita ya pasó. "Reprogramar" mueve una cita que todavía no empieza,
+ * o da nueva fecha a una inasistencia si la paciente no tiene ya otra cita.
  */
 export default function FilaCita({ cita, onReprogramar, onNoAsistio, onIrA }: FilaCitaProps) {
   const estado = cita.estadoVista

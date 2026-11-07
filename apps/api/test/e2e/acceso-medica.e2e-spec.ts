@@ -4,6 +4,7 @@ import type { Rol, Usuario } from '@prisma/client';
 import type {
   ConsultaMedicaDto,
   ConsultasMedicasPaginaDto,
+  DiaAgendaMedicaDto,
   FichaPacienteMedicaDto,
   HistorialConsultasMedicaPaginaDto,
   PacienteBuscadaMedicaDto,
@@ -11,6 +12,8 @@ import type {
 } from '@akyuam/shared';
 import {
   diaSemanaGT,
+  fechaCalendarioGT,
+  horaGT,
   hoyGT,
   limiteAgendaMedica,
   sumarDiasGT,
@@ -552,6 +555,153 @@ describe('Medicina · acceso (e2e)', () => {
         },
         400,
       );
+    });
+  });
+
+  describe('Reprogramar una cita que todavía no empieza', () => {
+    /** Abre una atención con una cita futura de la usuaria y devuelve su id. */
+    async function citaFutura(): Promise<{
+      citaId: string;
+      atencionId: string;
+    }> {
+      const { expediente } = await crearExpediente(prisma, medica.id, [
+        'MEDICA',
+      ]);
+      const respuesta = await pedir('post', '/api/medica/citas', sesionMedica)
+        .send({
+          referidoId: expediente.referidos[0].id,
+          personas: [null],
+          duracionMin: 30,
+          inicio: await inicioCitaMedicaLibre(prisma),
+        })
+        .expect(201);
+      return respuesta.body as { citaId: string; atencionId: string };
+    }
+
+    function reprogramar(citaId: string, inicio: string, version: number) {
+      return pedir(
+        'post',
+        `/api/medica/citas/${citaId}/reprogramacion`,
+        sesionMedica,
+      ).send({ inicio, version });
+    }
+
+    it('mueve la misma cita a la hora nueva, sin crear otra', async () => {
+      const { citaId, atencionId } = await citaFutura();
+      const inicio = await inicioCitaMedicaLibre(prisma);
+      const respuesta = await reprogramar(citaId, inicio, 1).expect(201);
+      expect(respuesta.body).toEqual(
+        expect.objectContaining({
+          citaId,
+          fecha: inicio.slice(0, 10),
+          hora: inicio.slice(11),
+        }),
+      );
+      const citas = await prisma.citaMedica.findMany({
+        where: { atencionId },
+        select: { id: true, estado: true, version: true, inicio: true },
+      });
+      expect(citas).toHaveLength(1);
+      expect(citas[0]).toEqual(
+        expect.objectContaining({
+          id: citaId,
+          estado: 'PROGRAMADA',
+          version: 2,
+        }),
+      );
+      expect(fechaCalendarioGT(citas[0].inicio)).toBe(inicio.slice(0, 10));
+      expect(
+        await prisma.auditLog.count({
+          where: { accion: 'CITA_MEDICA_REPROGRAMADA', entidadId: citaId },
+        }),
+      ).toBe(1);
+    });
+
+    it('no choca con su propio horario al moverse dentro de él', async () => {
+      const { expediente } = await crearExpediente(prisma, medica.id, [
+        'MEDICA',
+      ]);
+      const inicio = await inicioCitaMedicaLibre(prisma);
+      const respuesta = await pedir('post', '/api/medica/citas', sesionMedica)
+        .send({
+          referidoId: expediente.referidos[0].id,
+          personas: [null],
+          duracionMin: 60,
+          inicio,
+        })
+        .expect(201);
+      const { citaId } = respuesta.body as { citaId: string };
+      // Misma hora: sin excluirse a sí misma, la cita se vería como ocupada.
+      await reprogramar(citaId, inicio, 1).expect(201);
+    });
+
+    it('a un horario ocupado por otra cita responde 409 y no la mueve', async () => {
+      const { citaId } = await citaFutura();
+      const otra = await citaFutura();
+      const ocupada = await prisma.citaMedica.findUniqueOrThrow({
+        where: { id: otra.citaId },
+        select: { inicio: true },
+      });
+      const antes = await prisma.citaMedica.findUniqueOrThrow({
+        where: { id: citaId },
+        select: { inicio: true, version: true },
+      });
+      const inicio = `${fechaCalendarioGT(ocupada.inicio)}T${horaGT(ocupada.inicio)}`;
+      await reprogramar(citaId, inicio, 1).expect(409);
+      expect(
+        await prisma.citaMedica.findUniqueOrThrow({
+          where: { id: citaId },
+          select: { inicio: true, version: true },
+        }),
+      ).toEqual(antes);
+    });
+
+    it('con una versión vieja responde 409', async () => {
+      const { citaId } = await citaFutura();
+      await reprogramar(citaId, await inicioCitaMedicaLibre(prisma), 1).expect(
+        201,
+      );
+      await reprogramar(citaId, await inicioCitaMedicaLibre(prisma), 1).expect(
+        409,
+      );
+    });
+
+    it('una cita programada que ya empezó no se mueve (se registra o es inasistencia)', async () => {
+      const { atencionId } = await citaFutura();
+      const pasada = await prisma.citaMedica.create({
+        data: {
+          atencionId,
+          inicio: new Date(
+            Date.UTC(1990, 0, 1) + randomInt(10_000_000) * 60_000,
+          ),
+          duracionMin: 30,
+          creadoPorId: medica.id,
+          personas: { create: [{ ninoId: null }] },
+        },
+      });
+      const respuesta = await reprogramar(
+        pasada.id,
+        await inicioCitaMedicaLibre(prisma),
+        1,
+      ).expect(409);
+      expect(JSON.stringify(respuesta.body)).toContain('todavía no empieza');
+    });
+
+    it('la Agenda ofrece "Reprogramar" en la cita futura', async () => {
+      const { citaId } = await citaFutura();
+      const { inicio } = await prisma.citaMedica.findUniqueOrThrow({
+        where: { id: citaId },
+        select: { inicio: true },
+      });
+      const respuesta = await pedir(
+        'get',
+        `/api/medica/agenda/dia?fecha=${fechaCalendarioGT(inicio)}`,
+        sesionMedica,
+      ).expect(200);
+      const cita = (respuesta.body as DiaAgendaMedicaDto).citas.find(
+        (c) => c.id === citaId,
+      );
+      expect(cita?.puedeReprogramar).toBe(true);
     });
   });
 

@@ -226,7 +226,7 @@ export default function Agenda() {
       {reprogramar && (
         <ModalInasistencia
           cita={{ ...reprogramar, referencia: reprogramar.codigoAtencion }}
-          modo="reprogramar"
+          modo={reprogramar.estado === 'NO_ASISTIO' ? 'reprogramar' : 'mover'}
           onCerrar={() => setReprogramar(null)}
           onListo={trasReprogramar}
         />

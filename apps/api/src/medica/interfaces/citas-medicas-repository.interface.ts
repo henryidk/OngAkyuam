@@ -31,6 +31,8 @@ export interface ReprogramarCitaParams {
   citaId: string;
   version: number;
   inicio: Date;
+  /** Decide si la cita se mueve (programada y futura) o se reprograma una inasistencia. */
+  ahora: Date;
   creadoPorId: string;
 }
 

@@ -34,7 +34,7 @@ export const MENSAJE_ATENCION_CAMBIO =
 export const MENSAJE_INASISTENCIA_NO_PERMITIDA =
   'Solo se registra la inasistencia de una cita que ya empezó y sigue sin registrar';
 export const MENSAJE_CITA_NO_REPROGRAMABLE =
-  'Solo se reprograma una inasistencia que no tenga ya otra cita';
+  'Solo se reprograma una cita que todavía no empieza o una inasistencia que no tenga ya otra cita';
 export const MENSAJE_CITA_NO_REGISTRABLE =
   'Esta cita ya tiene consulta registrada o ya no está programada';
 export const MENSAJE_LOTE_VENCIDO =

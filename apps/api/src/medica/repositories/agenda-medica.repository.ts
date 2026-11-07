@@ -73,7 +73,8 @@ function selectCitaAgenda(ahora: Date) {
             usuaria: { select: { id: true, ...SELECT_PERSONA } },
           },
         },
-        // ¿La paciente ya tiene otra cita futura? Decide si se ofrece "Reprogramar".
+        // ¿La paciente ya tiene otra cita futura? Decide si se ofrece "Reprogramar" en una
+        // inasistencia.
         citas: {
           where: { estado: 'PROGRAMADA', inicio: { gt: ahora } },
           select: { id: true },
@@ -116,12 +117,17 @@ function aCitaAgenda(fila: FilaCitaAgenda, ahora: Date): CitaAgendaMedicaDto {
           hora: horaGT(fila.reprogramadaA.inicio),
         }
       : null,
-    puedeReprogramar: puedeReprogramar({
-      estado: fila.estado,
-      reprogramadaA: fila.reprogramadaA,
-      atencionActiva: atencion.estado === 'ACTIVA',
-      tieneCitaFutura: atencion.citas.length > 0,
-    }),
+    puedeReprogramar: puedeReprogramar(
+      {
+        estado: fila.estado,
+        inicio: fila.inicio,
+        tieneConsultas: fila.consultas.length > 0,
+        reprogramadaA: fila.reprogramadaA,
+        atencionActiva: atencion.estado === 'ACTIVA',
+        tieneCitaFutura: atencion.citas.length > 0,
+      },
+      ahora,
+    ),
   };
 }
 

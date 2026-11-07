@@ -154,6 +154,9 @@ describe('InasistenciaService', () => {
           hora: '14:00',
         }),
       );
+      expect(repository.reprogramar).toHaveBeenCalledWith(
+        expect.objectContaining({ citaId: 'c-1', version: 5, ahora: AHORA }),
+      );
       expect(audit.registrar).toHaveBeenCalledWith(
         expect.objectContaining({
           accion: 'CITA_MEDICA_REPROGRAMADA',

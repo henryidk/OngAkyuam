@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { RotateCw, X } from 'lucide-react'
+import { CalendarClock, RotateCw, X } from 'lucide-react'
 import { hoyGT, type PersonaAtendidaDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
@@ -34,8 +34,11 @@ export interface ResultadoInasistencia {
 
 interface ModalInasistenciaProps {
   cita: CitaInasistencia
-  /** `inasistencia`: la paciente no llegó. `reprogramar`: la inasistencia ya está registrada. */
-  modo: 'inasistencia' | 'reprogramar'
+  /**
+   * `inasistencia`: la paciente no llegó. `reprogramar`: la inasistencia ya está registrada.
+   * `mover`: la cita todavía no empieza y cambia de hora (es la misma cita).
+   */
+  modo: 'inasistencia' | 'reprogramar' | 'mover'
   onCerrar: () => void
   onListo: (resultado: ResultadoInasistencia) => void
 }
@@ -51,7 +54,8 @@ export default function ModalInasistencia({ cita, modo, onCerrar, onListo }: Mod
   const [error, setError] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
 
-  const soloReprogramar = modo === 'reprogramar'
+  const mover = modo === 'mover'
+  const soloReprogramar = modo === 'reprogramar' || mover
   const conNuevaCita = soloReprogramar || reprogramar
   const titulo = soloReprogramar ? 'Reprogramar consulta' : 'No asistió a la consulta'
   const subtitulo = [
@@ -77,6 +81,7 @@ export default function ModalInasistencia({ cita, modo, onCerrar, onListo }: Mod
     try {
       const textoNueva = `${fechaLargaEnFrase(horario.fecha!)}, ${horario.hora}`
       if (soloReprogramar) {
+        // Mover y reprogramar una inasistencia usan el mismo endpoint; el backend decide por el estado.
         await reprogramarCita(cita.id, { inicio: inicio!, version: cita.version })
         onListo({ mensaje: `Consulta reprogramada: ${textoNueva}`, nuevaFecha: horario.fecha })
       } else {
@@ -131,11 +136,11 @@ export default function ModalInasistencia({ cita, modo, onCerrar, onListo }: Mod
     >
       <div className="flex items-center gap-3 rounded-lg border border-[#e3e6ea] bg-[#f8f9fa] px-3.5 py-2.5">
         <span aria-hidden="true" className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#f0f2f4] text-[#4b5563]">
-          <X className="h-3.5 w-3.5" />
+          {mover ? <CalendarClock className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
         </span>
         <div className="text-[13px]">
-          <p className="text-[#5b6573]">Consulta a la que no asistió</p>
-          <p className="font-medium text-[#1c2430] line-through decoration-[#9aa4b0]">
+          <p className="text-[#5b6573]">{mover ? 'Horario actual' : 'Consulta a la que no asistió'}</p>
+          <p className={`font-medium text-[#1c2430] ${mover ? '' : 'line-through decoration-[#9aa4b0]'}`}>
             {fechaLarga(cita.fecha)} · {cita.hora} – {cita.horaFin}
           </p>
         </div>

@@ -18,7 +18,8 @@ import {
   VersionCambioError,
 } from '../interfaces/errores-medica';
 import { consecutivoTrasMaximo } from '../../common/consecutivo';
-import { columnaFecha, crearCitaEnTx } from './crear-cita';
+import { esCitaPorMover } from '../dominio/reglas-atencion';
+import { columnaFecha, crearCitaEnTx, exigirHorarioLibre } from './crear-cita';
 import { SERIALIZABLE, conReintentosHorario } from './transaccion';
 
 @Injectable()
@@ -91,11 +92,43 @@ export class CitasMedicasRepository implements ICitasMedicasRepository {
         if (cita.version !== params.version) {
           throw new VersionCambioError();
         }
-        if (cita.estado !== 'NO_ASISTIO' || cita.reprogramadaA !== null) {
+        const porMover = esCitaPorMover(
+          {
+            estado: cita.estado,
+            inicio: cita.inicio,
+            tieneConsultas: cita._count.consultas > 0,
+          },
+          params.ahora,
+        );
+        if (
+          !porMover &&
+          (cita.estado !== 'NO_ASISTIO' || cita.reprogramadaA !== null)
+        ) {
           throw new CitaNoDisponibleError();
         }
         if (cita.atencion.estado !== 'ACTIVA') {
           throw new AtencionNoActivaError();
+        }
+        if (porMover) {
+          // La misma cita cambia de hora: conserva su id, sus personas y su historial.
+          await exigirHorarioLibre(
+            tx,
+            params.inicio,
+            cita.duracionMin,
+            params.citaId,
+          );
+          const { count } = await tx.citaMedica.updateMany({
+            where: {
+              id: params.citaId,
+              version: params.version,
+              estado: 'PROGRAMADA',
+            },
+            data: { inicio: params.inicio, version: { increment: 1 } },
+          });
+          if (count === 0) {
+            throw new VersionCambioError();
+          }
+          return params.citaId;
         }
         const { count } = await tx.citaMedica.updateMany({
           where: { id: params.citaId, version: params.version },
@@ -231,8 +264,10 @@ export class CitasMedicasRepository implements ICitasMedicasRepository {
       where: { id: citaId },
       select: {
         atencionId: true,
+        inicio: true,
         duracionMin: true,
         personas: { select: { ninoId: true } },
+        _count: { select: { consultas: true } },
         estado: true,
         version: true,
         reprogramadaA: { select: { id: true } },

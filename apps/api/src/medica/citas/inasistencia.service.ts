@@ -30,7 +30,10 @@ const MENSAJES_CITA = {
   citaNoDisponible: MENSAJE_CITA_NO_REPROGRAMABLE,
 };
 
-/** "No asistió" (con reprogramación opcional en el mismo paso) y "Reprogramar" después. */
+/**
+ * "No asistió" (con reprogramación opcional en el mismo paso) y "Reprogramar": una inasistencia o
+ * una cita futura que todavía no empieza.
+ */
 @Injectable()
 export class InasistenciaService {
   constructor(
@@ -103,17 +106,16 @@ export class InasistenciaService {
     contexto: ContextoAuditoria,
   ): Promise<CitaMedicaProgramadaDto> {
     const cita = await this.acceso.exigirCita(citaId);
-    const inicio = exigirInicioValido(
-      datos.inicio,
-      this.reloj.ahora(),
-      cita.duracionMin,
-    );
+    const ahora = this.reloj.ahora();
+    const inicio = exigirInicioValido(datos.inicio, ahora, cita.duracionMin);
 
+    // Una cita futura y programada se mueve (devuelve su mismo id); una inasistencia crea otra.
     const nuevaCitaId = await this.citasRepository
       .reprogramar({
         citaId,
         version: datos.version,
         inicio,
+        ahora,
         creadoPorId: contexto.usuarioId,
       })
       .catch((error: unknown) => traducirErrorMedica(error, MENSAJES_CITA));
