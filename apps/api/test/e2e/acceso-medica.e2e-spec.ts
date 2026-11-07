@@ -11,6 +11,7 @@ import type {
   VistaMedicaParaJuridico,
 } from '@akyuam/shared';
 import {
+  dejoDeVenirMedica,
   diaSemanaGT,
   fechaCalendarioGT,
   horaGT,
@@ -759,7 +760,7 @@ describe('Medicina · acceso (e2e)', () => {
       expect(fechas).toEqual([...fechas].sort().reverse());
     });
 
-    it('la insignia de la Agenda cuenta las mismas pacientes que la lista', async () => {
+    it('la insignia de la Agenda cuenta solo las de la lista que no dejaron de venir', async () => {
       const lista = await sinProxima();
       const respuesta = await pedir(
         'get',
@@ -768,7 +769,7 @@ describe('Medicina · acceso (e2e)', () => {
       ).expect(200);
       expect(
         (respuesta.body as { agendaSinProxima: number }).agendaSinProxima,
-      ).toBe(lista.length);
+      ).toBe(lista.filter((p) => !dejoDeVenirMedica(p.desde, hoyGT())).length);
     });
   });
 
