@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import type { CitaAgendaMedicaDto } from '@akyuam/shared'
+import { hoyGT, type CitaAgendaMedicaDto } from '@akyuam/shared'
 import CodigoAtencion from '../compartido/CodigoAtencion'
 import EstadoCita from '../compartido/EstadoCita'
 import { fechaLargaEnFrase } from '../compartido/fechas'
@@ -9,22 +9,33 @@ import { RUTAS_MEDICA } from '../rutas'
 interface FilaCitaProps {
   cita: CitaAgendaMedicaDto
   onReprogramar: () => void
+  onNoAsistio: () => void
   onIrA: (fecha: string) => void
 }
+
+const BOTON_PRIMARIO =
+  'whitespace-nowrap rounded-md bg-[#7346a5] px-[13px] py-2 text-[13px] font-semibold text-white hover:bg-[#5b3985]'
+const BOTON_SECUNDARIO =
+  'whitespace-nowrap rounded-md border border-[#d5dadf] bg-white px-3 py-[7px] text-[13px] font-semibold text-[#7346a5] hover:border-[#7346a5]'
+const BOTON_NEUTRO =
+  'whitespace-nowrap rounded-md border border-[#d5dadf] bg-white px-3 py-[7px] text-[13px] font-medium text-[#1c2430] hover:bg-[#f8f9fa]'
 
 const BOTON_BORDE_MORADO =
   'whitespace-nowrap rounded-md border border-[#7346a5] bg-white px-3 py-[7px] text-[13px] font-semibold text-[#7346a5] hover:bg-[#f7f3fc]'
 const ENLACE = 'whitespace-nowrap px-1.5 py-[7px] text-[13px] underline underline-offset-2'
 
 /**
- * Una cita del día. Registrar la consulta o la inasistencia se hace en Consultas: aquí una cita en
- * curso o sin registrar solo lleva hasta allá. Una inasistencia se puede reprogramar si la
- * paciente no tiene ya otra cita.
+ * Una cita del día. La consulta se registra desde aquí, donde la médica ve a la paciente: las de
+ * hoy y las que quedaron sin registrar (la en curso o sin registrar, como acción principal), con
+ * las mismas reglas que Consultas › Por atender. Al guardar se vuelve a este día de la agenda.
+ * "No asistió" solo cuando la cita ya pasó; una inasistencia se puede reprogramar si la paciente
+ * no tiene ya otra cita.
  */
-export default function FilaCita({ cita, onReprogramar, onIrA }: FilaCitaProps) {
+export default function FilaCita({ cita, onReprogramar, onNoAsistio, onIrA }: FilaCitaProps) {
   const estado = cita.estadoVista
   const enCurso = estado === 'EN_CURSO'
-  const pideRegistro = enCurso || estado === 'SIN_REGISTRAR'
+  const sinRegistrar = estado === 'SIN_REGISTRAR'
+  const registrable = enCurso || sinRegistrar || (estado === 'PROGRAMADA' && cita.fecha === hoyGT())
   const atendida = estado === 'ATENDIDA' && cita.consultaId !== null
 
   return (
@@ -60,10 +71,18 @@ export default function FilaCita({ cita, onReprogramar, onIrA }: FilaCitaProps) 
       </div>
 
       <div className="ml-auto flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1">
-        {pideRegistro && (
-          <Link to={RUTAS_MEDICA.consultas()} className={`${ENLACE} font-medium text-[#7346a5]`}>
-            Ir a consultas
+        {registrable && (
+          <Link
+            to={RUTAS_MEDICA.nuevaConsulta({ cita: cita.id, origen: 'agenda' })}
+            className={enCurso || sinRegistrar ? BOTON_PRIMARIO : BOTON_SECUNDARIO}
+          >
+            Registrar consulta
           </Link>
+        )}
+        {sinRegistrar && (
+          <button type="button" onClick={onNoAsistio} className={BOTON_NEUTRO}>
+            No asistió
+          </button>
         )}
         {cita.puedeReprogramar && (
           <button type="button" onClick={onReprogramar} className={BOTON_BORDE_MORADO}>

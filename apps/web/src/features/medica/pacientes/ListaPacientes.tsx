@@ -80,27 +80,19 @@ export default function ListaPacientes() {
   const [params, setParams] = useSearchParams()
   const estadoParam = params.get('estado')
   const estado = esFiltro(estadoParam) ? estadoParam : undefined
-  const q = params.get('q') ?? ''
-  const [texto, setTexto] = useState(q)
+  // El texto buscado (puede ser un nombre o un DPI) vive solo en el estado de la pantalla, nunca
+  // en la URL: así no queda en el historial del navegador ni en los logs de acceso.
+  const [texto, setTexto] = useState('')
+  const [q, setQ] = useState('')
   const [conteos, setConteos] = useState<PacientesMedicaPaginaDto['conteos'] | null>(null)
 
-  // La búsqueda viaja a la URL después de una pausa al escribir, no en cada tecla.
+  // La búsqueda se aplica después de una pausa al escribir, no en cada tecla.
   useEffect(() => {
     const limpio = texto.trim()
     if (limpio === q) return
-    const espera = setTimeout(() => {
-      setParams(
-        (actuales) => {
-          const nuevos = new URLSearchParams(actuales)
-          if (limpio) nuevos.set('q', limpio)
-          else nuevos.delete('q')
-          return nuevos
-        },
-        { replace: true },
-      )
-    }, ESPERA_BUSQUEDA_MS)
+    const espera = setTimeout(() => setQ(limpio), ESPERA_BUSQUEDA_MS)
     return () => clearTimeout(espera)
-  }, [texto, q, setParams])
+  }, [texto, q])
 
   // Con menos de 2 letras no se filtra: se pide la lista completa.
   const busqueda = q.length >= BUSQUEDA_PACIENTES_MEDICA_MIN ? q : undefined

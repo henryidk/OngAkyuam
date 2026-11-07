@@ -53,7 +53,8 @@ export default function RegistrarConsulta() {
   const [params] = useSearchParams()
   const cita = params.get('cita') ?? undefined
   const usuaria = params.get('usuaria') ?? undefined
-  const origen: OrigenConsulta = params.get('origen') === 'ficha' ? 'ficha' : 'consultas'
+  const parametroOrigen = params.get('origen')
+  const origen: OrigenConsulta = parametroOrigen === 'ficha' || parametroOrigen === 'agenda' ? parametroOrigen : 'consultas'
 
   const cargar = useCallback(() => {
     if (!cita && !usuaria) return Promise.reject(new Error('Falta indicar la cita o la paciente.'))
@@ -66,7 +67,9 @@ export default function RegistrarConsulta() {
     migas:
       origen === 'ficha' && contexto
         ? [{ etiqueta: contexto.usuariaNombreCompleto, ruta: RUTAS_MEDICA.paciente(contexto.usuariaId) }]
-        : [{ etiqueta: 'Consultas', ruta: RUTAS_MEDICA.consultas() }],
+        : origen === 'agenda'
+          ? [{ etiqueta: 'Agenda', ruta: RUTAS_MEDICA.agenda(contexto?.cita?.fecha) }]
+          : [{ etiqueta: 'Consultas', ruta: RUTAS_MEDICA.consultas() }],
   })
 
   if (error) {
@@ -165,7 +168,14 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
-  const rutaVolver = origen === 'ficha' ? RUTAS_MEDICA.paciente(contexto.usuariaId) : RUTAS_MEDICA.consultas()
+  // Se vuelve a la pantalla de donde se abrió: desde la Agenda, al día de la cita, para ver quién
+  // sigue sin tener que buscarlo de nuevo.
+  const rutaVolver =
+    origen === 'ficha'
+      ? RUTAS_MEDICA.paciente(contexto.usuariaId)
+      : origen === 'agenda'
+        ? RUTAS_MEDICA.agenda(cita?.fecha)
+        : RUTAS_MEDICA.consultas()
 
   async function guardar() {
     setIntentado(true)
@@ -221,8 +231,8 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
       }${agendada ? ` · próxima: ${fechaCorta(agendada.fecha)}, ${agendada.hora}` : ''}`
       const rutaHistoria = RUTAS_MEDICA.historia(registrada.usuariaId, undefined, registrada.consultas[0]?.consultaId)
       recargarContadores()
-      if (origen === 'consultas') {
-        navigate(RUTAS_MEDICA.consultas())
+      if (origen !== 'ficha') {
+        navigate(rutaVolver)
         mostrar(mensaje, 'success', { etiqueta: 'Ver en historia clínica', onClick: () => navigate(rutaHistoria) })
       } else {
         navigate(rutaHistoria)

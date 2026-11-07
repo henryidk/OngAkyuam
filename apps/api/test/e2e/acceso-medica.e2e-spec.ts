@@ -43,7 +43,7 @@ const ENDPOINTS: [Metodo, string][] = [
   ['get', '/api/medica/agenda/disponibilidad'],
   ['get', '/api/medica/agenda/programables'],
   ['post', '/api/medica/agenda/programables/busqueda'],
-  ['get', '/api/medica/pacientes'],
+  ['post', '/api/medica/pacientes/busqueda'],
   ['get', `/api/medica/pacientes/${ID}`],
   ['get', `/api/medica/pacientes/${ID}/consultas`],
   ['get', `/api/medica/pacientes/${ID}/documentos`],

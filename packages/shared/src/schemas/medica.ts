@@ -377,7 +377,7 @@ export const buscarPacientesProgramablesMedicaSchema = z.object({
 export type BuscarPacientesProgramablesMedicaInput = z.input<typeof buscarPacientesProgramablesMedicaSchema>
 export type BuscarPacientesProgramablesMedicaDatos = z.output<typeof buscarPacientesProgramablesMedicaSchema>
 
-/** `GET /medica/pacientes?q=&estado=&cursor=`. */
+/** Cuerpo de `POST /medica/pacientes/busqueda` (el texto buscado nunca va en la URL). */
 export const listarPacientesMedicaQuerySchema = z.object({
   q: z
     .string()

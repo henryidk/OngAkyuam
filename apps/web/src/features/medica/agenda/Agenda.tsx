@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
+import { ArrowRight, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import {
   hoyGT,
   lunesDeSemanaGT,
@@ -14,7 +14,7 @@ import { useTituloPagina } from '../../../components/TituloPagina'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
 import { useRecurso } from '../../../lib/useRecurso'
-import { obtenerDia, obtenerSemana } from '../api/medica.api'
+import { listarPorAtender, obtenerDia, obtenerSemana } from '../api/medica.api'
 import { useContextoMedica } from '../compartido/contexto'
 import EncabezadoPagina from '../compartido/EncabezadoPagina'
 import { diaHabil, diaSemanaCorto, fechaLarga, fechaLargaEnFrase, numeroDia, textoSemana } from '../compartido/fechas'
@@ -22,14 +22,17 @@ import { useRecargaNovedades } from '../compartido/useRecargaNovedades'
 import FilaCita from './FilaCita'
 import ModalInasistencia, { type ResultadoInasistencia } from '../compartido/ModalInasistencia'
 import ModalProgramar from '../compartido/ModalProgramar'
+import { RUTAS_MEDICA } from '../rutas'
 import PanelesAgenda from './PanelesAgenda'
 
 const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/
 
 /**
  * Agenda de consultas: la semana (lunes a viernes) con el día abierto y, a la derecha, las
- * pacientes sin próxima consulta. Aquí se programa y reprograma; registrar es de Consultas. El
- * día vive en la URL (`?dia=`) para que "Ver en agenda" y recargar caigan ahí.
+ * pacientes sin próxima consulta. Aquí se programa, se registra la consulta o la inasistencia y
+ * se reprograma. Las consultas de días anteriores sin registrar no se ven en la semana actual:
+ * un aviso arriba lleva a Consultas › Por atender. El día vive en la URL (`?dia=`) para que
+ * "Ver en agenda", recargar y volver de registrar una consulta caigan ahí.
  */
 export default function Agenda() {
   useTituloPagina({ titulo: 'Agenda' })
@@ -44,13 +47,16 @@ export default function Agenda() {
 
   const semana = useRecurso(useCallback(() => obtenerSemana(lunes), [lunes]))
   const agendaDia = useRecurso(useCallback(() => obtenerDia(dia), [dia]))
+  const porAtender = useRecurso(listarPorAtender)
   const recargarSemana = semana.recargar
   const recargarDia = agendaDia.recargar
+  const recargarPorAtender = porAtender.recargar
 
   const recargarTodo = useCallback(() => {
     void recargarSemana()
     void recargarDia()
-  }, [recargarSemana, recargarDia])
+    void recargarPorAtender()
+  }, [recargarSemana, recargarDia, recargarPorAtender])
   useRecargaNovedades(recargarTodo)
 
   // `?agendar=<referidoId>` llega desde el Área de atención (otra ruta: la Agenda se monta de
@@ -59,6 +65,7 @@ export default function Agenda() {
   const agendar = params.get('agendar')
   const [programar, setProgramar] = useState<ProgramablesMedicaQuery | null>(() => (agendar ? { referidoId: agendar } : null))
   const [reprogramar, setReprogramar] = useState<CitaAgendaMedicaDto | null>(null)
+  const [inasistencia, setInasistencia] = useState<CitaAgendaMedicaDto | null>(null)
 
   useEffect(() => {
     if (!agendar) return
@@ -100,6 +107,7 @@ export default function Agenda() {
 
   function trasReprogramar({ mensaje, nuevaFecha }: ResultadoInasistencia) {
     setReprogramar(null)
+    setInasistencia(null)
     mostrar(mensaje, 'success', nuevaFecha ? { etiqueta: 'Ver en agenda', onClick: () => irADia(nuevaFecha) } : undefined)
     recargarTodo()
     recargarContadores()
@@ -107,12 +115,13 @@ export default function Agenda() {
 
   const citas = agendaDia.datos?.citas ?? []
   const atendidas = citas.filter((cita) => cita.estadoVista === 'ATENDIDA').length
-  const porAtender = citas.filter((cita) => ['PROGRAMADA', 'EN_CURSO', 'SIN_REGISTRAR'].includes(cita.estadoVista)).length
+  const pendientesDia = citas.filter((cita) => ['PROGRAMADA', 'EN_CURSO', 'SIN_REGISTRAR'].includes(cita.estadoVista)).length
+  const atrasadas = porAtender.datos?.atrasadas.length ?? 0
   const titulo = dia === hoy ? `Hoy, ${fechaLargaEnFrase(dia)}` : fechaLarga(dia)
   const resumen = !agendaDia.datos
     ? ' '
     : citas.length > 0
-      ? `${citas.length} ${citas.length === 1 ? 'consulta' : 'consultas'} · ${atendidas} ${atendidas === 1 ? 'atendida' : 'atendidas'} · ${porAtender} por atender`
+      ? `${citas.length} ${citas.length === 1 ? 'consulta' : 'consultas'} · ${atendidas} ${atendidas === 1 ? 'atendida' : 'atendidas'} · ${pendientesDia} por atender`
       : 'Sin consultas programadas'
 
   return (
@@ -161,6 +170,18 @@ export default function Agenda() {
         }
       />
 
+      {atrasadas > 0 && (
+        <Link
+          to={RUTAS_MEDICA.consultas()}
+          className="flex w-fit items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[13.5px] font-medium text-amber-900 hover:bg-amber-100"
+        >
+          {atrasadas === 1
+            ? 'Tienes 1 consulta de días anteriores sin registrar'
+            : `Tienes ${atrasadas} consultas de días anteriores sin registrar`}
+          <ArrowRight aria-hidden="true" className="h-4 w-4" />
+        </Link>
+      )}
+
       <TiraSemana lunes={lunes} dia={dia} hoy={hoy} semana={semana.datos?.dias ?? null} onElegir={irADia} />
 
       {agendaDia.error ? (
@@ -183,6 +204,7 @@ export default function Agenda() {
                   key={cita.id}
                   cita={cita}
                   onReprogramar={() => setReprogramar(cita)}
+                  onNoAsistio={() => setInasistencia(cita)}
                   onIrA={irADia}
                 />
               ))
@@ -206,6 +228,14 @@ export default function Agenda() {
           cita={{ ...reprogramar, referencia: reprogramar.codigoAtencion }}
           modo="reprogramar"
           onCerrar={() => setReprogramar(null)}
+          onListo={trasReprogramar}
+        />
+      )}
+      {inasistencia && (
+        <ModalInasistencia
+          cita={{ ...inasistencia, referencia: inasistencia.codigoAtencion }}
+          modo="inasistencia"
+          onCerrar={() => setInasistencia(null)}
           onListo={trasReprogramar}
         />
       )}

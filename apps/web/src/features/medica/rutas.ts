@@ -15,7 +15,7 @@ function conQuery(base: string, params: Record<string, string | undefined>) {
 }
 
 /** De dónde se abrió el registro de una consulta: al guardar se vuelve ahí (regla 1.7). */
-export type OrigenConsulta = 'consultas' | 'ficha'
+export type OrigenConsulta = 'agenda' | 'consultas' | 'ficha'
 
 /** Pestañas de Consultas. "Por atender" es la de entrada y no se escribe en la URL. */
 export type VistaConsultas = 'por-atender' | 'historial'
@@ -28,7 +28,7 @@ export const RUTAS_MEDICA = {
    * la referencia) abre el modal "Agendar primera consulta" con esa paciente.
    */
   agenda: (dia?: string, agendar?: string) => conQuery('/medica/agenda', { dia, agendar }),
-  pacientes: (estado?: FiltroPacientesMedica, q?: string) => conQuery('/medica/pacientes', { estado, q }),
+  pacientes: (estado?: FiltroPacientesMedica) => conQuery('/medica/pacientes', { estado }),
   paciente: (usuariaId: string) => `/medica/pacientes/${usuariaId}`,
   /** `persona`: "usuaria" o el id de un hijo/a. `consulta`: la que se abre desplegada. */
   historia: (usuariaId: string, persona?: string, consulta?: string) =>

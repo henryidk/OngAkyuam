@@ -196,7 +196,7 @@ export function cambiarVisibilidad(atencionId: string, datos: VisibilidadAtencio
 // ---- Pacientes ----
 
 export function listarPacientes(query: Partial<ListarPacientesMedicaQuery>) {
-  return api.get<PacientesMedicaPaginaDto>('/medica/pacientes', { params: query }).then((res) => res.data)
+  return api.post<PacientesMedicaPaginaDto>('/medica/pacientes/busqueda', query).then((res) => res.data)
 }
 
 export function obtenerFicha(usuariaId: string) {

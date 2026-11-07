@@ -1,8 +1,12 @@
 import {
+  Body,
   Controller,
   Get,
+  Header,
+  HttpCode,
   Param,
   ParseUUIDPipe,
+  Post,
   Query,
   UseGuards,
 } from '@nestjs/common';
@@ -35,12 +39,18 @@ export class PacientesMedicaController {
     private readonly documentosService: DocumentosMedicosService,
   ) {}
 
-  /** Búsqueda por nombre, DPI o expediente: limitada por usuario para frenar barridos. */
-  @Get()
+  /**
+   * Lista de pacientes con búsqueda por nombre, DPI o expediente. Es POST de solo lectura porque
+   * `q` puede ser el nombre de una sobreviviente: en el cuerpo no queda en logs de acceso ni en el
+   * historial del navegador. Limitada por usuario para frenar barridos.
+   */
+  @Post('busqueda')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
   @UseGuards(LimitePorUsuarioGuard)
   @Throttle({ default: { limit: 60, ttl: 60_000 } })
   listar(
-    @Query(new ZodValidationPipe(listarPacientesMedicaQuerySchema))
+    @Body(new ZodValidationPipe(listarPacientesMedicaQuerySchema))
     query: ListarPacientesMedicaQuery,
   ) {
     return this.pacientesService.listar(query);
