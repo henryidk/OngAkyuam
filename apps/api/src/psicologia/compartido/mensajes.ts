@@ -10,6 +10,8 @@ export const MENSAJE_CASO_NO_REASIGNABLE =
   'Este caso ya no está disponible: otra profesional lo tomó o volvió con su psicóloga';
 export const MENSAJE_TOMAR_PRIMERO =
   'Tome el caso antes de agendar la primera cita';
+export const MENSAJE_CASO_YA_AGENDADO =
+  'Este caso ya tiene su primera cita. Búscalo en la Agenda o en Procesos.';
 export const MENSAJE_PROCESO_YA_ABIERTO =
   'Este caso ya tiene agendada su primera cita';
 export const MENSAJE_OTRO_PROCESO_ACTIVO =
@@ -34,3 +36,5 @@ export const MENSAJE_SOLO_RESPONSABLE_PROGRAMA =
   'Solo la responsable del proceso puede programar la próxima cita';
 export const MENSAJE_SESION_NO_REGISTRABLE =
   'Esta sesión ya no se puede registrar: el proceso se cerró o la cita se movió a otra fecha';
+export const MENSAJE_APERTURA_EN_CURSO =
+  'Esta apertura ya se está guardando: espera un momento y vuelve a intentarlo';

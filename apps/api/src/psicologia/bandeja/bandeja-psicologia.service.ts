@@ -17,6 +17,7 @@ import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { eventoAuditoria } from '../compartido/auditoria';
 import {
   MENSAJE_CASO_NO_REASIGNABLE,
+  MENSAJE_CASO_YA_AGENDADO,
   MENSAJE_CASO_YA_TOMADO,
   MENSAJE_SIN_ACCESO_REFERENCIA,
 } from '../compartido/mensajes';
@@ -76,6 +77,22 @@ export class BandejaPsicologiaService {
   /** Casos que esta psicóloga tomó y aún no tienen primera cita. */
   listarPorAgendar(psicologaId: string): Promise<CasoPorAgendarDto[]> {
     return this.bandejaRepository.listarPorAgendar(psicologaId);
+  }
+
+  /** Solo la dueña del caso tomado lo ve; si ya tiene primera cita, ya no está por agendar. */
+  async obtenerPorAgendar(
+    referidoId: string,
+    psicologaId: string,
+  ): Promise<CasoPorAgendarDto> {
+    await this.acceso.exigirCasoTomado(referidoId, psicologaId);
+    const caso = await this.bandejaRepository.buscarPorAgendar(
+      psicologaId,
+      referidoId,
+    );
+    if (!caso) {
+      throw new ConflictException(MENSAJE_CASO_YA_AGENDADO);
+    }
+    return caso;
   }
 
   /**

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { RELOJ, RelojSistema } from '../common/reloj';
 import { ExcelJsExportador } from '../common/hoja-calculo/exceljs-exportador';
 import { EXPORTADOR_HOJA_CALCULO } from '../common/hoja-calculo/exportador-hoja-calculo.interface';
 import { AreasModule } from '../areas/areas.module';
@@ -43,6 +44,8 @@ import { AccesoPsicologiaService } from './services/acceso-psicologia.service';
 import { CitasPsicologicasService } from './services/citas-psicologicas.service';
 import { IndicadoresPsicologiaService } from './services/indicadores-psicologia.service';
 import { RegistroConsultaService } from './services/registro-consulta.service';
+import { SesionSinCitaService } from './services/sesion-sin-cita.service';
+import { IdempotenciaPsicologia } from './compartido/idempotencia';
 import { UsuariasPsicologiaController } from './usuarias/usuarias-psicologia.controller';
 import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.service';
 
@@ -70,6 +73,9 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     AccesoPsicologiaService,
     CitasPsicologicasService,
     RegistroConsultaService,
+    SesionSinCitaService,
+    IdempotenciaPsicologia,
+    { provide: RELOJ, useClass: RelojSistema },
     IndicadoresPsicologiaService,
     BandejaPsicologiaService,
     AvisosPsicologiaListener,

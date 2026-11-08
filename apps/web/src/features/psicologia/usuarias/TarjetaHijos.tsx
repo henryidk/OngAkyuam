@@ -12,11 +12,11 @@ import Button from '../../../components/ui/Button'
 import { fechaDeInstante } from '../../../lib/formato'
 import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
 import { RUTAS_PSICOLOGIA } from '../rutas'
-import type { PersonaPorAbrir } from './contextoFicha'
 
 interface TarjetaHijosProps {
   hijos: HijoFichaPsicologiaDto[]
-  onAbrirProceso: (porAbrir: PersonaPorAbrir) => void
+  /** Abre el modal con este hijo/a ya marcado. */
+  onAbrirProceso: (ninoId: string) => void
   /** Proceso recién abierto: si es de un hijo/a, su "Ver proceso" toma el foco. */
   procesoRecienAbierto: string | null
 }
@@ -105,20 +105,7 @@ export default function TarjetaHijos({ hijos, onAbrirProceso, procesoRecienAbier
                     </p>
                   )}
                   {hijo.puedeAbrirProceso && (
-                    <Button
-                      variante="secondary"
-                      tamano="sm"
-                      onClick={() =>
-                        onAbrirProceso({
-                          persona: {
-                            ninoId: hijo.ninoId,
-                            nombreCompleto: hijo.nombreCompleto,
-                            edad: hijo.edad,
-                          },
-                          codigo: hijo.codigoProcesoNuevo,
-                        })
-                      }
-                    >
+                    <Button variante="secondary" tamano="sm" onClick={() => onAbrirProceso(hijo.ninoId)}>
                       Abrir proceso
                     </Button>
                   )}

@@ -2,6 +2,10 @@ import type {
   EstadoAtencionPsicologica,
   MotivoCierrePsicologia,
 } from '@akyuam/shared';
+import type {
+  ConsultaRegistrada,
+  RegistrarConsultaParams,
+} from './citas-psicologicas-repository.interface';
 
 export const PROCESOS_PSICOLOGIA_REPOSITORY = Symbol(
   'PROCESOS_PSICOLOGIA_REPOSITORY',
@@ -27,14 +31,40 @@ export interface LecturaProcesoPsicologia {
   propio: boolean;
 }
 
+/** Persona a la que se abre un proceso, con su cita de primera atención. */
+export interface PrimeraCitaPersona {
+  /** null = la usuaria. */
+  ninoId: string | null;
+  fechaHora: Date;
+  duracionMinutos: number;
+}
+
 export interface AbrirProcesoParams {
   procesoId: string;
   psicologaId: string;
   usuariaId: string;
-  fechaHora: Date;
-  duracionMinutos: number;
-  /** Persona del proceso que se abre (la de la primera cita); null = la usuaria. */
-  ninoId: string | null;
+  /**
+   * La primera ocupa el proceso del caso tomado; cada una de las demás recibe uno nuevo en el
+   * mismo expediente.
+   */
+  personas: PrimeraCitaPersona[];
+}
+
+/**
+ * "Atender ahora" en un caso tomado: se abre el proceso de una persona con su cita de primera
+ * atención (a la hora del servidor) y la sesión queda registrada en la misma transacción.
+ */
+export interface AbrirYRegistrarParams {
+  procesoId: string;
+  psicologaId: string;
+  usuariaId: string;
+  persona: PrimeraCitaPersona;
+  registro: Omit<RegistrarConsultaParams, 'citaId' | 'psicologaId' | 'ahora'>;
+}
+
+export interface ProcesoAbiertoYRegistrado {
+  abierto: ProcesoAbierto;
+  registrada: ConsultaRegistrada;
 }
 
 /** La usuaria tiene algún expediente referido a Psicología: toda el área puede ver su ficha. */
@@ -51,17 +81,15 @@ export type ExpedienteParaAbrir =
   { id: string; numero: string } | 'PERSONA_AJENA' | 'SIN_TOMAR';
 
 export interface AbrirProcesoNuevoParams {
-  expedienteId: string;
   usuariaId: string;
   psicologaId: string;
-  fechaHora: Date;
-  duracionMinutos: number;
-  /** Persona del proceso que se abre; null = la usuaria. */
-  ninoId: string | null;
+  /** Cada persona con el expediente (ya tomado) en el que se le abre el proceso. */
+  personas: (PrimeraCitaPersona & { expedienteId: string })[];
 }
 
 export interface ProcesoAbierto {
   procesoId: string;
+  ninoId: string | null;
   /** Consecutivo del proceso dentro de los de su persona. */
   consecutivo: number;
   /** Número del hijo/a dentro del expediente; null = el proceso es de la usuaria. */
@@ -135,19 +163,27 @@ export interface IProcesosPsicologiaRepository {
     expedienteId: string,
   ): Promise<boolean>;
   /**
-   * Abre el proceso de un caso tomado para la persona elegida: fija la persona y la fecha de
-   * inicio y crea la cita de primera atención, todo o nada. Revalida dentro de la transacción
-   * que el caso siga siendo de la psicóloga, que no tenga citas y que esa persona no tenga otro
+   * Abre el proceso de un caso tomado para las personas elegidas: la primera ocupa el del caso
+   * (fija la persona y la fecha de inicio) y las demás reciben uno nuevo en el mismo expediente;
+   * cada una con su cita de primera atención. Todo o nada. Revalida dentro de la transacción que
+   * el caso siga siendo de la psicóloga, que no tenga citas y que ninguna persona tenga otro
    * proceso abierto.
    */
-  abrir(params: AbrirProcesoParams): Promise<ProcesoAbierto>;
+  abrir(params: AbrirProcesoParams): Promise<ProcesoAbierto[]>;
   /**
-   * Abre desde la ficha el proceso de una persona en un expediente que el área ya tomó, junto
+   * Como `abrir` para una sola persona, y además registra la sesión de esa primera cita: todo
+   * o nada. Las mismas revalidaciones dentro de la transacción.
+   */
+  abrirYRegistrar(
+    params: AbrirYRegistrarParams,
+  ): Promise<ProcesoAbiertoYRegistrado>;
+  /**
+   * Abre desde la ficha el proceso de cada persona en un expediente que el área ya tomó, junto
    * con su cita de primera atención, todo o nada; quien lo abre queda como responsable.
-   * Revalida dentro de la transacción que el expediente siga tomado y que la persona no tenga
+   * Revalida dentro de la transacción que el expediente siga tomado y que ninguna persona tenga
    * nada abierto (ni, si es la usuaria, una referencia pendiente).
    */
-  abrirNuevo(params: AbrirProcesoNuevoParams): Promise<ProcesoAbierto>;
+  abrirNuevo(params: AbrirProcesoNuevoParams): Promise<ProcesoAbierto[]>;
   /**
    * Cierra el proceso y cancela sus citas programadas a futuro, todo o nada. `null` si la
    * versión ya no es la actual o el proceso ya estaba cerrado: no se escribió nada.

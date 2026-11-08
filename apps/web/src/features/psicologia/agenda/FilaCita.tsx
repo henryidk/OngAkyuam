@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import {
+  citaRegistrableEnAgenda,
   ETIQUETAS_ESTADO_CITA_PSICOLOGICA,
   ETIQUETAS_TIPO_CITA_PSICOLOGICA,
   minutosDelDiaGT,
@@ -30,8 +31,6 @@ const CLASE_SIN_REGISTRAR = 'bg-amber-50 text-amber-800'
 
 interface FilaCitaProps {
   cita: CitaAgendaDto
-  /** La cita cae en el día de hoy: solo entonces se puede registrar antes de que termine. */
-  esHoy: boolean
   /** Es la que está en curso o la siguiente: la única con botón principal. */
   principal: boolean
   /** La principal ya empezó ("Ahora") o todavía no ("Sigue"). */
@@ -41,10 +40,11 @@ interface FilaCitaProps {
 }
 
 /** Una cita en la lista del día: a quién, cuándo, en qué quedó y lo que toca hacer con ella. */
-export default function FilaCita({ cita, esHoy, principal, enCurso, onNoAsistio, onReprogramar }: FilaCitaProps) {
+export default function FilaCita({ cita, principal, enCurso, onNoAsistio, onReprogramar }: FilaCitaProps) {
   const inicioMin = minutosDelDiaGT(new Date(cita.fechaHora))
   const programada = cita.estado === 'PROGRAMADA'
-  const registrable = programada && (esHoy || cita.sinRegistrar)
+  // Regla compartida con Medicina: lo que ya empezó y lo de hoy que aún no empieza.
+  const registrable = citaRegistrableEnAgenda({ programada, inicio: cita.fechaHora }, new Date())
 
   let claseRegistrar = BOTON_FILA_BORDE
   if (cita.sinRegistrar) claseRegistrar = BOTON_FILA_AMBAR
@@ -71,9 +71,6 @@ export default function FilaCita({ cita, esHoy, principal, enCurso, onNoAsistio,
             <span className={`${CLASE_ESTADO} ${cita.sinRegistrar ? CLASE_SIN_REGISTRAR : CLASES_ESTADO[cita.estado]}`}>
               {cita.sinRegistrar ? 'Sin registrar' : ETIQUETAS_ESTADO_CITA_PSICOLOGICA[cita.estado]}
             </span>
-            {cita.borrador && programada && (
-              <span className={`${CLASE_ESTADO} bg-gray-100 text-gray-600`}>Borrador guardado</span>
-            )}
           </div>
           {cita.persona.ninoId !== null && (
             <p className="truncate text-[12.5px] text-brand-600">Hija/o de {cita.usuariaNombreCompleto}</p>
@@ -88,7 +85,7 @@ export default function FilaCita({ cita, esHoy, principal, enCurso, onNoAsistio,
       <div className="ml-auto flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1">
         {registrable && (
           <Link to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id, 'agenda')} className={claseRegistrar}>
-            {cita.borrador ? 'Continuar registro' : 'Registrar sesión'}
+            Registrar sesión
           </Link>
         )}
         {cita.sinRegistrar && (

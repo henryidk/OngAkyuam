@@ -167,6 +167,75 @@ describe('BandejaPsicologiaService', () => {
     });
   });
 
+  describe('obtenerPorAgendar', () => {
+    // Datos ficticios.
+    const caso = {
+      referidoId: REFERIDO_ID,
+      expedienteId: EXPEDIENTE_ID,
+      expedienteNumero: '05-2026',
+      usuariaId: 'usuaria-ficticia',
+      usuariaNombreCompleto: 'Usuaria Ficticia',
+      tomadaEn: '2026-11-01T15:00:00.000Z',
+      personas: [],
+    };
+
+    beforeEach(() => {
+      bandejaRepository.buscarReferencia
+        .mockReset()
+        .mockResolvedValue(referencia());
+      bandejaRepository.buscarPorAgendar.mockReset().mockResolvedValue(caso);
+    });
+
+    it('devuelve el caso tomado, buscado con la psicóloga autenticada', async () => {
+      await expect(
+        service.obtenerPorAgendar(REFERIDO_ID, 'psicologa-a'),
+      ).resolves.toEqual(caso);
+      expect(bandejaRepository.buscarPorAgendar).toHaveBeenCalledWith(
+        'psicologa-a',
+        REFERIDO_ID,
+      );
+    });
+
+    it.each([
+      ['inexistente', null],
+      [
+        'de otra psicóloga',
+        referencia({ situacion: 'NO_DISPONIBLE', procesoId: null }),
+      ],
+    ])(
+      'rechaza con 403 un caso %s, sin consultar nada',
+      async (_, encontrada) => {
+        bandejaRepository.buscarReferencia
+          .mockReset()
+          .mockResolvedValue(encontrada);
+
+        await expect(
+          service.obtenerPorAgendar(REFERIDO_ID, 'psicologa-a'),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(bandejaRepository.buscarPorAgendar).not.toHaveBeenCalled();
+      },
+    );
+
+    it('exige tomar el caso antes (409)', async () => {
+      bandejaRepository.buscarReferencia
+        .mockReset()
+        .mockResolvedValue(sinTomar);
+
+      await expect(
+        service.obtenerPorAgendar(REFERIDO_ID, 'psicologa-a'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(bandejaRepository.buscarPorAgendar).not.toHaveBeenCalled();
+    });
+
+    it('avisa con 409 si el caso ya tiene su primera cita', async () => {
+      bandejaRepository.buscarPorAgendar.mockResolvedValue(null);
+
+      await expect(
+        service.obtenerPorAgendar(REFERIDO_ID, 'psicologa-a'),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
   describe('tomarPorReasignar', () => {
     const reasignado = {
       procesoId: PROCESO_ID,

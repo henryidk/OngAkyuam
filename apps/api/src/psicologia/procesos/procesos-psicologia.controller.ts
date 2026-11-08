@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Header,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -17,12 +18,14 @@ import {
   cerrarProcesoPsicologiaSchema,
   listarProcesosPsicologiaQuerySchema,
   sesionesProcesoPsicologiaQuerySchema,
+  sesionSinCitaSchema,
   visibilidadProcesoPsicologiaSchema,
 } from '@akyuam/shared';
 import type {
   CerrarProcesoPsicologiaInput,
   ListarProcesosPsicologiaQuery,
   SesionesProcesoPsicologiaQuery,
+  SesionSinCitaInput,
   VisibilidadProcesoPsicologiaInput,
 } from '@akyuam/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
@@ -33,6 +36,7 @@ import { ContextoAuditoria } from '../../common/decorators/contexto-auditoria.de
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { ContextoAuditoria as IContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { LimitePorUsuarioGuard } from '../../juridico/compartido/limite-por-usuario.guard';
+import { SesionSinCitaService } from '../services/sesion-sin-cita.service';
 import { CierreProcesoService } from './cierre-proceso.service';
 import { ConsultasProcesosService } from './consultas-procesos.service';
 import { ProcesosPsicologiaService } from './procesos.service';
@@ -45,6 +49,7 @@ export class ProcesosPsicologiaController {
     private readonly cierreService: CierreProcesoService,
     private readonly procesosService: ProcesosPsicologiaService,
     private readonly consultasService: ConsultasProcesosService,
+    private readonly sesionSinCitaService: SesionSinCitaService,
   ) {}
 
   /**
@@ -86,6 +91,28 @@ export class ProcesosPsicologiaController {
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
     return this.consultasService.sesiones(procesoId, query, contexto);
+  }
+
+  /**
+   * Sesión con alguien que llegó sin cita: la cita nace con este primer guardado, con la fecha y
+   * la hora del servidor. Los guardados siguientes van por `PUT /psicologia/citas/:id/registro`.
+   */
+  @Post(':id/sesiones-sin-cita')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  registrarSesionSinCita(
+    @Param('id', ParseUUIDPipe) procesoId: string,
+    @Body(new ZodValidationPipe(sesionSinCitaSchema))
+    datos: SesionSinCitaInput,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+    @Headers('idempotency-key') claveIdempotencia?: string,
+  ) {
+    return this.sesionSinCitaService.registrar(
+      procesoId,
+      datos,
+      contexto,
+      claveIdempotencia,
+    );
   }
 
   @Post(':id/cierre')

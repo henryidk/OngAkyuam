@@ -22,20 +22,25 @@ const CITA = {
   clinica: 'CLINICA_1',
   enfoqueTerapeutico: null,
   atencionBrindada: null,
-  borrador: false,
   reprogramadaDesdeId: null,
   atendidoPor: { nombreCompleto: 'Psicóloga A' },
   documentos: [],
 };
+
+const AHORA = new Date('2026-11-08T16:20:00.000Z');
+const AYER = new Date('2026-11-07T16:00:00.000Z');
+const PASADO_MANANA = new Date('2026-11-10T15:00:00.000Z');
 
 function crearTx() {
   return {
     // Bloqueo `FOR UPDATE` del proceso abierto: devuelve la fila si cumple las condiciones.
     $queryRaw: jest.fn().mockResolvedValue([{ id: 'proceso-1' }]),
     citaPsicologica: {
-      findUnique: jest
-        .fn()
-        .mockResolvedValue({ atencionId: 'proceso-1', ninoId: 'nino-1' }),
+      findUnique: jest.fn().mockResolvedValue({
+        atencionId: 'proceso-1',
+        ninoId: 'nino-1',
+        fechaHora: AYER,
+      }),
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       create: jest.fn().mockResolvedValue({ id: 'cita-2' }),
       findUniqueOrThrow: jest.fn().mockResolvedValue(CITA),
@@ -64,8 +69,8 @@ function params(
     clinica: 'CLINICA_1',
     enfoqueTerapeutico: null,
     atencionBrindada: null,
-    borrador: false,
     proximaCita: null,
+    ahora: AHORA,
     ...cambios,
   };
 }
@@ -104,6 +109,46 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
     expect(bloqueo.values).toEqual(['proceso-1']);
     expect(tx.citaPsicologica.updateMany).not.toHaveBeenCalled();
     expect(tx.citaPsicologica.create).not.toHaveBeenCalled();
+  });
+
+  describe('la persona llegó antes de la fecha agendada', () => {
+    beforeEach(() => {
+      tx.citaPsicologica.findUnique.mockResolvedValue({
+        atencionId: 'proceso-1',
+        ninoId: 'nino-1',
+        fechaHora: PASADO_MANANA,
+      });
+    });
+
+    it('la cita atendida queda con la fecha y la hora reales', async () => {
+      await repository.registrarConsulta(params());
+
+      expect(tx.citaPsicologica.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ fechaHora: AHORA }) as unknown,
+        }),
+      );
+    });
+
+    it('una cancelación no mueve la fecha de la cita', async () => {
+      await repository.registrarConsulta(params({ estado: 'CANCELADA' }));
+
+      expect(tx.citaPsicologica.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ fechaHora: undefined }) as unknown,
+        }),
+      );
+    });
+  });
+
+  it('una cita atendida en su fecha o después conserva su fecha', async () => {
+    await repository.registrarConsulta(params());
+
+    expect(tx.citaPsicologica.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ fechaHora: undefined }) as unknown,
+      }),
+    );
   });
 
   it('registrar no exige ser la responsable: solo haber atendido la cita', async () => {
@@ -206,12 +251,10 @@ describe('CitasPsicologicasRepository.registrarConsulta', () => {
     expect(tx.cambioEstadoAtencion.create).not.toHaveBeenCalled();
   });
 
-  it.each(['NO_ASISTIO', 'CANCELADA', undefined] as const)(
+  it.each(['NO_ASISTIO', 'CANCELADA'] as const)(
     'con resultado %s la etapa no cambia',
     async (estado) => {
-      const resultado = await repository.registrarConsulta(
-        params({ estado, borrador: estado === undefined }),
-      );
+      const resultado = await repository.registrarConsulta(params({ estado }));
 
       expect(resultado?.pasoASeguimiento).toBe(false);
       expect(tx.atencionPsicologica.updateMany).not.toHaveBeenCalled();
@@ -326,4 +369,58 @@ describe('CitasPsicologicasRepository.listarCitasEnRango', () => {
       await expect(tipologiasCon(permiso)).resolves.toEqual([]);
     },
   );
+});
+
+describe('CitasPsicologicasRepository.registrarSesionSinCita', () => {
+  let tx: ReturnType<typeof crearTx>;
+  let repository: CitasPsicologicasRepository;
+
+  beforeEach(() => {
+    tx = crearTx();
+    const prisma = {
+      $transaction: jest.fn((trabajo: (cliente: typeof tx) => unknown) =>
+        trabajo(tx),
+      ),
+    } as unknown as PrismaService;
+    repository = new CitasPsicologicasRepository(prisma);
+  });
+
+  function sinCita() {
+    const resto: Partial<RegistrarConsultaParams> = params();
+    delete resto.citaId;
+    delete resto.ahora;
+    return {
+      ...(resto as Omit<RegistrarConsultaParams, 'citaId' | 'ahora'>),
+      procesoId: 'proceso-1',
+      fechaHora: AHORA,
+      duracionMinutos: 45,
+    };
+  }
+
+  it.each([
+    ['INICIO', 'PRIMERA_ATENCION'],
+    ['SEGUIMIENTO', 'SEGUIMIENTO'],
+  ] as const)(
+    'en un proceso en %s la sesión queda como %s',
+    async (estado, tipo) => {
+      tx.$queryRaw.mockResolvedValue([{ ninoId: null, estado }]);
+
+      await repository.registrarSesionSinCita(sinCita());
+
+      expect(tx.citaPsicologica.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ tipo, fechaHora: AHORA }) as unknown,
+        }),
+      );
+    },
+  );
+
+  it('sin ser la responsable del proceso abierto no crea nada', async () => {
+    tx.$queryRaw.mockResolvedValue([]);
+
+    await expect(
+      repository.registrarSesionSinCita(sinCita()),
+    ).resolves.toBeNull();
+    expect(tx.citaPsicologica.create).not.toHaveBeenCalled();
+  });
 });

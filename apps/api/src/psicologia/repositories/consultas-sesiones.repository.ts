@@ -100,7 +100,6 @@ export class ConsultasSesionesRepository implements IConsultasSesionesRepository
         ...SELECT_ENCABEZADO,
         duracionMinutos: true,
         tipo: true,
-        borrador: true,
       },
       orderBy: [{ fechaHora: 'asc' }, { id: 'asc' }],
       take: MAX_SESIONES_POR_REGISTRAR_PSICOLOGIA,
@@ -109,7 +108,6 @@ export class ConsultasSesionesRepository implements IConsultasSesionesRepository
       ...encabezado(cita),
       duracionMinutos: cita.duracionMinutos,
       tipo: cita.tipo,
-      borrador: cita.borrador,
     }));
   }
 

@@ -70,6 +70,37 @@ export const agendarCitaPsicologicaSchema = z.object({
 })
 export type AgendarCitaPsicologicaInput = z.infer<typeof agendarCitaPsicologicaSchema>
 
+/** Cuántas personas de un expediente se pueden abrir de una vez (la usuaria y sus hijos/as). */
+export const PERSONAS_POR_APERTURA_MAX = 15
+
+/** La primera cita de una persona al abrir su proceso: cada una con su propio día y hora. */
+export const primeraCitaPersonaSchema = z.object({
+  /** null = la usuaria. */
+  ninoId: z.uuid().nullable(),
+  fechaHora: fechaHoraLocalSchema,
+  duracionMinutos: duracionCitaPsicologicaSchema.default(DURACION_CITA_PSICOLOGICA_POR_DEFECTO),
+})
+export type PrimeraCitaPersonaInput = z.infer<typeof primeraCitaPersonaSchema>
+
+/**
+ * Abrir el proceso de una o varias personas del expediente a la vez (atender una referencia o
+ * abrir desde la ficha): cada persona recibe su propio proceso, con el mismo expediente y su
+ * correlativo, y su primera cita. Todo o nada.
+ */
+export const abrirProcesosPsicologiaSchema = z.object({
+  personas: z
+    .array(primeraCitaPersonaSchema)
+    .min(1, 'Elige al menos a una persona')
+    .max(PERSONAS_POR_APERTURA_MAX)
+    .refine(
+      (personas) => new Set(personas.map((persona) => persona.ninoId ?? 'usuaria')).size === personas.length,
+      'Una persona aparece dos veces',
+    ),
+  /** true solo en el reintento tras que la psicóloga confirmó el aviso de traslape. */
+  confirmarTraslape: z.boolean().default(false),
+})
+export type AbrirProcesosPsicologiaInput = z.infer<typeof abrirProcesosPsicologiaSchema>
+
 /**
  * `POST /psicologia/citas/:citaId/reprogramacion` — mueve una cita a otra fecha. La persona
  * atendida no se elige: es la misma de la cita que se mueve.
@@ -131,7 +162,7 @@ export type SiguientePasoSesion = z.infer<typeof siguientePasoSesionSchema>
 
 /**
  * `PUT /psicologia/citas/:id/registro` — registro clínico de la consulta (§5.4, §7.3 del
- * plan). `borrador: true` permite guardar sin finalizar; los campos de texto son libres
+ * plan). Se guarda de una vez al terminar: no hay borradores. Los campos de texto son libres
  * opcionales ("" = sin dato, mismo criterio que el resto del sistema).
  */
 export const registroConsultaSchema = z
@@ -154,38 +185,73 @@ export const registroConsultaSchema = z
       .string()
       .trim()
       .max(ATENCION_BRINDADA_MAX, `Máximo ${ATENCION_BRINDADA_MAX} caracteres`),
-    borrador: z.boolean().default(false),
     /** "¿Qué sigue?" — ausente equivale a `NINGUNA` (los formularios anteriores al rediseño no lo envían). */
     siguiente: siguientePasoSesionSchema.optional(),
   })
   // Un registro terminado dice en qué quedó la cita; "programada" o "reprogramada" no son resultados.
   .refine(
     (datos) =>
-      datos.borrador || (RESULTADOS_SESION_PSICOLOGICA as readonly string[]).includes(datos.estado),
+      (RESULTADOS_SESION_PSICOLOGICA as readonly string[]).includes(datos.estado),
     { message: 'Elija el resultado de la sesión', path: ['estado'] },
   )
   .refine(
     (datos) =>
-      datos.borrador || datos.estado === 'ATENDIDA' || datos.motivoNoAsistencia.trim().length > 0,
+      datos.estado === 'ATENDIDA' || datos.motivoNoAsistencia.trim().length > 0,
     {
       message: 'El motivo es requerido cuando la cita no fue atendida',
       path: ['motivoNoAsistencia'],
     },
   )
   .refine(
-    (datos) => datos.borrador || datos.estado !== 'ATENDIDA' || datos.atencionBrindada.length > 0,
+    (datos) => datos.estado !== 'ATENDIDA' || datos.atencionBrindada.length > 0,
     { message: 'Escribe la atención brindada en la sesión.', path: ['atencionBrindada'] },
   )
-  .refine((datos) => datos.borrador || datos.estado !== 'ATENDIDA' || datos.diagnostico.length > 0, {
+  .refine((datos) => datos.estado !== 'ATENDIDA' || datos.diagnostico.length > 0, {
     message: 'Escribe el diagnóstico de la sesión.',
     path: ['diagnostico'],
   })
-  // Un borrador puede quedar sin clínica; una sesión atendida ya registrada, no.
-  .refine((datos) => datos.borrador || datos.estado !== 'ATENDIDA' || datos.clinica !== null, {
+  .refine((datos) => datos.estado !== 'ATENDIDA' || datos.clinica !== null, {
     message: 'Elige la clínica donde se atendió la sesión.',
     path: ['clinica'],
   })
 export type RegistroConsultaInput = z.infer<typeof registroConsultaSchema>
+
+/**
+ * `POST /psicologia/procesos/:procesoId/sesiones-sin-cita`: la persona llegó sin cita y se
+ * atendió. La cita nace al registrar la sesión, no al abrir el formulario: si se abandona no
+ * queda ninguna sesión fantasma. La fecha y la hora las pone
+ * el servidor ("ahora"), nunca el navegador. Solo puede quedar atendida: una inasistencia o una
+ * cancelación no existen sin cita.
+ */
+export const sesionSinCitaSchema = z
+  .object({
+    duracionMinutos: duracionCitaPsicologicaSchema,
+    registro: registroConsultaSchema,
+  })
+  .refine((datos) => datos.registro.estado === 'ATENDIDA', {
+    message: 'Una sesión sin cita solo puede quedar atendida',
+    path: ['registro', 'estado'],
+  })
+export type SesionSinCitaInput = z.infer<typeof sesionSinCitaSchema>
+
+/**
+ * `POST /psicologia/bandeja/:referidoId/atender-ahora`: la persona de un caso ya tomado llegó y
+ * se atendió sin primera cita agendada. Al registrar la sesión se abre su proceso, nace la cita
+ * (primera atención, con la hora del servidor) y queda registrada, todo junto: abrir el
+ * formulario y salir no abre nada. Se atiende a una persona por vez; las demás se abren después.
+ */
+export const atenderAhoraSchema = z
+  .object({
+    /** null = la usuaria. */
+    ninoId: z.uuid().nullable(),
+    duracionMinutos: duracionCitaPsicologicaSchema,
+    registro: registroConsultaSchema,
+  })
+  .refine((datos) => datos.registro.estado === 'ATENDIDA', {
+    message: 'Una sesión sin cita solo puede quedar atendida',
+    path: ['registro', 'estado'],
+  })
+export type AtenderAhoraInput = z.infer<typeof atenderAhoraSchema>
 
 /** Rango de fechas de calendario (ambos extremos incluidos) — query de `GET /psicologia/agenda/citas`. */
 export const rangoFechasQuerySchema = z.object({
@@ -397,7 +463,6 @@ export interface CitaResumen {
   clinica: ClinicaPsicologia | null
   enfoqueTerapeutico: string | null
   atencionBrindada: string | null
-  borrador: boolean
   reprogramadaDesdeId: string | null
   atendidoPor: string
   documento: DocumentoCitaDto | null
@@ -600,8 +665,6 @@ export interface CitaAgendaDto {
   estado: EstadoCitaPsicologica
   /** Derivado, no se guarda: sigue `PROGRAMADA` y ya terminó su horario. */
   sinRegistrar: boolean
-  /** Tiene un registro de sesión guardado como borrador. */
-  borrador: boolean
 }
 
 /** Tramo libre de un día, en minutos desde la medianoche de Guatemala. */
@@ -767,8 +830,6 @@ export interface SesionPorRegistrarDto {
   fechaHora: string
   duracionMinutos: number
   tipo: TipoCitaPsicologica
-  /** Ya tiene un borrador guardado: "Registrar" retoma lo escrito. */
-  borrador: boolean
 }
 
 /** Fila del historial: solo metadatos. Las notas clínicas se piden al abrirla (y la apertura se audita). */
@@ -805,12 +866,18 @@ export interface CasoPsicologiaTomadoDto {
   procesoId: string
 }
 
-/** Respuesta de las dos aperturas de proceso (atender una referencia, abrir desde la ficha). */
+/** Un proceso recién abierto, con la cita de primera atención que se creó junto con él. */
 export interface ProcesoPsicologiaAbiertoDto {
   procesoId: string
   codigo: string
-  /** La cita de primera atención que se creó junto con el proceso. */
+  /** null = el proceso es de la usuaria. */
+  ninoId: string | null
   citaId: string
+}
+
+/** Respuesta de las dos aperturas (atender una referencia, abrir desde la ficha): uno por persona. */
+export interface ProcesosPsicologiaAbiertosDto {
+  procesos: ProcesoPsicologiaAbiertoDto[]
 }
 
 /** Respuesta de `POST /psicologia/procesos/:id/cierre`. */

@@ -13,11 +13,11 @@ import {
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import {
-  agendarCitaPsicologicaSchema,
+  abrirProcesosPsicologiaSchema,
   listarUsuariasPsicologiaQuerySchema,
 } from '@akyuam/shared';
 import type {
-  AgendarCitaPsicologicaInput,
+  AbrirProcesosPsicologiaInput,
   ListarUsuariasPsicologiaQuery,
 } from '@akyuam/shared';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -68,8 +68,8 @@ export class UsuariasPsicologiaController {
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   abrirProceso(
     @Param('usuariaId', ParseUUIDPipe) usuariaId: string,
-    @Body(new ZodValidationPipe(agendarCitaPsicologicaSchema))
-    datos: AgendarCitaPsicologicaInput,
+    @Body(new ZodValidationPipe(abrirProcesosPsicologiaSchema))
+    datos: AbrirProcesosPsicologiaInput,
     @ContextoAuditoria() contexto: IContextoAuditoria,
     @Headers('idempotency-key') claveIdempotencia?: string,
   ) {

@@ -55,7 +55,6 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         duracionMinutos: true,
         tipo: true,
         estado: true,
-        borrador: true,
         nino: { select: { id: true, ...SELECT_HIJO } },
         atencion: {
           select: {
@@ -92,7 +91,6 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         // En un proceso cerrado ya no se registra nada: no se pide lo que no se puede hacer.
         sinRegistrar:
           !estaCerrado(atencion.estado) && citaSinRegistrar(cita, params.ahora),
-        borrador: cita.borrador,
       };
     });
   }
@@ -115,7 +113,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         fechaHora: { lte: ahora },
         atencion: { estado: { not: 'CIERRE' } },
       },
-      data: { estado: 'NO_ASISTIO', borrador: false },
+      data: { estado: 'NO_ASISTIO' },
     });
     return marcadas.count === 1;
   }

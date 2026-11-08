@@ -6,7 +6,6 @@ import {
   formatFechaGT,
   formatInstanteGT,
   hoyGT,
-  minutosDelDiaGT,
   type CitaRefDto,
   type ProcesoPsicologiaDetalle,
 } from '@akyuam/shared'
@@ -29,7 +28,7 @@ import ModalProgramarCita, { type DestinoCita } from '../citas/ModalProgramarCit
 import BarraEtapa from '../compartido/BarraEtapa'
 import { useContextoPsicologia } from '../compartido/contexto'
 import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
-import { horaDeInstante, horaDeMinutos } from '../compartido/horas'
+import { horaDeInstante } from '../compartido/horas'
 import { usePaginasCursor } from '../compartido/usePaginasCursor'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import type { ContextoDetalle, PropsModalProceso } from './contextoDetalle'
@@ -206,18 +205,9 @@ export default function DetalleProceso() {
     }, 'Este proceso ya no admite citas nuevas.')
   }
 
-  // Una sesión que ocurrió sin cita previa: se anota cuándo fue y se pasa directo a registrarla.
+  // Una sesión que ocurre sin cita previa: se registra con la fecha y hora del momento.
   function abrirSinCita() {
-    void preparar(async () => {
-      const mio = (await listarProcesosParaAgendar()).find((uno) => uno.procesoId === proceso!.id)
-      return mio
-        ? {
-            destino: { tipo: 'PROCESO', procesos: [mio], procesoId: mio.procesoId, sinCita: true },
-            fechaInicial: hoy,
-            horaInicial: horaDeMinutos(minutosDelDiaGT(new Date())),
-          }
-        : null
-    }, 'Este proceso ya no admite sesiones nuevas.')
+    navigate(RUTAS_PSICOLOGIA.sesionSinCita(proceso!.id, 'proceso'))
   }
 
   function abrirReprogramar() {
@@ -341,12 +331,13 @@ export default function DetalleProceso() {
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {diaProxima === hoy && acciones.includes('REGISTRAR_SESION') && (
+            {/* Si la persona vino antes de la fecha, se registra esta misma cita (queda con la de hoy). */}
+            {acciones.includes('REGISTRAR_SESION') && (
               <Link
                 to={RUTAS_PSICOLOGIA.registrarConsulta(proxima.id, 'proceso')}
                 className={`${CLASE_BOTON_OSCURO} bg-white text-gray-900 hover:bg-gray-100`}
               >
-                Registrar sesión
+                {diaProxima === hoy ? 'Registrar sesión' : 'Vino antes · registrar'}
               </Link>
             )}
             <button
@@ -406,11 +397,7 @@ export default function DetalleProceso() {
           fechaInicial={cita.fechaInicial}
           horaInicial={cita.horaInicial}
           onCerrar={() => setCita(null)}
-          onGuardada={(_fecha, mensaje, citaId) => {
-            if (cita.destino.tipo === 'PROCESO' && cita.destino.sinCita) {
-              navigate(RUTAS_PSICOLOGIA.registrarConsulta(citaId, 'proceso'))
-              return
-            }
+          onGuardada={(_fecha, mensaje) => {
             setCita(null)
             mostrar(mensaje)
             refrescar()

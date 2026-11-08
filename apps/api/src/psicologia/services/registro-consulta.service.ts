@@ -8,7 +8,6 @@ import {
 } from '@nestjs/common';
 import {
   mimeTypePermitido,
-  parseLocalGT,
   type ConsultaRegistradaDto,
   type DocumentoCitaDto,
   type RegistroConsultaInput,
@@ -18,6 +17,7 @@ import {
   validarArchivo,
   type MotivoArchivoInvalido,
 } from '../../common/archivos/validador-archivo';
+import { RELOJ, type IReloj } from '../../common/reloj';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { OBJECT_STORAGE } from '../../storage/interfaces/object-storage.interface';
 import type { IObjectStorage } from '../../storage/interfaces/object-storage.interface';
@@ -29,6 +29,10 @@ import {
   MENSAJE_SESION_NO_REGISTRABLE,
   MENSAJE_SOLO_RESPONSABLE_PROGRAMA,
 } from '../compartido/mensajes';
+import {
+  camposDelRegistro,
+  proximaCitaDelRegistro,
+} from '../compartido/registro-sesion';
 import { avisarTraslape } from '../compartido/traslape';
 import { AccesoPsicologiaService } from './acceso-psicologia.service';
 
@@ -38,11 +42,6 @@ const MENSAJES_ARCHIVO: Record<MotivoArchivoInvalido, string> = {
   TIPO_NO_PERMITIDO: 'Tipo de archivo no permitido. Solo PDF o imágenes',
   CONTENIDO_NO_COINCIDE: 'El contenido del archivo no corresponde a su tipo',
 };
-
-/** "" (campo opcional sin llenar) -> null para la base de datos, mismo criterio que juridico.service.ts. */
-function vacioANulo(valor: string): string | null {
-  return valor === '' ? null : valor;
-}
 
 @Injectable()
 export class RegistroConsultaService {
@@ -55,12 +54,14 @@ export class RegistroConsultaService {
     @Inject(OBJECT_STORAGE)
     private readonly objectStorage: IObjectStorage,
     private readonly auditService: AuditService,
+    @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
   /**
    * Registro de la sesión. Al finalizar hace, todo o nada, lo que se deriva de él: la primera
    * sesión atendida pasa el proceso a Seguimiento y "¿Qué sigue?" puede dejar programada la
-   * próxima cita. `borrador: true` solo guarda el avance: ni cambia la cita ni programa nada.
+   * próxima cita. Si la persona llegó antes de la fecha agendada, la cita atendida queda con la
+   * fecha y la hora reales.
    * Cerrar el proceso nunca ocurre aquí: es una acción aparte que la psicóloga confirma.
    */
   async registrarConsulta(
@@ -73,42 +74,28 @@ export class RegistroConsultaService {
       contexto.usuarioId,
     );
 
-    const siguiente = datos.borrador ? undefined : datos.siguiente;
-    let proximaCita: { fechaHora: Date; duracionMinutos: number } | null = null;
-    if (siguiente?.tipo === 'PROGRAMAR') {
+    const siguiente = proximaCitaDelRegistro(datos);
+    const proximaCita = siguiente?.cita ?? null;
+    if (siguiente) {
       // Registrar es de quien atendió; agendar en el proceso, solo de su responsable.
       await this.acceso.exigirAccesoCita(
         citaId,
         contexto.usuarioId,
         MENSAJE_SOLO_RESPONSABLE_PROGRAMA,
       );
-      proximaCita = {
-        fechaHora: parseLocalGT(siguiente.fechaHora),
-        duracionMinutos: siguiente.duracionMinutos,
-      };
       await avisarTraslape(this.citasRepository, {
-        ...proximaCita,
+        ...siguiente.cita,
         psicologaId: contexto.usuarioId,
-        confirmarTraslape: siguiente.confirmarTraslape ?? false,
+        confirmarTraslape: siguiente.confirmarTraslape,
       });
     }
 
     const registrada = await this.citasRepository.registrarConsulta({
+      ...camposDelRegistro(datos),
       citaId,
       psicologaId: contexto.usuarioId,
-      estado: datos.borrador ? undefined : datos.estado,
-      temas: vacioANulo(datos.temas),
-      intervencion: vacioANulo(datos.intervencion),
-      diagnostico: vacioANulo(datos.diagnostico),
-      acuerdos: vacioANulo(datos.acuerdos),
-      observaciones: vacioANulo(datos.observaciones),
-      motivoNoAsistencia: vacioANulo(datos.motivoNoAsistencia),
-      // La clínica es de la sesión que ocurrió: con inasistencia o cancelación no aplica.
-      clinica: datos.estado === 'ATENDIDA' ? datos.clinica : null,
-      enfoqueTerapeutico: vacioANulo(datos.enfoqueTerapeutico),
-      atencionBrindada: vacioANulo(datos.atencionBrindada),
-      borrador: datos.borrador,
       proximaCita,
+      ahora: this.reloj.ahora(),
     });
     if (!registrada) {
       throw new ConflictException(MENSAJE_SESION_NO_REGISTRABLE);
@@ -125,7 +112,6 @@ export class RegistroConsultaService {
       ipAddress: contexto.ipAddress,
       userAgent: contexto.userAgent,
       detalles: {
-        borrador: datos.borrador,
         expedienteId: acceso.expedienteId,
         procesoId: acceso.atencionId,
         pasoASeguimiento: registrada.pasoASeguimiento,

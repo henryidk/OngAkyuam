@@ -25,7 +25,6 @@ function cita(parcial: Partial<CitaAgendaDto>): CitaAgendaDto {
     tipo: 'SEGUIMIENTO',
     estado: 'PROGRAMADA',
     sinRegistrar: false,
-    borrador: false,
     ...parcial,
   }
 }

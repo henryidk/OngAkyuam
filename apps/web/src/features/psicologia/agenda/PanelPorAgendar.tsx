@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { CasoPorAgendarDto } from '@akyuam/shared'
+import MenuAcciones from '../../../components/ui/MenuAcciones'
 import { fechaDeInstante } from '../../../lib/formato'
 import { BOTON_COLA_RELLENO } from './estilos'
 import TarjetaCola, { FilaCola } from './TarjetaCola'
@@ -13,10 +14,12 @@ interface PanelPorAgendarProps {
   /** Caso recién tomado en el Área de atención: se resalta para que no haya que buscarlo. */
   resaltadoId: string | null
   onAgendar: (caso: CasoPorAgendarDto) => void
+  /** La persona está aquí: se registra la sesión sin agendar y con ella se abre el proceso. */
+  onAtenderAhora: (caso: CasoPorAgendarDto) => void
 }
 
 /** Casos que la psicóloga ya tomó y siguen sin primera cita: mientras estén aquí, no hay proceso. */
-export default function PanelPorAgendar({ casos, error, resaltadoId, onAgendar }: PanelPorAgendarProps) {
+export default function PanelPorAgendar({ casos, error, resaltadoId, onAgendar, onAtenderAhora }: PanelPorAgendarProps) {
   const filaResaltada = useRef<HTMLDivElement>(null)
   const hayResaltado = casos?.some((caso) => caso.referidoId === resaltadoId) ?? false
 
@@ -51,6 +54,17 @@ export default function PanelPorAgendar({ casos, error, resaltadoId, onAgendar }
           <button type="button" onClick={() => onAgendar(caso)} className={BOTON_COLA_RELLENO}>
             Agendar primera cita
           </button>
+          <MenuAcciones
+            etiqueta={`Más acciones para ${caso.usuariaNombreCompleto}`}
+            opciones={[
+              {
+                clave: 'atender-ahora',
+                etiqueta: 'Atender ahora',
+                detalle: 'La persona está aquí: registras la sesión sin agendar.',
+                onElegir: () => onAtenderAhora(caso),
+              },
+            ]}
+          />
         </FilaCola>
       ))}
     </TarjetaCola>

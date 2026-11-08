@@ -9,8 +9,14 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { agendarCitaPsicologicaSchema } from '@akyuam/shared';
-import type { AgendarCitaPsicologicaInput } from '@akyuam/shared';
+import {
+  abrirProcesosPsicologiaSchema,
+  atenderAhoraSchema,
+} from '@akyuam/shared';
+import type {
+  AbrirProcesosPsicologiaInput,
+  AtenderAhoraInput,
+} from '@akyuam/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { RolesGuard } from '../../auth/guards/roles.guard';
@@ -56,6 +62,15 @@ export class BandejaPsicologiaController {
     return this.bandejaService.listarPorAgendar(usuario.id);
   }
 
+  /** Un caso tomado por agendar, para "Atender ahora" (a quién se puede atender). */
+  @Get('agenda/por-agendar/:referidoId')
+  obtenerPorAgendar(
+    @Param('referidoId', ParseUUIDPipe) referidoId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.bandejaService.obtenerPorAgendar(referidoId, usuario.id);
+  }
+
   /** Vista previa del expediente antes de tomar el caso: sin agresor, dirección ni teléfono. */
   @Get('bandeja/:referidoId/previa')
   obtenerPreviaToma(
@@ -80,12 +95,31 @@ export class BandejaPsicologiaController {
   @Throttle({ default: { limit: 20, ttl: 60_000 } })
   atender(
     @Param('referidoId', ParseUUIDPipe) referidoId: string,
-    @Body(new ZodValidationPipe(agendarCitaPsicologicaSchema))
-    datos: AgendarCitaPsicologicaInput,
+    @Body(new ZodValidationPipe(abrirProcesosPsicologiaSchema))
+    datos: AbrirProcesosPsicologiaInput,
     @ContextoAuditoria() contexto: IContextoAuditoria,
     @Headers('idempotency-key') claveIdempotencia?: string,
   ) {
     return this.aperturaService.atender(
+      referidoId,
+      datos,
+      contexto,
+      claveIdempotencia,
+    );
+  }
+
+  /** La persona llegó sin primera cita: se abre su proceso y se registra la sesión, todo junto. */
+  @Post('bandeja/:referidoId/atender-ahora')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 20, ttl: 60_000 } })
+  atenderAhora(
+    @Param('referidoId', ParseUUIDPipe) referidoId: string,
+    @Body(new ZodValidationPipe(atenderAhoraSchema))
+    datos: AtenderAhoraInput,
+    @ContextoAuditoria() contexto: IContextoAuditoria,
+    @Headers('idempotency-key') claveIdempotencia?: string,
+  ) {
+    return this.aperturaService.atenderAhora(
       referidoId,
       datos,
       contexto,

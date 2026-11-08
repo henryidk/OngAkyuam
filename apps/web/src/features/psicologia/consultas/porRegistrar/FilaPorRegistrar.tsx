@@ -37,21 +37,15 @@ export default function FilaPorRegistrar({ sesion, atraso, onNoAsistio }: FilaPo
               </span>
             </>
           )}
-          {sesion.borrador && (
-            <>
-              <span aria-hidden="true">·</span>
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-700">Borrador guardado</span>
-            </>
-          )}
         </p>
       </div>
       <div className="flex flex-none items-center gap-2">
         <Link
           to={RUTAS_PSICOLOGIA.registrarConsulta(sesion.citaId, 'consultas')}
-          aria-label={`${sesion.borrador ? 'Continuar registro' : 'Registrar sesión'} de ${persona.nombreCompleto}`}
+          aria-label={`Registrar sesión de ${persona.nombreCompleto}`}
           className={BOTON_FILA_RELLENO}
         >
-          {sesion.borrador ? 'Continuar' : 'Registrar'}
+          Registrar
         </Link>
         <button
           type="button"

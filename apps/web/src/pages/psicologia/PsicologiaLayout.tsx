@@ -12,7 +12,7 @@ import { crearSocketArea } from '../../lib/socket'
 // la tuvieran, se resaltarían ambas. `origen` (de RUTAS_PSICOLOGIA.registrarConsulta) resalta en
 // cambio Consultas o Procesos cuando el registro se abrió desde ahí.
 const ITEMS_NAV: ItemNav[] = [
-  { ruta: RUTAS_PSICOLOGIA.atencion(), etiqueta: 'Área de atención', fin: false, Icono: Inbox },
+  { ruta: RUTAS_PSICOLOGIA.atencion(), etiqueta: 'Área de atención', fin: false, origen: 'atencion', Icono: Inbox },
   {
     ruta: RUTAS_PSICOLOGIA.agenda(),
     etiqueta: 'Agenda',

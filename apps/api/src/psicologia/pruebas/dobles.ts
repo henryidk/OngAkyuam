@@ -1,3 +1,4 @@
+import type { CitaResumen } from '@akyuam/shared';
 import type { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import type { RedisService } from '../../redis/redis.service';
@@ -8,6 +9,9 @@ import type {
 } from '../interfaces/bandeja-psicologia-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import type {
+  AbrirProcesoNuevoParams,
+  AbrirYRegistrarParams,
+  AbrirProcesoParams,
   AccesoProcesoPsicologia,
   IProcesosPsicologiaRepository,
 } from '../interfaces/procesos-psicologia-repository.interface';
@@ -61,6 +65,7 @@ export function crearBandejaRepository(): jest.Mocked<IBandejaPsicologiaReposito
   return {
     listarSinTomar: jest.fn().mockResolvedValue([]),
     listarPorAgendar: jest.fn().mockResolvedValue([]),
+    buscarPorAgendar: jest.fn().mockResolvedValue(null),
     listarPorReasignar: jest.fn().mockResolvedValue([]),
     reasignar: jest.fn().mockResolvedValue(null),
     obtenerPreviaToma: jest.fn().mockResolvedValue(null),
@@ -81,18 +86,48 @@ export function crearProcesosRepository(): jest.Mocked<IProcesosPsicologiaReposi
       .fn()
       .mockResolvedValue({ id: EXPEDIENTE_ID, numero: '05-2026' }),
     ninoPerteneceAExpediente: jest.fn().mockResolvedValue(true),
-    abrir: jest.fn().mockResolvedValue({
-      procesoId: PROCESO_ID,
-      consecutivo: 1,
-      ninoConsecutivo: null,
-      citaId: CITA_ID,
-    }),
-    abrirNuevo: jest.fn().mockResolvedValue({
-      procesoId: PROCESO_ID,
-      consecutivo: 2,
-      ninoConsecutivo: null,
-      citaId: CITA_ID,
-    }),
+    // Un proceso por persona, en el orden recibido: la primera del caso ocupa el proceso tomado.
+    abrir: jest.fn((params: AbrirProcesoParams) =>
+      Promise.resolve(
+        params.personas.map((persona, i) => ({
+          procesoId: i === 0 ? params.procesoId : `proceso-${i + 1}`,
+          ninoId: persona.ninoId,
+          consecutivo: 1,
+          ninoConsecutivo: persona.ninoId === null ? null : i + 1,
+          citaId: i === 0 ? CITA_ID : `cita-${i + 1}`,
+        })),
+      ),
+    ),
+    abrirNuevo: jest.fn((params: AbrirProcesoNuevoParams) =>
+      Promise.resolve(
+        params.personas.map((persona, i) => ({
+          procesoId: i === 0 ? PROCESO_ID : `proceso-${i + 1}`,
+          ninoId: persona.ninoId,
+          consecutivo: 2,
+          ninoConsecutivo: persona.ninoId === null ? null : i + 1,
+          citaId: i === 0 ? CITA_ID : `cita-${i + 1}`,
+        })),
+      ),
+    ),
+    abrirYRegistrar: jest.fn((params: AbrirYRegistrarParams) =>
+      Promise.resolve({
+        abierto: {
+          procesoId: params.procesoId,
+          ninoId: params.persona.ninoId,
+          consecutivo: 1,
+          ninoConsecutivo: params.persona.ninoId === null ? null : 1,
+          citaId: CITA_ID,
+        },
+        registrada: {
+          cita: {
+            id: CITA_ID,
+            fechaHora: params.persona.fechaHora.toISOString(),
+          } as CitaResumen,
+          pasoASeguimiento: true,
+          proximaCitaId: params.registro.proximaCita ? 'cita-proxima' : null,
+        },
+      }),
+    ),
     cerrar: jest.fn().mockResolvedValue({ version: 4, citasCanceladas: 2 }),
     actualizarVisibilidad: jest.fn().mockResolvedValue(4),
   };
@@ -171,6 +206,17 @@ export function crearRedis(): RedisService & { datos: Map<string, string> } {
     get: jest.fn((clave: string) => Promise.resolve(datos.get(clave) ?? null)),
     set: jest.fn((clave: string, valor: string) => {
       datos.set(clave, valor);
+      return Promise.resolve();
+    }),
+    setSiNoExiste: jest.fn((clave: string, valor: string) => {
+      if (datos.has(clave)) {
+        return Promise.resolve(false);
+      }
+      datos.set(clave, valor);
+      return Promise.resolve(true);
+    }),
+    del: jest.fn((clave: string) => {
+      datos.delete(clave);
       return Promise.resolve();
     }),
   } as unknown as RedisService & { datos: Map<string, string> };

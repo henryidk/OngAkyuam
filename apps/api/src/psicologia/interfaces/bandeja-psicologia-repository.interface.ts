@@ -47,6 +47,11 @@ export interface IBandejaPsicologiaRepository {
   listarSinTomar(): Promise<ReferenciaBandejaPsicologiaDto[]>;
   /** Casos tomados por esta psicóloga que todavía no tienen primera cita. */
   listarPorAgendar(psicologaId: string): Promise<CasoPorAgendarDto[]>;
+  /** Uno de esos casos; null si no es suyo o ya tiene primera cita. */
+  buscarPorAgendar(
+    psicologaId: string,
+    referidoId: string,
+  ): Promise<CasoPorAgendarDto | null>;
   /** Casos y procesos abiertos cuya psicóloga tiene la cuenta desactivada, del más antiguo al más reciente. */
   listarPorReasignar(): Promise<CasoPorReasignarDto[]>;
   /**

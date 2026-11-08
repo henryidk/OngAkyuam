@@ -48,10 +48,14 @@ export default function BandejaPsicologia() {
     void recargar()
   }, [versionNovedades, recargar])
 
-  function tomar(referencia: ReferenciaBandejaPsicologiaDto) {
+  function tomar(referencia: ReferenciaBandejaPsicologiaDto, atenderAhora = false) {
     void reclamar(referencia.referidoId, {
       alTomar: () => {
         recargarResumen()
+        if (atenderAhora) {
+          navigate(RUTAS_PSICOLOGIA.atenderAhora(referencia.referidoId, 'atencion'))
+          return
+        }
         mostrar('Caso tomado. Prográmale la primera cita.')
         navigate(RUTAS_PSICOLOGIA.agenda(undefined, referencia.referidoId))
       },
@@ -114,6 +118,7 @@ export default function BandejaPsicologia() {
               tomando={reclamandoId === referencia.referidoId}
               deshabilitada={reclamandoId !== null}
               onTomar={() => tomar(referencia)}
+              onAtenderAhora={() => tomar(referencia, true)}
             />
           ))}
         </div>

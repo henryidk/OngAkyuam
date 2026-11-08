@@ -13,7 +13,6 @@ function sesion(citaId: string, fechaHora: string): SesionPorRegistrarDto {
     fechaHora,
     duracionMinutos: 45,
     tipo: 'SEGUIMIENTO',
-    borrador: false,
   }
 }
 

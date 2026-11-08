@@ -14,7 +14,7 @@ import { RUTAS_JURIDICO } from '../rutas'
 import EtiquetaEstadoAudiencia from './EtiquetaEstadoAudiencia'
 import { ETIQUETAS_ACCION_AUDIENCIA, separarAcciones, textoEspera } from './formato'
 import { ICONOS_ACCION_AUDIENCIA } from './iconosAccion'
-import MenuAcciones from './MenuAcciones'
+import MenuAcciones from '../../../components/ui/MenuAcciones'
 
 /** Desde una semana sin resultado, la espera se marca en rojo. */
 export const DIAS_ESPERA_ATRASADA = 7

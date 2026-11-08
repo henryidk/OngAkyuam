@@ -1,7 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { fechaColumnaISO } from '@akyuam/shared';
-import type { CitaResumen, ClinicaPsicologia } from '@akyuam/shared';
+import type {
+  CitaResumen,
+  ClinicaPsicologia,
+  EstadoAtencionPsicologica,
+} from '@akyuam/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type {
   AccesoCitaPsicologica,
@@ -13,8 +17,8 @@ import type {
   LecturaCitaPsicologica,
   ListarCitasEnRangoParams,
   RegistrarConsultaParams,
+  RegistrarSesionSinCitaParams,
 } from '../interfaces/citas-psicologicas-repository.interface';
-import { etapaTrasSesionAtendida } from '../dominio/etapa-proceso';
 import { nombreProfesional } from '../dominio/indicadores';
 import {
   citaRegistrable,
@@ -23,6 +27,7 @@ import {
 } from './acceso-expediente';
 import { codigoProceso, SELECT_CODIGO_PROCESO } from './codigo-proceso';
 import { INCLUDE_CITA, mapearCita } from './citas-psicologicas.mapper';
+import { guardarRegistroEnTx } from './registro-sesion-tx';
 
 /** Margen amplio de sobra sobre cualquier duración real de consulta, para acotar la ventana de candidatas sin riesgo de descartar un traslape real. */
 const MARGEN_SOLAPAMIENTO_MS = 12 * 60 * 60 * 1000;
@@ -129,95 +134,95 @@ export class CitasPsicologicasRepository implements ICitasPsicologicasRepository
     return this.prisma.$transaction(async (tx) => {
       const actual = await tx.citaPsicologica.findUnique({
         where: { id: params.citaId },
-        select: { atencionId: true, ninoId: true },
+        select: { atencionId: true, ninoId: true, fechaHora: true },
       });
       if (!actual) {
         return null;
       }
-      // Bloquea la fila del proceso: un cierre simultáneo espera, y no queda una sesión ni una
-      // cita nueva colgando de un proceso cerrado. Registrar es de quien atendió; agendar la
-      // próxima cita, además, de la responsable del proceso.
-      const soloResponsable = params.proximaCita
-        ? Prisma.sql`AND "psicologaAsignadaId" = ${params.psicologaId}`
-        : Prisma.empty;
-      const bloqueados = await tx.$queryRaw<{ id: string }[]>`
-        SELECT id FROM "AtencionPsicologica"
-        WHERE id = ${actual.atencionId} AND estado <> 'CIERRE' ${soloResponsable}
-        FOR UPDATE`;
-      if (bloqueados.length !== 1) {
+      const { ahora, ...registro } = params;
+      // Registrar es de quien atendió; agendar la próxima cita, además, de la responsable.
+      const soloResponsable = params.proximaCita !== null;
+      if (
+        !(await this.bloquearProcesoAbierto(
+          tx,
+          actual.atencionId,
+          soloResponsable ? params.psicologaId : null,
+        ))
+      ) {
         return null;
       }
-
-      // La condición va en el WHERE: una cita que se movió a otra fecha ya no se registra.
-      const registradas = await tx.citaPsicologica.updateMany({
-        where: {
-          id: params.citaId,
-          atendidoPorId: params.psicologaId,
-          estado: { not: 'REPROGRAMADA' },
-        },
-        data: {
-          estado: params.estado,
-          temas: params.temas,
-          intervencion: params.intervencion,
-          diagnostico: params.diagnostico,
-          acuerdos: params.acuerdos,
-          observaciones: params.observaciones,
-          motivoNoAsistencia: params.motivoNoAsistencia,
-          clinica: params.clinica,
-          enfoqueTerapeutico: params.enfoqueTerapeutico,
-          atencionBrindada: params.atencionBrindada,
-          borrador: params.borrador,
-        },
+      return guardarRegistroEnTx(tx, {
+        ...registro,
+        atencionId: actual.atencionId,
+        ninoId: actual.ninoId,
+        // Se atendió antes de la fecha agendada: queda con la fecha real.
+        fechaReal:
+          params.estado === 'ATENDIDA' && actual.fechaHora > ahora
+            ? ahora
+            : undefined,
       });
-      if (registradas.count !== 1) {
-        return null;
-      }
-
-      let pasoASeguimiento = false;
-      if (params.estado === 'ATENDIDA') {
-        const avanzados = await tx.atencionPsicologica.updateMany({
-          where: { id: actual.atencionId, estado: 'INICIO' },
-          data: {
-            estado: etapaTrasSesionAtendida('INICIO'),
-            actualizadoPorId: params.psicologaId,
-            version: { increment: 1 },
-          },
-        });
-        pasoASeguimiento = avanzados.count === 1;
-        if (pasoASeguimiento) {
-          await tx.cambioEstadoAtencion.create({
-            data: {
-              atencionId: actual.atencionId,
-              estadoAnterior: 'INICIO',
-              estadoNuevo: etapaTrasSesionAtendida('INICIO'),
-              registradoPorId: params.psicologaId,
-            },
-          });
-        }
-      }
-
-      let proximaCitaId: string | null = null;
-      if (params.proximaCita) {
-        const proxima = await tx.citaPsicologica.create({
-          data: {
-            atencionId: actual.atencionId,
-            fechaHora: params.proximaCita.fechaHora,
-            duracionMinutos: params.proximaCita.duracionMinutos,
-            tipo: 'SEGUIMIENTO',
-            ninoId: actual.ninoId,
-            atendidoPorId: params.psicologaId,
-          },
-          select: { id: true },
-        });
-        proximaCitaId = proxima.id;
-      }
-
-      const cita = await tx.citaPsicologica.findUniqueOrThrow({
-        where: { id: params.citaId },
-        include: INCLUDE_CITA,
-      });
-      return { cita: mapearCita(cita), pasoASeguimiento, proximaCitaId };
     });
+  }
+
+  registrarSesionSinCita(
+    params: RegistrarSesionSinCitaParams,
+  ): Promise<ConsultaRegistrada | null> {
+    return this.prisma.$transaction(async (tx) => {
+      // Solo la responsable del proceso abre una sesión nueva en él, como al programar una cita.
+      const proceso = await this.bloquearProcesoAbierto(
+        tx,
+        params.procesoId,
+        params.psicologaId,
+      );
+      if (!proceso) {
+        return null;
+      }
+      const cita = await tx.citaPsicologica.create({
+        data: {
+          atencionId: params.procesoId,
+          fechaHora: params.fechaHora,
+          duracionMinutos: params.duracionMinutos,
+          // La primera sesión atendida del proceso es su primera atención, llegue con cita o sin ella.
+          tipo:
+            proceso.estado === 'INICIO' ? 'PRIMERA_ATENCION' : 'SEGUIMIENTO',
+          ninoId: proceso.ninoId,
+          atendidoPorId: params.psicologaId,
+        },
+        select: { id: true },
+      });
+      return guardarRegistroEnTx(tx, {
+        ...params,
+        citaId: cita.id,
+        atencionId: params.procesoId,
+        ninoId: proceso.ninoId,
+      });
+    });
+  }
+
+  /**
+   * Bloquea la fila del proceso abierto: un cierre simultáneo espera, y no queda una sesión ni
+   * una cita nueva colgando de un proceso cerrado. Con `responsableId`, además exige que esa
+   * psicóloga sea la responsable. `null` si el proceso no cumple: no se escribe nada. Devuelve
+   * a quién atiende el proceso y su etapa, leídos en el mismo SELECT.
+   */
+  private async bloquearProcesoAbierto(
+    tx: Prisma.TransactionClient,
+    procesoId: string,
+    responsableId: string | null,
+  ): Promise<{
+    ninoId: string | null;
+    estado: EstadoAtencionPsicologica;
+  } | null> {
+    const soloResponsable = responsableId
+      ? Prisma.sql`AND "psicologaAsignadaId" = ${responsableId}`
+      : Prisma.empty;
+    const bloqueados = await tx.$queryRaw<
+      { ninoId: string | null; estado: EstadoAtencionPsicologica }[]
+    >`
+      SELECT "ninoId", estado FROM "AtencionPsicologica"
+      WHERE id = ${procesoId} AND estado <> 'CIERRE' ${soloResponsable}
+      FOR UPDATE`;
+    return bloqueados[0] ?? null;
   }
 
   async listarCitasEnRango(

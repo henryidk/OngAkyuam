@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowRight, CalendarDays, Plus } from 'lucide-react'
 import {
+  diaSemanaGT,
   formatFechaLargaGT,
   hoyGT,
   sumarDiasGT,
@@ -69,6 +70,7 @@ function minutoDe(hora: string): number {
 export default function Agenda() {
   useTituloPagina({ titulo: 'Agenda' })
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const { mostrar } = useToast()
   const { resumen, recargarResumen } = useContextoPsicologia()
 
@@ -215,6 +217,16 @@ export default function Agenda() {
         </Link>
       )}
 
+      {dia === hoy && diaSemanaGT(hoy) >= 6 && (
+        <p className="w-fit rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600">
+          Hoy no es día laboral: la agenda se programa de lunes a viernes. Si atiendes hoy, regístralo en{' '}
+          <Link to={RUTAS_PSICOLOGIA.consultas()} className="font-medium text-brand-700 underline underline-offset-2">
+            Consultas › Sesión sin cita
+          </Link>
+          .
+        </p>
+      )}
+
       <NavegadorSemana
         dias={dias}
         diaAbierto={dia}
@@ -248,7 +260,6 @@ export default function Agenda() {
                   <FilaCita
                     key={renglon.cita.id}
                     cita={renglon.cita}
-                    esHoy={esHoy}
                     principal={renglon.cita.id === principalId}
                     enCurso={citaYaEmpezo(renglon.cita, ahora)}
                     onNoAsistio={setAMarcar}
@@ -285,6 +296,7 @@ export default function Agenda() {
             error={porAgendar.error?.mensaje ?? null}
             resaltadoId={resaltadoId}
             onAgendar={(caso) => setModal({ destino: { tipo: 'PRIMERA', caso }, fecha: dia })}
+            onAtenderAhora={(caso) => navigate(RUTAS_PSICOLOGIA.atenderAhora(caso.referidoId, 'agenda'))}
           />
           <ColaPendientesDeAgendar
             procesos={sinProxima}

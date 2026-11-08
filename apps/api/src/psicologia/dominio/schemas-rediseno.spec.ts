@@ -178,14 +178,7 @@ describe('schemas del rediseño de Psicología', () => {
       });
     });
 
-    it('el borrador y la inasistencia pueden quedar sin clínica', () => {
-      expect(
-        registroConsultaSchema.safeParse({
-          ...sesionAtendida,
-          clinica: null,
-          borrador: true,
-        }).success,
-      ).toBe(true);
+    it('la inasistencia puede quedar sin clínica', () => {
       expect(
         registroConsultaSchema.safeParse({
           ...sesionAtendida,
@@ -205,7 +198,7 @@ describe('schemas del rediseño de Psicología', () => {
       ).toBe(false);
     });
 
-    it('una sesión atendida exige la atención brindada al finalizar, el borrador no', () => {
+    it('una sesión atendida exige la atención brindada', () => {
       const resultado = registroConsultaSchema.safeParse({
         ...sesionAtendida,
         atencionBrindada: '   ',
@@ -215,16 +208,9 @@ describe('schemas del rediseño de Psicología', () => {
         path: ['atencionBrindada'],
         message: 'Escribe la atención brindada en la sesión.',
       });
-      expect(
-        registroConsultaSchema.safeParse({
-          ...sesionAtendida,
-          atencionBrindada: '',
-          borrador: true,
-        }).success,
-      ).toBe(true);
     });
 
-    it('una sesión atendida exige el diagnóstico al finalizar; el borrador y la inasistencia no', () => {
+    it('una sesión atendida exige el diagnóstico; la inasistencia no', () => {
       const resultado = registroConsultaSchema.safeParse({
         ...sesionAtendida,
         diagnostico: '  ',
@@ -234,13 +220,6 @@ describe('schemas del rediseño de Psicología', () => {
         path: ['diagnostico'],
         message: 'Escribe el diagnóstico de la sesión.',
       });
-      expect(
-        registroConsultaSchema.safeParse({
-          ...sesionAtendida,
-          diagnostico: '',
-          borrador: true,
-        }).success,
-      ).toBe(true);
       expect(
         registroConsultaSchema.safeParse({
           ...sesionAtendida,

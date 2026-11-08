@@ -3,7 +3,7 @@ import type { FiltroProcesosPsicologia, FiltroUsuariasPsicologia } from '@akyuam
 export type VistaConsultasPsicologia = 'por-registrar' | 'historial'
 
 /** Pantalla desde la que se abrió "Registrar sesión": al guardar o volver se regresa ahí. */
-export type OrigenSesion = 'agenda' | 'consultas' | 'proceso'
+export type OrigenSesion = 'atencion' | 'agenda' | 'consultas' | 'proceso'
 
 /**
  * Constructor único de las URLs del módulo. Ningún componente arma un path de psicología con un
@@ -54,4 +54,13 @@ export const RUTAS_PSICOLOGIA = {
   /** `origen` decide a dónde se vuelve al guardar (sin él, al proceso) y qué se resalta en el menú. */
   registrarConsulta: (citaId: string, origen?: OrigenSesion) =>
     conQuery(`/psicologia/citas/${citaId}/atencion`, { origen }),
+  /** Registro de una sesión sin cita: no crea nada hasta pulsar "Registrar sesión". */
+  sesionSinCita: (procesoId: string, origen?: OrigenSesion) =>
+    conQuery(`/psicologia/procesos/${procesoId}/sesion-sin-cita`, { origen }),
+  /**
+   * "Atender ahora" un caso tomado sin primera cita: se registra la sesión y con ella se abre el
+   * proceso. Nada se crea hasta pulsar "Registrar sesión".
+   */
+  atenderAhora: (referidoId: string, origen?: OrigenSesion) =>
+    conQuery(`/psicologia/atencion/${referidoId}/atender-ahora`, { origen }),
 }

@@ -10,7 +10,7 @@ import {
 } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import Tabs from '../../../components/ui/Tabs'
-import MenuAcciones, { type OpcionMenu } from '../audiencias/MenuAcciones'
+import MenuAcciones, { type OpcionMenu } from '../../../components/ui/MenuAcciones'
 import BarraAvance from '../compartido/BarraAvance'
 import ChipSeguimiento from '../compartido/ChipSeguimiento'
 import EtiquetaEstado from '../compartido/EtiquetaEstado'

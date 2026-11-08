@@ -15,6 +15,8 @@ import type { IDocumentosCitaRepository } from '../interfaces/documentos-cita-re
 import type { IObjectStorage } from '../../storage/interfaces/object-storage.interface';
 import type { AuditService } from '../../auth/services/audit.service';
 
+const AHORA = new Date('2026-11-08T16:20:00.000Z');
+
 function crearCita(overrides: Partial<CitaResumen> = {}): CitaResumen {
   return {
     id: 'cita-1',
@@ -35,7 +37,6 @@ function crearCita(overrides: Partial<CitaResumen> = {}): CitaResumen {
     clinica: null,
     enfoqueTerapeutico: null,
     atencionBrindada: null,
-    borrador: false,
     reprogramadaDesdeId: null,
     atendidoPor: 'Psicóloga A',
     documento: null,
@@ -107,6 +108,7 @@ describe('RegistroConsultaService', () => {
       documentosRepository,
       objectStorage,
       auditService,
+      { ahora: () => AHORA },
     );
   });
 
@@ -121,7 +123,6 @@ describe('RegistroConsultaService', () => {
     clinica: 'CLINICA_2' as const,
     enfoqueTerapeutico: '',
     atencionBrindada: 'Escucha activa y contención',
-    borrador: false,
   };
 
   describe('registrarConsulta', () => {
@@ -175,23 +176,11 @@ describe('RegistroConsultaService', () => {
       );
     });
 
-    it('al finalizar (borrador: false), envía el estado elegido al repositorio', async () => {
+    it('envía el estado elegido al repositorio', async () => {
       await service.registrarConsulta('cita-1', datosBase, contexto);
 
       expect(citasRepository.registrarConsulta).toHaveBeenCalledWith(
-        expect.objectContaining({ estado: 'ATENDIDA', borrador: false }),
-      );
-    });
-
-    it('al guardar borrador, no cambia el estado de la cita (undefined al repositorio)', async () => {
-      await service.registrarConsulta(
-        'cita-1',
-        { ...datosBase, borrador: true },
-        contexto,
-      );
-
-      expect(citasRepository.registrarConsulta).toHaveBeenCalledWith(
-        expect.objectContaining({ estado: undefined, borrador: true }),
+        expect.objectContaining({ estado: 'ATENDIDA' }),
       );
     });
 
@@ -355,19 +344,6 @@ describe('RegistroConsultaService', () => {
 
       expect(citasRepository.buscarCitasSolapadas).not.toHaveBeenCalled();
       expect(citasRepository.registrarConsulta).toHaveBeenCalled();
-    });
-
-    it('un borrador no programa la próxima cita aunque venga en el formulario', async () => {
-      await service.registrarConsulta(
-        'cita-1',
-        { ...datosBase, borrador: true, siguiente: programar },
-        contexto,
-      );
-
-      expect(citasRepository.buscarCitasSolapadas).not.toHaveBeenCalled();
-      expect(citasRepository.registrarConsulta).toHaveBeenCalledWith(
-        expect.objectContaining({ estado: undefined, proximaCita: null }),
-      );
     });
 
     it('"Cerrar proceso" no cierra nada desde aquí: solo guarda la sesión', async () => {

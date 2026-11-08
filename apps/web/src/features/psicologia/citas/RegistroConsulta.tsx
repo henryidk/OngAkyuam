@@ -1,147 +1,38 @@
-import axios from 'axios'
-import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import type { z } from 'zod'
+import { useCallback } from 'react'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
-  CODIGO_TRASLAPE_CITA,
   DURACIONES_CITA_PSICOLOGICA_MINUTOS,
   DURACION_CITA_PSICOLOGICA_POR_DEFECTO,
-  ATENCION_BRINDADA_MAX,
-  DIAGNOSTICO_MAX,
-  ENFOQUE_TERAPEUTICO_MAX,
-  ETIQUETAS_ESTADO_CITA_PSICOLOGICA,
   RESULTADOS_SESION_PSICOLOGICA,
   fechaCalendarioGT,
-  formatInstanteGT,
-  hoyGT,
-  registroConsultaSchema,
   type CitaPsicologicaDetalle,
-  type CitaResumen,
-  type ConflictoTraslapeCita,
-  type DocumentoCitaDto,
-  type RegistroConsultaInput,
   type ResultadoSesionPsicologica,
-  type SiguientePasoSesion,
 } from '@akyuam/shared'
-import TextareaInput from '../../../components/form/TextareaInput'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import Button from '../../../components/ui/Button'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
-import { useToast } from '../../../components/ui/Toast'
-import { extraerMensajeError } from '../../../lib/errors'
 import { useRecurso } from '../../../lib/useRecurso'
-import { obtenerDetalleCita, registrarConsulta } from '../api/psicologia.api'
-import { useContextoPsicologia } from '../compartido/contexto'
-import { horaDeInstante } from '../compartido/horas'
-import { RUTAS_PSICOLOGIA, type OrigenSesion } from '../rutas'
-import HojaEvolucion from './HojaEvolucion'
-import QueSigue, { type EstadoQueSigue } from './QueSigue'
-import CodigoProceso from '../compartido/CodigoProceso'
-import ElegirClinica from './ElegirClinica'
-
-/** El contador del enfoque solo aparece cuando falta poco para el límite. */
-const AVISO_LIMITE_ENFOQUE = ENFOQUE_TERAPEUTICO_MAX - 200
+import { obtenerDetalleCita } from '../api/psicologia.api'
+import { RUTAS_PSICOLOGIA } from '../rutas'
+import FormularioRegistro, { type ContextoRegistro } from './registro/FormularioRegistro'
+import { migasDelRegistro, origenDeParametro } from './registro/origen'
 
 function esResultado(estado: string): estado is ResultadoSesionPsicologica {
   return (RESULTADOS_SESION_PSICOLOGICA as readonly string[]).includes(estado)
 }
 
-function queSigueInicial(cita: CitaPsicologicaDetalle): EstadoQueSigue {
-  const duracion =
-    DURACIONES_CITA_PSICOLOGICA_MINUTOS.find((minutos) => minutos === cita.duracionMinutos) ??
-    DURACION_CITA_PSICOLOGICA_POR_DEFECTO
-  // La próxima cita suele ser a la misma hora que esta.
-  return { tipo: 'NINGUNA', fecha: '', hora: horaDeInstante(cita.fechaHora), duracion }
-}
-
-/** A dónde se vuelve: la pantalla de origen (la Agenda en el día de la cita, Consultas › Por
- * registrar) o, por defecto, el proceso. */
-function rutaDeOrigen(origen: OrigenSesion, cita: CitaPsicologicaDetalle): string {
-  if (origen === 'agenda') return RUTAS_PSICOLOGIA.agenda(fechaCalendarioGT(new Date(cita.fechaHora)))
-  if (origen === 'consultas') return RUTAS_PSICOLOGIA.consultas('por-registrar')
-  return RUTAS_PSICOLOGIA.proceso(cita.procesoId)
-}
-
-const VOLVER_A: Record<OrigenSesion, string> = {
-  agenda: 'Volver a la agenda',
-  consultas: 'Volver a Consultas',
-  proceso: 'Volver al proceso',
-}
-
-/**
- * Registrar una sesión: en qué quedó la cita, las notas clínicas, la Hoja de evolución escaneada
- * y qué sigue con el proceso. El borrador se guarda en el servidor, no en el navegador.
- * `?origen=` (agenda | consultas) regresa a esa pantalla al guardar, para seguir con la siguiente
- * persona sin buscarla otra vez; sin él se vuelve al proceso. Si se eligió "Cerrar proceso" se va
- * siempre al proceso, porque el cierre se confirma ahí.
- */
-export default function RegistroConsulta() {
-  const { citaId } = useParams<{ citaId: string }>()
-  const [params] = useSearchParams()
-  const parametroOrigen = params.get('origen')
-  const origen: OrigenSesion = parametroOrigen === 'agenda' || parametroOrigen === 'consultas' ? parametroOrigen : 'proceso'
-  const navigate = useNavigate()
-  const { mostrar } = useToast()
-  const { recargarResumen } = useContextoPsicologia()
-
-  const cargar = useCallback(() => obtenerDetalleCita(citaId!), [citaId])
-  const { datos: cita, error, recargar } = useRecurso(cargar)
-
-  const [documento, setDocumento] = useState<DocumentoCitaDto | null>(null)
-  const [siguiente, setSiguiente] = useState<EstadoQueSigue | null>(null)
-  const [conflicto, setConflicto] = useState<CitaResumen[] | null>(null)
-  const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
-  const [guardando, setGuardando] = useState<'borrador' | 'final' | null>(null)
-
-  const {
-    register,
-    handleSubmit,
-    getValues,
-    setValue,
-    watch,
-    reset,
-    formState: { errors },
-  } = useForm<z.input<typeof registroConsultaSchema>, any, RegistroConsultaInput>({
-    resolver: zodResolver(registroConsultaSchema),
-    defaultValues: {
-      estado: 'ATENDIDA',
-      temas: '',
-      intervencion: '',
-      atencionBrindada: '',
-      diagnostico: '',
-      acuerdos: '',
-      observaciones: '',
-      motivoNoAsistencia: '',
-      clinica: null,
-      enfoqueTerapeutico: '',
-      borrador: false,
-    },
-  })
-  const estado = watch('estado')
-  const clinica = watch('clinica')
-  const largoEnfoque = watch('enfoqueTerapeutico')?.length ?? 0
-
-  useTituloPagina({
-    titulo: 'Registrar sesión',
-    migas:
-      origen === 'agenda'
-        ? [{ etiqueta: 'Agenda', ruta: cita ? rutaDeOrigen('agenda', cita) : RUTAS_PSICOLOGIA.agenda() }]
-        : origen === 'consultas'
-          ? [{ etiqueta: 'Consultas', ruta: RUTAS_PSICOLOGIA.consultas('por-registrar') }]
-          : cita
-            ? [
-                { etiqueta: 'Procesos', ruta: RUTAS_PSICOLOGIA.procesos() },
-                { etiqueta: cita.codigoProceso, ruta: RUTAS_PSICOLOGIA.proceso(cita.procesoId) },
-              ]
-            : [{ etiqueta: 'Procesos', ruta: RUTAS_PSICOLOGIA.procesos() }],
-  })
-
-  // Lo que ya estaba guardado (un borrador, o una sesión que se corrige) entra al formulario.
-  useEffect(() => {
-    if (!cita) return
-    reset({
+function contextoDeCita(cita: CitaPsicologicaDetalle): ContextoRegistro {
+  return {
+    procesoId: cita.procesoId,
+    codigoProceso: cita.codigoProceso,
+    procesoEtapa: cita.procesoEtapa,
+    persona: cita.ninoNombreCompleto ?? cita.usuariaNombreCompleto,
+    usuariaNombreCompleto: cita.usuariaNombreCompleto,
+    esHijo: cita.ninoNombreCompleto !== null,
+    cita: { id: cita.id, fechaHora: cita.fechaHora, duracionMinutos: cita.duracionMinutos },
+    // Una sesión ya registrada se puede corregir, pero "¿Qué sigue?" se decidió en su momento.
+    yaRegistrada: esResultado(cita.estado),
+    // Lo que ya estaba guardado (una sesión que se corrige) entra al formulario.
+    valores: {
       estado: esResultado(cita.estado) ? cita.estado : 'ATENDIDA',
       temas: cita.temas ?? '',
       intervencion: cita.intervencion ?? '',
@@ -153,12 +44,35 @@ export default function RegistroConsulta() {
       // La del servidor: la ya anotada o la última que usó esta profesional.
       clinica: cita.clinicaSugerida,
       enfoqueTerapeutico: cita.enfoqueTerapeutico ?? '',
-      borrador: false,
-    })
-    setDocumento(cita.documento)
-    setSiguiente(queSigueInicial(cita))
-    setConflicto(null)
-  }, [cita, reset])
+    },
+    documento: cita.documento,
+    duracion:
+      DURACIONES_CITA_PSICOLOGICA_MINUTOS.find((minutos) => minutos === cita.duracionMinutos) ??
+      DURACION_CITA_PSICOLOGICA_POR_DEFECTO,
+  }
+}
+
+/**
+ * Registrar la sesión de una cita existente. `?origen=` (agenda | consultas) regresa a esa
+ * pantalla al guardar, para seguir con la siguiente persona sin buscarla otra vez; sin él se
+ * vuelve al proceso.
+ */
+export default function RegistroConsulta() {
+  const { citaId } = useParams<{ citaId: string }>()
+  const [params] = useSearchParams()
+  const origen = origenDeParametro(params.get('origen'))
+
+  const cargar = useCallback(() => obtenerDetalleCita(citaId!), [citaId])
+  const { datos: cita, error, recargar } = useRecurso(cargar)
+
+  useTituloPagina({
+    titulo: 'Registrar sesión',
+    migas: migasDelRegistro(
+      origen,
+      cita ? { id: cita.procesoId, codigo: cita.codigoProceso } : null,
+      cita ? fechaCalendarioGT(new Date(cita.fechaHora)) : undefined,
+    ),
+  })
 
   if (error && !cita) {
     return (
@@ -170,11 +84,7 @@ export default function RegistroConsulta() {
       />
     )
   }
-  if (!cita || !siguiente) return <Esqueleto />
-
-  const persona = cita.ninoNombreCompleto ?? cita.usuariaNombreCompleto
-  const rutaProceso = RUTAS_PSICOLOGIA.proceso(cita.procesoId)
-  const rutaVolver = rutaDeOrigen(origen, cita)
+  if (!cita) return <Esqueleto />
 
   if (cita.procesoEtapa === 'CIERRE' || cita.estado === 'REPROGRAMADA') {
     return (
@@ -185,241 +95,15 @@ export default function RegistroConsulta() {
             ? 'El proceso está cerrado. Si la usuaria necesita volver, se le abre un proceso nuevo desde su ficha.'
             : 'La cita se movió a otra fecha: registra la sesión desde la cita nueva.'}
         </p>
-        <Link to={rutaProceso} className="inline-block text-sm font-medium text-brand-700 hover:underline">
+        <Link
+          to={RUTAS_PSICOLOGIA.proceso(cita.procesoId)}
+          className="inline-block text-sm font-medium text-brand-700 hover:underline"
+        >
           Ir al proceso {cita.codigoProceso} →
         </Link>
       </div>
     )
   }
 
-  // Una sesión ya registrada se puede corregir, pero "¿Qué sigue?" se decidió en su momento.
-  const yaRegistrada = esResultado(cita.estado) && !cita.borrador
-  const primeraSesion = cita.procesoEtapa === 'INICIO' && estado === 'ATENDIDA'
-  const diaCita = fechaCalendarioGT(new Date(cita.fechaHora))
-  const hoy = hoyGT()
-  const diaBase = diaCita > hoy ? diaCita : hoy
-
-  function cambiarSiguiente(valor: EstadoQueSigue) {
-    setSiguiente(valor)
-    // El aviso de traslape era sobre la fecha anterior: al tocar un dato deja de valer.
-    setConflicto(null)
-    setErrorEnvio(null)
-  }
-
-  function armarSiguiente(elegido: EstadoQueSigue): SiguientePasoSesion | null {
-    if (elegido.tipo !== 'PROGRAMAR') return { tipo: elegido.tipo }
-    if (!elegido.fecha || !elegido.hora) return null
-    return {
-      tipo: 'PROGRAMAR',
-      fechaHora: `${elegido.fecha}T${elegido.hora}`,
-      duracionMinutos: elegido.duracion,
-      confirmarTraslape: conflicto !== null,
-    }
-  }
-
-  async function guardarBorrador() {
-    if (!citaId || guardando) return
-    setErrorEnvio(null)
-    setGuardando('borrador')
-    try {
-      await registrarConsulta(citaId, { ...getValues(), borrador: true })
-      mostrar('Borrador guardado')
-    } catch (err) {
-      setErrorEnvio(extraerMensajeError(err))
-    } finally {
-      setGuardando(null)
-    }
-  }
-
-  async function finalizar(datos: RegistroConsultaInput) {
-    if (!citaId || !siguiente || guardando) return
-    let paso: SiguientePasoSesion | undefined
-    if (!yaRegistrada) {
-      const armado = armarSiguiente(siguiente)
-      if (!armado) {
-        setErrorEnvio('Indica la fecha y la hora de la próxima cita, o elige "Decidir después".')
-        return
-      }
-      paso = armado
-    }
-
-    setErrorEnvio(null)
-    setGuardando('final')
-    try {
-      const registrada = await registrarConsulta(citaId, { ...datos, borrador: false, siguiente: paso })
-      recargarResumen()
-
-      let mensaje = `Sesión registrada · ${ETIQUETAS_ESTADO_CITA_PSICOLOGICA[registrada.cita.estado]}`
-      if (registrada.pasoASeguimiento) mensaje += ' · el proceso pasó a Seguimiento'
-      if (registrada.proximaCita) mensaje += ` · próxima cita ${formatInstanteGT(registrada.proximaCita.fechaHora)}`
-      const rutaSesion = RUTAS_PSICOLOGIA.proceso(registrada.procesoId, citaId, paso?.tipo === 'CERRAR')
-      // El cierre nunca es implícito: se abre su modal en el proceso para que la psicóloga lo confirme.
-      if (origen !== 'proceso' && paso?.tipo !== 'CERRAR') {
-        navigate(rutaVolver)
-        mostrar(mensaje, 'success', { etiqueta: 'Ver en el proceso', onClick: () => navigate(rutaSesion) })
-      } else {
-        navigate(rutaSesion)
-        mostrar(mensaje)
-      }
-    } catch (err) {
-      const cuerpo = axios.isAxiosError(err) ? (err.response?.data as Partial<ConflictoTraslapeCita> | undefined) : undefined
-      if (cuerpo?.codigo === CODIGO_TRASLAPE_CITA && cuerpo.detalle) {
-        setConflicto(cuerpo.detalle.citas)
-      } else {
-        setErrorEnvio(extraerMensajeError(err))
-      }
-    } finally {
-      setGuardando(null)
-    }
-  }
-
-  let etiquetaGuardar = yaRegistrada ? 'Guardar cambios' : 'Guardar sesión'
-  if (!yaRegistrada && siguiente.tipo === 'CERRAR') etiquetaGuardar = 'Guardar y cerrar proceso…'
-  if (conflicto) etiquetaGuardar = 'Guardar de todos modos'
-
-  return (
-    <div className="mx-auto max-w-3xl space-y-4">
-      <header>
-        <h2 className="text-[22px] font-semibold tracking-tight text-gray-900">Registrar sesión · {persona}</h2>
-        <p className="mt-1 text-sm text-gray-600">
-          {cita.ninoNombreCompleto !== null && <>Hija/o de {cita.usuariaNombreCompleto} · </>}
-          <Link to={rutaProceso} className="text-brand-700 hover:underline">
-            <CodigoProceso codigo={cita.codigoProceso} />
-          </Link>{' '}
-          · {formatInstanteGT(cita.fechaHora)} · {cita.duracionMinutos} min
-        </p>
-      </header>
-
-      <form
-        onSubmit={(evento) => void handleSubmit(finalizar)(evento)}
-        className="space-y-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-      >
-        <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-semibold text-gray-800">Resultado</legend>
-            <div className="flex flex-wrap gap-2">
-              {RESULTADOS_SESION_PSICOLOGICA.map((resultado) => {
-                const elegido = estado === resultado
-                return (
-                  <button
-                    key={resultado}
-                    type="button"
-                    aria-pressed={elegido}
-                    onClick={() => setValue('estado', resultado, { shouldValidate: false })}
-                    className={`rounded-md border px-4 py-2 text-sm font-medium ${
-                      elegido
-                        ? 'border-brand-600 bg-brand-600 text-white'
-                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {ETIQUETAS_ESTADO_CITA_PSICOLOGICA[resultado]}
-                  </button>
-                )
-              })}
-            </div>
-            {errors.estado?.message && <p className="text-sm text-red-600">{errors.estado.message}</p>}
-          </fieldset>
-          {estado === 'ATENDIDA' && (
-            <ElegirClinica
-              valor={clinica}
-              onCambio={(elegida) => setValue('clinica', elegida, { shouldValidate: true })}
-              error={errors.clinica?.message}
-            />
-          )}
-        </div>
-
-        {primeraSesion && !yaRegistrada && (
-          <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">
-            Es la primera sesión atendida de este proceso: al guardar pasa de <strong>Inicio</strong> a{' '}
-            <strong>Seguimiento</strong>.
-          </p>
-        )}
-
-        {estado === 'ATENDIDA' ? (
-          <>
-            {/* Primero lo obligatorio (atención brindada y diagnóstico), después lo opcional. */}
-            <div className="space-y-4">
-              <TextareaInput
-                label="Atención brindada"
-                registro={register('atencionBrindada')}
-                rows={2}
-                maxLength={ATENCION_BRINDADA_MAX}
-                ayuda="Resumen breve de la atención; sale en el reporte de población de Trabajo Social."
-                error={errors.atencionBrindada?.message}
-              />
-              <TextareaInput
-                label="Diagnóstico"
-                registro={register('diagnostico')}
-                rows={2}
-                maxLength={DIAGNOSTICO_MAX}
-                className="field-sizing-content min-h-16"
-                ayuda="Sale en el reporte de personas atendidas."
-                error={errors.diagnostico?.message}
-              />
-              <TextareaInput label="Temas abordados" registro={register('temas')} opcional error={errors.temas?.message} />
-              <TextareaInput label="Intervención" registro={register('intervencion')} opcional error={errors.intervencion?.message} />
-              <div>
-                <TextareaInput
-                  label="Enfoque terapéutico"
-                  registro={register('enfoqueTerapeutico')}
-                  rows={2}
-                  maxLength={ENFOQUE_TERAPEUTICO_MAX}
-                  className="field-sizing-content min-h-16"
-                  opcional
-                  ayuda="Por ejemplo: cognitivo-conductual, sistémico, centrado en el trauma."
-                  error={errors.enfoqueTerapeutico?.message}
-                />
-                {largoEnfoque >= AVISO_LIMITE_ENFOQUE && (
-                  <p aria-live="polite" className="mt-1 text-right text-xs text-gray-500 tabular-nums">
-                    {largoEnfoque} / {ENFOQUE_TERAPEUTICO_MAX}
-                  </p>
-                )}
-              </div>
-              <TextareaInput label="Acuerdos" registro={register('acuerdos')} opcional error={errors.acuerdos?.message} />
-              <TextareaInput label="Observaciones" registro={register('observaciones')} opcional error={errors.observaciones?.message} />
-            </div>
-            <HojaEvolucion citaId={cita.id} documento={documento} onSubido={setDocumento} />
-          </>
-        ) : (
-          <TextareaInput
-            label={estado === 'NO_ASISTIO' ? 'Motivo de la inasistencia' : 'Motivo de la cancelación'}
-            registro={register('motivoNoAsistencia')}
-            ayuda="Si no se sabe, anótalo así."
-            error={errors.motivoNoAsistencia?.message}
-          />
-        )}
-
-        {!yaRegistrada && (
-          <QueSigue valor={siguiente} onCambio={cambiarSiguiente} diaBase={diaBase} conflicto={conflicto} />
-        )}
-
-        {errorEnvio && (
-          <p role="alert" className="text-sm text-red-600">
-            {errorEnvio}
-          </p>
-        )}
-
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-gray-100 pt-4">
-          <Link to={rutaVolver} className="mr-auto text-sm font-medium text-gray-600 hover:underline">
-            {VOLVER_A[origen]}
-          </Link>
-          {!yaRegistrada && (
-            <Button
-              type="button"
-              variante="secondary"
-              tamano="md"
-              onClick={() => void guardarBorrador()}
-              cargando={guardando === 'borrador'}
-              disabled={guardando === 'final'}
-            >
-              Guardar borrador
-            </Button>
-          )}
-          <Button type="submit" tamano="md" cargando={guardando === 'final'} disabled={guardando === 'borrador'}>
-            {etiquetaGuardar}
-          </Button>
-        </div>
-      </form>
-    </div>
-  )
+  return <FormularioRegistro key={cita.id} contexto={contextoDeCita(cita)} origen={origen} />
 }

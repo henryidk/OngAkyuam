@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { DIAS_ALERTA_ESPERA_PSICOLOGIA, type ReferenciaBandejaPsicologiaDto } from '@akyuam/shared'
 import EtiquetaIngreso from '../../../components/EtiquetaIngreso'
 import Button from '../../../components/ui/Button'
+import MenuAcciones from '../../../components/ui/MenuAcciones'
 import { fechaDeInstante, iniciales } from '../../../lib/formato'
 import { etiquetaPersona } from '../compartido/personas'
 import { RUTAS_PSICOLOGIA } from '../rutas'
@@ -12,6 +13,8 @@ interface TarjetaReferenciaProps {
   /** Mientras se toma otro caso no se puede tomar este: evita dos tomas a la vez. */
   deshabilitada: boolean
   onTomar: () => void
+  /** Toma el caso y registra de una vez la sesión de la persona que está aquí, sin agendar. */
+  onAtenderAhora: () => void
 }
 
 const CLASE_ENLACE_BOTON =
@@ -27,6 +30,7 @@ export default function TarjetaReferencia({
   tomando,
   deshabilitada,
   onTomar,
+  onAtenderAhora,
 }: TarjetaReferenciaProps) {
   const enAlerta = referencia.diasEsperando >= DIAS_ALERTA_ESPERA_PSICOLOGIA
   const detalle = [
@@ -78,6 +82,21 @@ export default function TarjetaReferencia({
           <Button tamano="md" cargando={tomando} disabled={deshabilitada} onClick={onTomar}>
             Tomar caso
           </Button>
+          {/* Lo habitual es tomar y agendar; atender sin cita es la excepción, por eso va aparte. */}
+          {!deshabilitada && (
+            <MenuAcciones
+              etiqueta={`Más acciones para ${referencia.usuariaNombreCompleto}`}
+              boton="borde"
+              opciones={[
+                {
+                  clave: 'atender-ahora',
+                  etiqueta: 'Atender ahora',
+                  detalle: 'La persona está aquí: tomas el caso y registras la sesión sin agendar.',
+                  onElegir: onAtenderAhora,
+                },
+              ]}
+            />
+          )}
         </div>
       </div>
     </article>

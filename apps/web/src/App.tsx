@@ -39,6 +39,8 @@ import Agenda from './features/psicologia/agenda/Agenda'
 import BandejaPsicologia from './features/psicologia/bandeja/BandejaPsicologia'
 import DetalleCita from './features/psicologia/citas/DetalleCita'
 import RegistroConsulta from './features/psicologia/citas/RegistroConsulta'
+import RegistroSesionSinCita from './features/psicologia/citas/RegistroSesionSinCita'
+import AtenderAhoraPsicologia from './features/psicologia/citas/AtenderAhora'
 import ConsultasPsicologia from './features/psicologia/consultas/PaginaConsultas'
 import Indicadores from './features/psicologia/indicadores/Indicadores'
 import ListaProcesosPsicologia from './features/psicologia/procesos/ListaProcesos'
@@ -151,6 +153,8 @@ function App() {
             </Route>
             <Route path="citas/:citaId" element={<DetalleCita />} />
             <Route path="citas/:citaId/atencion" element={<RegistroConsulta />} />
+            <Route path="procesos/:procesoId/sesion-sin-cita" element={<RegistroSesionSinCita />} />
+            <Route path="atencion/:referidoId/atender-ahora" element={<AtenderAhoraPsicologia />} />
             <Route path="reportes" element={<Indicadores />} />
             {/* Direcciones de antes del rediseño: llevan a la pantalla que las reemplazó. */}
             <Route path="expedientes/*" element={<Navigate to={RUTAS_PSICOLOGIA.usuarias()} replace />} />

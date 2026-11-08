@@ -41,8 +41,7 @@ export interface BuscarSolapamientoParams {
 export interface RegistrarConsultaParams {
   citaId: string;
   psicologaId: string;
-  /** `undefined` cuando se guarda como borrador — el estado de la cita no cambia (§5.4 del plan). */
-  estado: EstadoCitaPsicologica | undefined;
+  estado: EstadoCitaPsicologica;
   temas: string | null;
   intervencion: string | null;
   diagnostico: string | null;
@@ -52,9 +51,26 @@ export interface RegistrarConsultaParams {
   clinica: ClinicaPsicologia | null;
   enfoqueTerapeutico: string | null;
   atencionBrindada: string | null;
-  borrador: boolean;
   /** "¿Qué sigue?": la próxima cita que nace junto con el registro, para la misma persona. */
   proximaCita: { fechaHora: Date; duracionMinutos: number } | null;
+  /**
+   * Hora del servidor. Una cita atendida antes de su fecha (la persona llegó antes) queda con la
+   * fecha y la hora en que de verdad se atendió.
+   */
+  ahora: Date;
+}
+
+/**
+ * Sesión que ocurrió sin cita previa: la cita nace junto con su registro. `fechaHora` es el
+ * instante en que se guardó por primera vez, puesto por el servidor.
+ */
+export interface RegistrarSesionSinCitaParams extends Omit<
+  RegistrarConsultaParams,
+  'citaId' | 'ahora'
+> {
+  procesoId: string;
+  fechaHora: Date;
+  duracionMinutos: number;
 }
 
 export interface ConsultaRegistrada {
@@ -141,6 +157,14 @@ export interface ICitasPsicologicasRepository {
    */
   registrarConsulta(
     params: RegistrarConsultaParams,
+  ): Promise<ConsultaRegistrada | null>;
+  /**
+   * Crea la cita de una sesión sin cita y guarda su registro en la misma transacción, con lo que
+   * se deriva (Seguimiento, próxima cita). `null` si el proceso ya se cerró o esta psicóloga no
+   * es su responsable: no se escribió nada. Se usa tras `exigirAccesoProceso`.
+   */
+  registrarSesionSinCita(
+    params: RegistrarSesionSinCitaParams,
   ): Promise<ConsultaRegistrada | null>;
   /**
    * Filas crudas de citas de esta psicóloga dentro de un rango acotado (un año), de la más

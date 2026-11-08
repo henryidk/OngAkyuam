@@ -25,7 +25,7 @@ import InsigniaReferencia from '../compartido/InsigniaReferencia'
 import { referenciaPendiente } from '../compartido/referencias'
 import { useReclamarCaso } from '../hooks/useReclamarCaso'
 import { RUTAS_PSICOLOGIA } from '../rutas'
-import type { ContextoFicha, PersonaPorAbrir } from './contextoFicha'
+import { personasPorAbrir, type ContextoFicha } from './contextoFicha'
 
 const CLASE_BOTON_PRIMARIO =
   'inline-flex items-center rounded-md bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700'
@@ -81,7 +81,8 @@ export default function FichaUsuaria() {
   const { datos: ficha, error, recargar } = useRecurso(cargar)
   const { expediente: expedienteTs, error: errorExpedienteTs } = useExpedienteTs(ficha?.expediente.id)
   const { reclamandoId, error: errorReclamar, reclamar } = useReclamarCaso()
-  const [porAbrir, setPorAbrir] = useState<PersonaPorAbrir | null>(null)
+  // Quiénes vienen marcadas al abrir el modal; null = cerrado.
+  const [porAbrir, setPorAbrir] = useState<(string | null)[] | null>(null)
   const [procesoRecienAbierto, setProcesoRecienAbierto] = useState<string | null>(null)
 
   useTituloPagina({
@@ -95,12 +96,13 @@ export default function FichaUsuaria() {
   if (!ficha) return <Esqueleto />
 
   const { usuaria, expediente, contadores, procesos, referencias } = ficha
+  const abribles = personasPorAbrir(ficha)
   const pendiente = referenciaPendiente(referencias)
   const contexto: ContextoFicha = {
     ficha,
     expedienteTs,
     errorExpedienteTs,
-    abrirProceso: setPorAbrir,
+    abrirProceso: (ninoId) => setPorAbrir([ninoId]),
     procesoRecienAbierto,
   }
 
@@ -161,16 +163,12 @@ export default function FichaUsuaria() {
               ))}
             </dl>
           )}
-          {ficha.puedeAbrirProceso && (
+          {abribles.length > 0 && (
             <Button
               variante="secondary"
               tamano="md"
-              onClick={() =>
-                setPorAbrir({
-                  persona: { ninoId: null, nombreCompleto: usuaria.nombreCompleto, edad: usuaria.edad },
-                  codigo: ficha.codigoProcesoNuevo,
-                })
-              }
+              // La usuaria viene marcada si puede; si no, se elige entre sus hijos/as.
+              onClick={() => setPorAbrir(ficha.puedeAbrirProceso ? [null] : [])}
             >
               Abrir nuevo proceso
             </Button>
@@ -228,8 +226,8 @@ export default function FichaUsuaria() {
             tipo: 'NUEVO',
             usuariaId: usuaria.id,
             usuariaNombreCompleto: usuaria.nombreCompleto,
-            persona: porAbrir.persona,
-            codigo: porAbrir.codigo,
+            personas: abribles,
+            preseleccion: porAbrir,
           }}
           fechaInicial={hoyGT()}
           onCerrar={() => setPorAbrir(null)}

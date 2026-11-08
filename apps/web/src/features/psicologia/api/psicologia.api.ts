@@ -1,4 +1,5 @@
 import type {
+  AbrirProcesosPsicologiaInput,
   AgendarCitaPsicologicaInput,
   BuscarHistorialConsultasPsicologiaInput,
   CasoPorAgendarDto,
@@ -27,13 +28,15 @@ import type {
   ListarUsuariasPsicologiaQuery,
   MoverCitaPsicologicaInput,
   ProcesoParaAgendarDto,
-  ProcesoPsicologiaAbiertoDto,
+  ProcesosPsicologiaAbiertosDto,
   ProcesoPsicologiaCerradoDto,
   ProcesoPsicologiaDetalle,
   ProcesosPsicologiaPaginados,
   RangoFechasQuery,
   ReferenciaBandejaPsicologiaDto,
   RegistroConsultaInput,
+  SesionSinCitaInput,
+  AtenderAhoraInput,
   ResumenProcesosPsicologia,
   SesionesProcesoPaginadas,
   SesionPorRegistrarDto,
@@ -71,13 +74,30 @@ export function listarPorAgendar() {
   return api.get<CasoPorAgendarDto[]>('/psicologia/agenda/por-agendar').then((res) => res.data)
 }
 
+/** Un caso tomado por agendar; 409 si ya tiene primera cita. */
+export function obtenerCasoPorAgendar(referidoId: string) {
+  return api.get<CasoPorAgendarDto>(`/psicologia/agenda/por-agendar/${referidoId}`).then((res) => res.data)
+}
+
 /**
- * Programa la primera cita y con ella abre el proceso. `claveIdempotencia` evita que un doble
- * envío (doble clic, reintento de red) abra dos procesos.
+ * "Atender ahora": registra la sesión de una persona del caso tomado y con ella abre su proceso,
+ * todo o nada. La fecha y la hora las pone el servidor.
  */
-export function atenderReferencia(referidoId: string, datos: AgendarCitaPsicologicaInput, claveIdempotencia: string) {
+export function atenderAhora(referidoId: string, datos: AtenderAhoraInput, claveIdempotencia: string) {
   return api
-    .post<ProcesoPsicologiaAbiertoDto>(`/psicologia/bandeja/${referidoId}/atender`, datos, {
+    .post<ConsultaRegistradaDto>(`/psicologia/bandeja/${referidoId}/atender-ahora`, datos, {
+      headers: { 'Idempotency-Key': claveIdempotencia },
+    })
+    .then((res) => res.data)
+}
+
+/**
+ * Programa la primera cita de cada persona elegida y con ella abre su proceso, todo o nada.
+ * `claveIdempotencia` evita que un doble envío (doble clic, reintento de red) los abra dos veces.
+ */
+export function atenderReferencia(referidoId: string, datos: AbrirProcesosPsicologiaInput, claveIdempotencia: string) {
+  return api
+    .post<ProcesosPsicologiaAbiertosDto>(`/psicologia/bandeja/${referidoId}/atender`, datos, {
       headers: { 'Idempotency-Key': claveIdempotencia },
     })
     .then((res) => res.data)
@@ -164,12 +184,12 @@ export function obtenerFichaUsuaria(usuariaId: string) {
 }
 
 /**
- * Abre un proceso nuevo, con su primera cita, para una usuaria que regresa sin referencia nueva.
- * `claveIdempotencia` evita que un doble envío abra dos procesos.
+ * Abre desde la ficha un proceso nuevo, con su primera cita, para cada persona elegida (la usuaria
+ * que regresa y/o sus hijos/as), todo o nada. `claveIdempotencia` evita abrirlos dos veces.
  */
-export function abrirProcesoDesdeFicha(usuariaId: string, datos: AgendarCitaPsicologicaInput, claveIdempotencia: string) {
+export function abrirProcesoDesdeFicha(usuariaId: string, datos: AbrirProcesosPsicologiaInput, claveIdempotencia: string) {
   return api
-    .post<ProcesoPsicologiaAbiertoDto>(`/psicologia/usuarias/${usuariaId}/procesos`, datos, {
+    .post<ProcesosPsicologiaAbiertosDto>(`/psicologia/usuarias/${usuariaId}/procesos`, datos, {
       headers: { 'Idempotency-Key': claveIdempotencia },
     })
     .then((res) => res.data)
@@ -207,6 +227,18 @@ export function obtenerDetalleCita(citaId: string) {
 
 export function registrarConsulta(citaId: string, datos: RegistroConsultaInput) {
   return api.put<ConsultaRegistradaDto>(`/psicologia/citas/${citaId}/registro`, datos).then((res) => res.data)
+}
+
+/**
+ * Registra una sesión sin cita: la cita nace aquí, ya registrada, con la hora del servidor.
+ * `claveIdempotencia` evita que un reintento cree dos sesiones.
+ */
+export function registrarSesionSinCita(procesoId: string, datos: SesionSinCitaInput, claveIdempotencia: string) {
+  return api
+    .post<ConsultaRegistradaDto>(`/psicologia/procesos/${procesoId}/sesiones-sin-cita`, datos, {
+      headers: { 'Idempotency-Key': claveIdempotencia },
+    })
+    .then((res) => res.data)
 }
 
 /** Sube la Hoja de evolución escaneada de la sesión. `onProgreso` recibe el porcentaje enviado. */

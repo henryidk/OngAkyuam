@@ -148,9 +148,27 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
     });
   }
 
-  async listarPorAgendar(psicologaId: string): Promise<CasoPorAgendarDto[]> {
+  listarPorAgendar(psicologaId: string): Promise<CasoPorAgendarDto[]> {
+    return this.casosPorAgendar(psicologaId, null);
+  }
+
+  async buscarPorAgendar(
+    psicologaId: string,
+    referidoId: string,
+  ): Promise<CasoPorAgendarDto | null> {
+    const [caso] = await this.casosPorAgendar(psicologaId, referidoId);
+    return caso ?? null;
+  }
+
+  private async casosPorAgendar(
+    psicologaId: string,
+    referidoId: string | null,
+  ): Promise<CasoPorAgendarDto[]> {
     const atenciones = await this.prisma.atencionPsicologica.findMany({
-      where: casoPorAgendar(psicologaId),
+      where: {
+        ...casoPorAgendar(psicologaId),
+        ...(referidoId ? { referidoId } : {}),
+      },
       select: {
         referidoId: true,
         tomadaEn: true,
