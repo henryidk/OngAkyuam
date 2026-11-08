@@ -155,6 +155,23 @@ export const ETIQUETAS_FILTRO_PACIENTES_MEDICA: Record<(typeof FILTROS_PACIENTES
 export const BUSQUEDA_PACIENTES_MEDICA_MIN = 2
 export const BUSQUEDA_PACIENTES_MEDICA_MAX = 80
 export const PAGINA_PACIENTES_MEDICA = 30
+
+/**
+ * Grupos de "Sin próxima consulta" (Pacientes): faltó y nadie le dio otra fecha, se atendió y no se
+ * agendó la siguiente (las dos, recientes) o lleva más de 2 meses sin venir, sea cual sea el motivo.
+ */
+export const GRUPOS_SIN_PROXIMA_MEDICA = ['NO_ASISTIO', 'SIN_FECHA', 'SIN_VENIR'] as const
+
+export const ETIQUETAS_GRUPO_SIN_PROXIMA_MEDICA: Record<(typeof GRUPOS_SIN_PROXIMA_MEDICA)[number], string> = {
+  NO_ASISTIO: 'No asistió',
+  SIN_FECHA: 'Atendidas sin siguiente fecha',
+  SIN_VENIR: 'Sin venir hace más de 2 meses',
+}
+
+/** Filas por página de "Sin próxima consulta": la lista se pagina con números, no con "Cargar más". */
+export const PAGINA_SIN_PROXIMA_MEDICA = 20
+/** Tope de página aceptado: evita un OFFSET gigante pedido a mano. */
+export const PAGINA_MAX_SIN_PROXIMA_MEDICA = 1000
 /** Máximo de coincidencias que devuelve el buscador de pacientes de los modales. */
 export const RESULTADOS_BUSCADOR_PACIENTES_MEDICA = 10
 /** Pacientes por agendar que el buscador sugiere antes de escribir. */

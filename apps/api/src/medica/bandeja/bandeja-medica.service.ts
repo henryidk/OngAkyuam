@@ -1,10 +1,10 @@
 import { Inject, Injectable } from '@nestjs/common';
-import {
-  dejoDeVenirMedica,
-  hoyGT,
-  type ContadoresMedicaDto,
-  type ReferenciaBandejaMedicaDto,
+import type {
+  ContadoresMedicaDto,
+  ReferenciaBandejaMedicaDto,
 } from '@akyuam/shared';
+import { RELOJ, type IReloj } from '../../common/reloj';
+import { corteSinVenir } from '../dominio/sin-proxima';
 import { PorAtenderService } from '../consultas/por-atender.service';
 import {
   LECTOR_PENDIENTES_MEDICA,
@@ -18,6 +18,7 @@ export class BandejaMedicaService {
     @Inject(LECTOR_PENDIENTES_MEDICA)
     private readonly lectorPendientes: ILectorPendientesMedica,
     private readonly porAtender: PorAtenderService,
+    @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
   pendientes(): Promise<ReferenciaBandejaMedicaDto[]> {
@@ -26,24 +27,21 @@ export class BandejaMedicaService {
 
   /**
    * La insignia de Consultas cuenta lo mismo que muestra "Por atender": una sola definición.
-   * La de la Agenda cuenta solo las pacientes sin próxima consulta recientes (faltó o se atendió
-   * hace menos de 2 meses): son las que aún se recuperan con una llamada y el número baja en
-   * cuanto se agendan. Las que dejaron de venir siguen en el panel, pero no suman: un número que
-   * casi nunca baja se deja de mirar.
+   * `sinProxima` no es insignia: es el número de la tarjeta de la Agenda, calculado con la misma
+   * consulta que la lista de Pacientes a la que lleva.
    */
   async contadores(): Promise<ContadoresMedicaDto> {
     const [referencias, porAtender, sinProxima] = await Promise.all([
       this.lectorPendientes.referenciasPendientes(),
       this.porAtender.listar(),
-      this.lectorPendientes.sinProxima(),
+      this.lectorPendientes.conteosSinProxima({
+        corte: corteSinVenir(this.reloj.ahora()),
+      }),
     ]);
-    const hoy = hoyGT();
     return {
       areaAtencion: referencias.length,
       consultasPorAtender: porAtender.hoy.length + porAtender.atrasadas.length,
-      agendaSinProxima: sinProxima.filter(
-        (paciente) => !dejoDeVenirMedica(paciente.desde, hoy),
-      ).length,
+      sinProxima: sinProxima.TODAS,
     };
   }
 }

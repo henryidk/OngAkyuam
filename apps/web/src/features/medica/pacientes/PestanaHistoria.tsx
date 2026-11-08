@@ -12,8 +12,8 @@ import { RUTAS_MEDICA } from '../rutas'
 import { useContextoFicha } from './contextoFicha'
 
 const CLASE_CHIP = 'flex items-center gap-1.5 whitespace-nowrap rounded-full border py-1 pl-1 pr-3 text-[13px] font-medium'
-const CHIP_ACTIVO = 'border-[#1c1640] bg-[#1c1640] text-white'
-const CHIP_INACTIVO = 'border-[#d5dadf] bg-white text-[#374151] hover:bg-[#f8f9fa]'
+const CHIP_ACTIVO = 'border-brand-950 bg-brand-950 text-white'
+const CHIP_INACTIVO = 'border-borde-fuerte bg-white text-texto-cuerpo hover:bg-superficie'
 
 /** Consultas seguidas de una misma visita (la lista llega ordenada de la más reciente a la más antigua). */
 interface Visita {
@@ -62,7 +62,7 @@ function acompanantes(visita: ConsultaHistoriaMedicaDto['visita'], filtrada: str
 
 function Avatar({ nombre, tamano = 'h-8 w-8 text-[11.5px]' }: { nombre: string; tamano?: string }) {
   return (
-    <span aria-hidden="true" className={`flex flex-none items-center justify-center rounded-full bg-[#f2ecfa] font-semibold text-[#5b3985] ${tamano}`}>
+    <span aria-hidden="true" className={`flex flex-none items-center justify-center rounded-full bg-seleccion font-semibold text-brand-700 ${tamano}`}>
       {iniciales(nombre)}
     </span>
   )
@@ -72,39 +72,39 @@ function FilaConsulta({ consulta, conPersona, abierta, onAlternar }: { consulta:
   const { persona } = consulta
   const idDetalle = `consulta-${consulta.id}`
   return (
-    <li className="border-t border-[#eef0f2] first:border-t-0">
+    <li className="border-t border-borde-suave first:border-t-0">
       <button
         type="button"
         onClick={onAlternar}
         aria-expanded={abierta}
         aria-controls={idDetalle}
-        className="flex w-full items-start gap-3 px-[18px] py-3 text-left hover:bg-[#f8fafb]"
+        className="flex w-full items-start gap-3 px-[18px] py-3 text-left hover:bg-superficie"
       >
         {conPersona && <Avatar nombre={persona.nombreCompleto} />}
         <span className="flex min-w-0 flex-1 flex-col gap-0.5">
           {conPersona && (
-            <span className="text-[13px] text-[#5b6573]">
-              <span className="font-semibold text-[#1c2430]">{primerNombre(persona.nombreCompleto)}</span>
+            <span className="text-[13px] text-texto-suave">
+              <span className="font-semibold text-texto">{primerNombre(persona.nombreCompleto)}</span>
               {persona.ninoId === null ? ' · Usuaria' : ` · ${persona.edad} años`}
             </span>
           )}
-          <span className="text-sm text-pretty text-[#1c2430]">
-            <span className="font-medium text-[#5b6573]">Dx: </span>
+          <span className="text-sm text-pretty text-texto">
+            <span className="font-medium text-texto-suave">Dx: </span>
             <span className="font-semibold">{consulta.diagnostico}</span>
           </span>
-          {consulta.motivoConsulta && <span className="line-clamp-2 text-[13px] text-pretty text-[#5b6573]">{consulta.motivoConsulta}</span>}
+          {consulta.motivoConsulta && <span className="line-clamp-2 text-[13px] text-pretty text-texto-suave">{consulta.motivoConsulta}</span>}
         </span>
         <span className="flex flex-none flex-col items-end gap-1">
-          <span className="whitespace-nowrap text-[13px] font-medium text-[#7346a5]">{abierta ? 'Ocultar' : 'Ver detalle'}</span>
+          <span className="whitespace-nowrap text-[13px] font-medium text-brand-600">{abierta ? 'Ocultar' : 'Ver detalle'}</span>
           {consulta.documentos.length > 0 && (
-            <span className="whitespace-nowrap text-[12px] text-[#5b6573]">
+            <span className="whitespace-nowrap text-[12px] text-texto-suave">
               {consulta.documentos.length} {consulta.documentos.length === 1 ? 'documento' : 'documentos'}
             </span>
           )}
         </span>
       </button>
       {abierta && (
-        <div id={idDetalle} className="border-t border-dashed border-[#eef0f2] bg-[#fcfcfd] px-[18px] pb-[18px] pt-4">
+        <div id={idDetalle} className="border-t border-dashed border-borde-suave bg-superficie px-[18px] pb-[18px] pt-4">
           <DetalleConsulta consulta={consulta} />
         </div>
       )}
@@ -133,19 +133,19 @@ function TarjetaVisita({
   const detalle = acompanantes(datos, filtrada, nombreDe)
   return (
     <article className={`${CLASE_TARJETA} overflow-hidden`}>
-      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-b border-[#eef0f2] bg-[#fafbfc] px-[18px] py-3">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 border-b border-borde-suave bg-superficie px-[18px] py-3">
         <div className="flex min-w-0 flex-col gap-0.5">
-          <h3 className="text-[14.5px] font-semibold text-[#1c2430]">
+          <h3 className="text-[14.5px] font-semibold text-texto">
             {fechaLarga(fecha)} de {anioDe(fecha)}
           </h3>
-          <span className="text-[12.5px] tabular-nums text-[#5b6573]">
+          <span className="text-[12.5px] tabular-nums text-texto-suave">
             {datos.horaFin ? `${hora} – ${datos.horaFin}` : `${hora} · sin cita`}
             {detalle && ` · ${detalle}`}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           {datos.primera && <span className={`rounded-full px-2 py-0.5 text-[11.5px] font-semibold ${CLASES_TONO.purple}`}>Primera consulta</span>}
-          <span className="whitespace-nowrap font-mono text-[11.5px] text-[#9aa4b0]">{codigoAtencion}</span>
+          <span className="whitespace-nowrap font-mono text-[11.5px] text-texto-sutil">{codigoAtencion}</span>
         </div>
       </header>
       <ul>
@@ -223,7 +223,7 @@ export default function PestanaHistoria() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           {hayHijos ? (
             <div role="group" aria-label="Ver la historia de" className="flex flex-wrap items-center gap-2">
-              <span className="text-[13px] text-[#5b6573]">Ver:</span>
+              <span className="text-[13px] text-texto-suave">Ver:</span>
               <button
                 type="button"
                 aria-pressed={persona === undefined}
@@ -245,7 +245,7 @@ export default function PestanaHistoria() {
                   >
                     <Avatar nombre={p.nombreCompleto} tamano="h-6 w-6 text-[10px]" />
                     {primerNombre(p.nombreCompleto)}
-                    {p.ninoId !== null && <span className={activo ? 'text-white/70' : 'text-[#9aa4b0]'}>{p.edad} años</span>}
+                    {p.ninoId !== null && <span className={activo ? 'text-white/70' : 'text-texto-sutil'}>{p.edad} años</span>}
                   </button>
                 )
               })}
@@ -256,7 +256,7 @@ export default function PestanaHistoria() {
           {ficha.atencionActiva && (
             <Link
               to={RUTAS_MEDICA.nuevaConsulta({ usuaria: ficha.usuariaId, origen: 'ficha' })}
-              className="whitespace-nowrap rounded-md bg-[#7346a5] px-3.5 py-[9px] text-[13px] font-semibold text-white hover:bg-[#5b3985]"
+              className="whitespace-nowrap rounded-md bg-brand-600 px-3.5 py-[9px] text-[13px] font-semibold text-white hover:bg-brand-700"
             >
               Registrar consulta
             </Link>
@@ -269,14 +269,14 @@ export default function PestanaHistoria() {
       ) : !items ? (
         <Esqueleto filas={3} />
       ) : items.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-[#d5dadf] bg-white p-8 text-center text-sm text-[#5b6573]">
+        <p className="rounded-xl border border-dashed border-borde-fuerte bg-white p-8 text-center text-sm text-texto-suave">
           {nombreFiltrada ? `${primerNombre(nombreFiltrada)} aún no tiene consultas registradas.` : 'Sin consultas registradas todavía.'}
         </p>
       ) : (
         <>
           {nombreFiltrada && (
-            <p className="text-[13px] text-[#5b6573]">
-              Historia clínica de <span className="font-semibold text-[#1c2430]">{nombreFiltrada}</span>
+            <p className="text-[13px] text-texto-suave">
+              Historia clínica de <span className="font-semibold text-texto">{nombreFiltrada}</span>
             </p>
           )}
           {agruparPorVisita(items).map((visita) => (
@@ -296,11 +296,11 @@ export default function PestanaHistoria() {
                 type="button"
                 disabled={cargandoMas}
                 onClick={() => void cargarMas()}
-                className="rounded-md border border-[#d5dadf] bg-white px-4 py-2 text-[13px] font-medium text-[#1c2430] hover:bg-[#f8f9fa] disabled:opacity-60"
+                className="rounded-md border border-borde-fuerte bg-white px-4 py-2 text-[13px] font-medium text-texto hover:bg-superficie disabled:opacity-60"
               >
                 {cargandoMas ? 'Cargando…' : 'Cargar consultas más antiguas'}
               </button>
-              {errorMas && <p className="text-[12.5px] text-[#9b2c20]">{errorMas}</p>}
+              {errorMas && <p className="text-[12.5px] text-estado-error">{errorMas}</p>}
             </div>
           )}
         </>

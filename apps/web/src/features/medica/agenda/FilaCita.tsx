@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { hoyGT, type CitaAgendaMedicaDto } from '@akyuam/shared'
+import { citaRegistrableEnAgenda, type CitaAgendaMedicaDto } from '@akyuam/shared'
 import CodigoAtencion from '../compartido/CodigoAtencion'
 import EstadoCita from '../compartido/EstadoCita'
 import { fechaLargaEnFrase } from '../compartido/fechas'
@@ -14,20 +14,20 @@ interface FilaCitaProps {
 }
 
 const BOTON_PRIMARIO =
-  'whitespace-nowrap rounded-md bg-[#7346a5] px-[13px] py-2 text-[13px] font-semibold text-white hover:bg-[#5b3985]'
+  'whitespace-nowrap rounded-md bg-brand-600 px-[13px] py-2 text-[13px] font-semibold text-white hover:bg-brand-700'
 const BOTON_SECUNDARIO =
-  'whitespace-nowrap rounded-md border border-[#d5dadf] bg-white px-3 py-[7px] text-[13px] font-semibold text-[#7346a5] hover:border-[#7346a5]'
+  'whitespace-nowrap rounded-md border border-borde-fuerte bg-white px-3 py-[7px] text-[13px] font-semibold text-brand-600 hover:border-brand-600'
 const BOTON_NEUTRO =
-  'whitespace-nowrap rounded-md border border-[#d5dadf] bg-white px-3 py-[7px] text-[13px] font-medium text-[#1c2430] hover:bg-[#f8f9fa]'
+  'whitespace-nowrap rounded-md border border-borde-fuerte bg-white px-3 py-[7px] text-[13px] font-medium text-texto hover:bg-superficie'
 
 const BOTON_BORDE_MORADO =
-  'whitespace-nowrap rounded-md border border-[#7346a5] bg-white px-3 py-[7px] text-[13px] font-semibold text-[#7346a5] hover:bg-[#f7f3fc]'
+  'whitespace-nowrap rounded-md border border-brand-600 bg-white px-3 py-[7px] text-[13px] font-semibold text-brand-600 hover:bg-brand-50'
 const ENLACE = 'whitespace-nowrap px-1.5 py-[7px] text-[13px] underline underline-offset-2'
 
 /**
- * Una cita del día. La consulta se registra desde aquí, donde la médica ve a la paciente: las de
- * hoy y las que quedaron sin registrar (la en curso o sin registrar, como acción principal), con
- * las mismas reglas que Consultas › Por atender. Al guardar se vuelve a este día de la agenda.
+ * Una cita del día. La consulta se registra desde aquí, donde la médica ve a la paciente, con la
+ * regla compartida `citaRegistrableEnAgenda` (la misma de Psicología): lo que ya empezó (acción
+ * principal) y lo de hoy que aún no empieza. Al guardar se vuelve a este día de la agenda.
  * "No asistió" solo cuando la cita ya pasó. "Reprogramar" mueve una cita que todavía no empieza,
  * o da nueva fecha a una inasistencia si la paciente no tiene ya otra cita.
  */
@@ -35,34 +35,34 @@ export default function FilaCita({ cita, onReprogramar, onNoAsistio, onIrA }: Fi
   const estado = cita.estadoVista
   const enCurso = estado === 'EN_CURSO'
   const sinRegistrar = estado === 'SIN_REGISTRAR'
-  const registrable = enCurso || sinRegistrar || (estado === 'PROGRAMADA' && cita.fecha === hoyGT())
+  const registrable = citaRegistrableEnAgenda({ programada: cita.estado === 'PROGRAMADA', inicio: cita.inicio }, new Date())
   const atendida = estado === 'ATENDIDA' && cita.consultaId !== null
 
   return (
     <div
-      className={`flex flex-wrap items-center gap-x-4 gap-y-2.5 border-b border-[#eef0f2] px-[18px] py-3.5 last:border-b-0 ${
-        enCurso ? 'bg-[#faf7fd]' : 'bg-white'
+      className={`flex flex-wrap items-center gap-x-4 gap-y-2.5 border-b border-borde-suave px-[18px] py-3.5 last:border-b-0 ${
+        enCurso ? 'bg-brand-50' : 'bg-white'
       }`}
     >
       <div className="flex min-w-0 flex-[1_1_260px] items-center gap-4">
         <div className="flex w-[52px] flex-none flex-col gap-0.5">
-          <span className="whitespace-nowrap font-mono text-sm font-medium text-[#7346a5]">{cita.hora}</span>
-          <span className="whitespace-nowrap font-mono text-[11.5px] text-[#9aa4b0]">{cita.horaFin}</span>
+          <span className="whitespace-nowrap font-mono text-sm font-medium text-brand-600">{cita.hora}</span>
+          <span className="whitespace-nowrap font-mono text-[11.5px] text-texto-sutil">{cita.horaFin}</span>
           {enCurso && (
-            <span className="self-start rounded-[3px] bg-[#7346a5] px-[5px] py-px text-[10.5px] font-bold text-white">AHORA</span>
+            <span className="self-start rounded-[3px] bg-brand-600 px-[5px] py-px text-[10.5px] font-bold text-white">AHORA</span>
           )}
         </div>
         <div className="flex min-w-0 flex-col gap-[3px]">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[14.5px] font-semibold text-[#1c2430]">{cita.usuariaNombreCompleto}</span>
+            <span className="text-[14.5px] font-semibold text-texto">{cita.usuariaNombreCompleto}</span>
             <EstadoCita estado={estado} />
           </div>
           {detallePersonasCita(cita.personas) && (
-            <span className="text-[12.5px] text-[#7346a5]">{detallePersonasCita(cita.personas)}</span>
+            <span className="text-[12.5px] text-brand-600">{detallePersonasCita(cita.personas)}</span>
           )}
           <CodigoAtencion codigo={cita.codigoAtencion} />
           {cita.reprogramadaA && (
-            <span className="flex items-center gap-1.5 text-[12.5px] text-[#5b3985]">
+            <span className="flex items-center gap-1.5 text-[12.5px] text-brand-700">
               <span aria-hidden="true">↻</span>
               Reprogramada para {fechaLargaEnFrase(cita.reprogramadaA.fecha)} · {cita.reprogramadaA.hora}
             </span>
@@ -90,13 +90,13 @@ export default function FilaCita({ cita, onReprogramar, onNoAsistio, onIrA }: Fi
           </button>
         )}
         {cita.reprogramadaA && (
-          <button type="button" onClick={() => onIrA(cita.reprogramadaA!.fecha)} className={`${ENLACE} font-medium text-[#7346a5]`}>
+          <button type="button" onClick={() => onIrA(cita.reprogramadaA!.fecha)} className={`${ENLACE} font-medium text-brand-600`}>
             Ver nueva cita
           </button>
         )}
         <Link
           to={atendida ? RUTAS_MEDICA.historia(cita.usuariaId, undefined, cita.consultaId!) : RUTAS_MEDICA.paciente(cita.usuariaId)}
-          className={`${ENLACE} text-[#5b6573] hover:text-[#1c2430]`}
+          className={`${ENLACE} text-texto-suave hover:text-texto`}
         >
           {atendida ? 'Ver consulta' : 'Ver ficha'}
         </Link>

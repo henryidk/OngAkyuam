@@ -1,4 +1,4 @@
-import type { FiltroPacientesMedica } from '@akyuam/shared'
+import type { FiltroPacientesMedica, GrupoSinProximaMedica } from '@akyuam/shared'
 
 /**
  * Constructor único de las URLs del módulo. Ningún componente arma un path de medicina con un
@@ -17,8 +17,11 @@ function conQuery(base: string, params: Record<string, string | undefined>) {
 /** De dónde se abrió el registro de una consulta: al guardar se vuelve ahí (regla 1.7). */
 export type OrigenConsulta = 'agenda' | 'consultas' | 'ficha'
 
-/** Pestañas de Consultas. "Por atender" es la de entrada y no se escribe en la URL. */
-export type VistaConsultas = 'por-atender' | 'historial'
+/** Pestañas de Consultas. "Por registrar" es la de entrada y no se escribe en la URL. */
+export type VistaConsultas = 'por-registrar' | 'historial'
+
+/** Valor de `?vista=` de Pacientes que abre la lista "Sin próxima consulta". */
+export const VISTA_SIN_PROXIMA = 'sin-proxima'
 
 export const RUTAS_MEDICA = {
   /** Pantalla de entrada: referencias pendientes de primera consulta. */
@@ -29,6 +32,8 @@ export const RUTAS_MEDICA = {
    */
   agenda: (dia?: string, agendar?: string) => conQuery('/medica/agenda', { dia, agendar }),
   pacientes: (estado?: FiltroPacientesMedica) => conQuery('/medica/pacientes', { estado }),
+  /** Pacientes › "Sin próxima consulta", opcionalmente en un grupo. */
+  sinProxima: (grupo?: GrupoSinProximaMedica) => conQuery('/medica/pacientes', { vista: VISTA_SIN_PROXIMA, grupo }),
   paciente: (usuariaId: string) => `/medica/pacientes/${usuariaId}`,
   /** `persona`: "usuaria" o el id de un hijo/a. `consulta`: la que se abre desplegada. */
   historia: (usuariaId: string, persona?: string, consulta?: string) =>
@@ -37,7 +42,7 @@ export const RUTAS_MEDICA = {
   datos: (usuariaId: string) => `/medica/pacientes/${usuariaId}/datos`,
   /**
    * Consultas: `vista` elige la pestaña; `consulta` (id) abre su detalle en el Historial. Solo
-   * ids: la búsqueda por nombre nunca va en la URL (planconsultasmedica.md §10).
+   * ids: la búsqueda por nombre nunca va en la URL (regla de CLAUDE.md, OWASP ASVS 8.3.1).
    */
   consultas: (params: { vista?: VistaConsultas; consulta?: string } = {}) =>
     conQuery('/medica/consultas', { vista: params.vista === 'historial' ? 'historial' : undefined, consulta: params.consulta }),

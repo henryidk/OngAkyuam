@@ -1,5 +1,6 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import {
+  PAGINA_SIN_PROXIMA_MEDICA,
   fechaCalendarioGT,
   finDiaGT,
   inicioDiaGT,
@@ -11,13 +12,17 @@ import type {
   DiaAgendaMedicaDto,
   DisponibilidadDiaDto,
   DisponibilidadMedicaQuery,
+  ListarSinProximaMedicaDatos,
   PacienteProgramableDto,
   ProgramablesMedicaQuery,
   SemanaAgendaMedicaDto,
+  SinProximaMedicaPaginaDto,
 } from '@akyuam/shared';
+import { interpretarBusqueda } from '../../common/busqueda-usuarias';
 import { MENSAJE_RANGO_DISPONIBILIDAD } from '../compartido/mensajes';
 import { RELOJ, type IReloj } from '../../common/reloj';
 import { derivarEstadoCita } from '../dominio/estado-cita';
+import { corteSinVenir } from '../dominio/sin-proxima';
 import {
   bloquesOcupadosPorDia,
   diasHabilesEntre,
@@ -37,8 +42,8 @@ import {
 const DIAS_SEMANA_LABORAL = 5;
 
 /**
- * La Agenda de la médica: tira de la semana, día abierto con "Sin próxima consulta" y horas libres
- * para los modales de programar. Registrar e inasistencias viven en Consultas › Por atender. Solo lectura; nunca devuelve datos clínicos.
+ * La Agenda de la médica: tira de la semana, día abierto, "Sin próxima consulta" por páginas y
+ * horas libres para los modales de programar. Registrar e inasistencias viven en Consultas › Por atender. Solo lectura; nunca devuelve datos clínicos.
  */
 @Injectable()
 export class AgendaMedicaService {
@@ -76,16 +81,41 @@ export class AgendaMedicaService {
   }
 
   async dia(fecha: string): Promise<DiaAgendaMedicaDto> {
-    const ahora = this.reloj.ahora();
-    const [citas, sinProxima] = await Promise.all([
-      this.lectorCitas.citasEntre(
-        inicioDiaGT(fecha),
-        inicioDiaGT(sumarDiasGT(fecha, 1)),
-        ahora,
-      ),
-      this.lectorPendientes.sinProxima(),
+    const citas = await this.lectorCitas.citasEntre(
+      inicioDiaGT(fecha),
+      inicioDiaGT(sumarDiasGT(fecha, 1)),
+      this.reloj.ahora(),
+    );
+    return { fecha, citas };
+  }
+
+  /**
+   * "Sin próxima consulta" de Pacientes, por páginas numeradas: una página del grupo pedido y los
+   * totales de cada grupo con la misma búsqueda. Toda el área (la agenda es compartida).
+   */
+  async sinProxima(
+    datos: ListarSinProximaMedicaDatos,
+  ): Promise<SinProximaMedicaPaginaDto> {
+    const filtro = {
+      busqueda: interpretarBusqueda(datos.q),
+      grupo: datos.grupo,
+      corte: corteSinVenir(this.reloj.ahora()),
+    };
+    const porPagina = PAGINA_SIN_PROXIMA_MEDICA;
+    const [items, conteos] = await Promise.all([
+      this.lectorPendientes.paginaSinProxima(filtro, datos.pagina, porPagina),
+      this.lectorPendientes.conteosSinProxima({
+        busqueda: filtro.busqueda,
+        corte: filtro.corte,
+      }),
     ]);
-    return { fecha, citas, sinProxima };
+    return {
+      items,
+      total: conteos[datos.grupo ?? 'TODAS'],
+      pagina: datos.pagina,
+      porPagina,
+      conteos,
+    };
   }
 
   /**

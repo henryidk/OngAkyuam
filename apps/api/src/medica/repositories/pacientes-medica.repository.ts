@@ -67,7 +67,7 @@ type FilaPacienteRow = {
 type ConteosRow = Record<FiltroPacientesMedica | 'TODAS', number>;
 
 /** El expediente `e` tiene alguna referencia de Trabajo Social a Medicina. */
-const REFERIDO_SQL = Prisma.sql`EXISTS (SELECT 1 FROM "ReferidoArea" rx WHERE rx."expedienteId" = e.id AND rx.area = 'MEDICA')`;
+export const REFERIDO_SQL = Prisma.sql`EXISTS (SELECT 1 FROM "ReferidoArea" rx WHERE rx."expedienteId" = e.id AND rx.area = 'MEDICA')`;
 
 /**
  * La misma regla que `referenciaPendiente` del dominio: referencia a Medicina sin atención activa

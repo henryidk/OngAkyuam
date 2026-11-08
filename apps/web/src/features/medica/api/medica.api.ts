@@ -25,6 +25,7 @@ import type {
   InformeAtencionMedicaQuery,
   InasistenciaRegistradaDto,
   ListarPacientesMedicaQuery,
+  ListarSinProximaMedicaInput,
   PacienteBuscadaMedicaDto,
   PacienteProgramableDto,
   PacientesMedicaPaginaDto,
@@ -35,6 +36,7 @@ import type {
   RegistrarConsultaMedicaInput,
   ReprogramarCitaMedicaInput,
   SemanaAgendaMedicaDto,
+  SinProximaMedicaPaginaDto,
   UrlDocumentoMedicoQuery,
   VisibilidadAtencionMedicaDto,
   VisibilidadAtencionMedicaInput,
@@ -67,7 +69,14 @@ export function obtenerDia(fecha: string) {
   return api.get<DiaAgendaMedicaDto>('/medica/agenda/dia', { params: { fecha } }).then((res) => res.data)
 }
 
-/** Horas de inicio en las que cabe una cita de `duracion` minutos (todos sus bloques libres). */
+/**
+ * "Sin próxima consulta" de Pacientes, por páginas. POST porque `q` puede ser un nombre: así no
+ * queda en la URL ni en los logs de acceso.
+ */
+export function listarSinProxima(datos: ListarSinProximaMedicaInput) {
+  return api.post<SinProximaMedicaPaginaDto>('/medica/agenda/sin-proxima/busqueda', datos).then((res) => res.data)
+}
+
 /** Horas libres de cada día hábil desde `desde` hasta el límite de agenda (un mes). */
 export function obtenerDisponibilidad(desde: string, duracion: number) {
   return api

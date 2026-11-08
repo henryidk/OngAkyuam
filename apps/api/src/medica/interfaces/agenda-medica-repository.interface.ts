@@ -1,16 +1,34 @@
 import type {
   CitaAgendaMedicaDto,
+  GrupoSinProximaMedica,
+  SinProximaMedicaPaginaDto,
   EstadoCitaMedica,
   PacienteProgramableDto,
   ReferenciaBandejaMedicaDto,
   SinProximaConsultaDto,
 } from '@akyuam/shared';
 
+import type { BusquedaListaUsuarias } from '../../common/busqueda-usuarias';
+
 export interface CitaResumida {
   inicio: Date;
   estado: EstadoCitaMedica;
   duracionMin: number;
 }
+
+/** Filtro de "Sin próxima consulta". `corte` sale de `corteSinVenirMedica(hoy)`. */
+export interface FiltroSinProxima {
+  busqueda?: BusquedaListaUsuarias;
+  grupo?: GrupoSinProximaMedica;
+  corte: {
+    /** Último día "sin venir" ("YYYY-MM-DD", Guatemala). */
+    fecha: string;
+    /** Inicio, en Guatemala, del día siguiente al corte: lo anterior cuenta como "sin venir". */
+    instante: Date;
+  };
+}
+
+export type ConteosSinProxima = SinProximaMedicaPaginaDto['conteos'];
 
 /** A quién se puede programar: una referencia, una usuaria o (sin filtro) todas. */
 export interface FiltroProgramables {
@@ -30,7 +48,7 @@ export interface ILectorCitasMedicas {
     hasta: Date,
     ahora: Date,
   ): Promise<CitaAgendaMedicaDto[]>;
-  /** Citas programadas que ya terminaron, fuera de [excluirDesde, excluirHasta). */
+  /** Citas programadas que ya terminaron, fuera de [excluirDesde, excluirHasta), la más reciente primero. */
   citasSinRegistrar(
     ahora: Date,
     excluirDesde: Date,
@@ -44,8 +62,19 @@ export interface ILectorCitasMedicas {
 export interface ILectorPendientesMedica {
   /** Referencias de Trabajo Social pendientes de primera consulta, las más antiguas primero. */
   referenciasPendientes(): Promise<ReferenciaBandejaMedicaDto[]>;
-  /** Atenciones activas sin ninguna cita programada (ni futura ni sin registrar). */
-  sinProxima(): Promise<SinProximaConsultaDto[]>;
+  /**
+   * Una página de atenciones activas sin ninguna cita programada (ni futura ni sin registrar), de
+   * la más reciente a la más antigua.
+   */
+  paginaSinProxima(
+    filtro: FiltroSinProxima,
+    pagina: number,
+    porPagina: number,
+  ): Promise<SinProximaConsultaDto[]>;
+  /** Totales por grupo con la misma definición que `paginaSinProxima`. */
+  conteosSinProxima(
+    filtro: Omit<FiltroSinProxima, 'grupo'>,
+  ): Promise<ConteosSinProxima>;
   programables(filtro: FiltroProgramables): Promise<PacienteProgramableDto[]>;
 }
 

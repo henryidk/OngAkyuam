@@ -24,8 +24,8 @@ export default function PestanaDocumentos() {
 
   return (
     <section className={`${CLASE_TARJETA} flex flex-col gap-2.5 px-5 py-4`}>
-      <h2 className="text-sm font-semibold text-[#1c2430]">Documentos médicos</h2>
-      <p className="text-[12.5px] text-[#5b6573]">
+      <h2 className="text-sm font-semibold text-texto">Documentos médicos</h2>
+      <p className="text-[12.5px] text-texto-suave">
         Los documentos adjuntados en cada consulta. Los documentos de Trabajo Social están en{' '}
         <Link to={RUTAS_MEDICA.datos(usuariaId)} className="font-medium text-brand-700 hover:underline">
           Datos y caso
@@ -37,15 +37,15 @@ export default function PestanaDocumentos() {
       ) : !documentos ? (
         <Esqueleto filas={3} />
       ) : documentos.length === 0 ? (
-        <p className="text-[13px] text-[#5b6573]">Sin documentos todavía.</p>
+        <p className="text-[13px] text-texto-suave">Sin documentos todavía.</p>
       ) : (
         <ul className="flex flex-col gap-2.5">
           {documentos.map((documento) => (
-            <li key={documento.id} className="flex flex-wrap items-center gap-2.5 rounded-md border border-[#e3e6ea] px-3 py-[9px]">
+            <li key={documento.id} className="flex flex-wrap items-center gap-2.5 rounded-md border border-borde px-3 py-[9px]">
               <InsigniaFormato mimeType={documento.mimeType} />
               <div className="flex min-w-[180px] flex-1 flex-col">
-                <span className="text-[13px] font-medium text-[#1c2430]">{documento.nombreVisible}</span>
-                <span className="text-xs tabular-nums text-[#5b6573]">
+                <span className="text-[13px] font-medium text-texto">{documento.nombreVisible}</span>
+                <span className="text-xs tabular-nums text-texto-suave">
                   {formatFechaGT(documento.fechaConsulta)} · {documento.personaNombre}
                 </span>
               </div>

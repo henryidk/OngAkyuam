@@ -58,8 +58,8 @@ export default function MedicaLayout() {
       subtitulo="Medicina"
       contadores={
         contadores
-          ? { [RUTAS_MEDICA.atencion()]: contadores.areaAtencion, '/medica/consultas': contadores.consultasPorAtender,
-              '/medica/agenda': contadores.agendaSinProxima }
+          ? // Sin insignia en Agenda: sus tarjetas ya muestran lo pendiente al entrar (plan §5.2.6).
+            { [RUTAS_MEDICA.atencion()]: contadores.areaAtencion, '/medica/consultas': contadores.consultasPorAtender }
           : undefined
       }
       outletContext={contexto}

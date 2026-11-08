@@ -10,7 +10,7 @@ export default function PestanaDatos() {
   const { ficha } = useContextoFicha()
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-[13px] text-[#5b6573] tabular-nums">
+      <p className="text-[13px] text-texto-suave tabular-nums">
         Datos de Trabajo Social, de solo lectura · actualizados el {fechaDeInstante(ficha.actualizadoPorTsEn)}. Si algo está mal, se corrige en Trabajo Social.
       </p>
       <ContenidoDetalleExpediente expedienteId={ficha.expedienteId} />

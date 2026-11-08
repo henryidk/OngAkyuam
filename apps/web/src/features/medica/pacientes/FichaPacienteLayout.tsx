@@ -9,7 +9,7 @@ import {
   type ProgramablesMedicaQuery,
   textoCodigo,
 } from '@akyuam/shared'
-import { useTituloPagina } from '../../../components/TituloPagina'
+import { useTituloPagina, TituloPrincipal } from '../../../components/TituloPagina'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import Tabs from '../../../components/ui/Tabs'
 import { useToast } from '../../../components/ui/Toast'
@@ -95,21 +95,21 @@ export default function FichaPacienteLayout() {
 
   return (
     <div className="mx-auto flex max-w-[1180px] flex-col gap-4">
-      <header className="flex flex-col gap-4 rounded-xl border border-[#e3e6ea] bg-white px-6 pt-5">
+      <header className="flex flex-col gap-4 rounded-xl border border-borde bg-white px-6 pt-5">
         <div className="flex flex-wrap items-center gap-4">
           <span
             aria-hidden="true"
-            className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-full bg-[#eee4f8] text-base font-semibold text-[#5b3985]"
+            className="flex h-[52px] w-[52px] flex-none items-center justify-center rounded-full bg-brand-100 text-base font-semibold text-brand-700"
           >
             {iniciales(ficha.nombreCompleto)}
           </span>
           <div className="flex min-w-[260px] flex-1 flex-col gap-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-[22px] font-semibold text-[#1c2430]">{ficha.nombreCompleto}</h1>
+              <TituloPrincipal className="text-[22px] font-semibold text-texto">{ficha.nombreCompleto}</TituloPrincipal>
               <Chip tono={TONO_SITUACION[ficha.situacion]}>{ETIQUETAS_FILTRO_PACIENTES_MEDICA[ficha.situacion]}</Chip>
             </div>
-            <p className="text-sm tabular-nums text-[#5b6573] [text-wrap:pretty]">
-              Expediente <strong className="font-semibold text-[#1c2430]">{ficha.expedienteNumero}</strong> ·{' '}
+            <p className="text-sm tabular-nums text-texto-suave [text-wrap:pretty]">
+              Expediente <strong className="font-semibold text-texto">{ficha.expedienteNumero}</strong> ·{' '}
               {datosEncabezado.join(' · ')}
             </p>
           </div>

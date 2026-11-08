@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import {
   DURACION_CITA_MEDICA_MIN,
   fechaCalendarioGT,
@@ -11,6 +11,7 @@ import type {
   CitaAgendaMedicaDto,
   PacienteProgramableDto,
   ReferenciaBandejaMedicaDto,
+  GrupoSinProximaMedica,
   SinProximaConsultaDto,
 } from '@akyuam/shared';
 import {
@@ -33,11 +34,15 @@ import {
 } from '../dominio/reglas-atencion';
 import type {
   CitaResumida,
+  ConteosSinProxima,
   FiltroProgramables,
+  FiltroSinProxima,
   ILectorCitasMedicas,
   ILectorPendientesMedica,
 } from '../interfaces/agenda-medica-repository.interface';
 import { EXPEDIENTE_REFERIDO_A_MEDICA } from './acceso-medica.repository';
+import { REFERIDO_SQL } from './pacientes-medica.repository';
+import { condicionBusqueda } from '../../common/busqueda-usuarias';
 import { SELECT_PERSONAS_CITA, personasDeCita } from './mapeo';
 import { consecutivoSiguiente } from '../../common/consecutivo';
 
@@ -45,6 +50,86 @@ const SELECT_NINOS = {
   select: { id: true, ...SELECT_HIJO },
   orderBy: { consecutivo: 'asc' },
 } as const;
+
+type FilaSinProximaRow = {
+  atencionId: string;
+  version: number;
+  consecutivo: number;
+  fechaInicio: Date;
+  expedienteId: string;
+  expedienteNumero: string;
+  usuariaId: string;
+  nombres: string;
+  apellidos: string;
+  atendioPor: string | null;
+  motivo: SinProximaConsultaDto['motivo'];
+  grupo: GrupoSinProximaMedica;
+  /** La falta (si es posterior a la última consulta) o la última consulta; null si no hay ninguna. */
+  momento: Date | null;
+};
+
+/**
+ * Atenciones activas de Medicina sin ninguna cita programada (ni futura ni sin registrar), con su
+ * motivo y su grupo. La misma CTE lista y cuenta: el número de la tarjeta de la Agenda y el total
+ * de la lista no pueden diferir. "Sin venir" compara contra el corte ya calculado en Guatemala
+ * (`corteSinVenirMedica`): un instante cuenta si es anterior al día siguiente al corte, y la fecha
+ * de inicio (sin hora) si es igual o anterior al corte.
+ */
+function cteSinProxima(filtro: Omit<FiltroSinProxima, 'grupo'>): Prisma.Sql {
+  return Prisma.sql`
+    WITH sin_proxima AS (
+      SELECT base.*,
+        CASE
+          WHEN (CASE WHEN base.momento IS NOT NULL
+                  THEN base.momento < ${filtro.corte.instante}
+                  ELSE base."fechaInicio" <= ${filtro.corte.fecha}::date END)
+            THEN 'SIN_VENIR'
+          ELSE base.motivo
+        END AS grupo
+      FROM (
+        SELECT
+          a.id AS "atencionId",
+          a.version,
+          a.consecutivo,
+          a."fechaInicio",
+          e.id AS "expedienteId",
+          e.numero AS "expedienteNumero",
+          u.id AS "usuariaId",
+          u.nombres,
+          u.apellidos,
+          c."atendioPor",
+          CASE WHEN f.inicio IS NOT NULL AND (c."fechaHora" IS NULL OR f.inicio > c."fechaHora")
+            THEN 'NO_ASISTIO' ELSE 'SIN_FECHA' END AS motivo,
+          CASE WHEN f.inicio IS NOT NULL AND (c."fechaHora" IS NULL OR f.inicio > c."fechaHora")
+            THEN f.inicio ELSE c."fechaHora" END AS momento
+        FROM "AtencionMedica" a
+        JOIN "Expediente" e ON e.id = a."expedienteId"
+        JOIN "Usuaria" u ON u.id = e."usuariaId"
+        LEFT JOIN LATERAL (
+          SELECT cm."fechaHora", us."nombreCompleto" AS "atendioPor"
+          FROM "ConsultaMedica" cm
+          JOIN "Usuario" us ON us.id = cm."registradaPorId"
+          WHERE cm."atencionId" = a.id
+          ORDER BY cm."fechaHora" DESC
+          LIMIT 1
+        ) c ON TRUE
+        LEFT JOIN LATERAL (
+          SELECT ci.inicio FROM "CitaMedica" ci
+          WHERE ci."atencionId" = a.id AND ci.estado = 'NO_ASISTIO'
+          ORDER BY ci.inicio DESC
+          LIMIT 1
+        ) f ON TRUE
+        WHERE a.estado = 'ACTIVA'
+          AND ${REFERIDO_SQL}
+          AND NOT EXISTS (
+            SELECT 1 FROM "CitaMedica" cp
+            WHERE cp."atencionId" = a.id AND cp.estado = 'PROGRAMADA'
+          )
+          AND ${condicionBusqueda(filtro.busqueda)}
+      ) base
+    )
+  `;
+}
 
 /** La cita de la Agenda: nunca trae datos clínicos (ni motivo ni diagnóstico). */
 function selectCitaAgenda(ahora: Date) {
@@ -173,7 +258,8 @@ export class AgendaMedicaRepository
         atencion: { expediente: EXPEDIENTE_REFERIDO_A_MEDICA },
       },
       select: selectCitaAgenda(ahora),
-      orderBy: [{ inicio: 'asc' }, { id: 'asc' }],
+      // De la más reciente a la más antigua, como en Psicología: lo de ayer se recuerda mejor.
+      orderBy: [{ inicio: 'desc' }, { id: 'asc' }],
     });
     return filas
       .filter((fila) => derivarEstadoCita(fila, ahora) === 'SIN_REGISTRAR')
@@ -236,64 +322,55 @@ export class AgendaMedicaRepository
       }));
   }
 
-  async sinProxima(): Promise<SinProximaConsultaDto[]> {
-    const atenciones = await this.prisma.atencionMedica.findMany({
-      where: {
-        estado: 'ACTIVA',
-        expediente: EXPEDIENTE_REFERIDO_A_MEDICA,
-        citas: { none: { estado: 'PROGRAMADA' } },
-      },
-      select: {
-        id: true,
-        version: true,
-        consecutivo: true,
-        fechaInicio: true,
-        expediente: {
-          select: {
-            id: true,
-            numero: true,
-            usuaria: { select: { id: true, nombres: true, apellidos: true } },
-          },
-        },
-        consultas: {
-          select: { fechaHora: true },
-          orderBy: { fechaHora: 'desc' },
-          take: 1,
-        },
-        // La última inasistencia: si es posterior a la última consulta, faltó y sigue sin fecha.
-        citas: {
-          where: { estado: 'NO_ASISTIO' },
-          select: { inicio: true },
-          orderBy: { inicio: 'desc' },
-          take: 1,
-        },
-      },
-    });
-    return atenciones
-      .map((a): SinProximaConsultaDto => {
-        const consulta = a.consultas[0]?.fechaHora;
-        const falta = a.citas[0]?.inicio;
-        const faltoDespues =
-          falta !== undefined &&
-          (consulta === undefined || falta.getTime() > consulta.getTime());
-        let desde = fechaColumnaISO(a.fechaInicio);
-        if (faltoDespues) {
-          desde = fechaCalendarioGT(falta);
-        } else if (consulta) {
-          desde = fechaCalendarioGT(consulta);
-        }
-        return {
-          usuariaId: a.expediente.usuaria.id,
-          expedienteId: a.expediente.id,
-          atencionId: a.id,
-          atencionVersion: a.version,
-          codigoAtencion: etiquetaAtencion(a.expediente.numero, a.consecutivo),
-          usuariaNombreCompleto: nombreCompleto(a.expediente.usuaria),
-          motivo: faltoDespues ? 'NO_ASISTIO' : 'SIN_FECHA',
-          desde,
-        };
-      })
-      .sort((x, y) => y.desde.localeCompare(x.desde));
+  async paginaSinProxima(
+    filtro: FiltroSinProxima,
+    pagina: number,
+    porPagina: number,
+  ): Promise<SinProximaConsultaDto[]> {
+    const grupo = filtro.grupo
+      ? Prisma.sql`grupo = ${filtro.grupo}`
+      : Prisma.sql`TRUE`;
+    const filas = await this.prisma.$queryRaw<FilaSinProximaRow[]>(Prisma.sql`
+      ${cteSinProxima(filtro)}
+      SELECT * FROM sin_proxima
+      WHERE ${grupo}
+      -- La más reciente primero: es la que todavía se recupera con una llamada. Sin consulta ni
+      -- falta cuenta el inicio de la atención (fecha sin hora: puede quedar unas horas fuera de
+      -- lugar entre filas del mismo día, nunca de otro grupo).
+      ORDER BY coalesce(momento, "fechaInicio"::timestamptz) DESC, "atencionId"
+      LIMIT ${porPagina} OFFSET ${(pagina - 1) * porPagina}
+    `);
+    return filas.map((fila): SinProximaConsultaDto => ({
+      usuariaId: fila.usuariaId,
+      expedienteId: fila.expedienteId,
+      atencionId: fila.atencionId,
+      atencionVersion: fila.version,
+      codigoAtencion: etiquetaAtencion(fila.expedienteNumero, fila.consecutivo),
+      usuariaNombreCompleto: nombreCompleto(fila),
+      motivo: fila.motivo,
+      grupo: fila.grupo,
+      atendioPor: fila.atendioPor,
+      desde: fila.momento
+        ? fechaCalendarioGT(fila.momento)
+        : fechaColumnaISO(fila.fechaInicio),
+    }));
+  }
+
+  async conteosSinProxima(
+    filtro: Omit<FiltroSinProxima, 'grupo'>,
+  ): Promise<ConteosSinProxima> {
+    const [conteos] = await this.prisma.$queryRaw<ConteosSinProxima[]>(
+      Prisma.sql`
+        ${cteSinProxima(filtro)}
+        SELECT
+          count(*)::int AS "TODAS",
+          count(*) FILTER (WHERE grupo = 'NO_ASISTIO')::int AS "NO_ASISTIO",
+          count(*) FILTER (WHERE grupo = 'SIN_FECHA')::int AS "SIN_FECHA",
+          count(*) FILTER (WHERE grupo = 'SIN_VENIR')::int AS "SIN_VENIR"
+        FROM sin_proxima
+      `,
+    );
+    return conteos;
   }
 
   async programables(

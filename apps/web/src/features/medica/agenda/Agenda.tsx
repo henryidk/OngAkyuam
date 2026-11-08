@@ -2,22 +2,19 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowRight, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import {
-  ETIQUETAS_MOTIVO_ALTA_MEDICA,
   hoyGT,
   lunesDeSemanaGT,
   sumarDiasGT,
   type CitaAgendaMedicaDto,
   type CitaMedicaProgramadaDto,
-  type MotivoAltaMedica,
   type ProgramablesMedicaQuery,
-  type SinProximaConsultaDto,
   textoCodigo,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
 import { useRecurso } from '../../../lib/useRecurso'
-import { listarPorAtender, obtenerDia, obtenerSemana } from '../api/medica.api'
+import { listarBandeja, listarPorAtender, obtenerDia, obtenerSemana } from '../api/medica.api'
 import { useContextoMedica } from '../compartido/contexto'
 import EncabezadoPagina from '../compartido/EncabezadoPagina'
 import { diaHabil, diaSemanaCorto, fechaLarga, fechaLargaEnFrase, numeroDia, textoSemana } from '../compartido/fechas'
@@ -25,42 +22,46 @@ import { useRecargaNovedades } from '../compartido/useRecargaNovedades'
 import FilaCita from './FilaCita'
 import ModalInasistencia, { type ResultadoInasistencia } from '../compartido/ModalInasistencia'
 import ModalProgramar from '../compartido/ModalProgramar'
-import ModalAlta from '../atenciones/ModalAlta'
 import { RUTAS_MEDICA } from '../rutas'
-import PanelesAgenda from './PanelesAgenda'
+import PendientesAgenda from './PendientesAgenda'
 
 const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/
 
 /**
- * Agenda de consultas: la semana (lunes a viernes) con el día abierto y, a la derecha, las
- * pacientes sin próxima consulta. Aquí se programa, se registra la consulta o la inasistencia y
+ * Agenda de consultas: la semana (lunes a viernes) con el día abierto y, a la derecha, dos
+ * tarjetas con lo pendiente (por agendar y sin próxima consulta) que llevan a su lista. Aquí se programa, se registra la consulta o la inasistencia y
  * se reprograma. Las consultas de días anteriores sin registrar no se ven en la semana actual:
- * un aviso arriba lleva a Consultas › Por atender. El día vive en la URL (`?dia=`) para que
+ * un aviso arriba lleva a Consultas › Por registrar. El día vive en la URL (`?dia=`) para que
  * "Ver en agenda", recargar y volver de registrar una consulta caigan ahí.
  */
 export default function Agenda() {
   useTituloPagina({ titulo: 'Agenda' })
   const [params, setParams] = useSearchParams()
   const { mostrar } = useToast()
-  const { recargarContadores } = useContextoMedica()
+  const { contadores, recargarContadores } = useContextoMedica()
 
   const parametroDia = params.get('dia')
   const dia = parametroDia && FORMATO_FECHA.test(parametroDia) ? parametroDia : diaHabil(hoyGT())
   const lunes = lunesDeSemanaGT(dia)
   const hoy = hoyGT()
+  // Se programa solo de lunes a viernes; en fin de semana la agenda abre en el lunes y lo avisa.
+  const hoyEsFinDeSemana = diaHabil(hoy) !== hoy
 
   const semana = useRecurso(useCallback(() => obtenerSemana(lunes), [lunes]))
   const agendaDia = useRecurso(useCallback(() => obtenerDia(dia), [dia]))
   const porAtender = useRecurso(listarPorAtender)
+  const porAgendar = useRecurso(listarBandeja)
   const recargarSemana = semana.recargar
   const recargarDia = agendaDia.recargar
   const recargarPorAtender = porAtender.recargar
+  const recargarPorAgendar = porAgendar.recargar
 
   const recargarTodo = useCallback(() => {
     void recargarSemana()
     void recargarDia()
     void recargarPorAtender()
-  }, [recargarSemana, recargarDia, recargarPorAtender])
+    void recargarPorAgendar()
+  }, [recargarSemana, recargarDia, recargarPorAtender, recargarPorAgendar])
   useRecargaNovedades(recargarTodo)
 
   // `?agendar=<referidoId>` llega desde el Área de atención (otra ruta: la Agenda se monta de
@@ -70,7 +71,6 @@ export default function Agenda() {
   const [programar, setProgramar] = useState<ProgramablesMedicaQuery | null>(() => (agendar ? { referidoId: agendar } : null))
   const [reprogramar, setReprogramar] = useState<CitaAgendaMedicaDto | null>(null)
   const [inasistencia, setInasistencia] = useState<CitaAgendaMedicaDto | null>(null)
-  const [alta, setAlta] = useState<SinProximaConsultaDto | null>(null)
 
   useEffect(() => {
     if (!agendar) return
@@ -118,13 +118,6 @@ export default function Agenda() {
     recargarContadores()
   }
 
-  function trasAlta(paciente: SinProximaConsultaDto, motivo: MotivoAltaMedica) {
-    setAlta(null)
-    mostrar(`${paciente.usuariaNombreCompleto} · atención cerrada · ${ETIQUETAS_MOTIVO_ALTA_MEDICA[motivo]}`)
-    recargarTodo()
-    recargarContadores()
-  }
-
   const citas = agendaDia.datos?.citas ?? []
   const atendidas = citas.filter((cita) => cita.estadoVista === 'ATENDIDA').length
   const pendientesDia = citas.filter((cita) => ['PROGRAMADA', 'EN_CURSO', 'SIN_REGISTRAR'].includes(cita.estadoVista)).length
@@ -144,19 +137,19 @@ export default function Agenda() {
         descripcion={resumen}
         extremo={
           <>
-            <div className="flex items-center overflow-hidden rounded-md border border-[#d5dadf] bg-white">
+            <div className="flex items-center overflow-hidden rounded-md border border-borde-fuerte bg-white">
               <button
                 type="button"
                 aria-label="Semana anterior"
                 onClick={() => irADia(sumarDiasGT(dia, -7))}
-                className="px-3 py-2 text-[#1c2430] hover:bg-[#f8f9fa]"
+                className="px-3 py-2 text-texto hover:bg-superficie"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
                 type="button"
                 onClick={() => irADia(diaHabil(hoy))}
-                className="whitespace-nowrap border-x border-[#e3e6ea] px-3 py-2 text-[13px] font-medium text-[#1c2430] hover:bg-[#f8f9fa]"
+                className="whitespace-nowrap border-x border-borde px-3 py-2 text-[13px] font-medium text-texto hover:bg-superficie"
               >
                 Hoy
               </button>
@@ -164,16 +157,16 @@ export default function Agenda() {
                 type="button"
                 aria-label="Semana siguiente"
                 onClick={() => irADia(sumarDiasGT(dia, 7))}
-                className="px-3 py-2 text-[#1c2430] hover:bg-[#f8f9fa]"
+                className="px-3 py-2 text-texto hover:bg-superficie"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
-            <span className="whitespace-nowrap text-[13.5px] font-medium text-[#1c2430]">{textoSemana(lunes)}</span>
+            <span className="whitespace-nowrap text-[13.5px] font-medium text-texto">{textoSemana(lunes)}</span>
             <button
               type="button"
               onClick={() => setProgramar({})}
-              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-[#7346a5] px-4 py-2.5 text-[13.5px] font-semibold text-white hover:bg-[#5b3985]"
+              className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-brand-600 px-4 py-2.5 text-[13.5px] font-semibold text-white hover:bg-brand-700"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />
               Programar consulta
@@ -181,6 +174,17 @@ export default function Agenda() {
           </>
         }
       />
+
+      {hoyEsFinDeSemana && dia === diaHabil(hoy) && (
+        <p className="w-fit rounded-md border border-borde bg-white px-3 py-2 text-[13.5px] text-texto-suave">
+          Hoy es {fechaLargaEnFrase(hoy)} y la agenda es de lunes a viernes: se muestra el {fechaLargaEnFrase(dia)}. Si
+          atiendes hoy, regístralo en{' '}
+          <Link to={RUTAS_MEDICA.consultas()} className="font-medium text-brand-600 underline underline-offset-2">
+            Consultas › Consulta sin cita
+          </Link>
+          .
+        </p>
+      )}
 
       {atrasadas > 0 && (
         <Link
@@ -207,9 +211,9 @@ export default function Agenda() {
         <Esqueleto filas={4} />
       ) : (
         <div className="flex flex-wrap items-start gap-5">
-          <div className="min-w-0 flex-[999_1_460px] overflow-hidden rounded-lg border border-[#e3e6ea] bg-white">
+          <div className="min-w-0 flex-[999_1_460px] overflow-hidden rounded-lg border border-borde bg-white">
             {citas.length === 0 ? (
-              <p className="p-12 text-center text-sm text-[#5b6573]">No hay consultas este día.</p>
+              <p className="p-12 text-center text-sm text-texto-suave">No hay consultas este día.</p>
             ) : (
               citas.map((cita) => (
                 <FilaCita
@@ -222,10 +226,10 @@ export default function Agenda() {
               ))
             )}
           </div>
-          <PanelesAgenda
-            sinProxima={agendaDia.datos.sinProxima}
-            onAgendarPaciente={(usuariaId) => setProgramar({ usuariaId })}
-            onDarDeAlta={setAlta}
+          <PendientesAgenda
+            porAgendar={porAgendar.datos}
+            sinProxima={contadores?.sinProxima ?? null}
+            onAgendar={(referidoId) => setProgramar({ referidoId })}
           />
         </div>
       )}
@@ -245,15 +249,6 @@ export default function Agenda() {
           modo={reprogramar.estado === 'NO_ASISTIO' ? 'reprogramar' : 'mover'}
           onCerrar={() => setReprogramar(null)}
           onListo={trasReprogramar}
-        />
-      )}
-      {alta && (
-        <ModalAlta
-          atencion={{ id: alta.atencionId, codigo: alta.codigoAtencion, version: alta.atencionVersion }}
-          paciente={alta.usuariaNombreCompleto}
-          motivoInicial="DEJO_DE_ASISTIR"
-          onCerrar={() => setAlta(null)}
-          onListo={(motivo) => trasAlta(alta, motivo)}
         />
       )}
       {inasistencia && (
@@ -280,11 +275,11 @@ interface TiraSemanaProps {
 function TiraSemana({ lunes, dia, hoy, semana, onElegir }: TiraSemanaProps) {
   const fechas = [0, 1, 2, 3, 4].map((desplazamiento) => sumarDiasGT(lunes, desplazamiento))
   return (
-    <div className="grid grid-cols-5 gap-1.5 rounded-lg border border-[#e3e6ea] bg-white p-1.5">
+    <div className="grid grid-cols-5 gap-1.5 rounded-lg border border-borde bg-white p-1.5">
       {fechas.map((fecha) => {
         const info = semana?.find((uno) => uno.fecha === fecha)
         const elegido = fecha === dia
-        const fondo = elegido ? 'bg-[#7346a5] text-white' : fecha === hoy ? 'bg-[#f2ecfa] text-[#1c2430] hover:bg-[#eadff7]' : 'text-[#1c2430] hover:bg-[#f8f9fa]'
+        const fondo = elegido ? 'bg-brand-600 text-white' : fecha === hoy ? 'bg-seleccion text-texto hover:bg-brand-100' : 'text-texto hover:bg-superficie'
         let cuenta = '—'
         if (info && info.total > 0) cuenta = `${info.total} ${info.total === 1 ? 'consulta' : 'consultas'}`
         return (
@@ -300,7 +295,7 @@ function TiraSemana({ lunes, dia, hoy, semana, onElegir }: TiraSemanaProps) {
             <span className="text-[17px] font-semibold">{numeroDia(fecha)}</span>
             <span className="flex items-center gap-1 whitespace-nowrap text-[11px] opacity-85">
               {semana ? cuenta : ' '}
-              {info?.conSinRegistrar && <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-[#d08a1f]" />}
+              {info?.conSinRegistrar && <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-estado-pendiente-marca" />}
             </span>
           </button>
         )

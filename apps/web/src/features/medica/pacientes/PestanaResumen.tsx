@@ -19,16 +19,16 @@ import { RUTAS_MEDICA } from '../rutas'
 import { useContextoFicha } from './contextoFicha'
 
 const CLASE_BOTON_PRIMARIO =
-  'whitespace-nowrap rounded-md bg-[#7346a5] px-3.5 py-[9px] text-[13px] font-semibold text-white hover:bg-[#5b3985]'
+  'whitespace-nowrap rounded-md bg-brand-600 px-3.5 py-[9px] text-[13px] font-semibold text-white hover:bg-brand-700'
 const CLASE_BOTON_SECUNDARIO =
-  'whitespace-nowrap rounded-md border border-[#d5dadf] bg-white px-3.5 py-2 text-[13px] font-medium text-[#1c2430] hover:bg-[#f8f9fa]'
+  'whitespace-nowrap rounded-md border border-borde-fuerte bg-white px-3.5 py-2 text-[13px] font-medium text-texto hover:bg-superficie'
 const CLASE_ENLACE_TARJETA = 'text-[13px] font-medium text-brand-700 hover:underline'
 
 function Tarjeta({ titulo, extremo, children }: { titulo: ReactNode; extremo?: ReactNode; children: ReactNode }) {
   return (
     <section className={`${CLASE_TARJETA} overflow-hidden`}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eef0f2] px-5 py-4">
-        {typeof titulo === 'string' ? <h2 className="text-[15px] font-semibold text-[#1c2430]">{titulo}</h2> : titulo}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-borde-suave px-5 py-4">
+        {typeof titulo === 'string' ? <h2 className="text-[15px] font-semibold text-texto">{titulo}</h2> : titulo}
         {extremo}
       </div>
       {children}
@@ -80,11 +80,11 @@ function TarjetaAtencion({ ficha }: { ficha: FichaPacienteMedicaDto }) {
 
   return (
     <section className={`${CLASE_TARJETA} overflow-hidden`}>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eef0f2] px-5 py-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-borde-suave px-5 py-4">
         <div className="flex flex-wrap items-center gap-2.5">
-          <h2 className="text-[15px] font-semibold text-[#1c2430]">Atención médica</h2>
+          <h2 className="text-[15px] font-semibold text-texto">Atención médica</h2>
           <CodigoAtencion codigo={atencion.codigo} />
-          <span className="rounded-full bg-[#e7f1ea] px-2 py-0.5 text-xs font-semibold text-[#2f6b3f]">En atención</span>
+          <span className="rounded-full bg-estado-ok-insignia px-2 py-0.5 text-xs font-semibold text-estado-ok">En atención</span>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={abrirProgramar} className={CLASE_BOTON_SECUNDARIO}>
@@ -101,14 +101,14 @@ function TarjetaAtencion({ ficha }: { ficha: FichaPacienteMedicaDto }) {
       <dl className="grid grid-cols-[repeat(auto-fit,minmax(170px,1fr))] gap-5 px-5 py-[18px]">
         {hechos.map((hecho) => (
           <div key={hecho.etiqueta} className="flex min-w-0 flex-col gap-1">
-            <dt className="text-[12.5px] text-[#5b6573]">{hecho.etiqueta}</dt>
-            <dd className={`text-[15px] font-semibold tabular-nums ${hecho.alerta ? 'text-[#8a5a14]' : 'text-[#1c2430]'}`}>{hecho.valor}</dd>
-            {hecho.detalle && <dd className="text-[13px] text-pretty text-[#5b6573]">{hecho.detalle}</dd>}
+            <dt className="text-[12.5px] text-texto-suave">{hecho.etiqueta}</dt>
+            <dd className={`text-[15px] font-semibold tabular-nums ${hecho.alerta ? 'text-estado-pendiente' : 'text-texto'}`}>{hecho.valor}</dd>
+            {hecho.detalle && <dd className="text-[13px] text-pretty text-texto-suave">{hecho.detalle}</dd>}
           </div>
         ))}
       </dl>
-      <div className="flex justify-end border-t border-[#eef0f2] bg-[#fafbfc] px-5 py-2.5">
-        <button type="button" onClick={abrirAlta} className="py-1 text-[13px] font-medium text-[#5b6573] hover:text-[#1c2430]">
+      <div className="flex justify-end border-t border-borde-suave bg-superficie px-5 py-2.5">
+        <button type="button" onClick={abrirAlta} className="py-1 text-[13px] font-medium text-texto-suave hover:text-texto">
           Dar de alta y cerrar la atención
         </button>
       </div>
@@ -128,24 +128,24 @@ function TarjetaPersonas({ ficha }: { ficha: FichaPacienteMedicaDto }) {
           const consultas = ficha.consultasPorPersona.find((c) => c.ninoId === persona.ninoId)
           const clave = clavePersona(persona)
           return (
-            <li key={clave} className="flex items-center gap-3 border-b border-[#eef0f2] px-5 py-3 last:border-b-0">
+            <li key={clave} className="flex items-center gap-3 border-b border-borde-suave px-5 py-3 last:border-b-0">
               <span
                 aria-hidden="true"
-                className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#f2ecfa] text-[12px] font-semibold text-[#5b3985]"
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-seleccion text-[12px] font-semibold text-brand-700"
               >
                 {iniciales(persona.nombreCompleto)}
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-                <span className="text-[13.5px] text-[#5b6573]">
-                  <span className="font-semibold text-[#1c2430]">{persona.nombreCompleto}</span>
+                <span className="text-[13.5px] text-texto-suave">
+                  <span className="font-semibold text-texto">{persona.nombreCompleto}</span>
                   {persona.ninoId === null ? ' · Usuaria' : ` · ${persona.edad} años`}
                 </span>
                 {consultas ? (
-                  <span className="truncate text-[13px] text-[#5b6573]">
+                  <span className="truncate text-[13px] text-texto-suave">
                     <span className="tabular-nums">Última: {formatFechaGT(consultas.ultima.fecha)}</span> · {consultas.ultima.diagnostico}
                   </span>
                 ) : (
-                  <span className="text-[13px] text-[#5b6573]">Sin consultas registradas</span>
+                  <span className="text-[13px] text-texto-suave">Sin consultas registradas</span>
                 )}
               </div>
               {consultas ? (
@@ -173,8 +173,8 @@ function TarjetaSinAtencion({ titulo, texto, accion }: { titulo: string; texto: 
   return (
     <section className={`${CLASE_TARJETA} flex flex-wrap items-center justify-between gap-3 px-5 py-[18px]`}>
       <div className="flex flex-[1_1_300px] flex-col gap-[3px]">
-        <h2 className="text-[15px] font-semibold text-[#1c2430]">{titulo}</h2>
-        <p className="text-[13.5px] text-pretty text-[#5b6573]">{texto}</p>
+        <h2 className="text-[15px] font-semibold text-texto">{titulo}</h2>
+        <p className="text-[13.5px] text-pretty text-texto-suave">{texto}</p>
       </div>
       {accion}
     </section>
@@ -202,13 +202,13 @@ function Interruptor({
       aria-checked={encendido}
       disabled={ocupado}
       onClick={onCambiar}
-      className="flex items-center justify-between gap-3 text-left text-[#1c2430] disabled:opacity-60"
+      className="flex items-center justify-between gap-3 text-left text-texto disabled:opacity-60"
     >
       <span className="flex flex-col gap-0.5">
         <span className="text-sm font-medium">{etiqueta}</span>
-        <span className="text-[12.5px] text-[#5b6573]">{detalle}</span>
+        <span className="text-[12.5px] text-texto-suave">{detalle}</span>
       </span>
-      <span aria-hidden="true" className={`relative h-5 w-[34px] flex-none rounded-[10px] transition-colors ${encendido ? 'bg-[#7346a5]' : 'bg-[#d5dadf]'}`}>
+      <span aria-hidden="true" className={`relative h-5 w-[34px] flex-none rounded-[10px] transition-colors ${encendido ? 'bg-brand-600' : 'bg-borde-fuerte'}`}>
         <span
           className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-[0_1px_2px_rgba(0,0,0,.25)] transition-[left] ${encendido ? 'left-4' : 'left-0.5'}`}
         />
@@ -250,7 +250,7 @@ function TarjetaVisibilidad({ ficha }: { ficha: FichaPacienteMedicaDto }) {
   return (
     <Tarjeta titulo="Visibilidad">
       <div className="flex flex-col gap-3 px-5 pb-4 pt-3">
-        <p className="text-[13px] leading-normal text-pretty text-[#5b6573]">
+        <p className="text-[13px] leading-normal text-pretty text-texto-suave">
           Trabajo Social ve la atención, las fechas y los signos vitales. Diagnóstico, plan y receta son solo de Medicina.
         </p>
         {atencion ? (
@@ -271,7 +271,7 @@ function TarjetaVisibilidad({ ficha }: { ficha: FichaPacienteMedicaDto }) {
             />
           </>
         ) : (
-          <p className="text-[13px] text-[#9aa4b0]">Se configura cuando hay una atención activa.</p>
+          <p className="text-[13px] text-texto-sutil">Se configura cuando hay una atención activa.</p>
         )}
       </div>
     </Tarjeta>
@@ -297,10 +297,10 @@ export default function PestanaResumen() {
   return (
     <div className="flex flex-col gap-4">
       {sinRegistrar && (
-        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#ecd9b8] bg-[#fbf1de] px-5 py-3.5">
+        <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-estado-pendiente-borde bg-estado-pendiente-insignia px-5 py-3.5">
           <div className="flex flex-[1_1_300px] flex-col gap-0.5">
-            <span className="text-[14.5px] font-semibold text-[#6b4510]">Consulta sin registrar · {textoCita(sinRegistrar)}</span>
-            <span className="text-[13px] text-[#8a5a14]">Ya pasó la hora. Regístrala o marca que no asistió.</span>
+            <span className="text-[14.5px] font-semibold text-estado-pendiente">Consulta sin registrar · {textoCita(sinRegistrar)}</span>
+            <span className="text-[13px] text-estado-pendiente">Ya pasó la hora. Regístrala o marca que no asistió.</span>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={() => abrirInasistencia(sinRegistrar)} className={CLASE_BOTON_SECUNDARIO}>
@@ -349,8 +349,8 @@ export default function PestanaResumen() {
             <Tarjeta
               titulo={
                 <div className="flex flex-col gap-0.5">
-                  <h2 className="text-[15px] font-semibold text-[#1c2430]">Signos vitales</h2>
-                  <span className="text-[12.5px] text-[#5b6573]">
+                  <h2 className="text-[15px] font-semibold text-texto">Signos vitales</h2>
+                  <span className="text-[12.5px] text-texto-suave">
                     Última toma: {formatFechaGT(ficha.signosVitales.fecha)} · {primerNombre(ficha.nombreCompleto)}
                   </span>
                 </div>
@@ -367,9 +367,9 @@ export default function PestanaResumen() {
             <Tarjeta titulo="Atenciones anteriores">
               <ul>
                 {anteriores.map((atencion) => (
-                  <li key={atencion.id} className="flex flex-wrap items-center gap-3 border-b border-[#eef0f2] px-5 py-3.5 last:border-b-0">
+                  <li key={atencion.id} className="flex flex-wrap items-center gap-3 border-b border-borde-suave px-5 py-3.5 last:border-b-0">
                     <CodigoAtencion codigo={atencion.codigo} />
-                    <span className="min-w-[180px] flex-1 text-[13.5px] tabular-nums text-[#1c2430]">
+                    <span className="min-w-[180px] flex-1 text-[13.5px] tabular-nums text-texto">
                       {formatFechaGT(atencion.fechaInicio)} – {atencion.fechaAlta ? formatFechaGT(atencion.fechaAlta) : 'actual'} ·{' '}
                       {atencion.consultas} {atencion.consultas === 1 ? 'consulta' : 'consultas'}
                       {atencion.motivoAlta && ` · Alta · ${ETIQUETAS_MOTIVO_ALTA_MEDICA[atencion.motivoAlta]}`}
@@ -386,13 +386,13 @@ export default function PestanaResumen() {
           <Tarjeta titulo="Según Trabajo Social" extremo={<Enlace to={RUTAS_MEDICA.datos(ficha.usuariaId)}>Datos y caso</Enlace>}>
             <dl className="flex flex-col px-5 pb-3.5 pt-1.5">
               {segunTs.map((dato) => (
-                <div key={dato.etiqueta} className="flex flex-col gap-[3px] border-b border-[#f2f3f5] py-2.5 last:border-b-0">
-                  <dt className="text-[12.5px] text-[#5b6573]">{dato.etiqueta}</dt>
-                  <dd className="text-sm leading-[1.45] text-pretty text-[#1c2430]">{dato.valor}</dd>
+                <div key={dato.etiqueta} className="flex flex-col gap-[3px] border-b border-borde-suave py-2.5 last:border-b-0">
+                  <dt className="text-[12.5px] text-texto-suave">{dato.etiqueta}</dt>
+                  <dd className="text-sm leading-[1.45] text-pretty text-texto">{dato.valor}</dd>
                 </div>
               ))}
             </dl>
-            <p className="border-t border-[#f2f3f5] px-5 py-2.5 text-xs text-[#5b6573] tabular-nums">
+            <p className="border-t border-borde-suave px-5 py-2.5 text-xs text-texto-suave tabular-nums">
               Actualizado por Trabajo Social el {fechaDeInstante(ficha.actualizadoPorTsEn)}
             </p>
           </Tarjeta>
@@ -404,28 +404,28 @@ export default function PestanaResumen() {
             <Tarjeta
               titulo={
                 <div className="flex flex-wrap items-center gap-2.5">
-                  <h2 className="text-[15px] font-semibold text-[#1c2430]">Psicología</h2>
+                  <h2 className="text-[15px] font-semibold text-texto">Psicología</h2>
                   <CodigoAtencion codigo={ficha.psicologia.codigo} />
                 </div>
               }
             >
               <dl className="flex flex-col px-5 pb-3.5 pt-1.5">
-                <div className="flex flex-col gap-[3px] border-b border-[#f2f3f5] py-2.5">
-                  <dt className="text-[12.5px] text-[#5b6573]">Etapa del proceso</dt>
-                  <dd className="text-sm text-[#1c2430]">{ficha.psicologia.etapa}</dd>
+                <div className="flex flex-col gap-[3px] border-b border-borde-suave py-2.5">
+                  <dt className="text-[12.5px] text-texto-suave">Etapa del proceso</dt>
+                  <dd className="text-sm text-texto">{ficha.psicologia.etapa}</dd>
                 </div>
-                <div className="flex flex-col gap-[3px] border-b border-[#f2f3f5] py-2.5">
-                  <dt className="text-[12.5px] text-[#5b6573]">Inicio</dt>
-                  <dd className="text-sm tabular-nums text-[#1c2430]">{formatFechaGT(ficha.psicologia.fechaInicio)}</dd>
+                <div className="flex flex-col gap-[3px] border-b border-borde-suave py-2.5">
+                  <dt className="text-[12.5px] text-texto-suave">Inicio</dt>
+                  <dd className="text-sm tabular-nums text-texto">{formatFechaGT(ficha.psicologia.fechaInicio)}</dd>
                 </div>
                 <div className="flex flex-col gap-[3px] py-2.5">
-                  <dt className="text-[12.5px] text-[#5b6573]">Sesiones</dt>
-                  <dd className="text-sm tabular-nums text-pretty text-[#1c2430]">
+                  <dt className="text-[12.5px] text-texto-suave">Sesiones</dt>
+                  <dd className="text-sm tabular-nums text-pretty text-texto">
                     {ficha.psicologia.sesiones.length > 0 ? ficha.psicologia.sesiones.map(formatFechaGT).join(' · ') : 'Sin sesiones todavía'}
                   </dd>
                 </div>
               </dl>
-              <p className="border-t border-[#eef0f2] px-5 py-2.5 text-xs text-[#9aa4b0]">Compartido por Psicología · solo lectura</p>
+              <p className="border-t border-borde-suave px-5 py-2.5 text-xs text-texto-sutil">Compartido por Psicología · solo lectura</p>
             </Tarjeta>
           )}
         </div>

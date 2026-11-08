@@ -13,6 +13,7 @@ import {
   buscarPacientesProgramablesMedicaSchema,
   diaAgendaMedicaQuerySchema,
   disponibilidadMedicaQuerySchema,
+  listarSinProximaMedicaSchema,
   programablesMedicaQuerySchema,
   semanaAgendaMedicaQuerySchema,
 } from '@akyuam/shared';
@@ -20,6 +21,7 @@ import type {
   BuscarPacientesProgramablesMedicaDatos,
   DiaAgendaMedicaQuery,
   DisponibilidadMedicaQuery,
+  ListarSinProximaMedicaDatos,
   ProgramablesMedicaQuery,
   SemanaAgendaMedicaQuery,
 } from '@akyuam/shared';
@@ -53,6 +55,22 @@ export class AgendaMedicaController {
     query: DiaAgendaMedicaQuery,
   ) {
     return this.agendaService.dia(query.fecha);
+  }
+
+  /**
+   * "Sin próxima consulta" por páginas. POST de solo lectura por la misma razón que el buscador:
+   * `q` puede ser un nombre. Limitado por usuario para frenar barridos de la lista.
+   */
+  @Post('sin-proxima/busqueda')
+  @HttpCode(200)
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  sinProxima(
+    @Body(new ZodValidationPipe(listarSinProximaMedicaSchema))
+    datos: ListarSinProximaMedicaDatos,
+  ) {
+    return this.agendaService.sinProxima(datos);
   }
 
   @Get('disponibilidad')

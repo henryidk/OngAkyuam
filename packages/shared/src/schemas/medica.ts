@@ -4,6 +4,8 @@ import type { TipoIngresoArea } from '../catalogos/ingresoArea.js'
 import {
   BUSQUEDA_PACIENTES_MEDICA_MAX,
   BUSQUEDA_PACIENTES_MEDICA_MIN,
+  GRUPOS_SIN_PROXIMA_MEDICA,
+  PAGINA_MAX_SIN_PROXIMA_MEDICA,
   DIAGNOSTICO_MEDICO_MAX,
   DURACION_CITA_MEDICA_MIN,
   DURACIONES_CITA_MEDICA_MIN,
@@ -594,9 +596,18 @@ export type MotivoSinProximaMedica = 'NO_ASISTIO' | 'SIN_FECHA'
  */
 export const MESES_SIN_VENIR_MEDICA = 2
 
-/** ¿Pasaron `MESES_SIN_VENIR_MEDICA` desde `desde` ("YYYY-MM-DD") hasta `hoy`? */
+/**
+ * Último día que cuenta como "sin venir" visto desde `hoy`: `hoy` menos `MESES_SIN_VENIR_MEDICA`.
+ * Se define por el corte (y no sumando meses a cada fecha) para que el servidor pueda filtrar y
+ * contar en SQL con una sola comparación, con el mismo resultado que `dejoDeVenirMedica`.
+ */
+export function corteSinVenirMedica(hoy: string): string {
+  return sumarMesesGT(hoy, -MESES_SIN_VENIR_MEDICA)
+}
+
+/** ¿La fecha `desde` ("YYYY-MM-DD") quedó en o antes del corte de "sin venir" visto desde `hoy`? */
 export function dejoDeVenirMedica(desde: string, hoy: string): boolean {
-  return sumarMesesGT(desde, MESES_SIN_VENIR_MEDICA) <= hoy
+  return desde <= corteSinVenirMedica(hoy)
 }
 
 export interface SinProximaConsultaDto {
@@ -608,6 +619,10 @@ export interface SinProximaConsultaDto {
   codigoAtencion: string
   usuariaNombreCompleto: string
   motivo: MotivoSinProximaMedica
+  /** Grupo en el que se lista: el motivo si es reciente o `SIN_VENIR` si pasó el corte. */
+  grupo: GrupoSinProximaMedica
+  /** Quién registró la última consulta (la agenda es compartida); null si nunca se atendió. */
+  atendioPor: string | null
   /**
    * Fecha de calendario del último hecho: la cita a la que faltó o la última consulta (si no tiene
    * ninguna, el inicio de la atención). La lista viene de la más reciente a la más antigua.
@@ -615,11 +630,41 @@ export interface SinProximaConsultaDto {
   desde: string
 }
 
-/** `GET /medica/agenda/dia?fecha=` — citas del día y los tres paneles laterales. */
+export const grupoSinProximaMedicaSchema = z.enum(GRUPOS_SIN_PROXIMA_MEDICA)
+export type GrupoSinProximaMedica = z.infer<typeof grupoSinProximaMedicaSchema>
+
+/**
+ * Cuerpo de `POST /medica/agenda/sin-proxima/busqueda`. Es POST porque `q` puede ser el nombre de
+ * una sobreviviente: en el cuerpo no queda en logs de acceso ni en el historial del navegador.
+ * Sin `grupo` se listan todas, de la más reciente a la más antigua.
+ */
+export const listarSinProximaMedicaSchema = z.object({
+  q: z
+    .string()
+    .trim()
+    .max(BUSQUEDA_PACIENTES_MEDICA_MAX)
+    .optional()
+    .transform((valor) => (valor && valor.length >= BUSQUEDA_PACIENTES_MEDICA_MIN ? valor : undefined)),
+  grupo: grupoSinProximaMedicaSchema.optional(),
+  pagina: z.number().int().min(1).max(PAGINA_MAX_SIN_PROXIMA_MEDICA).default(1),
+})
+export type ListarSinProximaMedicaInput = z.input<typeof listarSinProximaMedicaSchema>
+export type ListarSinProximaMedicaDatos = z.output<typeof listarSinProximaMedicaSchema>
+
+/** Una página de "Sin próxima consulta" con los totales de cada grupo (los mismos que la tarjeta). */
+export interface SinProximaMedicaPaginaDto {
+  items: SinProximaConsultaDto[]
+  /** Filas que cumplen el grupo y la búsqueda pedidos: "Mostrando 1–20 de `total`". */
+  total: number
+  pagina: number
+  porPagina: number
+  conteos: Record<GrupoSinProximaMedica | 'TODAS', number>
+}
+
+/** `GET /medica/agenda/dia?fecha=` — citas del día. */
 export interface DiaAgendaMedicaDto {
   fecha: string
   citas: CitaAgendaMedicaDto[]
-  sinProxima: SinProximaConsultaDto[]
 }
 
 /**
@@ -637,8 +682,11 @@ export interface ContadoresMedicaDto {
   areaAtencion: number
   /** Lo de "Por atender" en Consultas: citas de hoy pendientes más las atrasadas sin registrar. */
   consultasPorAtender: number
-  /** Pacientes en atención sin próxima consulta (el panel de la Agenda). */
-  agendaSinProxima: number
+  /**
+   * Pacientes en atención sin próxima consulta, todas: el número de la tarjeta de la Agenda, igual
+   * al total de la lista de Pacientes a la que lleva. No es insignia del menú.
+   */
+  sinProxima: number
 }
 
 /**
