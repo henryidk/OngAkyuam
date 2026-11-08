@@ -45,9 +45,11 @@ export default function PendientesAgenda({ porAgendar, sinProxima, onAgendar }: 
         total={total}
         contexto={maxEspera > 0 ? `La que más espera: ${maxEspera === 1 ? '1 día' : `${maxEspera} días`}` : 'Referidas hoy'}
         textoVacio="Todas tienen primera consulta"
-        accion="Ver en Área de atención"
-        etiqueta={`${total ?? 0} ${total === 1 ? 'paciente por agendar' : 'pacientes por agendar'}, ver en Área de atención`}
-        to={RUTAS_MEDICA.atencion()}
+        enlace={{
+          to: RUTAS_MEDICA.atencion(),
+          accion: 'Ver en Área de atención',
+          etiqueta: `${total ?? 0} ${total === 1 ? 'paciente por agendar' : 'pacientes por agendar'}, ver en Área de atención`,
+        }}
         urgente={maxEspera > DIAS_ESPERA_URGENTE}
       >
         {visibles.length > 0 && (
@@ -85,9 +87,11 @@ export default function PendientesAgenda({ porAgendar, sinProxima, onAgendar }: 
         total={sinProxima}
         contexto="En atención y sin cita programada"
         textoVacio="Todas tienen fecha"
-        accion="Revisar en Pacientes"
-        etiqueta={`${sinProxima ?? 0} ${sinProxima === 1 ? 'paciente sin próxima consulta' : 'pacientes sin próxima consulta'}, revisar`}
-        to={RUTAS_MEDICA.sinProxima()}
+        enlace={{
+          to: RUTAS_MEDICA.sinProxima(),
+          accion: 'Revisar en Pacientes',
+          etiqueta: `${sinProxima ?? 0} ${sinProxima === 1 ? 'paciente sin próxima consulta' : 'pacientes sin próxima consulta'}, revisar`,
+        }}
       />
     </div>
   )

@@ -1,12 +1,17 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { formatInstanteGT, type FilaProcesoPsicologia, type ProcesoPsicologiaResumen } from '@akyuam/shared'
+import { formatInstanteGT, type FilaProcesoPsicologia } from '@akyuam/shared'
 import { fechaDeInstante } from '../../../lib/formato'
 import EtiquetaEtapa from '../compartido/EtiquetaEtapa'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import CodigoProceso from '../compartido/CodigoProceso'
 
-function ProximaCita({ proceso }: { proceso: ProcesoPsicologiaResumen }) {
+function ProximaCita({ proceso }: { proceso: FilaProcesoPsicologia }) {
   if (proceso.fechaCierre) return <span className="text-gray-500">Cerrado {fechaDeInstante(proceso.fechaCierre)}</span>
+  // Con una sesión pasada sin registrar lo pendiente es registrarla: "Sin próxima cita" queda solo
+  // para lo que cuenta su filtro (PS1).
+  if (!proceso.proximaCita && proceso.sesionPorRegistrar) {
+    return <span className="font-medium text-amber-800">Sesión por registrar</span>
+  }
   if (!proceso.proximaCita) return <span className="font-medium text-amber-800">Sin próxima cita</span>
   return <span className="text-gray-900">{formatInstanteGT(proceso.proximaCita.fechaHora)}</span>
 }

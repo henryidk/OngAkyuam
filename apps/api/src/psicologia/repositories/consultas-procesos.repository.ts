@@ -182,16 +182,18 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
 
     const hayMas = filas.length > params.limite;
     const pagina = hayMas ? filas.slice(0, params.limite) : filas;
-    const proximas = await this.proximasCitas(
-      pagina.map((fila) => fila.id),
-      params.ahora,
-    );
+    const ids = pagina.map((fila) => fila.id);
+    const [proximas, porRegistrar] = await Promise.all([
+      this.proximasCitas(ids, params.ahora),
+      this.conSesionPorRegistrar(ids, params.ahora),
+    ]);
 
     return {
       items: pagina.map((fila) => ({
         ...mapearResumen(fila, proximas),
         psicologa: fila.psicologaAsignada?.nombreCompleto ?? '',
         propio: fila.psicologaAsignadaId === params.psicologaId,
+        sesionPorRegistrar: porRegistrar.has(fila.id),
       })),
       siguienteCursor: hayMas ? pagina[pagina.length - 1].id : null,
     };
@@ -503,6 +505,37 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         cita.atencionId,
         { id: cita.id, fechaHora: cita.fechaHora.toISOString() },
       ]),
+    );
+  }
+
+  /**
+   * De estos procesos, los que tienen una cita programada que ya terminó sin registrarse (la
+   * misma regla que Consultas › Por registrar). Solo se piden las que empezaron antes de ahora.
+   */
+  private async conSesionPorRegistrar(
+    procesoIds: string[],
+    ahora: Date,
+  ): Promise<Set<string>> {
+    if (procesoIds.length === 0) {
+      return new Set();
+    }
+    const citas = await this.prisma.citaPsicologica.findMany({
+      where: {
+        atencionId: { in: procesoIds },
+        estado: 'PROGRAMADA',
+        fechaHora: { lt: ahora },
+      },
+      select: {
+        atencionId: true,
+        fechaHora: true,
+        duracionMinutos: true,
+        estado: true,
+      },
+    });
+    return new Set(
+      citas
+        .filter((cita) => citaSinRegistrar(cita, ahora))
+        .map((cita) => cita.atencionId),
     );
   }
 

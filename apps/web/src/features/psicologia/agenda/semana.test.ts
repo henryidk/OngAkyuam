@@ -1,12 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import type { CitaAgendaDto, ProcesoParaAgendarDto } from '@akyuam/shared'
+import type { CitaAgendaDto } from '@akyuam/shared'
 import {
   citaPrincipal,
   citaYaEmpezo,
   diasVisibles,
   fechaValida,
   lunesDe,
-  procesosSinProximaCita,
   rangoDeFechas,
   resumenDelDia,
 } from './semana'
@@ -83,30 +82,6 @@ describe('resumen del día', () => {
 
   it('un día vacío lo dice sin ceros', () => {
     expect(resumenDelDia([])).toBe('Sin citas')
-  })
-})
-
-describe('pendientes de la agenda: cada uno en un solo lugar', () => {
-  function proceso(parcial: Partial<ProcesoParaAgendarDto>): ProcesoParaAgendarDto {
-    return {
-      procesoId: 'proceso-1',
-      codigo: '05-2026',
-      usuariaId: 'usuaria-1',
-      usuariaNombreCompleto: 'Usuaria Ficticia',
-      personas: [],
-      proximaCita: null,
-      tieneCitaSinRegistrar: false,
-      ...parcial,
-    }
-  }
-
-  it('un proceso con una cita sin registrar no aparece en "Sin próxima cita"', () => {
-    const procesos = [
-      proceso({ procesoId: 'sin-nada' }),
-      proceso({ procesoId: 'atrasado', tieneCitaSinRegistrar: true }),
-      proceso({ procesoId: 'con-cita', proximaCita: { id: 'c', fechaHora: '2026-10-09T15:00:00.000Z' } }),
-    ]
-    expect(procesosSinProximaCita(procesos).map((p) => p.procesoId)).toEqual(['sin-nada'])
   })
 })
 

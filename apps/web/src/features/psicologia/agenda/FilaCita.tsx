@@ -55,7 +55,7 @@ export default function FilaCita({ cita, principal, enCurso, onNoAsistio, onRepr
       <div className="flex min-w-0 flex-1 basis-64 items-center gap-4">
         <div className={`${CLASE_COLUMNA_HORA} flex flex-col items-start gap-0.5`}>
           <span className="text-sm font-medium text-brand-600">{horaDeMinutos(inicioMin)}</span>
-          <span className="text-[11.5px] text-gray-400">
+          <span className="text-[11.5px] text-gray-500">
             {horaDeMinutos((inicioMin + cita.duracionMinutos) % MINUTOS_DIA)}
           </span>
           {principal && (

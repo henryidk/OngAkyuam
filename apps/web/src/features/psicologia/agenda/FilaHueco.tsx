@@ -13,7 +13,7 @@ export default function FilaHueco({ hueco, onProgramar }: FilaHuecoProps) {
   const desde = horaDeMinutos(hueco.desdeMin)
   return (
     <li className="flex items-center gap-4 bg-gray-50/70 px-[18px] py-2">
-      <span className={`${CLASE_COLUMNA_HORA} text-[13px] text-gray-400`}>{desde}</span>
+      <span className={`${CLASE_COLUMNA_HORA} text-[13px] text-gray-500`}>{desde}</span>
       <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md border border-dashed border-gray-300 px-3 py-1.5">
         <span className="text-[13px] text-gray-500 tabular-nums">
           <strong className="font-semibold text-gray-800">Libre</strong> · {desde} – {horaDeMinutos(hueco.hastaMin)} ·{' '}

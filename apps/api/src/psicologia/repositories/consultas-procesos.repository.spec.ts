@@ -45,3 +45,97 @@ describe('ConsultasProcesosRepository.listar', () => {
     });
   });
 });
+
+describe('ConsultasProcesosRepository.listar · sesión por registrar', () => {
+  const ahora = new Date('2027-01-10T16:00:00Z');
+
+  function fila(id: string) {
+    return {
+      id,
+      consecutivo: 1,
+      nino: null,
+      estado: 'SEGUIMIENTO',
+      fechaInicio: new Date('2026-12-01T15:00:00Z'),
+      tomadaEn: null,
+      createdAt: new Date('2026-11-30T15:00:00Z'),
+      fechaCierre: null,
+      expediente: {
+        numero: '05-2026',
+        usuaria: {
+          id: `usuaria-${id}`,
+          nombres: 'Prueba',
+          apellidos: 'Ficticia',
+          fechaNacimiento: new Date('1990-01-01T00:00:00Z'),
+        },
+      },
+      citas: [],
+      _count: { citas: 0 },
+      psicologaAsignadaId: 'psicologa-a',
+      psicologaAsignada: { nombreCompleto: 'Psicóloga A' },
+    };
+  }
+
+  async function listarCon(citasPasadas: unknown[]) {
+    const { prisma, repository } = crearRepositorio();
+    prisma.atencionPsicologica.findMany.mockResolvedValue([
+      fila('p-1'),
+      fila('p-2'),
+    ]);
+    // La consulta de próximas pide `gte`; la de pendientes, `lt`.
+    prisma.citaPsicologica.findMany.mockImplementation(
+      ({ where }: { where: { fechaHora: { lt?: Date } } }) =>
+        Promise.resolve(where.fechaHora.lt ? citasPasadas : []),
+    );
+    const pagina = await repository.listar({
+      psicologaId: 'psicologa-a',
+      alcance: 'MIOS',
+      filtro: 'ACTIVOS',
+      palabras: [],
+      limite: 20,
+      ahora,
+    });
+    return { prisma, pagina };
+  }
+
+  it('marca el proceso con una cita que ya terminó sin registrarse', async () => {
+    const { pagina } = await listarCon([
+      {
+        atencionId: 'p-1',
+        fechaHora: new Date('2027-01-09T15:00:00Z'),
+        duracionMinutos: 60,
+        estado: 'PROGRAMADA',
+      },
+    ]);
+    expect(
+      pagina.items.map((item) => [item.id, item.sesionPorRegistrar]),
+    ).toEqual([
+      ['p-1', true],
+      ['p-2', false],
+    ]);
+  });
+
+  it('una cita que empezó pero sigue en curso no cuenta como por registrar', async () => {
+    const { pagina } = await listarCon([
+      {
+        atencionId: 'p-1',
+        fechaHora: new Date('2027-01-10T15:30:00Z'),
+        duracionMinutos: 60,
+        estado: 'PROGRAMADA',
+      },
+    ]);
+    expect(pagina.items[0].sesionPorRegistrar).toBe(false);
+  });
+
+  it('solo pide citas programadas de los procesos de la página', async () => {
+    const { prisma } = await listarCon([]);
+    expect(prisma.citaPsicologica.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          atencionId: { in: ['p-1', 'p-2'] },
+          estado: 'PROGRAMADA',
+          fechaHora: { lt: ahora },
+        },
+      }),
+    );
+  });
+});

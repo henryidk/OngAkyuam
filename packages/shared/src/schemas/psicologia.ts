@@ -726,6 +726,11 @@ export interface FilaProcesoPsicologia extends ProcesoPsicologiaResumen {
   psicologa: string
   /** Lo lleva quien consulta. */
   propio: boolean
+  /**
+   * Tiene una sesión que ya terminó y nadie registró. Sin próxima cita pero con esto, lo pendiente
+   * es registrarla (Consultas), no agendar: no cuenta en "Sin próxima cita" (PS1).
+   */
+  sesionPorRegistrar: boolean
 }
 
 export type ProcesosPsicologiaPaginados = PaginaConCursor<FilaProcesoPsicologia>

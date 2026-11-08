@@ -9,7 +9,7 @@ import {
   type CitaAgendaDto,
   type HuecoLibreDto,
 } from '@akyuam/shared'
-import { useTituloPagina } from '../../../components/TituloPagina'
+import { useTituloPagina, TituloPrincipal } from '../../../components/TituloPagina'
 import Button from '../../../components/ui/Button'
 import EmptyState from '../../../components/ui/EmptyState'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
@@ -26,12 +26,11 @@ import ModalProgramarCita, { type DestinoCita } from '../citas/ModalProgramarCit
 import { useContextoPsicologia } from '../compartido/contexto'
 import { horaDeInstante } from '../compartido/horas'
 import { RUTAS_PSICOLOGIA } from '../rutas'
-import ColaPendientesDeAgendar from './ColaPendientesDeAgendar'
 import ControlSemana from './ControlSemana'
 import FilaCita from './FilaCita'
 import FilaHueco from './FilaHueco'
 import NavegadorSemana from './NavegadorSemana'
-import PanelPorAgendar from './PanelPorAgendar'
+import PendientesAgenda from './PendientesAgenda'
 import {
   citaPrincipal,
   citaYaEmpezo,
@@ -39,7 +38,6 @@ import {
   diasVisibles,
   fechaValida,
   lunesDe,
-  procesosSinProximaCita,
   rangoDeFechas,
   resumenDelDia,
 } from './semana'
@@ -130,11 +128,6 @@ export default function Agenda() {
     return [...citas, ...libres].sort((a, b) => a.minuto - b.minuto)
   }, [citasDelDia, huecos.datos])
 
-  const sinProxima = useMemo(
-    () => (procesos.datos ? procesosSinProximaCita(procesos.datos) : null),
-    [procesos.datos],
-  )
-
   const esHoy = dia === hoy
   const principalId = esHoy ? citaPrincipal(citasDelDia, ahora) : null
 
@@ -182,7 +175,7 @@ export default function Agenda() {
     <div className="mx-auto max-w-6xl space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900">{titulo}</h1>
+          <TituloPrincipal className="text-2xl font-semibold tracking-tight text-gray-900">{titulo}</TituloPrincipal>
           <p className="text-sm text-gray-500">{semana.datos ? resumenDelDia(citasDelDia) : 'Cargando…'}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -291,23 +284,13 @@ export default function Agenda() {
         </section>
 
         <aside className="space-y-4 xl:sticky xl:top-6">
-          <PanelPorAgendar
-            casos={porAgendar.datos}
-            error={porAgendar.error?.mensaje ?? null}
+          <PendientesAgenda
+            porAgendar={porAgendar.datos}
+            errorPorAgendar={porAgendar.error?.mensaje ?? null}
             resaltadoId={resaltadoId}
+            sinProxima={resumen?.procesos.SIN_PROXIMA ?? null}
             onAgendar={(caso) => setModal({ destino: { tipo: 'PRIMERA', caso }, fecha: dia })}
             onAtenderAhora={(caso) => navigate(RUTAS_PSICOLOGIA.atenderAhora(caso.referidoId, 'agenda'))}
-          />
-          <ColaPendientesDeAgendar
-            procesos={sinProxima}
-            error={procesos.error?.mensaje ?? null}
-            onProgramar={(proceso) =>
-              procesos.datos &&
-              setModal({
-                destino: { tipo: 'PROCESO', procesos: procesos.datos, procesoId: proceso.procesoId },
-                fecha: dia < hoy ? hoy : dia,
-              })
-            }
           />
         </aside>
       </div>
