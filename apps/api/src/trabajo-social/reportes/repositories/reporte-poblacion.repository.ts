@@ -158,7 +158,7 @@ export class ReportePoblacionRepository implements IReportePoblacionRepository {
                JOIN "AtencionPsicologica" ap ON ap.id = ci."atencionId"
                WHERE ap."expedienteId" = p."expedienteId"
                  AND ci."ninoId" IS NOT DISTINCT FROM p."ninoId"
-                 AND ci.estado = 'ATENDIDA' AND NOT ci.borrador
+                 AND ci.estado = 'ATENDIDA'
                  AND btrim(COALESCE(ci."atencionBrindada", '')) <> ''
              ), '[]'::json) AS "atencionesPsicologicas",
              COALESCE((

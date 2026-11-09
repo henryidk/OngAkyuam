@@ -33,6 +33,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** Escribe solo si la clave no existe (SET NX), de forma atómica. `true` si la escribió. */
+  async setSiNoExiste(
+    key: string,
+    value: string,
+    ttlSeconds: number,
+  ): Promise<boolean> {
+    return (await this.client.set(key, value, 'EX', ttlSeconds, 'NX')) === 'OK';
+  }
+
   async del(key: string): Promise<void> {
     await this.client.del(key);
   }
