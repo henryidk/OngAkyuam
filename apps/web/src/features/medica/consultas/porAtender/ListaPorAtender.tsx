@@ -15,15 +15,18 @@ function Seccion({ titulo, descripcion, children }: { titulo: string; descripcio
   return (
     <section className="flex flex-col gap-2">
       <div>
-        <h2 className="text-sm font-semibold text-[#1c2430]">{titulo}</h2>
-        <p className="text-[12.5px] text-[#5b6573]">{descripcion}</p>
+        <h2 className="text-sm font-semibold text-texto">{titulo}</h2>
+        <p className="text-[12.5px] text-texto-suave">{descripcion}</p>
       </div>
-      <div className="overflow-hidden rounded-lg border border-[#e3e6ea] bg-white">{children}</div>
+      <div className="overflow-hidden rounded-lg border border-borde bg-white">{children}</div>
     </section>
   )
 }
 
-/** Consultas › Por atender: las citas de hoy que faltan y las de días anteriores sin registrar. */
+/**
+ * Consultas › Por registrar: las citas de hoy que ya empezaron y las de días anteriores sin
+ * registrar, de la más reciente a la más antigua (regla compartida `citaPorRegistrar`).
+ */
 export default function ListaPorAtender() {
   const navigate = useNavigate()
   const { mostrar } = useToast()
@@ -44,15 +47,15 @@ export default function ListaPorAtender() {
   }
 
   if (error) {
-    return <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="las consultas por atender" onReintentar={() => void recargar()} />
+    return <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="las consultas por registrar" onReintentar={() => void recargar()} />
   }
   if (!datos) return <Esqueleto filas={4} />
 
   return (
     <div className="flex flex-col gap-5">
-      <Seccion titulo={`Hoy · ${datos.hoy.length}`} descripcion="Primero la que está en curso; luego las que siguen.">
+      <Seccion titulo={`Hoy · ${datos.hoy.length}`} descripcion="Primero la que está en curso; luego las que ya terminaron. Las que aún no empiezan están en la Agenda.">
         {datos.hoy.length === 0 ? (
-          <p className="p-10 text-center text-sm text-[#5b6573]">No quedan consultas por atender hoy.</p>
+          <p className="p-10 text-center text-sm text-texto-suave">No hay consultas de hoy por registrar.</p>
         ) : (
           datos.hoy.map((cita) => (
             <FilaPorAtender key={cita.id} cita={cita} conFecha={false} onNoAsistio={() => setInasistencia(cita)} />
@@ -62,12 +65,18 @@ export default function ListaPorAtender() {
 
       {datos.atrasadas.length > 0 && (
         <Seccion
-          titulo={`Atrasadas · ${datos.atrasadas.length}`}
-          descripcion="De otros días: ya pasaron y no tienen consulta ni inasistencia."
+          titulo={`Atrasadas · ${datos.totalAtrasadas}`}
+          descripcion="De otros días, de la más reciente a la más antigua: ya pasaron y no tienen consulta ni inasistencia."
         >
           {datos.atrasadas.map((cita) => (
             <FilaPorAtender key={cita.id} cita={cita} conFecha onNoAsistio={() => setInasistencia(cita)} />
           ))}
+          {datos.totalAtrasadas > datos.atrasadas.length && (
+            <p className="px-4 py-3 text-[13px] text-texto-suave">
+              Se muestran las {datos.atrasadas.length} más recientes de {datos.totalAtrasadas}. Al registrarlas o marcarlas van
+              apareciendo las anteriores.
+            </p>
+          )}
         </Seccion>
       )}
 

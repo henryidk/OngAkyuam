@@ -36,6 +36,15 @@ describe('agruparPorRegistrar', () => {
     ])
   })
 
+  it('las de hoy van en el orden del día aunque el servidor las mande de la más reciente a la más antigua', () => {
+    const grupos = agruparPorRegistrar(
+      [sesion('tarde', '2026-10-07T21:00:00.000Z'), sesion('manana', '2026-10-07T15:00:00.000Z')],
+      HOY,
+    )
+
+    expect(grupos.hoy.map((s) => s.citaId)).toEqual(['manana', 'tarde'])
+  })
+
   it('usa el día de Guatemala: anoche a las 23:00 ya es atrasada aunque en UTC sea hoy', () => {
     const grupos = agruparPorRegistrar([sesion('anoche', '2026-10-07T05:00:00.000Z')], HOY)
 

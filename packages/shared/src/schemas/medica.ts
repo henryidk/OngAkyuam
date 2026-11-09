@@ -673,7 +673,10 @@ export interface DiaAgendaMedicaDto {
  */
 export interface PorAtenderMedicaDto {
   hoy: CitaAgendaMedicaDto[]
+  /** Las más recientes, como mucho `LIMITE_ATRASADAS_MEDICA`. */
   atrasadas: CitaAgendaMedicaDto[]
+  /** Todas las atrasadas sin registrar, aunque no quepan en `atrasadas`. */
+  totalAtrasadas: number
 }
 
 /** Contadores del menú lateral. */

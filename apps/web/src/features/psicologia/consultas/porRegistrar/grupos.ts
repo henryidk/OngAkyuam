@@ -23,6 +23,8 @@ export function agruparPorRegistrar(sesiones: SesionPorRegistrarDto[], hoy: stri
     if (dias <= 0) grupos.hoy.push(sesion)
     else grupos.atrasadas.push({ sesion, dias })
   }
+  // Hoy en el orden del día; atrasadas de la más reciente a la más antigua.
+  grupos.hoy.sort((a, b) => a.fechaHora.localeCompare(b.fechaHora))
   grupos.atrasadas.sort((a, b) => b.sesion.fechaHora.localeCompare(a.sesion.fechaHora))
   return grupos
 }

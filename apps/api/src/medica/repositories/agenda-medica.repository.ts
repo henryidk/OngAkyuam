@@ -218,6 +218,27 @@ function aCitaAgenda(fila: FilaCitaAgenda, ahora: Date): CitaAgendaMedicaDto {
 }
 
 /**
+ * Citas programadas que ya terminaron fuera de [excluirDesde, excluirHasta) (fuera de hoy).
+ * Ninguna cita dura menos que el bloque: las que empezaron después aún no terminan. Una más larga
+ * que cruce la medianoche se termina de filtrar con su duración en la lista; el conteo la incluye
+ * esos pocos minutos.
+ */
+function condicionSinRegistrar(
+  ahora: Date,
+  excluirDesde: Date,
+  excluirHasta: Date,
+): Prisma.CitaMedicaWhereInput {
+  return {
+    estado: 'PROGRAMADA',
+    inicio: {
+      lte: new Date(ahora.getTime() - DURACION_CITA_MEDICA_MIN * 60_000),
+    },
+    NOT: { inicio: { gte: excluirDesde, lt: excluirHasta } },
+    atencion: { expediente: EXPEDIENTE_REFERIDO_A_MEDICA },
+  };
+}
+
+/**
  * La regla de `referenciaPendiente` en SQL, sobre una referencia `r`: es a Medicina y su
  * expediente no tiene atención activa ni una abierta después de ella.
  */
@@ -256,26 +277,28 @@ export class AgendaMedicaRepository
     ahora: Date,
     excluirDesde: Date,
     excluirHasta: Date,
+    limite: number,
   ): Promise<CitaAgendaMedicaDto[]> {
-    // Ninguna cita dura menos que el bloque: las que empezaron después aún no terminan. Las más
-    // largas se terminan de filtrar con su propia duración.
-    const terminadasAntesDe = new Date(
-      ahora.getTime() - DURACION_CITA_MEDICA_MIN * 60_000,
-    );
     const filas = await this.prisma.citaMedica.findMany({
-      where: {
-        estado: 'PROGRAMADA',
-        inicio: { lte: terminadasAntesDe },
-        NOT: { inicio: { gte: excluirDesde, lt: excluirHasta } },
-        atencion: { expediente: EXPEDIENTE_REFERIDO_A_MEDICA },
-      },
+      where: condicionSinRegistrar(ahora, excluirDesde, excluirHasta),
       select: selectCitaAgenda(ahora),
       // De la más reciente a la más antigua, como en Psicología: lo de ayer se recuerda mejor.
       orderBy: [{ inicio: 'desc' }, { id: 'asc' }],
+      take: limite,
     });
     return filas
       .filter((fila) => derivarEstadoCita(fila, ahora) === 'SIN_REGISTRAR')
       .map((fila) => aCitaAgenda(fila, ahora));
+  }
+
+  contarCitasSinRegistrar(
+    ahora: Date,
+    excluirDesde: Date,
+    excluirHasta: Date,
+  ): Promise<number> {
+    return this.prisma.citaMedica.count({
+      where: condicionSinRegistrar(ahora, excluirDesde, excluirHasta),
+    });
   }
 
   resumenEntre(desde: Date, hasta: Date): Promise<CitaResumida[]> {

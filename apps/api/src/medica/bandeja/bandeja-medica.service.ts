@@ -41,7 +41,7 @@ export class BandejaMedicaService {
     ]);
     return {
       areaAtencion: referencias,
-      consultasPorAtender: porAtender.hoy.length + porAtender.atrasadas.length,
+      consultasPorAtender: porAtender.hoy.length + porAtender.totalAtrasadas,
       sinProxima: sinProxima.TODAS,
     };
   }

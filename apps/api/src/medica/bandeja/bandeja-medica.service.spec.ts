@@ -18,9 +18,11 @@ describe('BandejaMedicaService.contadores', () => {
       }),
     } as unknown as jest.Mocked<ILectorPendientesMedica>;
     const porAtender = {
-      listar: jest
-        .fn()
-        .mockResolvedValue({ hoy: [CITA, CITA], atrasadas: [CITA] }),
+      listar: jest.fn().mockResolvedValue({
+        hoy: [CITA, CITA],
+        atrasadas: [CITA],
+        totalAtrasadas: 1,
+      }),
     } as unknown as PorAtenderService;
     // 10 de enero de 2027 a las 10:00 en Guatemala.
     const reloj: IReloj = { ahora: () => new Date('2027-01-10T16:00:00Z') };

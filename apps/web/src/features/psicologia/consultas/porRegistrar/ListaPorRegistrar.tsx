@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { CircleCheck } from 'lucide-react'
-import { hoyGT, type SesionPorRegistrarDto } from '@akyuam/shared'
+import { MAX_SESIONES_POR_REGISTRAR_PSICOLOGIA, hoyGT, type SesionPorRegistrarDto } from '@akyuam/shared'
 import EmptyState from '../../../../components/ui/EmptyState'
 import { ErrorVista, Esqueleto } from '../../../../components/ui/EstadosVista'
 import { useToast } from '../../../../components/ui/Toast'
@@ -20,13 +20,23 @@ function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
   )
 }
 
+/** La lista trae como mucho MAX_SESIONES_POR_REGISTRAR_PSICOLOGIA; el resumen cuenta todas. */
+function AvisoRecorte({ vistas, total }: { vistas: number; total: number }) {
+  if (vistas < MAX_SESIONES_POR_REGISTRAR_PSICOLOGIA || total <= vistas) return null
+  return (
+    <p className="rounded-lg border border-borde bg-white px-4 py-3 text-[13px] text-texto-suave">
+      Se muestran las {vistas} más recientes de {total}. Al registrarlas o marcarlas van apareciendo las anteriores.
+    </p>
+  )
+}
+
 /**
  * Consultas › Por registrar: solo mis sesiones, porque solo quien atendió puede registrarlas.
  * Las de hoy primero; luego las atrasadas, marcadas con texto y con acento ámbar.
  */
 export default function ListaPorRegistrar() {
   const { mostrar } = useToast()
-  const { recargarResumen } = useContextoPsicologia()
+  const { recargarResumen, resumen } = useContextoPsicologia()
   const sesiones = useRecurso(listarSesionesPorRegistrar)
   const [aMarcar, setAMarcar] = useState<SesionPorRegistrarDto | null>(null)
 
@@ -75,6 +85,7 @@ export default function ListaPorRegistrar() {
           ))}
         </Grupo>
       )}
+      <AvisoRecorte vistas={sesiones.datos?.length ?? 0} total={resumen?.sesionesPorRegistrar ?? 0} />
 
       <ConfirmarNoAsistio
         cita={aMarcar && { id: aMarcar.citaId, descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.codigoProceso}` }}

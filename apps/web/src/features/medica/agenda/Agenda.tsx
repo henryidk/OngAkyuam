@@ -121,7 +121,7 @@ export default function Agenda() {
   const citas = agendaDia.datos?.citas ?? []
   const atendidas = citas.filter((cita) => cita.estadoVista === 'ATENDIDA').length
   const pendientesDia = citas.filter((cita) => ['PROGRAMADA', 'EN_CURSO', 'SIN_REGISTRAR'].includes(cita.estadoVista)).length
-  const atrasadas = porAtender.datos?.atrasadas.length ?? 0
+  const atrasadas = porAtender.datos?.totalAtrasadas ?? 0
   const titulo = dia === hoy ? `Hoy, ${fechaLargaEnFrase(dia)}` : fechaLarga(dia)
   const resumen = !agendaDia.datos
     ? ' '

@@ -53,7 +53,14 @@ export interface ILectorCitasMedicas {
     ahora: Date,
     excluirDesde: Date,
     excluirHasta: Date,
+    limite: number,
   ): Promise<CitaAgendaMedicaDto[]>;
+  /** Cuántas hay en total con la misma condición, sin traerlas. */
+  contarCitasSinRegistrar(
+    ahora: Date,
+    excluirDesde: Date,
+    excluirHasta: Date,
+  ): Promise<number>;
   /** Solo lo necesario para contar: la tira de la semana y el contador del menú. */
   resumenEntre(desde: Date, hasta: Date): Promise<CitaResumida[]>;
 }

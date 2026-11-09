@@ -101,7 +101,9 @@ export class ConsultasSesionesRepository implements IConsultasSesionesRepository
         duracionMinutos: true,
         tipo: true,
       },
-      orderBy: [{ fechaHora: 'asc' }, { id: 'asc' }],
+      // Las más recientes primero: si un día pasan del tope, lo que queda fuera son las más
+      // antiguas, nunca las de hoy. La pantalla las reordena.
+      orderBy: [{ fechaHora: 'desc' }, { id: 'desc' }],
       take: MAX_SESIONES_POR_REGISTRAR_PSICOLOGIA,
     });
     return citas.map((cita) => ({

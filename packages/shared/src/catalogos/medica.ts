@@ -159,6 +159,11 @@ export const BUSQUEDA_PACIENTES_MEDICA_MAX = 80
  * más referencias esperando, se ven las más antiguas y el aviso dice cuántas faltan.
  */
 export const LIMITE_BANDEJA_MEDICA = 200
+/**
+ * Tope de las atrasadas de Consultas › Por registrar: son trabajo pendiente, no un historial. Se
+ * ven las más recientes y el total dice cuántas hay en realidad.
+ */
+export const LIMITE_ATRASADAS_MEDICA = 100
 /** Filas por página de Pacientes: la lista se pagina con números, no con "Cargar más". */
 export const PAGINA_PACIENTES_MEDICA = 30
 /** Tope de página aceptado: evita un OFFSET gigante pedido a mano. */

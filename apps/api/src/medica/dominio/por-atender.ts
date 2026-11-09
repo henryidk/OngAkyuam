@@ -1,34 +1,40 @@
-import type {
-  CitaAgendaMedicaDto,
-  EstadoCitaMedicaDerivado,
+import {
+  citaPorRegistrar,
+  type CitaAgendaMedicaDto,
+  type EstadoCitaMedicaDerivado,
 } from '@akyuam/shared';
 
-/** Orden en que la médica atiende: lo que está pasando, lo que ya se pasó, lo que viene. */
-const PRIORIDAD_POR_ATENDER: Partial<Record<EstadoCitaMedicaDerivado, number>> =
-  {
-    EN_CURSO: 0,
-    SIN_REGISTRAR: 1,
-    PROGRAMADA: 2,
-  };
+/** Lo que está pasando primero y luego lo que ya terminó sin registro. */
+const PRIORIDAD: Partial<Record<EstadoCitaMedicaDerivado, number>> = {
+  EN_CURSO: 0,
+  SIN_REGISTRAR: 1,
+};
 
-/** Estados que todavía piden algo de la médica: registrar la consulta o la inasistencia. */
-export function esPorAtender(estado: EstadoCitaMedicaDerivado): boolean {
-  return estado in PRIORIDAD_POR_ATENDER;
+/** Cita de Consultas › Por registrar: la misma regla que Psicología (`citaPorRegistrar`). */
+export function esPorRegistrar(
+  cita: Pick<CitaAgendaMedicaDto, 'estado' | 'inicio'>,
+  ahora: Date,
+): boolean {
+  return citaPorRegistrar(
+    { programada: cita.estado === 'PROGRAMADA', inicio: cita.inicio },
+    ahora,
+  );
 }
 
 /**
- * Las citas por atender, en curso primero y luego por hora. Las atendidas, inasistencias y
- * canceladas quedan fuera: ya no piden nada.
+ * Las citas de hoy por registrar: la en curso primero y luego por hora. Las que todavía no
+ * empiezan se registran desde la Agenda; las atendidas, inasistencias y canceladas ya no piden
+ * nada.
  */
-export function ordenarPorAtender(
+export function ordenarPorRegistrar(
   citas: CitaAgendaMedicaDto[],
+  ahora: Date,
 ): CitaAgendaMedicaDto[] {
   return citas
-    .filter((cita) => esPorAtender(cita.estadoVista))
+    .filter((cita) => esPorRegistrar(cita, ahora))
     .sort(
       (a, b) =>
-        PRIORIDAD_POR_ATENDER[a.estadoVista]! -
-          PRIORIDAD_POR_ATENDER[b.estadoVista]! ||
+        (PRIORIDAD[a.estadoVista] ?? 1) - (PRIORIDAD[b.estadoVista] ?? 1) ||
         a.inicio.localeCompare(b.inicio),
     );
 }
