@@ -15,10 +15,10 @@ import { extraerMensajeError } from '../../../lib/errors'
 import { useRecurso } from '../../../lib/useRecurso'
 import { listarProgramables, programarCita } from '../api/medica.api'
 import BuscadorPaciente from './BuscadorPaciente'
-import ModalMedica from './ModalMedica'
+import Modal, { CuerpoModal, PieModal } from '../../../components/ui/Modal'
 import ResumenCita from './ResumenCita'
 import SelectorDuracion from './SelectorDuracion'
-import SelectorHorario from './SelectorHorario'
+import SelectorHorario from '../../../components/agenda/SelectorHorario'
 import SelectorPersonasCita from './SelectorPersonasCita'
 import { esConflictoHorario, MENSAJE_HORARIO_TOMADO, useHorario } from './useHorario'
 
@@ -148,213 +148,215 @@ export default function ModalProgramar({ preseleccion, fechaPreferida, onCerrar,
   const motivoLargo = Boolean(paciente?.motivoReferencia && (paciente.motivoReferencia.length > 90 || paciente.motivoReferencia.includes('\n')))
 
   return (
-    <ModalMedica
+    <Modal
+      abierto
+      ancho="agenda"
       titulo={titulo}
-      subtitulo={subtitulo}
+      descripcion={subtitulo}
       ocupado={guardando}
       soloConCancelar
       onCerrar={onCerrar}
-      pie={
-        <>
-          <Button variante="secondary" tamano="md" onClick={onCerrar} disabled={guardando}>
-            Cancelar
-          </Button>
-          {confirmando ? (
-            <>
-              <Button
-                variante="secondary"
-                tamano="md"
-                onClick={() => {
-                  setConfirmando(false)
-                  setError(null)
-                }}
-                disabled={guardando}
-              >
-                Volver
-              </Button>
-              <Button tamano="md" onClick={() => void guardar()} cargando={guardando}>
-                Confirmar cita
-              </Button>
-            </>
-          ) : (
-            conPaciente && (
-              <Button
-                tamano="md"
-                onClick={() => {
-                  setError(null)
-                  setConfirmando(true)
-                }}
-                disabled={!listo}
-              >
-                Continuar
-              </Button>
-            )
-          )}
-        </>
-      }
     >
-      {/* Paso 3: un resumen tipo aviso con la fecha y la hora bien visibles antes de guardar. */}
-      {confirmando && paciente && horario.fecha && horario.hora && (
-        <ResumenCita
-          encabezado={abreAtencion ? 'Primera consulta de' : 'Consulta de'}
-          atendidas={atendidas}
-          usuariaNombreCompleto={paciente.usuariaNombreCompleto}
-          fecha={horario.fecha}
-          hora={horario.hora}
-          duracion={duracion}
-          pie={
-            <>
-              Exp. {paciente.expedienteNumero}
-              {abreAtencion && paciente.codigoNuevaAtencion && (
-                <>
-                  {' · Se abre la atención '}
-                  <strong className="font-mono font-semibold">{paciente.codigoNuevaAtencion}</strong>
-                </>
-              )}
-              {paciente.atencionActiva && (
-                <>
-                  {' · '}
-                  <span className="font-mono">{textoCodigo('Atención', paciente.atencionActiva.codigo)}</span>
-                </>
-              )}
-            </>
-          }
-        />
-      )}
+      <CuerpoModal className="space-y-4">
+        {/* Paso 3: un resumen tipo aviso con la fecha y la hora bien visibles antes de guardar. */}
+        {confirmando && paciente && horario.fecha && horario.hora && (
+          <ResumenCita
+            encabezado={abreAtencion ? 'Primera consulta de' : 'Consulta de'}
+            atendidas={atendidas}
+            usuariaNombreCompleto={paciente.usuariaNombreCompleto}
+            fecha={horario.fecha}
+            hora={horario.hora}
+            duracion={duracion}
+            pie={
+              <>
+                Exp. {paciente.expedienteNumero}
+                {abreAtencion && paciente.codigoNuevaAtencion && (
+                  <>
+                    {' · Se abre la atención '}
+                    <strong className="font-mono font-semibold">{paciente.codigoNuevaAtencion}</strong>
+                  </>
+                )}
+                {paciente.atencionActiva && (
+                  <>
+                    {' · '}
+                    <span className="font-mono">{textoCodigo('Atención', paciente.atencionActiva.codigo)}</span>
+                  </>
+                )}
+              </>
+            }
+          />
+        )}
 
-      {/* Paso 1: el buscador. Al elegir a la paciente se pasa solo al paso 2. */}
-      {!confirmando && !conPaciente && (
-        <BuscadorPaciente
-          etiqueta="Paciente"
-          conSugerencias
-          elegida={null}
-          onElegir={(nueva) => {
-            setElegida(nueva)
-            setMarcadas(null)
-            setMotivoCompleto(false)
-            setError(null)
-          }}
-          enfocarAlAbrir
-        />
-      )}
+        {/* Paso 1: el buscador. Al elegir a la paciente se pasa solo al paso 2. */}
+        {!confirmando && !conPaciente && (
+          <BuscadorPaciente
+            etiqueta="Paciente"
+            conSugerencias
+            elegida={null}
+            onElegir={(nueva) => {
+              setElegida(nueva)
+              setMarcadas(null)
+              setMotivoCompleto(false)
+              setError(null)
+            }}
+            enfocarAlAbrir
+          />
+        )}
 
-      {/* Paso 2: la paciente (con el motivo y la atención) en una sola tarjeta, y debajo día y hora. */}
-      {!confirmando && conPaciente && (
-        <div className="rounded-lg border border-[#e6dbf3] bg-[#f7f3fc] px-3.5 py-2.5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="text-[13.5px] font-semibold text-[#1c2430]">{nombre ?? 'Cargando…'}</p>
-              {expediente && (
-                <p className="text-xs text-[#5b6573]">
-                  Exp. {expediente}
-                  {paciente?.atencionActiva && (
-                    <>
-                      {' · '}
-                      <span className="font-mono">{textoCodigo('Atención', paciente.atencionActiva.codigo)}</span>
-                    </>
-                  )}
-                  {abreAtencion && paciente?.codigoNuevaAtencion && (
-                    <>
-                      {' · Se abre la atención '}
-                      <strong className="font-mono font-semibold">{paciente.codigoNuevaAtencion}</strong>
-                    </>
-                  )}
-                </p>
-              )}
-            </div>
-            {!hayPreseleccion && (
-              <button
-                type="button"
-                onClick={() => {
-                  setElegida(null)
-                  setError(null)
-                }}
-                className="flex-none rounded-md px-2 py-1 text-[13px] font-semibold text-[#7346a5] hover:bg-white"
-              >
-                Cambiar
-              </button>
-            )}
-          </div>
-          {abreAtencion && paciente.motivoReferencia && (
-            <div className="mt-1.5 border-t border-[#e6dbf3] pt-1.5 text-[12.5px] text-[#1c2430]">
-              <p className={`whitespace-pre-line ${motivoCompleto ? '' : 'line-clamp-1'}`}>
-                <span className="font-semibold text-[#5b3985]">Motivo: </span>
-                {paciente.motivoReferencia}
-              </p>
-              {motivoLargo && (
+        {/* Paso 2: la paciente (con el motivo y la atención) en una sola tarjeta, y debajo día y hora. */}
+        {!confirmando && conPaciente && (
+          <div className="rounded-lg border border-seleccion-borde bg-brand-50 px-3.5 py-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[13.5px] font-semibold text-texto">{nombre ?? 'Cargando…'}</p>
+                {expediente && (
+                  <p className="text-xs text-texto-suave">
+                    Exp. {expediente}
+                    {paciente?.atencionActiva && (
+                      <>
+                        {' · '}
+                        <span className="font-mono">{textoCodigo('Atención', paciente.atencionActiva.codigo)}</span>
+                      </>
+                    )}
+                    {abreAtencion && paciente?.codigoNuevaAtencion && (
+                      <>
+                        {' · Se abre la atención '}
+                        <strong className="font-mono font-semibold">{paciente.codigoNuevaAtencion}</strong>
+                      </>
+                    )}
+                  </p>
+                )}
+              </div>
+              {!hayPreseleccion && (
                 <button
                   type="button"
-                  onClick={() => setMotivoCompleto((actual) => !actual)}
-                  className="text-[12px] font-semibold text-[#7346a5] hover:underline"
+                  onClick={() => {
+                    setElegida(null)
+                    setError(null)
+                  }}
+                  className="flex-none rounded-md px-2 py-1 text-[13px] font-semibold text-brand-600 hover:bg-white"
                 >
-                  {motivoCompleto ? 'Ver menos' : 'Ver todo'}
+                  Cambiar
                 </button>
               )}
             </div>
-          )}
-        </div>
-      )}
+            {abreAtencion && paciente.motivoReferencia && (
+              <div className="mt-1.5 border-t border-seleccion-borde pt-1.5 text-[12.5px] text-texto">
+                <p className={`whitespace-pre-line ${motivoCompleto ? '' : 'line-clamp-1'}`}>
+                  <span className="font-semibold text-brand-700">Motivo: </span>
+                  {paciente.motivoReferencia}
+                </p>
+                {motivoLargo && (
+                  <button
+                    type="button"
+                    onClick={() => setMotivoCompleto((actual) => !actual)}
+                    className="text-[12px] font-semibold text-brand-600 hover:underline"
+                  >
+                    {motivoCompleto ? 'Ver menos' : 'Ver todo'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
-      {!confirmando &&
-        conPaciente &&
-        (errorLista ? (
-          <ErrorVista mensaje={errorLista.mensaje} sinPermiso={errorLista.sinPermiso} onReintentar={() => void recargarLista()} />
-        ) : cargandoDetalle || !detalle ? (
-          <Esqueleto filas={2} />
-        ) : !paciente ? (
-          <p className="rounded-lg bg-[#f8f9fa] px-3 py-2.5 text-sm text-[#5b6573]">
-            Esta paciente ya no se puede programar: no tiene una referencia pendiente ni una atención activa.
-          </p>
-        ) : (
-          <>
-            {paciente.personas.length > 1 && (
-              <SelectorPersonasCita
-                personas={paciente.personas}
-                elegidas={personasElegidas}
-                obligatorias={abreAtencion}
-                onCambiar={(nuevas) => {
-                  setMarcadas(nuevas)
+        {!confirmando &&
+          conPaciente &&
+          (errorLista ? (
+            <ErrorVista mensaje={errorLista.mensaje} sinPermiso={errorLista.sinPermiso} onReintentar={() => void recargarLista()} />
+          ) : cargandoDetalle || !detalle ? (
+            <Esqueleto filas={2} />
+          ) : !paciente ? (
+            <p className="rounded-lg bg-superficie px-3 py-2.5 text-sm text-texto-suave">
+              Esta paciente ya no se puede programar: no tiene una referencia pendiente ni una atención activa.
+            </p>
+          ) : (
+            <>
+              {paciente.personas.length > 1 && (
+                <SelectorPersonasCita
+                  personas={paciente.personas}
+                  elegidas={personasElegidas}
+                  obligatorias={abreAtencion}
+                  onCambiar={(nuevas) => {
+                    setMarcadas(nuevas)
+                    setError(null)
+                  }}
+                />
+              )}
+
+              <SelectorDuracion
+                duracion={duracion}
+                personas={personasElegidas.length}
+                onCambiar={(nueva) => {
+                  setDuracion(nueva)
                   setError(null)
                 }}
               />
-            )}
 
-            <SelectorDuracion
-              duracion={duracion}
-              personas={personasElegidas.length}
-              onCambiar={(nueva) => {
-                setDuracion(nueva)
+              {horario.error ? (
+                <ErrorVista mensaje={horario.error.mensaje} onReintentar={() => void horario.recargar()} />
+              ) : !horario.disponibilidad ? (
+                <Esqueleto filas={1} />
+              ) : (
+                <SelectorHorario
+                  disponibilidad={horario.disponibilidad}
+                  fecha={horario.fecha}
+                  hora={horario.hora}
+                  onFecha={(fecha) => {
+                    horario.elegirFecha(fecha)
+                    setError(null)
+                  }}
+                  onHora={(hora) => {
+                    horario.elegirHora(hora)
+                    setError(null)
+                  }}
+                />
+              )}
+            </>
+          ))}
+
+        {error && (
+          <p role="alert" className="text-sm text-estado-error">
+            {error}
+          </p>
+        )}
+      </CuerpoModal>
+      <PieModal>
+        <Button variante="secondary" tamano="md" onClick={onCerrar} disabled={guardando}>
+          Cancelar
+        </Button>
+        {confirmando ? (
+          <>
+            <Button
+              variante="secondary"
+              tamano="md"
+              onClick={() => {
+                setConfirmando(false)
                 setError(null)
               }}
-            />
-
-            {horario.error ? (
-              <ErrorVista mensaje={horario.error.mensaje} onReintentar={() => void horario.recargar()} />
-            ) : !horario.disponibilidad ? (
-              <Esqueleto filas={1} />
-            ) : (
-              <SelectorHorario
-                disponibilidad={horario.disponibilidad}
-                fecha={horario.fecha}
-                hora={horario.hora}
-                onFecha={(fecha) => {
-                  horario.elegirFecha(fecha)
-                  setError(null)
-                }}
-                onHora={(hora) => {
-                  horario.elegirHora(hora)
-                  setError(null)
-                }}
-              />
-            )}
+              disabled={guardando}
+            >
+              Volver
+            </Button>
+            <Button tamano="md" onClick={() => void guardar()} cargando={guardando}>
+              Confirmar cita
+            </Button>
           </>
-        ))}
-
-      {error && (
-        <p role="alert" className="text-sm text-[#9b2c20]">
-          {error}
-        </p>
-      )}
-    </ModalMedica>
+        ) : (
+          conPaciente && (
+            <Button
+              tamano="md"
+              onClick={() => {
+                setError(null)
+                setConfirmando(true)
+              }}
+              disabled={!listo}
+            >
+              Continuar
+            </Button>
+          )
+        )}
+      </PieModal>
+    </Modal>
   )
 }

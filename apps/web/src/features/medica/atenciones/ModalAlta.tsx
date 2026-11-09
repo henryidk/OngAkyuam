@@ -10,7 +10,7 @@ import {
 import { extraerMensajeError } from '../../../lib/errors'
 import { darDeAlta } from '../api/medica.api'
 import { CLASE_CAMPO } from '../compartido/estilos'
-import ModalMedica from '../compartido/ModalMedica'
+import Modal, { CuerpoModal, PieModal } from '../../../components/ui/Modal'
 
 interface ModalAltaProps {
   atencion: { id: string; codigo: string; version: number }
@@ -48,86 +48,88 @@ export default function ModalAlta({ atencion, paciente, motivoInicial = 'ALTA_ME
   }
 
   return (
-    <ModalMedica
+    <Modal
+      abierto
       titulo={paciente ? `Dar de alta · ${paciente} · ${atencion.codigo}` : `Dar de alta · ${atencion.codigo}`}
-      subtitulo="La atención se cierra y se cancelan sus consultas futuras. La historia clínica se conserva; si regresa, se abre una atención nueva."
-      ancho={480}
+      descripcion="La atención se cierra y se cancelan sus consultas futuras. La historia clínica se conserva; si regresa, se abre una atención nueva."
+      ancho="sm"
       ocupado={guardando}
+      cerrarAlTocarFuera
       onCerrar={onCerrar}
-      pie={
-        <>
-          <button
-            type="button"
-            disabled={guardando}
-            onClick={onCerrar}
-            className="rounded-md border border-[#d5dadf] bg-white px-4 py-2 text-[13.5px] font-medium text-[#1c2430] hover:bg-[#f8f9fa] disabled:opacity-60"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={guardando || !valido}
-            onClick={() => void guardar()}
-            className="rounded-md bg-[#7346a5] px-4 py-2 text-[13.5px] font-semibold text-white hover:bg-[#5b3985] disabled:bg-[#b9a6d1]"
-          >
-            {guardando ? 'Guardando…' : 'Dar de alta'}
-          </button>
-        </>
-      }
     >
-      <div className="flex flex-col gap-3.5">
-        <div role="radiogroup" aria-label="Motivo del alta" className="flex flex-col gap-1.5">
-          {MOTIVOS_ALTA_MEDICA.map((opcion) => {
-            const elegido = opcion === motivo
-            return (
-              <button
-                key={opcion}
-                type="button"
-                role="radio"
-                aria-checked={elegido}
-                disabled={guardando}
-                onClick={() => setMotivo(opcion)}
-                className={`flex items-start gap-2.5 rounded-lg border-[1.5px] px-3 py-2.5 text-left text-[#1c2430] ${
-                  elegido ? 'border-[#7346a5] bg-[#f7f3fc]' : 'border-[#e3e6ea] bg-white hover:border-[#c7a8e5]'
-                }`}
-              >
-                <span
-                  aria-hidden="true"
-                  className={`mt-px flex h-4 w-4 flex-none items-center justify-center rounded-full border-[1.5px] ${
-                    elegido ? 'border-[#7346a5]' : 'border-[#c4cad1]'
+      <CuerpoModal className="space-y-4">
+        <div className="flex flex-col gap-3.5">
+          <div role="radiogroup" aria-label="Motivo del alta" className="flex flex-col gap-1.5">
+            {MOTIVOS_ALTA_MEDICA.map((opcion) => {
+              const elegido = opcion === motivo
+              return (
+                <button
+                  key={opcion}
+                  type="button"
+                  role="radio"
+                  aria-checked={elegido}
+                  disabled={guardando}
+                  onClick={() => setMotivo(opcion)}
+                  className={`flex items-start gap-2.5 rounded-lg border-[1.5px] px-3 py-2.5 text-left text-texto ${
+                    elegido ? 'border-brand-600 bg-brand-50' : 'border-borde bg-white hover:border-brand-300'
                   }`}
                 >
-                  {elegido && <span className="h-2 w-2 rounded-full bg-[#7346a5]" />}
-                </span>
-                <span className="flex flex-col gap-px">
-                  <span className="text-[13.5px] font-semibold">{ETIQUETAS_MOTIVO_ALTA_MEDICA[opcion]}</span>
-                  <span className="text-xs text-[#5b6573]">{DESCRIPCIONES_MOTIVO_ALTA_MEDICA[opcion]}</span>
-                </span>
-              </button>
-            )
-          })}
+                  <span
+                    aria-hidden="true"
+                    className={`mt-px flex h-4 w-4 flex-none items-center justify-center rounded-full border-[1.5px] ${
+                      elegido ? 'border-brand-600' : 'border-borde-fuerte'
+                    }`}
+                  >
+                    {elegido && <span className="h-2 w-2 rounded-full bg-brand-600" />}
+                  </span>
+                  <span className="flex flex-col gap-px">
+                    <span className="text-[13.5px] font-semibold">{ETIQUETAS_MOTIVO_ALTA_MEDICA[opcion]}</span>
+                    <span className="text-xs text-texto-suave">{DESCRIPCIONES_MOTIVO_ALTA_MEDICA[opcion]}</span>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-[13px] font-semibold text-texto">
+              Nota de cierre{' '}
+              <span className="font-normal text-texto-suave">{notaObligatoria ? '(obligatoria)' : '(opcional)'}</span>
+            </span>
+            <textarea
+              rows={2}
+              maxLength={NOTA_ALTA_MEDICA_MAX}
+              value={nota}
+              disabled={guardando}
+              onChange={(evento) => setNota(evento.target.value)}
+              placeholder="Ej.: síntomas resueltos, indicaciones finales"
+              className={`${CLASE_CAMPO} resize-y`}
+            />
+          </label>
+          {error && (
+            <p role="alert" className="text-[13px] text-estado-error">
+              {error}
+            </p>
+          )}
         </div>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-[13px] font-semibold text-[#1c2430]">
-            Nota de cierre{' '}
-            <span className="font-normal text-[#5b6573]">{notaObligatoria ? '(obligatoria)' : '(opcional)'}</span>
-          </span>
-          <textarea
-            rows={2}
-            maxLength={NOTA_ALTA_MEDICA_MAX}
-            value={nota}
-            disabled={guardando}
-            onChange={(evento) => setNota(evento.target.value)}
-            placeholder="Ej.: síntomas resueltos, indicaciones finales"
-            className={`${CLASE_CAMPO} resize-y`}
-          />
-        </label>
-        {error && (
-          <p role="alert" className="text-[13px] text-[#9b2c20]">
-            {error}
-          </p>
-        )}
-      </div>
-    </ModalMedica>
+      </CuerpoModal>
+      <PieModal>
+        <button
+          type="button"
+          disabled={guardando}
+          onClick={onCerrar}
+          className="rounded-md border border-borde-fuerte bg-white px-4 py-2 text-[13.5px] font-medium text-texto hover:bg-superficie disabled:opacity-60"
+        >
+          Cancelar
+        </button>
+        <button
+          type="button"
+          disabled={guardando || !valido}
+          onClick={() => void guardar()}
+          className="rounded-md bg-brand-600 px-4 py-2 text-[13.5px] font-semibold text-white hover:bg-brand-700 disabled:bg-brand-300"
+        >
+          {guardando ? 'Guardando…' : 'Dar de alta'}
+        </button>
+      </PieModal>
+    </Modal>
   )
 }

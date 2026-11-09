@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { hoyGT, type DuracionCitaMedica, type PersonaAtendidaDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
-import ModalMedica from '../compartido/ModalMedica'
+import Modal, { CuerpoModal, PieModal } from '../../../components/ui/Modal'
 import ResumenCita from '../compartido/ResumenCita'
 import SelectorDuracion from '../compartido/SelectorDuracion'
-import SelectorHorario from '../compartido/SelectorHorario'
+import SelectorHorario from '../../../components/agenda/SelectorHorario'
 import SelectorPersonasCita from '../compartido/SelectorPersonasCita'
 import { useHorario } from '../compartido/useHorario'
 
@@ -53,83 +53,85 @@ export default function ModalProximaConsulta({
   const listo = atendidas.length > 0 && horario.fecha !== null && horario.hora !== null
 
   return (
-    <ModalMedica
+    <Modal
+      abierto
+      ancho="agenda"
       titulo="Próxima consulta"
-      subtitulo={confirmando ? 'Revisa los datos: se agenda al guardar la consulta.' : 'Elige el día y la hora.'}
+      descripcion={confirmando ? 'Revisa los datos: se agenda al guardar la consulta.' : 'Elige el día y la hora.'}
       soloConCancelar
       onCerrar={onCerrar}
-      pie={
-        <>
-          <Button variante="secondary" tamano="md" onClick={onCerrar}>
-            Cancelar
-          </Button>
-          {confirmando ? (
-            <>
-              <Button variante="secondary" tamano="md" onClick={() => setConfirmando(false)}>
-                Volver
-              </Button>
-              <Button
-                tamano="md"
-                onClick={() => {
-                  if (!horario.fecha || !horario.hora) return
-                  onElegir({
-                    fecha: horario.fecha,
-                    hora: horario.hora,
-                    duracionMin: duracion,
-                    personas: atendidas.map((persona) => persona.ninoId),
-                  })
-                }}
-              >
-                Usar esta fecha
-              </Button>
-            </>
-          ) : (
-            <Button tamano="md" onClick={() => setConfirmando(true)} disabled={!listo}>
-              Continuar
-            </Button>
-          )}
-        </>
-      }
     >
-      {confirmando && horario.fecha && horario.hora ? (
-        <ResumenCita
-          encabezado="Próxima consulta de"
-          atendidas={atendidas}
-          usuariaNombreCompleto={usuariaNombreCompleto}
-          fecha={horario.fecha}
-          hora={horario.hora}
-          duracion={duracion}
-          pie="Se agrega a la agenda al guardar la consulta."
-        />
-      ) : (
-        <>
-          {aviso && (
-            <p role="alert" className="rounded-lg bg-[#fdf1ef] px-3 py-2.5 text-sm text-[#9b2c20]">
-              {aviso}
-            </p>
-          )}
+      <CuerpoModal className="space-y-4">
+        {confirmando && horario.fecha && horario.hora ? (
+          <ResumenCita
+            encabezado="Próxima consulta de"
+            atendidas={atendidas}
+            usuariaNombreCompleto={usuariaNombreCompleto}
+            fecha={horario.fecha}
+            hora={horario.hora}
+            duracion={duracion}
+            pie="Se agrega a la agenda al guardar la consulta."
+          />
+        ) : (
+          <>
+            {aviso && (
+              <p role="alert" className="rounded-lg bg-estado-error-fondo px-3 py-2.5 text-sm text-estado-error">
+                {aviso}
+              </p>
+            )}
 
-          {personas.length > 1 && (
-            <SelectorPersonasCita personas={personas} elegidas={elegidas} obligatorias={false} onCambiar={setElegidas} />
-          )}
+            {personas.length > 1 && (
+              <SelectorPersonasCita personas={personas} elegidas={elegidas} obligatorias={false} onCambiar={setElegidas} />
+            )}
 
-          <SelectorDuracion duracion={duracion} personas={atendidas.length} onCambiar={setDuracion} />
+            <SelectorDuracion duracion={duracion} personas={atendidas.length} onCambiar={setDuracion} />
 
-          {horario.error ? (
-            <ErrorVista mensaje={horario.error.mensaje} onReintentar={() => void horario.recargar()} />
-          ) : !horario.disponibilidad ? (
-            <Esqueleto filas={1} />
-          ) : (
-            <SelectorHorario
-              disponibilidad={horario.disponibilidad}
-              fecha={horario.fecha}
-              hora={horario.hora}
-              onFecha={horario.elegirFecha}
-              onHora={horario.elegirHora}
-            />
-          )}
-        </>
-      )}
-    </ModalMedica>
+            {horario.error ? (
+              <ErrorVista mensaje={horario.error.mensaje} onReintentar={() => void horario.recargar()} />
+            ) : !horario.disponibilidad ? (
+              <Esqueleto filas={1} />
+            ) : (
+              <SelectorHorario
+                disponibilidad={horario.disponibilidad}
+                fecha={horario.fecha}
+                hora={horario.hora}
+                onFecha={horario.elegirFecha}
+                onHora={horario.elegirHora}
+              />
+            )}
+          </>
+        )}
+      </CuerpoModal>
+      <PieModal>
+        <Button variante="secondary" tamano="md" onClick={onCerrar}>
+          Cancelar
+        </Button>
+        {confirmando ? (
+          <>
+            <Button variante="secondary" tamano="md" onClick={() => setConfirmando(false)}>
+              Volver
+            </Button>
+            <Button
+              tamano="md"
+              onClick={() => {
+                if (!horario.fecha || !horario.hora) return
+                onElegir({
+                  fecha: horario.fecha,
+                  hora: horario.hora,
+                  duracionMin: duracion,
+                  personas: atendidas.map((persona) => persona.ninoId),
+                })
+              }}
+            >
+              Usar esta fecha
+            </Button>
+          </>
+        ) : (
+          <Button tamano="md" onClick={() => setConfirmando(true)} disabled={!listo}>
+            Continuar
+          </Button>
+        )}
+      </PieModal>
+    </Modal>
   )
 }

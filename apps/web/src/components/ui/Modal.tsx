@@ -11,11 +11,29 @@ interface ModalProps {
   Icono?: LucideIcon
   onCerrar: () => void
   children: ReactNode
-  /** Ancho máximo del panel. `lg` (por defecto) alcanza para un formulario a dos columnas. */
-  ancho?: 'md' | 'lg' | 'xl'
+  /**
+   * Ancho máximo del panel. `lg` (por defecto) alcanza para un formulario a dos columnas;
+   * `agenda` es el de programar con día y hora, y `sm` el de una confirmación con un campo.
+   */
+  ancho?: 'sm' | 'md' | 'agenda' | 'lg' | 'xl'
+  /** Mientras se guarda no se puede cerrar: ni con Esc, ni con la X, ni tocando fuera. */
+  ocupado?: boolean
+  /**
+   * Solo se sale con el botón Cancelar del propio formulario: sin X, y ni Esc ni tocar fuera lo
+   * cierran. Para cuando cerrar por accidente pierde lo ya elegido (programar una consulta).
+   */
+  soloConCancelar?: boolean
+  /** Tocar fuera del panel lo cierra. Apagado por defecto (ver abajo). */
+  cerrarAlTocarFuera?: boolean
 }
 
-const CLASES_ANCHO = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl' } as const
+const CLASES_ANCHO = {
+  sm: 'max-w-[480px]',
+  md: 'max-w-md',
+  agenda: 'max-w-[560px]',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+} as const
 
 /**
  * Modal centrado para formularios cortos y autocontenidos (p. ej. crear o editar una cuenta),
@@ -23,8 +41,9 @@ const CLASES_ANCHO = { md: 'max-w-md', lg: 'max-w-2xl', xl: 'max-w-4xl' } as con
  * consultas largas que conviven con la lista se sigue usando `Drawer`; para confirmaciones,
  * `ConfirmModal`.
  *
- * Tocar fuera NO lo cierra a propósito: un clic accidental borraría lo ya escrito. Se cierra
- * con Esc, con la X o con el botón Cancelar del propio formulario.
+ * Tocar fuera NO lo cierra por defecto: un clic accidental borraría lo ya escrito. Se cierra
+ * con Esc, con la X o con el botón Cancelar del propio formulario. Medicina lo usa también para
+ * sus modales cortos, con `cerrarAlTocarFuera`, `ocupado` y `soloConCancelar`.
  */
 export default function Modal({
   abierto,
@@ -34,14 +53,24 @@ export default function Modal({
   onCerrar,
   children,
   ancho = 'lg',
+  ocupado = false,
+  soloConCancelar = false,
+  cerrarAlTocarFuera = false,
 }: ModalProps) {
-  const panel = useDialogoModal<HTMLDivElement>(abierto, onCerrar)
+  const cerrar = () => {
+    if (!ocupado && !soloConCancelar) onCerrar()
+  }
+  const panel = useDialogoModal<HTMLDivElement>(abierto, cerrar)
 
   if (!abierto) return null
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
-      <div aria-hidden="true" className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]" />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]"
+        onClick={cerrarAlTocarFuera ? cerrar : undefined}
+      />
       <div
         ref={panel}
         role="dialog"
@@ -67,14 +96,17 @@ export default function Modal({
               </p>
             )}
           </div>
-          <button
-            type="button"
-            aria-label="Cerrar"
-            onClick={onCerrar}
-            className="-mt-1 -mr-2 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          {!soloConCancelar && (
+            <button
+              type="button"
+              aria-label="Cerrar"
+              onClick={cerrar}
+              disabled={ocupado}
+              className="-mt-1 -mr-2 rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
         {/* El contenido maneja su propio scroll y pie (ver `PieModal`). */}
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
@@ -84,9 +116,9 @@ export default function Modal({
   )
 }
 
-/** Cuerpo con scroll del modal. */
-export function CuerpoModal({ children }: { children: ReactNode }) {
-  return <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">{children}</div>
+/** Cuerpo con scroll del modal. `className` suma clases, p. ej. el espacio entre bloques. */
+export function CuerpoModal({ children, className = '' }: { children: ReactNode; className?: string }) {
+  return <div className={`min-h-0 flex-1 overflow-y-auto px-6 py-5 ${className}`}>{children}</div>
 }
 
 /** Pie fijo del modal: queda visible aunque el cuerpo haga scroll. */

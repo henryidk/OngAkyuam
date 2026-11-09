@@ -6,9 +6,9 @@ import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { extraerMensajeError } from '../../../lib/errors'
 import { registrarInasistencia, reprogramarCita } from '../api/medica.api'
 import { fechaLarga, fechaLargaEnFrase, horaMasMinutos } from './fechas'
-import ModalMedica from './ModalMedica'
+import Modal, { CuerpoModal, PieModal } from '../../../components/ui/Modal'
 import { detallePersonasCita } from './personas'
-import SelectorHorario from './SelectorHorario'
+import SelectorHorario from '../../../components/agenda/SelectorHorario'
 import { esConflictoHorario, MENSAJE_HORARIO_TOMADO, useHorario } from './useHorario'
 
 /** Lo mínimo de una cita para registrar su inasistencia (viene de la agenda o de la ficha). */
@@ -113,115 +113,118 @@ export default function ModalInasistencia({ cita, modo, onCerrar, onListo }: Mod
   ]
 
   return (
-    <ModalMedica
+    <Modal
+      abierto
+      ancho="agenda"
       titulo={titulo}
-      subtitulo={subtitulo}
+      descripcion={subtitulo}
       ocupado={guardando}
+      cerrarAlTocarFuera
       onCerrar={onCerrar}
-      pie={
-        <>
-          <Button variante="secondary" tamano="md" onClick={onCerrar} disabled={guardando}>
-            Cancelar
-          </Button>
-          <Button
-            tamano="md"
-            onClick={() => void guardar()}
-            disabled={conNuevaCita && (!horario.fecha || !horario.hora)}
-            cargando={guardando}
-          >
-            {etiquetaBoton}
-          </Button>
-        </>
-      }
     >
-      <div className="flex items-center gap-3 rounded-lg border border-[#e3e6ea] bg-[#f8f9fa] px-3.5 py-2.5">
-        <span aria-hidden="true" className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-[#f0f2f4] text-[#4b5563]">
-          {mover ? <CalendarClock className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
-        </span>
-        <div className="text-[13px]">
-          <p className="text-[#5b6573]">{mover ? 'Horario actual' : 'Consulta a la que no asistió'}</p>
-          <p className={`font-medium text-[#1c2430] ${mover ? '' : 'line-through decoration-[#9aa4b0]'}`}>
-            {fechaLarga(cita.fecha)} · {cita.hora} – {cita.horaFin}
-          </p>
-        </div>
-      </div>
-
-      {!soloReprogramar && (
-        <div role="radiogroup" aria-label="Qué hacer" className="grid grid-cols-2 gap-1 rounded-lg bg-[#f0f2f4] p-1">
-          {opciones.map((opcion) => (
-            <button
-              key={String(opcion.valor)}
-              type="button"
-              role="radio"
-              aria-checked={reprogramar === opcion.valor}
-              onClick={() => {
-                setReprogramar(opcion.valor)
-                setError(null)
-              }}
-              className={`rounded-md px-3 py-1.5 text-[13px] font-medium ${
-                reprogramar === opcion.valor ? 'bg-white text-[#1c2430] shadow-sm' : 'text-[#5b6573] hover:text-[#1c2430]'
-              }`}
-            >
-              {opcion.etiqueta}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {conNuevaCita ? (
-        <>
-          {horario.error ? (
-            <ErrorVista mensaje={horario.error.mensaje} onReintentar={() => void horario.recargar()} />
-          ) : !horario.disponibilidad ? (
-            <Esqueleto filas={1} />
-          ) : (
-            <SelectorHorario
-              etiquetaDia="Nuevo día"
-              disponibilidad={horario.disponibilidad}
-              fecha={horario.fecha}
-              hora={horario.hora}
-              onFecha={(fecha) => {
-                horario.elegirFecha(fecha)
-                setError(null)
-              }}
-              onHora={(hora) => {
-                horario.elegirHora(hora)
-                setError(null)
-              }}
-            />
-          )}
-          <div className="flex items-center gap-3 rounded-lg border border-[#e6dbf3] bg-[#f7f3fc] px-3.5 py-3">
-            <span
-              aria-hidden="true"
-              className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-[#7346a5] text-white"
-            >
-              <RotateCw className="h-4 w-4" />
-            </span>
-            <div className="text-[13px]">
-              <p className="font-semibold text-[#5b3985]">Nueva consulta</p>
-              <p className="text-[#1c2430]">
-                {horario.fecha && horario.hora
-                  ? `${fechaLarga(horario.fecha)} · ${horario.hora} – ${horaMasMinutos(horario.hora, cita.duracionMin)}`
-                  : 'Elige una hora'}
-              </p>
-              {cita.personas.length > 1 && (
-                <p className="text-[12px] text-[#5b6573]">Con las mismas {cita.personas.length} personas de la visita</p>
-              )}
-            </div>
+      <CuerpoModal className="space-y-4">
+        <div className="flex items-center gap-3 rounded-lg border border-borde bg-superficie px-3.5 py-2.5">
+          <span aria-hidden="true" className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-superficie-hundida text-texto-cuerpo">
+            {mover ? <CalendarClock className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}
+          </span>
+          <div className="text-[13px]">
+            <p className="text-texto-suave">{mover ? 'Horario actual' : 'Consulta a la que no asistió'}</p>
+            <p className={`font-medium text-texto ${mover ? '' : 'line-through decoration-texto-sutil'}`}>
+              {fechaLarga(cita.fecha)} · {cita.hora} – {cita.horaFin}
+            </p>
           </div>
-        </>
-      ) : (
-        <p className="rounded-lg bg-[#f8f9fa] px-3.5 py-2.5 text-[13px] text-[#5b6573]">
-          Se registra la inasistencia sin nueva cita. La paciente aparecerá en{' '}
-          <strong className="font-semibold text-[#1c2430]">Sin próxima consulta</strong> para que la programes cuando la contactes.
-        </p>
-      )}
+        </div>
 
-      {error && (
-        <p role="alert" className="text-sm text-[#9b2c20]">
-          {error}
-        </p>
-      )}
-    </ModalMedica>
+        {!soloReprogramar && (
+          <div role="radiogroup" aria-label="Qué hacer" className="grid grid-cols-2 gap-1 rounded-lg bg-superficie-hundida p-1">
+            {opciones.map((opcion) => (
+              <button
+                key={String(opcion.valor)}
+                type="button"
+                role="radio"
+                aria-checked={reprogramar === opcion.valor}
+                onClick={() => {
+                  setReprogramar(opcion.valor)
+                  setError(null)
+                }}
+                className={`rounded-md px-3 py-1.5 text-[13px] font-medium ${
+                  reprogramar === opcion.valor ? 'bg-white text-texto shadow-sm' : 'text-texto-suave hover:text-texto'
+                }`}
+              >
+                {opcion.etiqueta}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {conNuevaCita ? (
+          <>
+            {horario.error ? (
+              <ErrorVista mensaje={horario.error.mensaje} onReintentar={() => void horario.recargar()} />
+            ) : !horario.disponibilidad ? (
+              <Esqueleto filas={1} />
+            ) : (
+              <SelectorHorario
+                etiquetaDia="Nuevo día"
+                disponibilidad={horario.disponibilidad}
+                fecha={horario.fecha}
+                hora={horario.hora}
+                onFecha={(fecha) => {
+                  horario.elegirFecha(fecha)
+                  setError(null)
+                }}
+                onHora={(hora) => {
+                  horario.elegirHora(hora)
+                  setError(null)
+                }}
+              />
+            )}
+            <div className="flex items-center gap-3 rounded-lg border border-seleccion-borde bg-brand-50 px-3.5 py-3">
+              <span
+                aria-hidden="true"
+                className="flex h-[34px] w-[34px] flex-none items-center justify-center rounded-full bg-brand-600 text-white"
+              >
+                <RotateCw className="h-4 w-4" />
+              </span>
+              <div className="text-[13px]">
+                <p className="font-semibold text-brand-700">Nueva consulta</p>
+                <p className="text-texto">
+                  {horario.fecha && horario.hora
+                    ? `${fechaLarga(horario.fecha)} · ${horario.hora} – ${horaMasMinutos(horario.hora, cita.duracionMin)}`
+                    : 'Elige una hora'}
+                </p>
+                {cita.personas.length > 1 && (
+                  <p className="text-[12px] text-texto-suave">Con las mismas {cita.personas.length} personas de la visita</p>
+                )}
+              </div>
+            </div>
+          </>
+        ) : (
+          <p className="rounded-lg bg-superficie px-3.5 py-2.5 text-[13px] text-texto-suave">
+            Se registra la inasistencia sin nueva cita. La paciente aparecerá en{' '}
+            <strong className="font-semibold text-texto">Sin próxima consulta</strong> para que la programes cuando la contactes.
+          </p>
+        )}
+
+        {error && (
+          <p role="alert" className="text-sm text-estado-error">
+            {error}
+          </p>
+        )}
+      </CuerpoModal>
+      <PieModal>
+        <Button variante="secondary" tamano="md" onClick={onCerrar} disabled={guardando}>
+          Cancelar
+        </Button>
+        <Button
+          tamano="md"
+          onClick={() => void guardar()}
+          disabled={conNuevaCita && (!horario.fecha || !horario.hora)}
+          cargando={guardando}
+        >
+          {etiquetaBoton}
+        </Button>
+      </PieModal>
+    </Modal>
   )
 }
