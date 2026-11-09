@@ -9,8 +9,8 @@ import type { BusquedaListaUsuarias } from '../../common/busqueda-usuarias';
 export interface ListarPacientesMedicaParams {
   busqueda: BusquedaListaUsuarias | undefined;
   estado: FiltroPacientesMedica | undefined;
-  /** Cursor opaco de la página anterior (orden por nombre). */
-  cursor: string | undefined;
+  /** Página pedida, desde 1 (orden por nombre). */
+  pagina: number;
   porPagina: number;
   ahora: Date;
 }
@@ -31,7 +31,7 @@ export interface IPacientesMedicaRepository {
   listar(
     params: ListarPacientesMedicaParams,
   ): Promise<PacientesMedicaPaginaDto>;
-  /** Buscador de los modales: pocas filas, sin conteos ni cursor. */
+  /** Buscador de los modales: pocas filas, sin conteos ni páginas. */
   buscarProgramables(
     params: BuscarProgramablesParams,
   ): Promise<PacienteBuscadaMedicaDto[]>;

@@ -149,34 +149,6 @@ function cteLista(
   `;
 }
 
-function codificarCursorNombre(nombre: string, id: string): string {
-  return Buffer.from(JSON.stringify([nombre, id])).toString('base64url');
-}
-
-function decodificarCursorNombre(
-  cursor: string | undefined,
-): [string, string] | null {
-  if (!cursor) {
-    return null;
-  }
-  try {
-    const valor: unknown = JSON.parse(
-      Buffer.from(cursor, 'base64url').toString(),
-    );
-    if (
-      Array.isArray(valor) &&
-      valor.length === 2 &&
-      typeof valor[0] === 'string' &&
-      typeof valor[1] === 'string'
-    ) {
-      return [valor[0], valor[1]];
-    }
-  } catch {
-    // Un cursor inválido se trata como la primera página.
-  }
-  return null;
-}
-
 const SELECT_NINOS = {
   select: { id: true, ...SELECT_HIJO },
   orderBy: { consecutivo: 'asc' },
@@ -208,18 +180,15 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
     const filtro = params.estado
       ? Prisma.sql`situacion = ${params.estado}`
       : Prisma.sql`TRUE`;
-    const despues = decodificarCursorNombre(params.cursor);
-    const desde = despues
-      ? Prisma.sql`("nombreOrden", "usuariaId") > (${despues[0]}, ${despues[1]})`
-      : Prisma.sql`TRUE`;
 
     const [filas, [conteos]] = await Promise.all([
       this.prisma.$queryRaw<FilaPacienteRow[]>(Prisma.sql`
         ${base}
         SELECT * FROM lista
-        WHERE ${filtro} AND ${desde}
+        WHERE ${filtro}
         ORDER BY "nombreOrden", "usuariaId"
-        LIMIT ${params.porPagina + 1}
+        LIMIT ${params.porPagina}
+        OFFSET ${(params.pagina - 1) * params.porPagina}
       `),
       this.prisma.$queryRaw<ConteosRow[]>(Prisma.sql`
         ${base}
@@ -232,10 +201,8 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
       `),
     ]);
 
-    const pagina = filas.slice(0, params.porPagina);
-    const ultima = pagina[pagina.length - 1];
     return {
-      items: pagina.map((fila) => ({
+      items: filas.map((fila) => ({
         usuariaId: fila.usuariaId,
         nombreCompleto: nombreCompleto(fila),
         dpi: fila.dpi,
@@ -254,10 +221,9 @@ export class PacientesMedicaRepository implements IPacientesMedicaRepository {
             }
           : null,
       })),
-      siguienteCursor:
-        filas.length > params.porPagina && ultima
-          ? codificarCursorNombre(ultima.nombreOrden, ultima.usuariaId)
-          : null,
+      total: conteos[params.estado ?? 'TODAS'],
+      pagina: params.pagina,
+      porPagina: params.porPagina,
       conteos,
     };
   }

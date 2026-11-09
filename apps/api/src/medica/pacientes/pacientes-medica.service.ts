@@ -32,7 +32,7 @@ export class PacientesMedicaService {
     return this.pacientesRepository.listar({
       busqueda: interpretarBusqueda(query.q),
       estado: query.estado,
-      cursor: query.cursor,
+      pagina: query.pagina,
       porPagina: PAGINA_PACIENTES_MEDICA,
       ahora: this.reloj.ahora(),
     });

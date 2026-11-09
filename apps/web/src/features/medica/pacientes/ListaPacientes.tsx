@@ -5,26 +5,27 @@ import {
   BUSQUEDA_PACIENTES_MEDICA_MIN,
   ETIQUETAS_FILTRO_PACIENTES_MEDICA,
   FILTROS_PACIENTES_MEDICA,
+  PAGINA_MAX_PACIENTES_MEDICA,
+  PAGINA_PACIENTES_MEDICA,
   formatFechaGT,
   type FiltroPacientesMedica,
   type PacienteMedicaFilaDto,
   type PacientesMedicaPaginaDto,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
-import { usePaginasCursor } from '../../psicologia/compartido/usePaginasCursor'
+import { ErrorVista } from '../../../components/ui/EstadosVista'
+import TablaDatos, { type ColumnaTabla } from '../../../components/ui/TablaDatos'
+import { usePaginaConFilas, usePaginaUrl } from '../../../lib/usePaginaUrl'
+import { useRecurso } from '../../../lib/useRecurso'
 import { listarPacientes } from '../api/medica.api'
 import Chip from '../compartido/Chip'
 import EncabezadoPagina from '../compartido/EncabezadoPagina'
-import { CLASE_TARJETA, TONO_SITUACION } from '../compartido/estilos'
+import { TONO_SITUACION } from '../compartido/estilos'
 import { fechaCorta } from '../compartido/fechas'
 import { useRecargaNovedades } from '../compartido/useRecargaNovedades'
 import { useContextoMedica } from '../compartido/contexto'
 import { RUTAS_MEDICA, VISTA_SIN_PROXIMA } from '../rutas'
 import ListaSinProxima from './ListaSinProxima'
-
-const COLUMNAS =
-  'grid grid-cols-[minmax(80px,.6fr)_minmax(200px,2fr)_minmax(60px,.5fr)_minmax(110px,.9fr)_minmax(80px,.6fr)_minmax(110px,1fr)_minmax(110px,1fr)] gap-3'
 
 const ESPERA_BUSQUEDA_MS = 300
 
@@ -44,35 +45,6 @@ function Proxima({ paciente }: { paciente: PacienteMedicaFilaDto }) {
     <span className="whitespace-nowrap text-[13px] font-medium text-estado-pendiente">Sin programar</span>
   ) : (
     <span className="text-[13px] font-medium text-texto-sutil">—</span>
-  )
-}
-
-function FilaPaciente({ paciente }: { paciente: PacienteMedicaFilaDto }) {
-  const detalle = [paciente.dpi && `DPI ${paciente.dpi}`, paciente.hijos > 0 && `${paciente.hijos} ${paciente.hijos === 1 ? 'hijo/a' : 'hijos/as'}`]
-    .filter(Boolean)
-    .join(' · ')
-  return (
-    <li>
-      <Link
-        to={RUTAS_MEDICA.paciente(paciente.usuariaId)}
-        className={`${COLUMNAS} items-center border-t border-borde-suave px-4 py-3 text-[13.5px] text-texto hover:bg-superficie`}
-      >
-        <span className="whitespace-nowrap font-medium tabular-nums text-brand-700">{paciente.expedienteNumero}</span>
-        <span className="flex min-w-0 flex-col gap-px">
-          <span className="font-medium">{paciente.nombreCompleto}</span>
-          {detalle && <span className="text-xs tabular-nums text-texto-suave">{detalle}</span>}
-        </span>
-        <span className="whitespace-nowrap tabular-nums">{paciente.edad}</span>
-        <span className="justify-self-start">
-          <Chip tono={TONO_SITUACION[paciente.situacion]}>{ETIQUETAS_FILTRO_PACIENTES_MEDICA[paciente.situacion]}</Chip>
-        </span>
-        <span className="tabular-nums">{paciente.consultas}</span>
-        <span className="whitespace-nowrap text-[13px] text-texto-suave">
-          {paciente.ultimaConsulta ? formatFechaGT(paciente.ultimaConsulta) : '—'}
-        </span>
-        <Proxima paciente={paciente} />
-      </Link>
-    </li>
   )
 }
 
@@ -182,72 +154,92 @@ interface ListadoGeneralProps {
   onConteos: (conteos: PacientesMedicaPaginaDto['conteos']) => void
 }
 
-/** La tabla de todas las pacientes (o de una situación), con "Cargar más". */
-function ListadoGeneral({ estado, busqueda, onConteos }: ListadoGeneralProps) {
-  const cargar = useCallback(
-    async (cursor?: string) => {
-      const pagina = await listarPacientes({ estado, q: busqueda, cursor })
-      // Los totales de los filtros vienen con la primera página.
-      if (!cursor) onConteos(pagina.conteos)
-      return pagina
-    },
-    [estado, busqueda, onConteos],
-  )
-  const { items, error, hayMas, cargarMas, cargandoMas, errorMas, recargar } = usePaginasCursor(
-    `${estado ?? 'todas'}:${busqueda ?? ''}`,
-    cargar,
-  )
-  useRecargaNovedades(recargar)
-
-  return (
-    <>
-      {error ? (
-        <ErrorVista mensaje={error.mensaje} sinPermiso={error.sinPermiso} recurso="las pacientes" onReintentar={() => void recargar()} />
-      ) : (
-        <section className={`${CLASE_TARJETA} overflow-x-auto`}>
-          <div className="min-w-[860px]">
-            <div
-              aria-hidden="true"
-              className={`${COLUMNAS} bg-superficie px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[.06em] text-texto-suave`}
-            >
-              <span>Expediente</span>
-              <span>Paciente</span>
-              <span>Edad</span>
-              <span>Estado</span>
-              <span>Consultas</span>
-              <span>Última</span>
-              <span>Próxima</span>
-            </div>
-            {!items ? (
-              <div className="p-4">
-                <Esqueleto filas={5} />
-              </div>
-            ) : items.length === 0 ? (
-              <p className="p-9 text-center text-sm text-texto-suave">Ninguna paciente coincide. Prueba con el DPI o el número de expediente.</p>
-            ) : (
-              <ul aria-label="Pacientes">
-                {items.map((paciente) => (
-                  <FilaPaciente key={paciente.usuariaId} paciente={paciente} />
-                ))}
-              </ul>
-            )}
-          </div>
-        </section>
-      )}
-
-      {hayMas && (
-        <div className="flex flex-col items-center gap-1.5">
-          <button
-            type="button"
-            disabled={cargandoMas}
-            onClick={() => void cargarMas()}
-            className="rounded-md border border-borde-fuerte bg-white px-4 py-2 text-[13px] font-medium text-texto hover:bg-superficie disabled:opacity-60"
+const COLUMNAS_PACIENTES: ColumnaTabla<PacienteMedicaFilaDto>[] = [
+  {
+    clave: 'paciente',
+    encabezado: 'Paciente',
+    rol: 'titulo',
+    celda: (paciente) => {
+      const detalle = [
+        `Exp. ${paciente.expedienteNumero}`,
+        paciente.dpi && `DPI ${paciente.dpi}`,
+        paciente.hijos > 0 && `${paciente.hijos} ${paciente.hijos === 1 ? 'hijo/a' : 'hijos/as'}`,
+      ]
+        .filter(Boolean)
+        .join(' · ')
+      return (
+        <div className="flex min-w-0 flex-col gap-px">
+          <Link
+            to={RUTAS_MEDICA.paciente(paciente.usuariaId)}
+            className="font-medium text-texto hover:text-brand-700 hover:underline hover:underline-offset-2"
           >
-            {cargandoMas ? 'Cargando…' : 'Cargar más'}
-          </button>
-          {errorMas && <p className="text-[12.5px] text-estado-error">{errorMas}</p>}
+            {paciente.nombreCompleto}
+          </Link>
+          <span className="text-xs tabular-nums text-texto-suave">{detalle}</span>
         </div>
-      )}
-    </>
+      )
+    },
+  },
+  { clave: 'edad', encabezado: 'Edad', className: 'tabular-nums', celda: (paciente) => paciente.edad },
+  {
+    clave: 'estado',
+    encabezado: 'Estado',
+    celda: (paciente) => (
+      <Chip tono={TONO_SITUACION[paciente.situacion]}>{ETIQUETAS_FILTRO_PACIENTES_MEDICA[paciente.situacion]}</Chip>
+    ),
+  },
+  { clave: 'consultas', encabezado: 'Consultas', className: 'tabular-nums', celda: (paciente) => paciente.consultas },
+  {
+    clave: 'ultima',
+    encabezado: 'Última',
+    className: 'whitespace-nowrap text-[13px] text-texto-suave',
+    celda: (paciente) => (paciente.ultimaConsulta ? formatFechaGT(paciente.ultimaConsulta) : '—'),
+  },
+  { clave: 'proxima', encabezado: 'Próxima', celda: (paciente) => <Proxima paciente={paciente} /> },
+]
+
+/** La tabla de todas las pacientes (o de una situación), por páginas numeradas. */
+function ListadoGeneral({ estado, busqueda, onConteos }: ListadoGeneralProps) {
+  const { pagina, irAPagina } = usePaginaUrl(PAGINA_MAX_PACIENTES_MEDICA, busqueda)
+  const lista = useRecurso(
+    useCallback(async () => {
+      const respuesta = await listarPacientes({ estado, q: busqueda, pagina })
+      onConteos(respuesta.conteos)
+      return respuesta
+    }, [estado, busqueda, pagina, onConteos]),
+  )
+  const { recargar } = lista
+  useRecargaNovedades(recargar)
+  usePaginaConFilas(lista.datos, irAPagina)
+  const datos = lista.datos
+
+  if (lista.error) {
+    return (
+      <ErrorVista mensaje={lista.error.mensaje} sinPermiso={lista.error.sinPermiso} recurso="las pacientes" onReintentar={() => void recargar()} />
+    )
+  }
+  return (
+    <TablaDatos
+      titulo="Pacientes"
+      columnas={COLUMNAS_PACIENTES}
+      filas={datos?.items ?? null}
+      claveFila={(paciente) => paciente.usuariaId}
+      vacio={
+        busqueda
+          ? 'Ninguna paciente coincide. Prueba con el DPI o el número de expediente.'
+          : 'No hay pacientes en esta situación.'
+      }
+      paginacion={
+        datos
+          ? {
+              pagina: datos.pagina,
+              porPagina: datos.porPagina,
+              total: datos.total,
+              totalNavegable: Math.min(datos.total, PAGINA_MAX_PACIENTES_MEDICA * PAGINA_PACIENTES_MEDICA),
+              onCambiar: irAPagina,
+            }
+          : undefined
+      }
+    />
   )
 }

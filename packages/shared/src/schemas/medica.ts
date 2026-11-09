@@ -5,6 +5,7 @@ import {
   BUSQUEDA_PACIENTES_MEDICA_MAX,
   BUSQUEDA_PACIENTES_MEDICA_MIN,
   GRUPOS_SIN_PROXIMA_MEDICA,
+  PAGINA_MAX_PACIENTES_MEDICA,
   PAGINA_MAX_SIN_PROXIMA_MEDICA,
   DIAGNOSTICO_MEDICO_MAX,
   DURACION_CITA_MEDICA_MIN,
@@ -388,8 +389,9 @@ export const listarPacientesMedicaQuerySchema = z.object({
     .optional()
     .transform((valor) => (valor && valor.length >= BUSQUEDA_PACIENTES_MEDICA_MIN ? valor : undefined)),
   estado: filtroPacientesMedicaSchema.optional(),
-  cursor: z.string().max(200).optional(),
+  pagina: z.number().int().min(1).max(PAGINA_MAX_PACIENTES_MEDICA).default(1),
 })
+export type ListarPacientesMedicaInput = z.input<typeof listarPacientesMedicaQuerySchema>
 export type ListarPacientesMedicaQuery = z.output<typeof listarPacientesMedicaQuerySchema>
 
 /** `GET /medica/pacientes/:usuariaId/consultas?persona=&cursor=` — `persona`: "usuaria" o el id de un hijo/a. */
@@ -758,7 +760,10 @@ export interface PacienteBuscadaMedicaDto {
 
 export interface PacientesMedicaPaginaDto {
   items: PacienteMedicaFilaDto[]
-  siguienteCursor: string | null
+  /** Filas que cumplen la situación y la búsqueda pedidas: "Mostrando 1–30 de `total`". */
+  total: number
+  pagina: number
+  porPagina: number
   conteos: Record<FiltroPacientesMedica | 'TODAS', number>
 }
 
