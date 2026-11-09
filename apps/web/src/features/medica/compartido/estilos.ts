@@ -7,12 +7,12 @@ import type { EstadoCitaMedicaDerivado, FiltroPacientesMedica } from '@akyuam/sh
 export type TonoMedica = 'blue' | 'green' | 'amber' | 'gray' | 'purple' | 'red'
 
 export const CLASES_TONO: Record<TonoMedica, string> = {
-  blue: 'bg-[#e8f0fb] text-[#1f5aa6]',
-  green: 'bg-[#e7f1ea] text-[#2f6b3f]',
-  amber: 'bg-[#fbf1de] text-[#8a5a14]',
-  gray: 'bg-[#f0f2f4] text-[#4b5563]',
-  purple: 'bg-[#f2ecfa] text-[#5b3985]',
-  red: 'bg-[#fbe4e1] text-[#9b2c20]',
+  blue: 'bg-estado-info-insignia text-estado-info',
+  green: 'bg-estado-ok-insignia text-estado-ok',
+  amber: 'bg-estado-pendiente-insignia text-estado-pendiente',
+  gray: 'bg-superficie-hundida text-texto-cuerpo',
+  purple: 'bg-seleccion text-brand-700',
+  red: 'bg-estado-error-insignia text-estado-error',
 }
 
 export const TONO_ESTADO_CITA: Record<EstadoCitaMedicaDerivado, TonoMedica> = {
@@ -31,18 +31,18 @@ export const TONO_SITUACION: Record<FiltroPacientesMedica, TonoMedica> = {
 }
 
 /** Tarjeta blanca con borde suave: el contenedor de casi todo bloque del módulo. */
-export const CLASE_TARJETA = 'rounded-xl border border-[#e3e6ea] bg-white'
+export const CLASE_TARJETA = 'rounded-xl border border-borde bg-white'
 
 /** Eyebrow sobre el título de cada pantalla ("AGENDA DE CONSULTAS"). */
-export const CLASE_EYEBROW = 'text-xs font-semibold uppercase tracking-wide text-[#5b6573]'
+export const CLASE_EYEBROW = 'text-xs font-semibold uppercase tracking-wide text-texto-suave'
 
-export const CLASE_H1 = 'text-2xl font-semibold text-[#1c2430]'
+export const CLASE_H1 = 'text-2xl font-semibold text-texto'
 
 /** Encabezado de sección dentro de una tarjeta o formulario. */
-export const CLASE_SECCION = 'text-[11px] font-semibold uppercase tracking-wide text-[#5b6573]'
+export const CLASE_SECCION = 'text-[11px] font-semibold uppercase tracking-wide text-texto-suave'
 
 export const CLASE_CAMPO =
-  'w-full rounded-md border border-[#d5dadf] bg-white px-3 py-2 text-sm text-[#1c2430] focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
+  'w-full rounded-md border border-borde-fuerte bg-white px-3 py-2 text-sm text-texto focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500'
 
 /** Enlace de texto subrayado para las acciones secundarias ("Ver ficha", "Ver consulta"). */
 export const CLASE_ENLACE = 'text-[13px] font-medium text-brand-700 underline underline-offset-2 hover:text-brand-800'

@@ -14,7 +14,7 @@ import {
   type ModalidadConsultaMedica,
   type RegistrarConsultaMedicaInput,
 } from '@akyuam/shared'
-import { useTituloPagina } from '../../../components/TituloPagina'
+import { useTituloPagina, TituloPrincipal } from '../../../components/TituloPagina'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
@@ -260,18 +260,18 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
   return (
     <div className="mx-auto flex max-w-[920px] flex-col gap-4">
       <header className="flex flex-col gap-1">
-        <h1 className="text-[22px] font-semibold text-[#1c2430]">Registrar consulta</h1>
-        <p className="text-[13px] text-[#5b6573]">
+        <TituloPrincipal className="text-[22px] font-semibold text-texto">Registrar consulta</TituloPrincipal>
+        <p className="text-[13px] text-texto-suave">
           <CodigoAtencion codigo={contexto.codigoAtencion} /> · {subtitulo}
           {varias && ` · ${personas.length} personas`}
         </p>
       </header>
 
       <section className={`${CLASE_TARJETA} flex flex-wrap items-center justify-between gap-3 px-5 py-3.5`}>
-        <h2 id="modalidad-consulta" className="text-sm font-semibold text-[#1c2430]">
+        <h2 id="modalidad-consulta" className="text-sm font-semibold text-texto">
           ¿Cómo fue la consulta?
         </h2>
-        <div role="radiogroup" aria-labelledby="modalidad-consulta" className="flex overflow-hidden rounded-md border border-[#d5dadf] bg-white">
+        <div role="radiogroup" aria-labelledby="modalidad-consulta" className="flex overflow-hidden rounded-md border border-borde-fuerte bg-white">
           {MODALIDADES_CONSULTA_MEDICA.map((opcion) => (
             <button
               key={opcion}
@@ -281,7 +281,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
               disabled={guardando}
               onClick={() => setModalidad(opcion)}
               className={`px-3.5 py-2 text-[13px] font-semibold ${
-                modalidad === opcion ? 'bg-[#7346a5] text-white' : 'bg-white text-[#374151] hover:bg-[#f8f9fa]'
+                modalidad === opcion ? 'bg-brand-600 text-white' : 'bg-white text-texto-cuerpo hover:bg-superficie'
               } disabled:opacity-60`}
             >
               {ETIQUETAS_MODALIDAD_CONSULTA_MEDICA[opcion]}
@@ -330,25 +330,25 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
 
       <section className={`${CLASE_TARJETA} flex flex-wrap items-center justify-between gap-3 px-5 py-[18px]`}>
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-[#1c2430]">Próxima consulta</h2>
+          <h2 className="text-sm font-semibold text-texto">Próxima consulta</h2>
           {proxima ? (
             <>
-              <p className="mt-0.5 text-[13.5px] text-[#1c2430]">
-                <span className="font-semibold text-[#5b3985]">{fechaLarga(proxima.fecha)}</span>
+              <p className="mt-0.5 text-[13.5px] text-texto">
+                <span className="font-semibold text-brand-700">{fechaLarga(proxima.fecha)}</span>
                 {' · '}
                 <span className="font-mono">
                   {proxima.hora} – {horaMasMinutos(proxima.hora, proxima.duracionMin)}
                 </span>
                 {` (${ETIQUETAS_DURACION_CITA_MEDICA[proxima.duracionMin]})`}
               </p>
-              <p className="text-[12.5px] text-[#5b6573]">
+              <p className="text-[12.5px] text-texto-suave">
                 {contexto.personas.length > 1 &&
                   `Para ${listaPrimerosNombres(atendidasProxima.map((persona) => persona.nombreCompleto))} · `}
                 Se agrega a la agenda al guardar.
               </p>
             </>
           ) : (
-            <p className="mt-0.5 text-[13px] text-[#5b6573]">Sin próxima consulta por ahora.</p>
+            <p className="mt-0.5 text-[13px] text-texto-suave">Sin próxima consulta por ahora.</p>
           )}
         </div>
         <div className="flex flex-none items-center gap-2">
@@ -357,7 +357,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
               type="button"
               disabled={guardando}
               onClick={() => setProxima(null)}
-              className="rounded-md px-3 py-2 text-[13px] font-medium text-[#5b6573] hover:bg-[#f8f9fa] disabled:opacity-60"
+              className="rounded-md px-3 py-2 text-[13px] font-medium text-texto-suave hover:bg-superficie disabled:opacity-60"
             >
               Quitar
             </button>
@@ -369,7 +369,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
               setAvisoProxima(null)
               setModalProxima(true)
             }}
-            className="rounded-md border border-[#d5dadf] bg-white px-3.5 py-2 text-[13px] font-semibold text-[#7346a5] hover:bg-[#f7f3fc] disabled:opacity-60"
+            className="rounded-md border border-borde-fuerte bg-white px-3.5 py-2 text-[13px] font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-60"
           >
             {proxima ? 'Cambiar' : 'Programar próxima'}
           </button>
@@ -396,7 +396,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
 
       <div className="flex flex-wrap items-center justify-end gap-3 pb-6">
         {errorGuardar && (
-          <p role="alert" className="mr-auto text-[13px] text-[#9b2c20]">
+          <p role="alert" className="mr-auto text-[13px] text-estado-error">
             {errorGuardar}
           </p>
         )}
@@ -404,7 +404,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
           type="button"
           disabled={guardando}
           onClick={() => pedirConfirmacionSalida(() => navigate(rutaVolver))}
-          className="rounded-md border border-[#d5dadf] bg-white px-4 py-2.5 text-[13.5px] font-medium text-[#1c2430] hover:bg-[#f8f9fa] disabled:opacity-60"
+          className="rounded-md border border-borde-fuerte bg-white px-4 py-2.5 text-[13.5px] font-medium text-texto hover:bg-superficie disabled:opacity-60"
         >
           Cancelar
         </button>
@@ -412,7 +412,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
           type="button"
           disabled={guardando}
           onClick={() => void guardar()}
-          className="rounded-md bg-[#7346a5] px-5 py-2.5 text-[13.5px] font-semibold text-white hover:bg-[#5b3985] disabled:opacity-60"
+          className="rounded-md bg-brand-600 px-5 py-2.5 text-[13.5px] font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
         >
           {guardando ? 'Guardando…' : varias ? `Guardar ${personas.length} consultas` : 'Guardar consulta'}
         </button>

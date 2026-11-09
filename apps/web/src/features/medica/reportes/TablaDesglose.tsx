@@ -19,9 +19,9 @@ export default function TablaDesglose({ titulo, filas }: { titulo: string; filas
 
   return (
     <section className={`${CLASE_TARJETA} flex flex-col gap-3 px-5 py-4`}>
-      <h3 className="text-sm font-semibold text-[#1c2430]">{titulo}</h3>
+      <h3 className="text-sm font-semibold text-texto">{titulo}</h3>
       {conDatos.length === 0 ? (
-        <p className="text-[13px] text-[#5b6573]">Sin datos en este periodo.</p>
+        <p className="text-[13px] text-texto-suave">Sin datos en este periodo.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {visibles.map((fila) => {
@@ -29,13 +29,13 @@ export default function TablaDesglose({ titulo, filas }: { titulo: string; filas
             return (
               <li key={fila.clave} className="flex flex-col gap-1.5">
                 <div className="flex items-baseline justify-between gap-3 text-[13px]">
-                  <span className="min-w-0 text-pretty text-[#1c2430]">{fila.etiqueta}</span>
+                  <span className="min-w-0 text-pretty text-texto">{fila.etiqueta}</span>
                   <span className="shrink-0 tabular-nums">
-                    <span className="font-semibold text-[#1c2430]">{fila.total}</span>
-                    <span className="ml-1.5 text-xs text-[#5b6573]">{porcentaje}%</span>
+                    <span className="font-semibold text-texto">{fila.total}</span>
+                    <span className="ml-1.5 text-xs text-texto-suave">{porcentaje}%</span>
                   </span>
                 </div>
-                <div aria-hidden="true" className="h-2.5 overflow-hidden rounded bg-[#f0f2f4]">
+                <div aria-hidden="true" className="h-2.5 overflow-hidden rounded bg-superficie-hundida">
                   <div className="h-full rounded bg-brand-500" style={{ width: `${Math.max(3, Math.round((fila.total / maximo) * 100))}%` }} />
                 </div>
               </li>

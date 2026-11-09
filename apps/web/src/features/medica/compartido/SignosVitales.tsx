@@ -42,20 +42,20 @@ interface SignosVitalesProps {
 export default function SignosVitales({ signos, anterior }: SignosVitalesProps) {
   const lista = mosaicos(signos, anterior)
   if (lista.length === 0) {
-    return <p className="text-sm text-[#5b6573]">No se tomaron signos vitales.</p>
+    return <p className="text-sm text-texto-suave">No se tomaron signos vitales.</p>
   }
   const compara = anterior !== undefined
   return (
     <dl className="grid grid-cols-[repeat(auto-fill,minmax(140px,1fr))] gap-2">
       {lista.map((mosaico) => (
-        <div key={mosaico.clave} className="rounded-lg bg-[#f8f9fa] px-3 py-2.5">
-          <dt className="text-[11.5px] text-[#5b6573]">{mosaico.etiqueta}</dt>
-          <dd className="mt-0.5 text-[17px] font-semibold tabular-nums text-[#1c2430]">
+        <div key={mosaico.clave} className="rounded-lg bg-superficie px-3 py-2.5">
+          <dt className="text-[11.5px] text-texto-suave">{mosaico.etiqueta}</dt>
+          <dd className="mt-0.5 text-[17px] font-semibold tabular-nums text-texto">
             {mosaico.valor}
-            {mosaico.unidad && <span className="ml-1 text-xs font-normal text-[#5b6573]">{mosaico.unidad}</span>}
+            {mosaico.unidad && <span className="ml-1 text-xs font-normal text-texto-suave">{mosaico.unidad}</span>}
           </dd>
           {compara && (
-            <dd className="mt-0.5 text-[11.5px] text-[#9aa4b0]">
+            <dd className="mt-0.5 text-[11.5px] text-texto-sutil">
               {mosaico.anterior !== null
                 ? `Anterior: ${mosaico.anterior}${mosaico.unidad ? ` ${mosaico.unidad}` : ''}`
                 : 'Primera toma'}

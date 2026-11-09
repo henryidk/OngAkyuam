@@ -36,14 +36,14 @@ interface SelectorPeriodoProps {
   error: string | null
 }
 
-const CLASE_ETIQUETA = 'flex flex-col gap-1 text-xs font-medium text-[#5b6573]'
+const CLASE_ETIQUETA = 'flex flex-col gap-1 text-xs font-medium text-texto-suave'
 
 /** El único periodo de la pantalla: lo usan el informe y los indicadores, en pantalla y en Excel. */
 export default function SelectorPeriodo({ hoy, campos, onCambiar, error }: SelectorPeriodoProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-end gap-x-5 gap-y-3">
-        <div role="group" aria-label="Atajos de periodo" className="flex rounded-md border border-[#d5dadf] bg-white p-0.5">
+        <div role="group" aria-label="Atajos de periodo" className="flex rounded-md border border-borde-fuerte bg-white p-0.5">
           {ATAJOS.map((atajo) => {
             const periodo = atajo.periodo(hoy)
             const activo = periodo.desde === campos.desde && periodo.hasta === campos.hasta
@@ -54,7 +54,7 @@ export default function SelectorPeriodo({ hoy, campos, onCambiar, error }: Selec
                 aria-pressed={activo}
                 onClick={() => onCambiar(periodo)}
                 className={`whitespace-nowrap rounded px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                  activo ? 'bg-brand-600 text-white' : 'text-[#374151] hover:bg-brand-50 hover:text-brand-700'
+                  activo ? 'bg-brand-600 text-white' : 'text-texto-cuerpo hover:bg-brand-50 hover:text-brand-700'
                 }`}
               >
                 {atajo.etiqueta}
@@ -74,7 +74,7 @@ export default function SelectorPeriodo({ hoy, campos, onCambiar, error }: Selec
               className={`${CLASE_CAMPO} w-[150px] py-1.5 tabular-nums`}
             />
           </label>
-          <span aria-hidden="true" className="pb-2 text-[#9aa4b0]">
+          <span aria-hidden="true" className="pb-2 text-texto-sutil">
             –
           </span>
           <label className={CLASE_ETIQUETA}>
@@ -91,7 +91,7 @@ export default function SelectorPeriodo({ hoy, campos, onCambiar, error }: Selec
           </label>
         </div>
       </div>
-      <p aria-live="polite" className={error ? 'text-[13px] text-[#9b2c20]' : 'sr-only'}>
+      <p aria-live="polite" className={error ? 'text-[13px] text-estado-error' : 'sr-only'}>
         {error && `${error}. Se siguen mostrando las cifras del último periodo válido.`}
       </p>
     </div>

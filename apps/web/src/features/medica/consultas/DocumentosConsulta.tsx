@@ -24,8 +24,8 @@ export default function DocumentosConsulta({ documentos, deshabilitado }: { docu
     <section className={`${CLASE_TARJETA} flex flex-col gap-3 px-5 py-[18px]`}>
       <div className="flex flex-wrap items-start justify-between gap-2.5">
         <div className="flex flex-col gap-0.5">
-          <h2 className="text-sm font-semibold text-[#1c2430]">Documentos</h2>
-          <p className="text-[12.5px] text-[#5b6573]">
+          <h2 className="text-sm font-semibold text-texto">Documentos</h2>
+          <p className="text-[12.5px] text-texto-suave">
             Cualquier documento de esta consulta. PDF o imagen, máx. 15 MB.
           </p>
         </div>
@@ -33,7 +33,7 @@ export default function DocumentosConsulta({ documentos, deshabilitado }: { docu
           type="button"
           disabled={deshabilitado}
           onClick={() => input.current?.click()}
-          className={`${CLASE_BOTON} border-[#7346a5] font-semibold text-[#7346a5] hover:bg-[#f7f3fc] disabled:opacity-50`}
+          className={`${CLASE_BOTON} border-brand-600 font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-50`}
         >
           + Adjuntar archivos
         </button>
@@ -57,8 +57,8 @@ export default function DocumentosConsulta({ documentos, deshabilitado }: { docu
         }}
         onDragLeave={() => setArrastrando(false)}
         onDrop={soltar}
-        className={`rounded-md border border-dashed px-4 py-4 text-center text-[12.5px] text-[#5b6573] ${
-          arrastrando ? 'border-[#7346a5] bg-[#f7f3fc]' : 'border-[#d5dadf]'
+        className={`rounded-md border border-dashed px-4 py-4 text-center text-[12.5px] text-texto-suave ${
+          arrastrando ? 'border-brand-600 bg-brand-50' : 'border-borde-fuerte'
         }`}
       >
         Arrastra archivos aquí o usa «Adjuntar archivos».
@@ -95,16 +95,16 @@ function FilaSubida({ item, deshabilitado, onQuitar, onReintentar }: FilaSubidaP
   const error = item.estado === 'error'
   const listo = item.estado === 'listo'
   const icono = error
-    ? { simbolo: '!', clase: 'bg-[#fbe4e1] text-[#9b2c20]' }
+    ? { simbolo: '!', clase: 'bg-estado-error-insignia text-estado-error' }
     : listo
-      ? { simbolo: '✓', clase: 'bg-[#3f9d5b] text-white' }
-      : { simbolo: '↑', clase: 'bg-[#f2ecfa] text-[#7346a5]' }
+      ? { simbolo: '✓', clase: 'bg-estado-ok-marca text-white' }
+      : { simbolo: '↑', clase: 'bg-seleccion text-brand-600' }
   const estado = error ? `Falló · ${item.error ?? 'error desconocido'}` : listo ? 'Subido' : `${item.progreso}%`
 
   return (
     <li
       className={`flex flex-wrap items-center gap-3 rounded-md border px-3 py-2.5 ${
-        error ? 'border-[#f3c4bd] bg-[#fdf3f1]' : 'border-[#e3e6ea] bg-white'
+        error ? 'border-estado-error-borde bg-estado-error-fondo' : 'border-borde bg-white'
       }`}
     >
       <span
@@ -115,14 +115,14 @@ function FilaSubida({ item, deshabilitado, onQuitar, onReintentar }: FilaSubidaP
       </span>
       <div className="flex min-w-[160px] flex-1 flex-col gap-1">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="truncate text-[13px] font-medium text-[#1c2430]">{item.nombreVisible || item.archivo.name}</span>
-          <span className={`whitespace-nowrap text-[11.5px] ${error ? 'text-[#9b2c20]' : listo ? 'text-[#2f6b3f]' : 'text-[#5b6573]'}`}>
+          <span className="truncate text-[13px] font-medium text-texto">{item.nombreVisible || item.archivo.name}</span>
+          <span className={`whitespace-nowrap text-[11.5px] ${error ? 'text-estado-error' : listo ? 'text-estado-ok' : 'text-texto-suave'}`}>
             {estado}
           </span>
         </div>
-        <div className="h-1 overflow-hidden rounded-full bg-[#eef0f2]">
+        <div className="h-1 overflow-hidden rounded-full bg-superficie-hundida">
           <div
-            className={`h-full rounded-full transition-[width] ${error ? 'bg-[#d4574a]' : 'bg-[#7346a5]'}`}
+            className={`h-full rounded-full transition-[width] ${error ? 'bg-estado-error-marca' : 'bg-brand-600'}`}
             style={{ width: `${error ? 100 : item.progreso}%` }}
           />
         </div>
@@ -132,7 +132,7 @@ function FilaSubida({ item, deshabilitado, onQuitar, onReintentar }: FilaSubidaP
           type="button"
           disabled={deshabilitado}
           onClick={onReintentar}
-          className={`${CLASE_BOTON} border-[#9b2c20] text-[#9b2c20] hover:bg-[#fbe4e1]`}
+          className={`${CLASE_BOTON} border-estado-error text-estado-error hover:bg-estado-error-insignia`}
         >
           Reintentar
         </button>
@@ -142,7 +142,7 @@ function FilaSubida({ item, deshabilitado, onQuitar, onReintentar }: FilaSubidaP
         disabled={deshabilitado}
         onClick={onQuitar}
         aria-label={`Quitar ${item.nombreVisible || item.archivo.name}`}
-        className={`${CLASE_BOTON} border-[#d5dadf] text-[#5b6573] hover:bg-[#f8f9fa]`}
+        className={`${CLASE_BOTON} border-borde-fuerte text-texto-suave hover:bg-superficie`}
       >
         Quitar
       </button>

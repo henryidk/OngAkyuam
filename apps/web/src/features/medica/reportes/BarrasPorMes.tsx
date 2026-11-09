@@ -24,10 +24,10 @@ export default function BarrasPorMes({ meses, elegido, onElegir }: BarrasPorMesP
   return (
     <section aria-labelledby="titulo-barras" className={`${CLASE_TARJETA} flex flex-col gap-3.5 px-5 py-[18px]`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2.5">
-        <h2 id="titulo-barras" className="text-sm font-semibold text-[#1c2430]">
+        <h2 id="titulo-barras" className="text-sm font-semibold text-texto">
           Consultas por mes
         </h2>
-        <p aria-live="polite" className="flex flex-wrap items-baseline gap-x-3 text-[12.5px] text-[#5b6573]">
+        <p aria-live="polite" className="flex flex-wrap items-baseline gap-x-3 text-[12.5px] text-texto-suave">
           {mesElegido ? (
             <>
               <span>
@@ -59,7 +59,7 @@ export default function BarrasPorMes({ meses, elegido, onElegir }: BarrasPorMesP
                   onClick={() => onElegir(activo ? null : indice)}
                   className="group flex h-full min-w-0 flex-col items-center justify-end gap-1 rounded-t"
                 >
-                  <span className="text-[11.5px] font-semibold tabular-nums text-[#1c2430]">{mes.consultas}</span>
+                  <span className="text-[11.5px] font-semibold tabular-nums text-texto">{mes.consultas}</span>
                   <span
                     aria-hidden="true"
                     style={{ height: `${Math.round((mes.consultas / maximo) * 100)}%` }}
@@ -71,11 +71,11 @@ export default function BarrasPorMes({ meses, elegido, onElegir }: BarrasPorMesP
               )
             })}
           </div>
-          <div aria-hidden="true" className="grid justify-center gap-2 border-t border-[#e3e6ea] pt-1.5 sm:gap-4" style={columnas}>
+          <div aria-hidden="true" className="grid justify-center gap-2 border-t border-borde pt-1.5 sm:gap-4" style={columnas}>
             {meses.map((mes, indice) => (
               <span
                 key={`${mes.anio}-${mes.mes}`}
-                className={`text-center text-[11px] leading-tight sm:text-xs ${elegido === indice ? 'font-semibold text-[#1c2430]' : 'text-[#5b6573]'}`}
+                className={`text-center text-[11px] leading-tight sm:text-xs ${elegido === indice ? 'font-semibold text-texto' : 'text-texto-suave'}`}
               >
                 {nombreMesGT(mes.mes).slice(0, 3)}
                 {variosAnios && <span className="block text-[10.5px]">{mes.anio}</span>}

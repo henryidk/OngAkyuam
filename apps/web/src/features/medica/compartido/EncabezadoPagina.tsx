@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { CLASE_EYEBROW, CLASE_H1 } from './estilos'
+import { TituloPrincipal } from '../../../components/TituloPagina'
 
 interface EncabezadoPaginaProps {
   eyebrow: string
@@ -15,8 +16,8 @@ export default function EncabezadoPagina({ eyebrow, titulo, descripcion, extremo
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div className="min-w-0 max-w-2xl">
         <p className={CLASE_EYEBROW}>{eyebrow}</p>
-        <h1 className={`mt-1 ${CLASE_H1}`}>{titulo}</h1>
-        {descripcion && <p className="mt-1.5 text-sm text-[#5b6573]">{descripcion}</p>}
+        <TituloPrincipal className={`mt-1 ${CLASE_H1}`}>{titulo}</TituloPrincipal>
+        {descripcion && <p className="mt-1.5 text-sm text-texto-suave">{descripcion}</p>}
       </div>
       {extremo && <div className="flex flex-wrap items-center gap-2">{extremo}</div>}
     </div>

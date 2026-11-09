@@ -26,7 +26,7 @@ export default function ConsultasAnteriores({ usuariaId, persona, nombre }: Cons
   }
   if (!items) return <Esqueleto filas={3} />
   if (items.length === 0) {
-    return <p className={`${CLASE_TARJETA} p-10 text-center text-sm text-[#5b6573]`}>Es la primera consulta de {nombre}.</p>
+    return <p className={`${CLASE_TARJETA} p-10 text-center text-sm text-texto-suave`}>Es la primera consulta de {nombre}.</p>
   }
 
   return (
@@ -34,10 +34,10 @@ export default function ConsultasAnteriores({ usuariaId, persona, nombre }: Cons
       {items.map((consulta) => (
         <article key={consulta.id} className={`${CLASE_TARJETA} flex flex-col gap-3.5 px-5 py-[18px]`}>
           <header className="flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="text-[14.5px] font-semibold text-[#1c2430]">
+            <h3 className="text-[14.5px] font-semibold text-texto">
               {fechaLarga(consulta.fecha)} de {anioDe(consulta.fecha)}
             </h3>
-            <span className="text-[12.5px] text-[#5b6573]">
+            <span className="text-[12.5px] text-texto-suave">
               {consulta.hora} · atención <CodigoAtencion codigo={consulta.codigoAtencion} />
             </span>
           </header>
@@ -50,11 +50,11 @@ export default function ConsultasAnteriores({ usuariaId, persona, nombre }: Cons
             type="button"
             disabled={cargandoMas}
             onClick={() => void cargarMas()}
-            className="rounded-md border border-[#d5dadf] bg-white px-4 py-2 text-[13px] font-medium text-[#1c2430] hover:bg-[#f8f9fa] disabled:opacity-60"
+            className="rounded-md border border-borde-fuerte bg-white px-4 py-2 text-[13px] font-medium text-texto hover:bg-superficie disabled:opacity-60"
           >
             {cargandoMas ? 'Cargando…' : 'Cargar consultas más antiguas'}
           </button>
-          {errorMas && <p className="text-[12.5px] text-[#9b2c20]">{errorMas}</p>}
+          {errorMas && <p className="text-[12.5px] text-estado-error">{errorMas}</p>}
         </div>
       )}
     </div>

@@ -33,13 +33,13 @@ export default function SelectorPersonasCita({ personas, elegidas, obligatorias,
 
   return (
     <fieldset>
-      <legend className="mb-1.5 flex w-full items-baseline justify-between gap-2 text-[13px] font-medium text-[#1c2430]">
+      <legend className="mb-1.5 flex w-full items-baseline justify-between gap-2 text-[13px] font-medium text-texto">
         <span>Se atiende a</span>
-        <span className="text-[12px] font-normal text-[#5b6573]">
+        <span className="text-[12px] font-normal text-texto-suave">
           {elegidas.length} de {personas.length}
         </span>
       </legend>
-      <div className="overflow-hidden rounded-lg border border-[#e3e6ea] bg-white">
+      <div className="overflow-hidden rounded-lg border border-borde bg-white">
         {personas.map((persona) => {
           const marcada = elegidas.includes(persona.ninoId)
           const unica = marcada && elegidas.length === 1
@@ -49,9 +49,9 @@ export default function SelectorPersonasCita({ personas, elegidas, obligatorias,
             <label
               key={persona.ninoId ?? 'usuaria'}
               title={unica && !obligatorias ? 'Debe quedar al menos una persona' : undefined}
-              className={`flex items-center gap-3 border-b border-[#eef0f2] px-3 py-2 last:border-b-0 ${
-                bloqueada ? 'cursor-default' : 'cursor-pointer hover:bg-[#faf7fd]'
-              } ${marcada ? '' : 'bg-[#fbfbfc]'}`}
+              className={`flex items-center gap-3 border-b border-borde-suave px-3 py-2 last:border-b-0 ${
+                bloqueada ? 'cursor-default' : 'cursor-pointer hover:bg-brand-50'
+              } ${marcada ? '' : 'bg-superficie'}`}
             >
               <input
                 type="checkbox"
@@ -62,8 +62,8 @@ export default function SelectorPersonasCita({ personas, elegidas, obligatorias,
               />
               <span
                 aria-hidden="true"
-                className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded border-[1.5px] peer-focus-visible:ring-2 peer-focus-visible:ring-[#c7a8e5] ${
-                  marcada ? 'border-[#7346a5] bg-[#7346a5] text-white' : 'border-[#c9ced5] bg-white'
+                className={`flex h-[18px] w-[18px] flex-none items-center justify-center rounded border-[1.5px] peer-focus-visible:ring-2 peer-focus-visible:ring-brand-300 ${
+                  marcada ? 'border-brand-600 bg-brand-600 text-white' : 'border-borde-fuerte bg-white'
                 } ${obligatorias ? 'opacity-70' : ''}`}
               >
                 {marcada && <Check className="h-3 w-3" strokeWidth={3} />}
@@ -71,21 +71,21 @@ export default function SelectorPersonasCita({ personas, elegidas, obligatorias,
               <span
                 aria-hidden="true"
                 className={`flex h-8 w-8 flex-none items-center justify-center rounded-full text-[11.5px] font-semibold ${
-                  marcada ? 'bg-[#f2ecfa] text-[#5b3985]' : 'bg-[#f0f2f4] text-[#7a8494]'
+                  marcada ? 'bg-seleccion text-brand-700' : 'bg-superficie-hundida text-texto-sutil'
                 }`}
               >
                 {iniciales(persona.nombreCompleto)}
               </span>
               <span className="min-w-0 flex-1">
-                <span className={`block truncate text-[13.5px] font-medium ${marcada ? 'text-[#1c2430]' : 'text-[#5b6573]'}`}>
+                <span className={`block truncate text-[13.5px] font-medium ${marcada ? 'text-texto' : 'text-texto-suave'}`}>
                   {esUsuaria ? persona.nombreCompleto : primerNombre(persona.nombreCompleto)}
                 </span>
-                <span className="block text-[12px] text-[#5b6573]">
+                <span className="block text-[12px] text-texto-suave">
                   {esUsuaria ? (usuariaAcompana ? 'Usuaria · solo acompaña' : 'Usuaria') : `Hijo/a · ${persona.edad} años`}
                 </span>
               </span>
               {obligatorias && (
-                <span className="flex flex-none items-center gap-1 rounded-full bg-[#f2ecfa] px-2 py-0.5 text-[11px] font-semibold text-[#5b3985]">
+                <span className="flex flex-none items-center gap-1 rounded-full bg-seleccion px-2 py-0.5 text-[11px] font-semibold text-brand-700">
                   <Lock aria-hidden="true" className="h-3 w-3" />
                   Primera consulta
                 </span>
@@ -94,7 +94,7 @@ export default function SelectorPersonasCita({ personas, elegidas, obligatorias,
           )
         })}
       </div>
-      <p className="mt-1.5 text-[12px] text-[#5b6573]">
+      <p className="mt-1.5 text-[12px] text-texto-suave">
         {obligatorias
           ? 'La primera consulta es para la usuaria y todos sus hijos/as.'
           : usuariaAcompana && usuaria

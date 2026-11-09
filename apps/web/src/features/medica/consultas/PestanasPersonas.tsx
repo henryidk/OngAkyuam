@@ -29,10 +29,10 @@ export default function PestanasPersonas({ personas, activa, estados, onElegir }
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between gap-2">
-        <h2 className="text-[13px] font-medium text-[#5b6573]">Personas de la visita</h2>
+        <h2 className="text-[13px] font-medium text-texto-suave">Personas de la visita</h2>
         <span
           aria-live="polite"
-          className={`text-[12.5px] font-medium ${listas === personas.length ? 'text-[#2e7d4f]' : 'text-[#5b6573]'}`}
+          className={`text-[12.5px] font-medium ${listas === personas.length ? 'text-estado-ok' : 'text-texto-suave'}`}
         >
           {listas} de {personas.length} {personas.length === 1 ? 'lista' : 'listas'}
         </span>
@@ -55,15 +55,15 @@ export default function PestanasPersonas({ personas, activa, estados, onElegir }
               onClick={() => onElegir(clave)}
               className={`flex min-w-[168px] flex-none items-center gap-2.5 rounded-lg border px-3 py-2 text-left transition-colors ${
                 seleccionada
-                  ? 'border-[#7346a5] bg-[#f7f3fc] shadow-[0_0_0_1px_#7346a5]'
-                  : 'border-[#e3e6ea] bg-white hover:border-[#c9b3e3]'
+                  ? 'border-brand-600 bg-brand-50 shadow-[0_0_0_1px_var(--color-brand-600)]'
+                  : 'border-borde bg-white hover:border-brand-300'
               }`}
             >
               <span className="relative flex-none">
                 <span
                   aria-hidden="true"
                   className={`flex h-9 w-9 items-center justify-center rounded-full text-[12px] font-semibold ${
-                    seleccionada ? 'bg-[#7346a5] text-white' : 'bg-[#f2ecfa] text-[#5b3985]'
+                    seleccionada ? 'bg-brand-600 text-white' : 'bg-seleccion text-brand-700'
                   }`}
                 >
                   {iniciales(persona.nombreCompleto)}
@@ -71,10 +71,10 @@ export default function PestanasPersonas({ personas, activa, estados, onElegir }
                 <IndicadorEstado estado={estado} />
               </span>
               <span className="min-w-0">
-                <span className="block truncate text-[13.5px] font-semibold text-[#1c2430]">
+                <span className="block truncate text-[13.5px] font-semibold text-texto">
                   {primerNombre(persona.nombreCompleto)}
                 </span>
-                <span className="block text-[12px] text-[#5b6573]">
+                <span className="block text-[12px] text-texto-suave">
                   {esUsuaria ? 'Usuaria' : `Hijo/a · ${persona.edad} años`}
                 </span>
               </span>
@@ -90,12 +90,12 @@ function IndicadorEstado({ estado }: { estado: EstadoPestana }) {
   const base = 'absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full border-2 border-white'
   if (estado === 'lista') {
     return (
-      <span aria-hidden="true" className={`${base} bg-[#2e7d4f] text-white`}>
+      <span aria-hidden="true" className={`${base} bg-estado-ok-marca text-white`}>
         <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
       </span>
     )
   }
-  if (estado === 'en-curso') return <span aria-hidden="true" className={`${base} bg-[#d9a23a]`} />
-  if (estado === 'falta') return <span aria-hidden="true" className={`${base} bg-[#d4574a]`} />
-  return <span aria-hidden="true" className={`${base} bg-[#d5dadf]`} />
+  if (estado === 'en-curso') return <span aria-hidden="true" className={`${base} bg-estado-pendiente-marca`} />
+  if (estado === 'falta') return <span aria-hidden="true" className={`${base} bg-estado-error-marca`} />
+  return <span aria-hidden="true" className={`${base} bg-borde-fuerte`} />
 }

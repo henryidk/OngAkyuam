@@ -43,7 +43,7 @@ function textoEspera(referidaEl: string): string {
 
 function Detalle({ paciente }: { paciente: PacienteBuscadaMedicaDto }) {
   return (
-    <span className="text-xs text-[#5b6573]">
+    <span className="text-xs text-texto-suave">
       Exp. {paciente.expedienteNumero}
       {paciente.hijos > 0 ? ` · ${paciente.hijos} ${paciente.hijos === 1 ? 'hijo/a' : 'hijos/as'}` : ''}
       {paciente.proximaCita ? ` · Próxima cita ${fechaCorta(paciente.proximaCita.fecha)}, ${paciente.proximaCita.hora}` : ''}
@@ -113,10 +113,10 @@ export default function BuscadorPaciente({
   if (elegida) {
     return (
       <div className="space-y-1.5">
-        <p className="text-[13px] font-medium text-[#1c2430]">{etiqueta}</p>
-        <div className="flex items-center justify-between gap-3 rounded-md border border-[#e6dbf3] bg-[#f7f3fc] px-3.5 py-2.5">
+        <p className="text-[13px] font-medium text-texto">{etiqueta}</p>
+        <div className="flex items-center justify-between gap-3 rounded-md border border-seleccion-borde bg-brand-50 px-3.5 py-2.5">
           <span className="flex min-w-0 flex-col">
-            <span className="text-[13.5px] font-semibold text-[#1c2430]">{elegida.nombreCompleto}</span>
+            <span className="text-[13.5px] font-semibold text-texto">{elegida.nombreCompleto}</span>
             <Detalle paciente={elegida} />
           </span>
           <button
@@ -125,7 +125,7 @@ export default function BuscadorPaciente({
               quiereFoco.current = true
               onElegir(null)
             }}
-            className="flex-none rounded-md px-2 py-1 text-[13px] font-semibold text-[#7346a5] hover:bg-white"
+            className="flex-none rounded-md px-2 py-1 text-[13px] font-semibold text-brand-600 hover:bg-white"
           >
             Cambiar
           </button>
@@ -172,13 +172,13 @@ export default function BuscadorPaciente({
 
   return (
     <div className="space-y-1.5">
-      <label htmlFor={`${id}-campo`} className="block text-[13px] font-medium text-[#1c2430]">
+      <label htmlFor={`${id}-campo`} className="block text-[13px] font-medium text-texto">
         {etiqueta}
       </label>
       <div className="relative">
         <Search
           aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5b6573]"
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-texto-suave"
         />
         <input
           ref={entrada}
@@ -204,7 +204,7 @@ export default function BuscadorPaciente({
         />
       </div>
 
-      <p id={`${id}-ayuda`} className="text-xs text-[#5b6573]">
+      <p id={`${id}-ayuda`} className="text-xs text-texto-suave">
         {modo === 'corto'
           ? `Escribe al menos ${MIN_LETRAS_BUSCADOR_PACIENTES_MEDICA} letras, el DPI completo o el expediente (p. ej. 12-2026).`
           : modo === 'vacio'
@@ -219,17 +219,17 @@ export default function BuscadorPaciente({
       </p>
 
       {error ? (
-        <p role="alert" className="text-[12.5px] text-[#9b2c20]">
+        <p role="alert" className="text-[12.5px] text-estado-error">
           {error}
         </p>
       ) : sinCoincidencias ? (
-        <p className="rounded-md bg-[#f8f9fa] px-3 py-2.5 text-[13px] text-[#5b6573]">
+        <p className="rounded-md bg-superficie px-3 py-2.5 text-[13px] text-texto-suave">
           Ninguna paciente coincide. El DPI lleva 13 dígitos y el expediente va completo (p. ej. 12-2026).
         </p>
       ) : consulta && !respuesta ? (
-        <p className="px-1 text-[13px] text-[#5b6573]">Buscando…</p>
+        <p className="px-1 text-[13px] text-texto-suave">Buscando…</p>
       ) : modo === 'sugerencias' && vigente && items.length === 0 ? (
-        <p className="px-1 text-[13px] text-[#5b6573]">No hay pacientes por agendar.</p>
+        <p className="px-1 text-[13px] text-texto-suave">No hay pacientes por agendar.</p>
       ) : null}
 
       {items.length > 0 && !error && (
@@ -238,7 +238,7 @@ export default function BuscadorPaciente({
           role="listbox"
           aria-label={modo === 'sugerencias' ? 'Sugerencias por agendar' : 'Pacientes encontradas'}
           aria-busy={!vigente}
-          className={`max-h-[288px] divide-y divide-[#eef0f2] overflow-y-auto rounded-lg border border-[#e3e6ea] ${
+          className={`max-h-[288px] divide-y divide-borde-suave overflow-y-auto rounded-lg border border-borde ${
             vigente ? '' : 'opacity-60'
           }`}
         >
@@ -253,16 +253,16 @@ export default function BuscadorPaciente({
               onClick={() => elegir(paciente)}
               onMouseEnter={() => setActivo(indice)}
               className={`flex cursor-pointer flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 ${
-                indice === activo ? 'bg-[#f2ecfa]' : 'bg-white'
+                indice === activo ? 'bg-seleccion' : 'bg-white'
               }`}
             >
               <span className="flex min-w-0 flex-col">
-                <span className="text-[13.5px] font-medium text-[#1c2430]">{paciente.nombreCompleto}</span>
+                <span className="text-[13.5px] font-medium text-texto">{paciente.nombreCompleto}</span>
                 <Detalle paciente={paciente} />
               </span>
               {/* En las sugerencias todas están por agendar: lo que ayuda a decidir es cuánto llevan esperando. */}
               {modo === 'sugerencias' && paciente.referidaEl ? (
-                <span className="whitespace-nowrap text-xs font-medium text-[#8a5a14]">{textoEspera(paciente.referidaEl)}</span>
+                <span className="whitespace-nowrap text-xs font-medium text-estado-pendiente">{textoEspera(paciente.referidaEl)}</span>
               ) : (
                 <Chip tono={TONO_SITUACION[paciente.situacion]}>{ETIQUETAS_FILTRO_PACIENTES_MEDICA[paciente.situacion]}</Chip>
               )}

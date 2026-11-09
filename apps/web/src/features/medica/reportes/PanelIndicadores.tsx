@@ -42,14 +42,14 @@ const NOTA_DESGLOSES =
   'Datos del registro de Trabajo Social. La edad es la de su primera consulta del periodo; una persona puede tener más de una tipología.'
 
 
-const CLASE_ETIQUETA = 'flex flex-col gap-1 text-xs font-medium text-[#5b6573]'
+const CLASE_ETIQUETA = 'flex flex-col gap-1 text-xs font-medium text-texto-suave'
 
-function Kpi({ etiqueta, valor, detalle, color = 'text-[#1c2430]' }: { etiqueta: string; valor: ReactNode; detalle: string; color?: string }) {
+function Kpi({ etiqueta, valor, detalle, color = 'text-texto' }: { etiqueta: string; valor: ReactNode; detalle: string; color?: string }) {
   return (
     <div className={`${CLASE_TARJETA} flex flex-col gap-1.5 rounded-lg px-4 py-3.5`}>
-      <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-[#5b6573]">{etiqueta}</dt>
+      <dt className="text-[11.5px] font-semibold uppercase tracking-wide text-texto-suave">{etiqueta}</dt>
       <dd className={`text-[26px] font-semibold leading-none tabular-nums ${color}`}>{valor}</dd>
-      <dd className="text-[12.5px] text-[#5b6573]">{detalle}</dd>
+      <dd className="text-[12.5px] text-texto-suave">{detalle}</dd>
     </div>
   )
 }
@@ -76,7 +76,7 @@ function Contenido({ reporte, filtros, hoy }: { reporte: IndicadoresMedica; filt
       {reporte.meses.length > 1 && <BarrasPorMes meses={reporte.meses} elegido={elegido} onElegir={setElegido} />}
 
       <section aria-labelledby="titulo-desgloses" className="flex flex-col gap-2.5">
-        <h2 id="titulo-desgloses" className="text-xs font-semibold uppercase tracking-wide text-[#5b6573]">
+        <h2 id="titulo-desgloses" className="text-xs font-semibold uppercase tracking-wide text-texto-suave">
           Quiénes se atendieron {enQue}
         </h2>
         <div className="grid items-start gap-3.5 md:grid-cols-2">
@@ -84,7 +84,7 @@ function Contenido({ reporte, filtros, hoy }: { reporte: IndicadoresMedica; filt
             <TablaDesglose key={desglose.clave} titulo={desglose.titulo} filas={periodo.desgloses[desglose.clave]} />
           ))}
         </div>
-        <p className="text-xs text-[#5b6573]">{NOTA_DESGLOSES}</p>
+        <p className="text-xs text-texto-suave">{NOTA_DESGLOSES}</p>
       </section>
     </>
   )
@@ -152,7 +152,7 @@ export default function PanelIndicadores({ periodo, hoy }: { periodo: Periodo; h
               ))}
             </select>
           </label>
-          <label className="flex items-center gap-2 pb-2 text-[13px] text-[#1c2430]">
+          <label className="flex items-center gap-2 pb-2 text-[13px] text-texto">
             <input
               type="checkbox"
               checked={filtros.soloPrimeras}
@@ -185,7 +185,7 @@ export default function PanelIndicadores({ periodo, hoy }: { periodo: Periodo; h
       </section>
 
       {demasiadoLargo ? (
-        <p className="rounded-lg border border-[#f1dfb8] bg-[#fbf1de] px-4 py-3 text-[13px] text-[#8a5a14]">
+        <p className="rounded-lg border border-estado-pendiente-borde bg-estado-pendiente-insignia px-4 py-3 text-[13px] text-estado-pendiente">
           Los indicadores abarcan como máximo {MESES_MAXIMOS_REPORTE_MEDICA} meses (son las columnas del Excel). Acorta el periodo
           de arriba para verlos; el informe de la ONG sí acepta este periodo.
         </p>

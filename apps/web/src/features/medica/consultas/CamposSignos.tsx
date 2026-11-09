@@ -33,8 +33,8 @@ export default function CamposSignos({ valores, onCambiar, mostrarTodos }: Campo
   return (
     <section className={`${CLASE_TARJETA} flex flex-col gap-3 px-5 py-[18px]`}>
       <div className="flex flex-wrap justify-between gap-2.5">
-        <h2 className="text-sm font-semibold text-[#1c2430]">Signos vitales</h2>
-        <span className="text-xs text-[#5b6573]">Opcionales · deja vacío lo que no se tomó</span>
+        <h2 className="text-sm font-semibold text-texto">Signos vitales</h2>
+        <span className="text-xs text-texto-suave">Opcionales · deja vacío lo que no se tomó</span>
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-2.5">
         {SIGNOS_VITALES_FORMULARIO.map(({ clave, etiqueta, unidad, ejemplo }) => {
@@ -42,12 +42,12 @@ export default function CamposSignos({ valores, onCambiar, mostrarTodos }: Campo
           const idError = `${base}-${clave}-error`
           return (
             <label key={clave} className="flex flex-col gap-1">
-              <span className="whitespace-nowrap text-xs font-medium text-[#5b6573]">{etiqueta}</span>
+              <span className="whitespace-nowrap text-xs font-medium text-texto-suave">{etiqueta}</span>
               <span
                 className={`flex items-center overflow-hidden rounded-md border bg-white focus-within:ring-1 ${
                   error
-                    ? 'border-[#d4574a] focus-within:ring-[#d4574a]'
-                    : 'border-[#d5dadf] focus-within:border-brand-500 focus-within:ring-brand-500'
+                    ? 'border-estado-error-marca focus-within:ring-estado-error-marca'
+                    : 'border-borde-fuerte focus-within:border-brand-500 focus-within:ring-brand-500'
                 }`}
               >
                 <input
@@ -58,12 +58,12 @@ export default function CamposSignos({ valores, onCambiar, mostrarTodos }: Campo
                   inputMode={MODO_TECLADO[clave]}
                   aria-invalid={error ? true : undefined}
                   aria-describedby={error ? idError : undefined}
-                  className="w-full min-w-0 flex-1 border-0 px-2.5 py-2 font-mono text-[13.5px] text-[#1c2430] outline-none"
+                  className="w-full min-w-0 flex-1 border-0 px-2.5 py-2 font-mono text-[13.5px] text-texto outline-none"
                 />
-                <span className="whitespace-nowrap px-2 text-[11.5px] text-[#9aa4b0]">{unidad}</span>
+                <span className="whitespace-nowrap px-2 text-[11.5px] text-texto-sutil">{unidad}</span>
               </span>
               {error && (
-                <span id={idError} className="text-[11.5px] text-[#9b2c20]">
+                <span id={idError} className="text-[11.5px] text-estado-error">
                   {error}
                 </span>
               )}
@@ -71,8 +71,8 @@ export default function CamposSignos({ valores, onCambiar, mostrarTodos }: Campo
           )
         })}
         <div className="flex flex-col gap-1">
-          <span className="text-xs font-medium text-[#5b6573]">IMC (calculado)</span>
-          <span aria-live="polite" className="rounded-md border border-[#eef0f2] bg-[#f8f9fa] px-2.5 py-2 font-mono text-[13.5px] text-[#374151]">
+          <span className="text-xs font-medium text-texto-suave">IMC (calculado)</span>
+          <span aria-live="polite" className="rounded-md border border-borde-suave bg-superficie px-2.5 py-2 font-mono text-[13.5px] text-texto-cuerpo">
             {imc ?? '—'}
           </span>
         </div>

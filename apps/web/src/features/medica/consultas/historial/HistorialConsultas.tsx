@@ -34,12 +34,12 @@ export default function HistorialConsultas() {
       ) : !items ? (
         <Esqueleto filas={4} />
       ) : items.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-[#d5dadf] bg-white p-8 text-center text-sm text-[#5b6573]">
+        <p className="rounded-xl border border-dashed border-borde-fuerte bg-white p-8 text-center text-sm text-texto-suave">
           {conBusqueda ? 'Ninguna consulta coincide con la búsqueda en estas fechas.' : 'Sin consultas registradas en estas fechas.'}
         </p>
       ) : (
         <>
-          <div className="overflow-hidden rounded-lg border border-[#e3e6ea] bg-white">
+          <div className="overflow-hidden rounded-lg border border-borde bg-white">
             {items.map((consulta) => (
               <FilaHistorial key={consulta.id} consulta={consulta} onAbrir={() => abrir(consulta.id)} />
             ))}
@@ -50,11 +50,11 @@ export default function HistorialConsultas() {
                 type="button"
                 disabled={cargandoMas}
                 onClick={() => void cargarMas()}
-                className="rounded-md border border-[#d5dadf] bg-white px-4 py-2 text-[13px] font-medium text-[#1c2430] hover:bg-[#f8f9fa] disabled:opacity-60"
+                className="rounded-md border border-borde-fuerte bg-white px-4 py-2 text-[13px] font-medium text-texto hover:bg-superficie disabled:opacity-60"
               >
                 {cargandoMas ? 'Cargando…' : 'Cargar consultas más antiguas'}
               </button>
-              {errorMas && <p className="text-[12.5px] text-[#9b2c20]">{errorMas}</p>}
+              {errorMas && <p className="text-[12.5px] text-estado-error">{errorMas}</p>}
             </div>
           )}
         </>

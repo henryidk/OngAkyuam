@@ -33,38 +33,38 @@ export default function ResumenCita({
   const usuariaAcompana = atendidas.length > 0 && !atendidas.some((una) => una.ninoId === null)
   return (
     <div className="flex flex-col items-center gap-3 py-2 text-center">
-      <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f2ecfa] text-[#7346a5]">
+      <span aria-hidden="true" className="flex h-12 w-12 items-center justify-center rounded-full bg-seleccion text-brand-600">
         <CalendarCheck className="h-6 w-6" />
       </span>
       <div className="w-full">
-        <p className="text-[13px] text-[#5b6573]">{encabezado}</p>
+        <p className="text-[13px] text-texto-suave">{encabezado}</p>
         {atendidas.length === 1 ? (
-          <p className="text-base font-semibold text-[#1c2430]">{atendidas[0].nombreCompleto}</p>
+          <p className="text-base font-semibold text-texto">{atendidas[0].nombreCompleto}</p>
         ) : (
           <ul className="mx-auto mt-1 flex max-w-sm flex-col gap-1 text-left">
             {atendidas.map((una) => (
               <li
                 key={una.ninoId ?? 'usuaria'}
-                className="flex items-baseline justify-between gap-3 rounded-md bg-[#f8f9fa] px-3 py-1.5 text-[13.5px]"
+                className="flex items-baseline justify-between gap-3 rounded-md bg-superficie px-3 py-1.5 text-[13.5px]"
               >
-                <span className="font-semibold text-[#1c2430]">
+                <span className="font-semibold text-texto">
                   {una.ninoId ? primerNombre(una.nombreCompleto) : una.nombreCompleto}
                 </span>
-                <span className="text-[12px] text-[#5b6573]">{una.ninoId ? `Hijo/a · ${una.edad} años` : 'Usuaria'}</span>
+                <span className="text-[12px] text-texto-suave">{una.ninoId ? `Hijo/a · ${una.edad} años` : 'Usuaria'}</span>
               </li>
             ))}
           </ul>
         )}
-        {usuariaAcompana && <p className="mt-1 text-[12.5px] text-[#5b6573]">Acompaña {usuariaNombreCompleto}</p>}
+        {usuariaAcompana && <p className="mt-1 text-[12.5px] text-texto-suave">Acompaña {usuariaNombreCompleto}</p>}
       </div>
-      <div className="w-full rounded-lg border border-[#e6dbf3] bg-[#f7f3fc] px-4 py-3">
-        <p className="text-[15px] font-semibold text-[#5b3985]">{fechaLarga(fecha)}</p>
-        <p className="font-mono text-2xl font-semibold text-[#1c2430]">
+      <div className="w-full rounded-lg border border-seleccion-borde bg-brand-50 px-4 py-3">
+        <p className="text-[15px] font-semibold text-brand-700">{fechaLarga(fecha)}</p>
+        <p className="font-mono text-2xl font-semibold text-texto">
           {hora} – {horaMasMinutos(hora, duracion)}
         </p>
-        <p className="text-[12.5px] text-[#5b6573]">{ETIQUETAS_DURACION_CITA_MEDICA[duracion]}</p>
+        <p className="text-[12.5px] text-texto-suave">{ETIQUETAS_DURACION_CITA_MEDICA[duracion]}</p>
       </div>
-      {pie && <p className="text-[12.5px] text-[#5b6573]">{pie}</p>}
+      {pie && <p className="text-[12.5px] text-texto-suave">{pie}</p>}
     </div>
   )
 }

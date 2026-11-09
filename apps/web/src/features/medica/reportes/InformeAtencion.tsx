@@ -18,8 +18,8 @@ import { useRecurso } from '../../../lib/useRecurso'
 import { descargarInformeAtencion, obtenerInformeAtencion } from '../api/medica.api'
 import { CLASE_TARJETA } from '../compartido/estilos'
 
-const CLASE_TH = 'border border-[#e3e6ea] px-2 py-1.5 text-center text-[11.5px] font-semibold text-[#374151]'
-const CLASE_TD = 'border border-[#e3e6ea] px-2 py-1.5 text-center tabular-nums text-[#1c2430]'
+const CLASE_TH = 'border border-borde px-2 py-1.5 text-center text-[11.5px] font-semibold text-texto-cuerpo'
+const CLASE_TD = 'border border-borde px-2 py-1.5 text-center tabular-nums text-texto'
 
 function celdas(cifras: CifrasInformeAtencionMedica) {
   return [
@@ -58,10 +58,10 @@ export default function InformeAtencion({ periodo }: { periodo: InformeAtencionM
     <section aria-labelledby="titulo-informe" className={`${CLASE_TARJETA} flex flex-col gap-4 px-5 py-4`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex flex-col gap-0.5">
-          <h2 id="titulo-informe" className="text-base font-semibold text-[#1c2430]">
+          <h2 id="titulo-informe" className="text-base font-semibold text-texto">
             Informe de atención
           </h2>
-          <p className="text-[13px] text-[#5b6573]">
+          <p className="text-[13px] text-texto-suave">
             Formato de la ONG · del {formatFechaGT(periodo.desde)} al {formatFechaGT(periodo.hasta)}
           </p>
         </div>
@@ -78,9 +78,9 @@ export default function InformeAtencion({ periodo }: { periodo: InformeAtencionM
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[860px] border-collapse text-[13px]">
-            <thead className="bg-[#f8f9fa]">
+            <thead className="bg-superficie">
               <tr>
-                <th rowSpan={2} scope="col" className={`${CLASE_TH} sticky left-0 z-10 bg-[#f8f9fa] text-left`}>
+                <th rowSpan={2} scope="col" className={`${CLASE_TH} sticky left-0 z-10 bg-superficie text-left`}>
                   Atención
                 </th>
                 <th colSpan={2} scope="colgroup" className={CLASE_TH}>
@@ -118,7 +118,7 @@ export default function InformeAtencion({ periodo }: { periodo: InformeAtencionM
             <tbody>
               {informe.filas.map((fila) => (
                 <tr key={fila.clave}>
-                  <th scope="row" className="sticky left-0 z-10 border border-[#e3e6ea] bg-white px-2.5 py-2 text-left font-normal text-[#1c2430]">
+                  <th scope="row" className="sticky left-0 z-10 border border-borde bg-white px-2.5 py-2 text-left font-normal text-texto">
                     {ETIQUETAS_FILA_INFORME_ATENCION_MEDICA[fila.clave]}
                   </th>
                   {celdas(fila).map((valor, indice) => (
@@ -128,8 +128,8 @@ export default function InformeAtencion({ periodo }: { periodo: InformeAtencionM
                   ))}
                 </tr>
               ))}
-              <tr className="bg-[#f8f9fa] font-semibold">
-                <th scope="row" className="sticky left-0 z-10 border border-[#e3e6ea] bg-[#f8f9fa] px-2.5 py-2 text-left text-[#1c2430]">
+              <tr className="bg-superficie font-semibold">
+                <th scope="row" className="sticky left-0 z-10 border border-borde bg-superficie px-2.5 py-2 text-left text-texto">
                   TOTALES
                 </th>
                 {celdas(informe.totales).map((valor, indice) => (
@@ -142,7 +142,7 @@ export default function InformeAtencion({ periodo }: { periodo: InformeAtencionM
           </table>
         </div>
       )}
-      <ul className="flex max-w-[75ch] list-disc flex-col gap-0.5 pl-4 text-xs text-[#5b6573] marker:text-[#9aa4b0]">
+      <ul className="flex max-w-[75ch] list-disc flex-col gap-0.5 pl-4 text-xs text-texto-suave marker:text-texto-sutil">
         <li>Etnia según el registro de Trabajo Social; hijos e hijas con la de su madre.</li>
         <li>Edad al día de la primera consulta del periodo.</li>
         <li>Una persona puede estar en más de un renglón (por ejemplo, nuevo ingreso y albergada): los totales suman renglones, como el formato.</li>

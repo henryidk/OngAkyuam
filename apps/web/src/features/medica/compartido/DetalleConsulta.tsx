@@ -8,7 +8,7 @@ import { haySignos } from './textoSignos'
 /** Insignia "PDF" / "IMG" del mockup. */
 export function InsigniaFormato({ mimeType }: { mimeType: string }) {
   return (
-    <span className="flex-none rounded-[3px] bg-[#fbe4e1] px-[5px] py-[3px] text-[10.5px] font-bold text-[#9b2c20]">
+    <span className="flex-none rounded-[3px] bg-estado-error-insignia px-[5px] py-[3px] text-[10.5px] font-bold text-estado-error">
       {etiquetaFormato(mimeType)}
     </span>
   )
@@ -17,9 +17,9 @@ export function InsigniaFormato({ mimeType }: { mimeType: string }) {
 /** Documento adjunto a una consulta, compacto: insignia, nombre y "Ver". */
 export function ChipDocumento({ documento }: { documento: DocumentoMedicoDto }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-md border border-[#e3e6ea] px-3 py-2">
+    <div className="flex items-center gap-2.5 rounded-md border border-borde px-3 py-2">
       <InsigniaFormato mimeType={documento.mimeType} />
-      <span className="min-w-0 truncate text-[13px] font-medium text-[#1c2430]">{documento.nombreVisible}</span>
+      <span className="min-w-0 truncate text-[13px] font-medium text-texto">{documento.nombreVisible}</span>
       <AccionesDocumento documentoId={documento.id} nombre={documento.nombreVisible} conDescarga={false} />
     </div>
   )
@@ -41,7 +41,7 @@ export default function DetalleConsulta({ consulta }: { consulta: ConsultaMedica
     <div className="flex flex-col gap-3.5">
       {/* Solo se marca la excepción: casi todas son presenciales. */}
       {consulta.modalidad === 'TELEFONICA' && (
-        <p className="w-fit rounded bg-[#e8f0fb] px-2 py-0.5 text-[12px] font-semibold text-[#1f5aa6]">
+        <p className="w-fit rounded bg-estado-info-insignia px-2 py-0.5 text-[12px] font-semibold text-estado-info">
           {ETIQUETAS_MODALIDAD_CONSULTA_MEDICA.TELEFONICA}
         </p>
       )}
@@ -55,7 +55,7 @@ export default function DetalleConsulta({ consulta }: { consulta: ConsultaMedica
         {campos.map((campo) => (
           <div key={campo.etiqueta} className="flex flex-col gap-[3px]">
             <dt className={CLASE_SECCION}>{campo.etiqueta}</dt>
-            <dd className="whitespace-pre-line text-pretty text-[#1c2430]">{campo.valor || '—'}</dd>
+            <dd className="whitespace-pre-line text-pretty text-texto">{campo.valor || '—'}</dd>
           </div>
         ))}
       </dl>

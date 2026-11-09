@@ -10,33 +10,33 @@ export default function FilaHistorial({ consulta, onAbrir }: { consulta: Consult
     <button
       type="button"
       onClick={onAbrir}
-      className="grid w-full grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-3.5 border-b border-[#eef0f2] px-[18px] py-3.5 text-left last:border-b-0 hover:bg-[#f8fafb]"
+      className="grid w-full grid-cols-[84px_minmax(0,1fr)_auto] items-center gap-3.5 border-b border-borde-suave px-[18px] py-3.5 text-left last:border-b-0 hover:bg-superficie"
     >
       <span className="flex flex-col gap-px">
-        <span className="whitespace-nowrap text-base font-semibold text-[#1c2430]">{fechaCorta(consulta.fecha)}</span>
-        <span className="whitespace-nowrap text-xs tabular-nums text-[#5b6573]">
+        <span className="whitespace-nowrap text-base font-semibold text-texto">{fechaCorta(consulta.fecha)}</span>
+        <span className="whitespace-nowrap text-xs tabular-nums text-texto-suave">
           {anioDe(consulta.fecha)} · {consulta.hora}
         </span>
       </span>
       <span className="flex min-w-0 flex-col gap-[3px]">
-        <span className="text-[14.5px] font-semibold text-[#1c2430]">{consulta.usuariaNombreCompleto}</span>
+        <span className="text-[14.5px] font-semibold text-texto">{consulta.usuariaNombreCompleto}</span>
         {consulta.persona.ninoId && (
-          <span className="text-[12.5px] text-[#7346a5]">
+          <span className="text-[12.5px] text-brand-600">
             Consulta de {primerNombre(consulta.persona.nombreCompleto)} · {consulta.persona.edad} años
           </span>
         )}
         <span className="flex flex-wrap items-center gap-2">
           <CodigoAtencion codigo={consulta.codigoAtencion} />
-          {!consulta.conCita && <span className="text-[12px] text-[#5b6573]">Sin cita</span>}
+          {!consulta.conCita && <span className="text-[12px] text-texto-suave">Sin cita</span>}
           {consulta.totalDocumentos > 0 && (
-            <span className="inline-flex items-center gap-1 text-[12px] text-[#5b6573]">
+            <span className="inline-flex items-center gap-1 text-[12px] text-texto-suave">
               <Paperclip aria-hidden="true" className="h-3.5 w-3.5" />
               {consulta.totalDocumentos} {consulta.totalDocumentos === 1 ? 'documento' : 'documentos'}
             </span>
           )}
         </span>
       </span>
-      <span className="whitespace-nowrap text-[13px] font-medium text-[#7346a5]">Ver consulta</span>
+      <span className="whitespace-nowrap text-[13px] font-medium text-brand-600">Ver consulta</span>
     </button>
   )
 }

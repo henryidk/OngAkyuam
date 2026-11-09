@@ -21,7 +21,7 @@ function BotonVista({ id, activa, onClick, children }: { id: Vista; activa: bool
       tabIndex={activa ? 0 : -1}
       onClick={onClick}
       className={`whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors ${
-        activa ? 'border-brand-600 text-brand-700' : 'border-transparent text-[#5b6573] hover:text-[#1c2430]'
+        activa ? 'border-brand-600 text-brand-700' : 'border-transparent text-texto-suave hover:text-texto'
       }`}
     >
       {children}
@@ -82,7 +82,7 @@ export default function Reportes() {
         extremo={<SelectorPeriodo hoy={hoy} campos={campos} onCambiar={cambiarPeriodo} error={errorPeriodo} />}
       />
 
-      <div role="tablist" aria-label="Vistas del reporte" onKeyDown={teclaPestanas} className="flex gap-1 border-b border-[#e3e6ea]">
+      <div role="tablist" aria-label="Vistas del reporte" onKeyDown={teclaPestanas} className="flex gap-1 border-b border-borde">
         <BotonVista id="informe" activa={vista === 'informe'} onClick={() => cambiarVista('informe')}>
           Informe de la ONG
         </BotonVista>

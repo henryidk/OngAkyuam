@@ -76,7 +76,7 @@ export default function PanelPersona({
       <section className={`${CLASE_TARJETA} flex flex-col gap-4 px-5 py-[18px]`}>
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className={CLASE_SECCION}>{esHijo ? `Ficha de ${nombre}` : 'Ficha de la paciente'}</h2>
-          <span className="text-xs text-[#9aa4b0]">Datos de Trabajo Social</span>
+          <span className="text-xs text-texto-sutil">Datos de Trabajo Social</span>
         </div>
         <dl className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-x-5 gap-y-3 text-[13.5px]">
           <DatoFicha etiqueta="Nombre">{persona.nombreCompleto}</DatoFicha>
@@ -90,7 +90,7 @@ export default function PanelPersona({
         </dl>
       </section>
 
-      <div role="tablist" aria-label={`Consultas de ${nombre}`} className="flex gap-5 border-b border-[#e3e6ea]">
+      <div role="tablist" aria-label={`Consultas de ${nombre}`} className="flex gap-5 border-b border-borde">
         {(
           [
             ['actual', 'Consulta actual'],
@@ -104,7 +104,7 @@ export default function PanelPersona({
             aria-selected={pestana === valor}
             onClick={() => setPestana(valor)}
             className={`-mb-px border-b-2 px-0.5 pb-2.5 text-[13.5px] font-medium ${
-              pestana === valor ? 'border-[#7346a5] text-[#5b3985]' : 'border-transparent text-[#5b6573] hover:text-[#1c2430]'
+              pestana === valor ? 'border-brand-600 text-brand-700' : 'border-transparent text-texto-suave hover:text-texto'
             }`}
           >
             {etiqueta}
@@ -119,7 +119,7 @@ export default function PanelPersona({
       {/* La consulta actual se oculta (no se desmonta) para no perder lo escrito ni cortar subidas. */}
       <div className={pestana === 'actual' ? 'flex flex-col gap-4' : 'hidden'}>
         <section className={`${CLASE_TARJETA} flex flex-col gap-2 px-5 py-[18px]`}>
-          <label htmlFor={`motivo-${clave}`} className="text-sm font-semibold text-[#1c2430]">
+          <label htmlFor={`motivo-${clave}`} className="text-sm font-semibold text-texto">
             Motivo de consulta
           </label>
           <textarea
@@ -189,7 +189,7 @@ export default function PanelPersona({
             <button
               type="button"
               onClick={siguiente.ir}
-              className="flex items-center gap-1.5 rounded-md border border-[#7346a5] bg-white px-4 py-2 text-[13.5px] font-semibold text-[#7346a5] hover:bg-[#f7f3fc]"
+              className="flex items-center gap-1.5 rounded-md border border-brand-600 bg-white px-4 py-2 text-[13.5px] font-semibold text-brand-600 hover:bg-brand-50"
             >
               Seguir con {siguiente.nombre}
               <ArrowRight aria-hidden="true" className="h-4 w-4" />
@@ -204,8 +204,8 @@ export default function PanelPersona({
 function DatoFicha({ etiqueta, children }: { etiqueta: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <dt className="text-xs text-[#5b6573]">{etiqueta}</dt>
-      <dd className="font-medium text-[#1c2430]">{children}</dd>
+      <dt className="text-xs text-texto-suave">{etiqueta}</dt>
+      <dd className="font-medium text-texto">{children}</dd>
     </div>
   )
 }
@@ -225,10 +225,10 @@ interface CampoTextoProps {
 function CampoTexto({ id, etiqueta, obligatorio = false, filas, maximo, placeholder, valor, onCambiar, error }: CampoTextoProps) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={id} className="text-sm font-semibold text-[#1c2430]">
+      <label htmlFor={id} className="text-sm font-semibold text-texto">
         {etiqueta}
         {obligatorio && (
-          <span aria-hidden="true" className="text-[#9b2c20]">
+          <span aria-hidden="true" className="text-estado-error">
             {' '}
             *
           </span>
@@ -244,10 +244,10 @@ function CampoTexto({ id, etiqueta, obligatorio = false, filas, maximo, placehol
         placeholder={placeholder}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}
-        className={`${CLASE_CAMPO} ${error ? 'border-[#d4574a]' : ''}`}
+        className={`${CLASE_CAMPO} ${error ? 'border-estado-error-marca' : ''}`}
       />
       {error && (
-        <span id={`${id}-error`} className="text-[12px] text-[#9b2c20]">
+        <span id={`${id}-error`} className="text-[12px] text-estado-error">
           {error}
         </span>
       )}
