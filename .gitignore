@@ -49,3 +49,18 @@ CLAUDE.md
 
 # TypeScript — cache incremental de build, se regenera sola
 *.tsbuildinfo
+
+# graphify — grafo de conocimiento generado localmente, se regenera solo
+graphify-out/
+
+# Planes y documentos de trabajo en Markdown nuevos — solo locales, no van al repo.
+# Los que ya estaban versionados (README, login.md, etc.) se quedan; los README de
+# cada paquete no se ven afectados porque la regla es solo para la raíz.
+/*.md
+!/README.md
+docs/
+
+# Seeds nuevos de datos de prueba — solo locales, se corren a mano y no van al repo.
+# Los seeds que ya estaban versionados se quedan.
+apps/api/prisma/seed.ts
+apps/api/prisma/seeds/
