@@ -46,6 +46,7 @@ import { IndicadoresPsicologiaService } from './services/indicadores-psicologia.
 import { RegistroConsultaService } from './services/registro-consulta.service';
 import { SesionSinCitaService } from './services/sesion-sin-cita.service';
 import { IdempotenciaPsicologia } from './compartido/idempotencia';
+import { ReservasPsicologia } from './compartido/reservas';
 import { UsuariasPsicologiaController } from './usuarias/usuarias-psicologia.controller';
 import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.service';
 
@@ -75,6 +76,7 @@ import { UsuariasPsicologiaService } from './usuarias/usuarias-psicologia.servic
     RegistroConsultaService,
     SesionSinCitaService,
     IdempotenciaPsicologia,
+    ReservasPsicologia,
     { provide: RELOJ, useClass: RelojSistema },
     IndicadoresPsicologiaService,
     BandejaPsicologiaService,

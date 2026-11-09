@@ -5,10 +5,10 @@ import {
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_TIPOLOGIA_DELITO,
   nombreMunicipio,
-  type CasoPorAgendarDto,
   type CasoPorReasignarDto,
   type ExpedientePreviaTomaDto,
   type ReferenciaBandejaPsicologiaDto,
+  type ReferenciaParaAgendarDto,
 } from '@akyuam/shared';
 import {
   SELECT_INGRESO_USUARIA,
@@ -85,31 +85,22 @@ const SELECT_PREVIA_TOMA = {
   },
 } satisfies Prisma.ReferidoAreaSelect;
 
-/** Un proceso que ya empezó y sigue abierto: su persona no puede abrir otro. */
+/** Un proceso abierto: su persona no puede abrir otro. */
 const PROCESO_EN_CURSO = {
   estado: { not: 'CIERRE' },
-  fechaInicio: { not: null },
 } satisfies Prisma.AtencionPsicologicaWhereInput;
 
 const SELECT_QUIEN_ATIENDE = {
   psicologaAsignada: { select: { nombreCompleto: true } },
 } satisfies Prisma.AtencionPsicologicaSelect;
 
-/** Caso que la psicóloga tomó y al que todavía no le agenda la primera cita. */
-export function casoPorAgendar(psicologaId: string) {
-  return {
-    psicologaAsignadaId: psicologaId,
-    estado: { not: 'CIERRE' },
-    referidoId: { not: null },
-    citas: { none: {} },
-  } satisfies Prisma.AtencionPsicologicaWhereInput;
-}
-
 @Injectable()
 export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async listarSinTomar(): Promise<ReferenciaBandejaPsicologiaDto[]> {
+  async listarSinTomar(): Promise<
+    Omit<ReferenciaBandejaPsicologiaDto, 'reserva'>[]
+  > {
     const referidos = await this.prisma.referidoArea.findMany({
       where: { area: 'PSICOLOGIA', expediente: EXPEDIENTE_SIN_TOMAR },
       select: {
@@ -148,31 +139,17 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
     });
   }
 
-  listarPorAgendar(psicologaId: string): Promise<CasoPorAgendarDto[]> {
-    return this.casosPorAgendar(psicologaId, null);
-  }
-
-  async buscarPorAgendar(
-    psicologaId: string,
+  async buscarParaAgendar(
     referidoId: string,
-  ): Promise<CasoPorAgendarDto | null> {
-    const [caso] = await this.casosPorAgendar(psicologaId, referidoId);
-    return caso ?? null;
-  }
-
-  private async casosPorAgendar(
-    psicologaId: string,
-    referidoId: string | null,
-  ): Promise<CasoPorAgendarDto[]> {
-    const atenciones = await this.prisma.atencionPsicologica.findMany({
+  ): Promise<ReferenciaParaAgendarDto | null> {
+    const referido = await this.prisma.referidoArea.findFirst({
       where: {
-        ...casoPorAgendar(psicologaId),
-        ...(referidoId ? { referidoId } : {}),
+        id: referidoId,
+        area: 'PSICOLOGIA',
+        expediente: EXPEDIENTE_SIN_TOMAR,
       },
       select: {
-        referidoId: true,
-        tomadaEn: true,
-        createdAt: true,
+        id: true,
         expediente: {
           select: {
             ...SELECT_EXPEDIENTE_COLA,
@@ -192,48 +169,30 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
           },
         },
       },
-      orderBy: { tomadaEn: 'asc' },
-      take: LIMITE_COLA,
+    });
+    if (!referido) {
+      return null;
+    }
+
+    const { expediente } = referido;
+    // El proceso propio de la usuaria vive en cualquiera de sus expedientes.
+    const abiertoDeUsuaria = await this.prisma.atencionPsicologica.findFirst({
+      where: {
+        ...PROCESO_EN_CURSO,
+        ninoId: null,
+        expediente: { usuariaId: expediente.usuaria.id },
+      },
+      select: SELECT_QUIEN_ATIENDE,
     });
 
-    // El proceso propio de la usuaria vive en cualquiera de sus expedientes.
-    const usuariaIds = atenciones.map(
-      (atencion) => atencion.expediente.usuaria.id,
-    );
-    const abiertosDeUsuarias =
-      usuariaIds.length === 0
-        ? []
-        : await this.prisma.atencionPsicologica.findMany({
-            where: {
-              ...PROCESO_EN_CURSO,
-              ninoId: null,
-              expediente: { usuariaId: { in: usuariaIds } },
-            },
-            select: {
-              ...SELECT_QUIEN_ATIENDE,
-              expediente: { select: { usuariaId: true } },
-            },
-          });
-    const abiertoDe = new Map(
-      abiertosDeUsuarias.map((proceso) => [
-        proceso.expediente.usuariaId,
-        proceso,
-      ]),
-    );
-
-    return atenciones.map((atencion) => ({
-      // No-null: el `where` ya exige `referidoId`.
-      referidoId: atencion.referidoId!,
-      expedienteId: atencion.expediente.id,
-      expedienteNumero: atencion.expediente.numero,
-      usuariaId: atencion.expediente.usuaria.id,
-      usuariaNombreCompleto: nombreCompleto(atencion.expediente.usuaria),
-      tomadaEn: (atencion.tomadaEn ?? atencion.createdAt).toISOString(),
-      personas: personasParaAbrir(
-        atencion.expediente,
-        abiertoDe.get(atencion.expediente.usuaria.id),
-      ),
-    }));
+    return {
+      referidoId: referido.id,
+      expedienteId: expediente.id,
+      expedienteNumero: expediente.numero,
+      usuariaId: expediente.usuaria.id,
+      usuariaNombreCompleto: nombreCompleto(expediente.usuaria),
+      personas: personasParaAbrir(expediente, abiertoDeUsuaria ?? undefined),
+    };
   }
 
   async listarPorReasignar(): Promise<CasoPorReasignarDto[]> {
@@ -288,8 +247,6 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
         select: {
           expedienteId: true,
           psicologaAsignadaId: true,
-          fechaInicio: true,
-          referidoId: true,
         },
       });
       if (!anterior?.psicologaAsignadaId) {
@@ -335,7 +292,6 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
         procesoId: params.procesoId,
         expedienteId: anterior.expedienteId,
         psicologaAnteriorId: anterior.psicologaAsignadaId,
-        referidoIdPorAgendar: anterior.fechaInicio ? null : anterior.referidoId,
         citasCanceladas: canceladas.count,
       };
     });
@@ -378,7 +334,6 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
 
   async buscarReferencia(
     referidoId: string,
-    psicologaId: string,
   ): Promise<ReferenciaPsicologia | null> {
     const referido = await this.prisma.referidoArea.findFirst({
       where: { id: referidoId, area: 'PSICOLOGIA' },
@@ -389,13 +344,11 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
             id: true,
             numero: true,
             usuariaId: true,
-            atencionesPsicologicas: {
-              where: { psicologaAsignadaId: { not: null } },
+            _count: {
               select: {
-                id: true,
-                estado: true,
-                fechaInicio: true,
-                psicologaAsignadaId: true,
+                atencionesPsicologicas: {
+                  where: { psicologaAsignadaId: { not: null } },
+                },
               },
             },
           },
@@ -406,24 +359,14 @@ export class BandejaPsicologiaRepository implements IBandejaPsicologiaRepository
       return null;
     }
 
-    const tomadas = referido.expediente.atencionesPsicologicas;
-    const mias = tomadas.filter(
-      (atencion) =>
-        atencion.psicologaAsignadaId === psicologaId &&
-        atencion.estado !== 'CIERRE',
-    );
-    // Con un proceso por persona puede haber varios abiertos en el expediente: el caso tomado
-    // es el que todavía espera su primera cita.
-    const mia =
-      mias.find((atencion) => atencion.fechaInicio === null) ?? mias[0];
+    const { expediente } = referido;
     return {
       referidoId: referido.id,
-      expedienteId: referido.expediente.id,
-      expedienteNumero: referido.expediente.numero,
-      usuariaId: referido.expediente.usuariaId,
+      expedienteId: expediente.id,
+      expedienteNumero: expediente.numero,
+      usuariaId: expediente.usuariaId,
       situacion:
-        tomadas.length === 0 ? 'SIN_TOMAR' : mia ? 'MIA' : 'NO_DISPONIBLE',
-      procesoId: mia?.id ?? null,
+        expediente._count.atencionesPsicologicas === 0 ? 'SIN_TOMAR' : 'TOMADA',
     };
   }
 }

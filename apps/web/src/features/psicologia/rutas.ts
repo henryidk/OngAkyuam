@@ -5,6 +5,9 @@ export type VistaConsultasPsicologia = 'por-registrar' | 'historial'
 /** Pantalla desde la que se abrió "Registrar sesión": al guardar o volver se regresa ahí. */
 export type OrigenSesion = 'atencion' | 'agenda' | 'consultas' | 'proceso'
 
+/** Desde dónde se pidió agendar la primera cita de una referencia: al cancelar se vuelve ahí. */
+export type OrigenPrimeraCita = 'atencion' | 'ficha'
+
 /**
  * Constructor único de las URLs del módulo. Ningún componente arma un path de psicología con un
  * template string suelto: cuando una ruta se mueve, se corrige aquí y no en cada pantalla.
@@ -22,11 +25,14 @@ function conQuery(base: string, params: Record<string, string | undefined>) {
 export const RUTAS_PSICOLOGIA = {
   /** Pantalla de entrada del módulo: las referencias de Trabajo Social que nadie ha tomado. */
   atencion: () => '/psicologia/atencion',
+  /** `dia` (`YYYY-MM-DD`) abre la agenda en ese día y en su semana; sin él, en hoy. */
+  agenda: (dia?: string) => conQuery('/psicologia/agenda', { dia }),
   /**
-   * `dia` (`YYYY-MM-DD`) abre la agenda en ese día y en su semana; sin él, en hoy. `porAgendar`
-   * resalta el caso recién tomado en el panel "Casos tomados por agendar".
+   * La agenda con el modal de la primera cita de una referencia sin tomar, ya reservada. El caso
+   * se toma al confirmar la cita; al cancelar se vuelve a `origen`.
    */
-  agenda: (dia?: string, porAgendar?: string) => conQuery('/psicologia/agenda', { dia, porAgendar }),
+  agendarPrimeraCita: (referidoId: string, origen: OrigenPrimeraCita) =>
+    conQuery('/psicologia/agenda', { agendar: referidoId, origen }),
   /** `consulta` (id de la cita) abre el Historial con esa sesión a la vista. */
   consultas: (vista?: VistaConsultasPsicologia, consulta?: string) =>
     conQuery('/psicologia/consultas', {
@@ -58,8 +64,8 @@ export const RUTAS_PSICOLOGIA = {
   sesionSinCita: (procesoId: string, origen?: OrigenSesion) =>
     conQuery(`/psicologia/procesos/${procesoId}/sesion-sin-cita`, { origen }),
   /**
-   * "Atender ahora" un caso tomado sin primera cita: se registra la sesión y con ella se abre el
-   * proceso. Nada se crea hasta pulsar "Registrar sesión".
+   * "Atender ahora" una referencia sin tomar, ya reservada: al registrar la sesión se toma el caso
+   * y se abre el proceso. Nada se crea hasta pulsar "Registrar sesión".
    */
   atenderAhora: (referidoId: string, origen?: OrigenSesion) =>
     conQuery(`/psicologia/atencion/${referidoId}/atender-ahora`, { origen }),

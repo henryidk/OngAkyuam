@@ -3,18 +3,25 @@ import { Link, useParams, useSearchParams } from 'react-router-dom'
 import {
   DURACION_CITA_PSICOLOGICA_POR_DEFECTO,
   hoyGT,
-  type CasoPorAgendarDto,
   type PersonaParaAbrirDto,
+  type ReferenciaParaAgendarDto,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useRecurso } from '../../../lib/useRecurso'
-import { atenderAhora, obtenerCasoPorAgendar } from '../api/psicologia.api'
+import { useReservaCaso } from '../../../lib/useReservaCaso'
+import {
+  atenderAhora,
+  liberarReferencia,
+  liberarReferenciaAlCerrar,
+  obtenerReferenciaParaAgendar,
+  reservarReferencia,
+} from '../api/psicologia.api'
 import { etiquetaPersona } from '../compartido/personas'
 import FormularioRegistro, { type ContextoRegistro } from './registro/FormularioRegistro'
 import { VOLVER_A, migasDelRegistro, origenDeParametro, rutaDeOrigen } from './registro/origen'
 
-function contextoAtenderAhora(caso: CasoPorAgendarDto, persona: PersonaParaAbrirDto): ContextoRegistro {
+function contextoAtenderAhora(caso: ReferenciaParaAgendarDto, persona: PersonaParaAbrirDto): ContextoRegistro {
   return {
     procesoId: null,
     codigoProceso: persona.numero,
@@ -44,10 +51,11 @@ function contextoAtenderAhora(caso: CasoPorAgendarDto, persona: PersonaParaAbrir
 }
 
 /**
- * "Atender ahora" un caso tomado que no tiene primera cita: la persona está aquí y se atiende sin
- * agendar antes. Al registrar la sesión se abre su proceso, con esta como primera atención; si se
- * sale sin registrar no se crea nada y el caso sigue por agendar. Se atiende a una persona por vez:
- * las demás del caso se abren después, desde su ficha.
+ * "Atender ahora" una referencia sin tomar del Área de atención: la persona está aquí y se atiende
+ * sin agendar antes. Mientras la pantalla está abierta la referencia queda reservada (las demás
+ * ven "está atendiendo ahora"). Al registrar la sesión se toma el caso y se abre su proceso, con
+ * esta como primera atención; si se sale sin registrar no se crea nada y el caso sigue en el Área
+ * de atención. Se atiende a una persona por vez: las demás se abren después, desde su ficha.
  */
 export default function AtenderAhora() {
   const { referidoId } = useParams<{ referidoId: string }>()
@@ -55,8 +63,13 @@ export default function AtenderAhora() {
   const origen = origenDeParametro(params.get('origen'))
   const [elegidaId, setElegidaId] = useState<string | null>(null)
 
-  const cargar = useCallback(() => obtenerCasoPorAgendar(referidoId!), [referidoId])
+  const cargar = useCallback(() => obtenerReferenciaParaAgendar(referidoId!), [referidoId])
   const { datos: caso, error, recargar } = useRecurso(cargar)
+  const { perdida } = useReservaCaso(referidoId ?? null, {
+    reservar: () => reservarReferencia(referidoId!, 'ATENDIENDO'),
+    liberar: () => liberarReferencia(referidoId!),
+    liberarAlCerrar: () => liberarReferenciaAlCerrar(referidoId!),
+  })
 
   useTituloPagina({ titulo: 'Atender ahora', migas: migasDelRegistro(origen, null, hoyGT()) })
 
@@ -135,10 +148,21 @@ export default function AtenderAhora() {
 
   return (
     <div className="space-y-4">
-      <p className="mx-auto max-w-3xl rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
-        El caso ya es tuyo. Si sales sin registrar la sesión, no se abre el proceso y el caso queda en la Agenda, por
-        agendar.
-      </p>
+      {perdida ? (
+        // Lo escrito se queda a la vista: nada se borra sin avisar, aunque ya no se pueda registrar.
+        <div role="alert" className="mx-auto max-w-3xl rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          <p>{perdida}</p>
+          <p>Esta sesión ya no se puede registrar desde aquí.</p>
+          <Link to={rutaVolver} className="mt-1 inline-block font-medium underline underline-offset-2">
+            {VOLVER_A[origen]}
+          </Link>
+        </div>
+      ) : (
+        <p className="mx-auto max-w-3xl rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+          El caso se toma al registrar la sesión. Si sales sin registrarla, no se crea nada y el caso sigue en Área de
+          atención, sin tomar.
+        </p>
+      )}
       <FormularioRegistro
         key={elegida.ninoId ?? 'usuaria'}
         contexto={contextoAtenderAhora(caso, elegida)}

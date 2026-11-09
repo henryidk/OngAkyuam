@@ -5,24 +5,23 @@ import {
   Injectable,
 } from '@nestjs/common';
 import type {
-  CasoPorAgendarDto,
   CasoPorReasignarDto,
-  CasoPsicologiaTomadoDto,
   CasoReasignadoDto,
   ExpedientePreviaTomaDto,
+  MotivoReservaCaso,
   ReferenciaBandejaPsicologiaDto,
+  ReferenciaParaAgendarDto,
 } from '@akyuam/shared';
 import { AuditService } from '../../auth/services/audit.service';
+import type { PersonalQueReserva } from '../../common/reservas-caso';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { eventoAuditoria } from '../compartido/auditoria';
 import {
   MENSAJE_CASO_NO_REASIGNABLE,
-  MENSAJE_CASO_YA_AGENDADO,
   MENSAJE_CASO_YA_TOMADO,
   MENSAJE_SIN_ACCESO_REFERENCIA,
 } from '../compartido/mensajes';
-import { ATENCION_PSICOLOGICA_REPOSITORY } from '../interfaces/atencion-psicologica-repository.interface';
-import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
+import { ReservasPsicologia } from '../compartido/reservas';
 import { BANDEJA_PSICOLOGIA_REPOSITORY } from '../interfaces/bandeja-psicologia-repository.interface';
 import type { IBandejaPsicologiaRepository } from '../interfaces/bandeja-psicologia-repository.interface';
 import { AccesoPsicologiaService } from '../services/acceso-psicologia.service';
@@ -32,15 +31,58 @@ export class BandejaPsicologiaService {
   constructor(
     @Inject(BANDEJA_PSICOLOGIA_REPOSITORY)
     private readonly bandejaRepository: IBandejaPsicologiaRepository,
-    @Inject(ATENCION_PSICOLOGICA_REPOSITORY)
-    private readonly atencionRepository: IAtencionPsicologicaRepository,
     private readonly acceso: AccesoPsicologiaService,
+    private readonly reservas: ReservasPsicologia,
     private readonly auditService: AuditService,
   ) {}
 
-  /** Cola del área: la ven todas las psicólogas, porque cualquiera puede tomar un caso. */
-  listarSinTomar(): Promise<ReferenciaBandejaPsicologiaDto[]> {
-    return this.bandejaRepository.listarSinTomar();
+  /**
+   * Cola del área: la ven todas las psicólogas, porque cualquiera puede tomar un caso. Cada
+   * tarjeta dice si alguien la está agendando o atendiendo ahora.
+   */
+  async listarSinTomar(
+    usuarioId: string,
+  ): Promise<ReferenciaBandejaPsicologiaDto[]> {
+    const referencias = await this.bandejaRepository.listarSinTomar();
+    const reservas = await this.reservas.vigentes(
+      referencias.map((referencia) => referencia.referidoId),
+      usuarioId,
+    );
+    return referencias.map((referencia, i) => ({
+      ...referencia,
+      reserva: reservas[i],
+    }));
+  }
+
+  /**
+   * Aparta la referencia mientras esta psicóloga agenda su primera cita o la atiende ahora; la
+   * misma llamada la renueva. Si otra la tiene, 409 con su nombre.
+   */
+  async reservar(
+    referidoId: string,
+    motivo: MotivoReservaCaso,
+    personal: PersonalQueReserva,
+  ): Promise<void> {
+    await this.acceso.exigirReferenciaSinTomar(referidoId);
+    await this.reservas.reservar(referidoId, personal, motivo);
+  }
+
+  /** Suelta la reserva propia; si es de otra persona o ya venció, no pasa nada. */
+  liberar(referidoId: string, usuarioId: string): Promise<void> {
+    return this.reservas.liberar(referidoId, usuarioId);
+  }
+
+  /** A quién se le puede agendar la primera cita de una referencia que sigue sin tomar. */
+  async obtenerParaAgendar(
+    referidoId: string,
+  ): Promise<ReferenciaParaAgendarDto> {
+    await this.acceso.exigirReferenciaSinTomar(referidoId);
+    const referencia =
+      await this.bandejaRepository.buscarParaAgendar(referidoId);
+    if (!referencia) {
+      throw new ConflictException(MENSAJE_CASO_YA_TOMADO);
+    }
+    return referencia;
   }
 
   /**
@@ -51,12 +93,9 @@ export class BandejaPsicologiaService {
     referidoId: string,
     contexto: ContextoAuditoria,
   ): Promise<ExpedientePreviaTomaDto> {
-    const referencia = await this.acceso.exigirReferencia(
-      referidoId,
-      contexto.usuarioId,
-    );
+    const referencia = await this.acceso.exigirReferencia(referidoId);
     const previa =
-      referencia.situacion === 'NO_DISPONIBLE'
+      referencia.situacion === 'TOMADA'
         ? null
         : await this.bandejaRepository.obtenerPreviaToma(referidoId);
     if (!previa) {
@@ -72,67 +111,6 @@ export class BandejaPsicologiaService {
       }),
     );
     return previa;
-  }
-
-  /** Casos que esta psicóloga tomó y aún no tienen primera cita. */
-  listarPorAgendar(psicologaId: string): Promise<CasoPorAgendarDto[]> {
-    return this.bandejaRepository.listarPorAgendar(psicologaId);
-  }
-
-  /** Solo la dueña del caso tomado lo ve; si ya tiene primera cita, ya no está por agendar. */
-  async obtenerPorAgendar(
-    referidoId: string,
-    psicologaId: string,
-  ): Promise<CasoPorAgendarDto> {
-    await this.acceso.exigirCasoTomado(referidoId, psicologaId);
-    const caso = await this.bandejaRepository.buscarPorAgendar(
-      psicologaId,
-      referidoId,
-    );
-    if (!caso) {
-      throw new ConflictException(MENSAJE_CASO_YA_AGENDADO);
-    }
-    return caso;
-  }
-
-  /**
-   * La primera psicóloga que toma la referencia se vuelve la dueña del caso. Si dos lo
-   * intentan a la vez, la base deja pasar a una sola y la otra recibe el 409.
-   */
-  async tomar(
-    referidoId: string,
-    contexto: ContextoAuditoria,
-  ): Promise<CasoPsicologiaTomadoDto> {
-    const referencia = await this.acceso.exigirReferencia(
-      referidoId,
-      contexto.usuarioId,
-    );
-    if (referencia.situacion !== 'SIN_TOMAR') {
-      throw new ConflictException(MENSAJE_CASO_YA_TOMADO);
-    }
-
-    const resultado = await this.atencionRepository.tomarCaso({
-      expedienteId: referencia.expedienteId,
-      psicologaId: contexto.usuarioId,
-    });
-    if (resultado === 'YA_TOMADO') {
-      throw new ConflictException(MENSAJE_CASO_YA_TOMADO);
-    }
-
-    const tomada = await this.acceso.exigirCasoTomado(
-      referidoId,
-      contexto.usuarioId,
-    );
-    await this.auditService.registrar(
-      eventoAuditoria(contexto, {
-        accion: 'CASO_PSICOLOGIA_TOMADO',
-        entidad: 'AtencionPsicologica',
-        entidadId: tomada.procesoId,
-        detalles: { expedienteId: tomada.expedienteId, referidoId },
-      }),
-    );
-
-    return { referidoId, procesoId: tomada.procesoId };
   }
 
   /**
@@ -175,7 +153,6 @@ export class BandejaPsicologiaService {
 
     return {
       procesoId,
-      referidoIdPorAgendar: reasignado.referidoIdPorAgendar,
       citasCanceladas: reasignado.citasCanceladas,
     };
   }

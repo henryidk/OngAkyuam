@@ -1,6 +1,7 @@
+import { Clock } from 'lucide-react'
 import { ETIQUETAS_INGRESO_AREA, diasDesdeGT, type ReferenciaBandejaMedicaDto } from '@akyuam/shared'
 import Button from '../../../components/ui/Button'
-import { fechaDeInstante, iniciales } from '../../../lib/formato'
+import { fechaDeInstante, iniciales, textoReserva } from '../../../lib/formato'
 import Chip from '../compartido/Chip'
 import { CLASE_TARJETA } from '../compartido/estilos'
 import { etiquetaPersonaChip } from '../compartido/personas'
@@ -15,10 +16,23 @@ function ChipEspera({ referidoEn }: { referidoEn: string }) {
 interface TarjetaReferenciaProps {
   referencia: ReferenciaBandejaMedicaDto
   onVerExpediente: () => void
+  /** Reserva la referencia y abre la agenda con su primera consulta. */
   onAgendar: () => void
+  /** Esta tarjeta está reservando: el botón muestra que carga. */
+  reservando: boolean
+  /** Otra tarjeta está reservando: no se empieza otra a la vez. */
+  deshabilitada: boolean
 }
 
-export default function TarjetaReferencia({ referencia, onVerExpediente, onAgendar }: TarjetaReferenciaProps) {
+export default function TarjetaReferencia({
+  referencia,
+  onVerExpediente,
+  onAgendar,
+  reservando,
+  deshabilitada,
+}: TarjetaReferenciaProps) {
+  // La reserva propia (otra pestaña de la misma médica) no bloquea: es suya.
+  const ajena = referencia.reserva && !referencia.reserva.propia ? referencia.reserva : null
   return (
     <article className={`${CLASE_TARJETA} px-5 py-4`}>
       <div className="flex flex-wrap items-start gap-3.5">
@@ -49,9 +63,27 @@ export default function TarjetaReferencia({ referencia, onVerExpediente, onAgend
           >
             Ver expediente
           </Button>
-          <Button onClick={onAgendar} aria-label={`Agendar la primera consulta de ${referencia.usuariaNombreCompleto}`}>
-            Agendar primera consulta
-          </Button>
+          {ajena ? (
+            // Otra persona la está agendando: sigue sin primera consulta, pero no se agenda a la vez.
+            // Vuelve a habilitarse cuando la suelte o venza su reserva.
+            <Button
+              variante="secondary"
+              disabled
+              aria-label={`Caso de ${referencia.usuariaNombreCompleto}: ${textoReserva(ajena)}`}
+            >
+              <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+              {textoReserva(ajena)}
+            </Button>
+          ) : (
+            <Button
+              onClick={onAgendar}
+              cargando={reservando}
+              disabled={deshabilitada}
+              aria-label={`Agendar la primera consulta de ${referencia.usuariaNombreCompleto}`}
+            >
+              Agendar primera consulta
+            </Button>
+          )}
         </div>
       </div>
 

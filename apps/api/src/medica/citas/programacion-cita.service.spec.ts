@@ -13,6 +13,7 @@ import {
   CODIGO_PERSONAS_PRIMERA_CONSULTA,
 } from '../compartido/errores-http';
 import { IdempotenciaMedica } from '../compartido/idempotencia';
+import type { ReservasMedica } from '../compartido/reservas';
 import {
   HorarioOcupadoError,
   PersonaAjenaError,
@@ -39,6 +40,7 @@ describe('ProgramacionCitaService', () => {
   let acceso: jest.Mocked<AccesoMedicaService>;
   let redis: { get: jest.Mock; set: jest.Mock };
   let audit: jest.Mocked<AuditService>;
+  let reservas: jest.Mocked<ReservasMedica>;
   let service: ProgramacionCitaService;
 
   beforeEach(() => {
@@ -58,12 +60,17 @@ describe('ProgramacionCitaService', () => {
     } as unknown as jest.Mocked<AccesoMedicaService>;
     redis = { get: jest.fn().mockResolvedValue(null), set: jest.fn() };
     audit = { registrar: jest.fn() } as unknown as jest.Mocked<AuditService>;
+    reservas = {
+      exigirSinReservaAjena: jest.fn().mockResolvedValue(undefined),
+      liberar: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<ReservasMedica>;
     service = new ProgramacionCitaService(
       repository,
       { ahora: () => AHORA },
       acceso,
       new IdempotenciaMedica(redis as unknown as RedisService),
       audit,
+      reservas,
     );
   });
 
@@ -97,6 +104,50 @@ describe('ProgramacionCitaService', () => {
       'ATENCION_MEDICA_ABIERTA',
       'CITA_MEDICA_PROGRAMADA',
     ]);
+  });
+
+  it('al agendar desde la referencia libera la reserva propia', async () => {
+    await service.programar(
+      { referidoId: 'r-1', personas: [null], duracionMin: 30, inicio: INICIO },
+      CONTEXTO,
+    );
+    expect(reservas.exigirSinReservaAjena).toHaveBeenCalledWith(
+      'r-1',
+      'medica-1',
+    );
+    expect(reservas.liberar).toHaveBeenCalledWith('r-1', 'medica-1');
+  });
+
+  it('si otra persona tiene la referencia reservada responde 409 y no programa', async () => {
+    reservas.exigirSinReservaAjena.mockRejectedValue(new ConflictException());
+    await expect(
+      service.programar(
+        {
+          referidoId: 'r-1',
+          personas: [null],
+          duracionMin: 30,
+          inicio: INICIO,
+        },
+        CONTEXTO,
+      ),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(repository.programar).not.toHaveBeenCalled();
+    expect(reservas.liberar).not.toHaveBeenCalled();
+    expect(audit.registrar).not.toHaveBeenCalled();
+  });
+
+  it('una cita de seguimiento no consulta reservas', async () => {
+    await service.programar(
+      {
+        expedienteId: 'exp-1',
+        personas: [null],
+        duracionMin: 30,
+        inicio: INICIO,
+      },
+      CONTEXTO,
+    );
+    expect(reservas.exigirSinReservaAjena).not.toHaveBeenCalled();
+    expect(reservas.liberar).not.toHaveBeenCalled();
   });
 
   it('sin acceso a la referencia no programa nada', async () => {

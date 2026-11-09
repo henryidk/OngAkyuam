@@ -41,7 +41,7 @@ import type {
   VisibilidadAtencionMedicaDto,
   VisibilidadAtencionMedicaInput,
 } from '@akyuam/shared'
-import { api } from '../../../lib/api'
+import { api, borrarAlCerrar } from '../../../lib/api'
 
 /** Cliente tipado del módulo de medicina — una función por endpoint, nunca `api.get` suelto en un componente. */
 
@@ -52,6 +52,23 @@ export function obtenerContadores() {
 /** Área de atención: referencias de Trabajo Social pendientes de primera consulta. */
 export function listarBandeja() {
   return api.get<ReferenciaBandejaMedicaDto[]>('/medica/bandeja').then((res) => res.data)
+}
+
+/**
+ * Reserva (o renueva) la referencia mientras se agenda su primera consulta: las demás ven quién la
+ * agenda y no pueden empezarla a la vez. 409 si otra persona la tiene o ya se agendó.
+ */
+export function reservarReferencia(referidoId: string) {
+  return api.post<void>(`/medica/bandeja/${referidoId}/reserva`)
+}
+
+export function liberarReferencia(referidoId: string) {
+  return api.delete<void>(`/medica/bandeja/${referidoId}/reserva`)
+}
+
+/** Igual que `liberarReferencia`, pero sobrevive al cierre de la pestaña. */
+export function liberarReferenciaAlCerrar(referidoId: string) {
+  borrarAlCerrar(`/medica/bandeja/${referidoId}/reserva`)
 }
 
 /** Lo que Trabajo Social compartió del expediente (datos, caso, hijos y documentos visibles). */

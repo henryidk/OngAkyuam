@@ -49,4 +49,29 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async ttl(key: string): Promise<number> {
     return this.client.ttl(key);
   }
+
+  /** Corre un script Lua: lo que lee y escribe pasa de forma atómica en Redis. */
+  async evaluar(
+    script: string,
+    claves: string[],
+    argumentos: (string | number)[],
+  ): Promise<unknown> {
+    return this.client.eval(script, claves.length, ...claves, ...argumentos);
+  }
+
+  /** Lee varios hashes en un solo viaje; uno que no existe llega como `{}`. */
+  async hashes(claves: string[]): Promise<Record<string, string>[]> {
+    if (claves.length === 0) {
+      return [];
+    }
+    const pipeline = this.client.pipeline();
+    claves.forEach((clave) => pipeline.hgetall(clave));
+    const resultados = (await pipeline.exec()) ?? [];
+    return resultados.map(([error, hash]) => {
+      if (error) {
+        throw error;
+      }
+      return hash as Record<string, string>;
+    });
+  }
 }

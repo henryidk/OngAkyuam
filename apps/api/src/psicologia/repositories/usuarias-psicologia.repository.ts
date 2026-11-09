@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import {
   etiquetaProcesoPsicologia,
   nombreMunicipio,
+  type EstadoReferenciaPsicologia,
   type FiltroUsuariasPsicologia,
   type ListaUsuariasPsicologia,
 } from '@akyuam/shared';
@@ -12,7 +13,6 @@ import {
   ingresoDeUsuaria,
 } from '../../common/ingreso-area';
 import { PrismaService } from '../../prisma/prisma.service';
-import { estadoReferencia } from '../dominio/estado-referencia';
 import type {
   FichaUsuariaRepo,
   IUsuariasPsicologiaRepository,
@@ -41,7 +41,6 @@ type FilaListaRow = {
   expedienteNumero: string;
   activos: number;
   total: number;
-  referenciaPendiente: boolean;
   sinTomar: boolean;
   ultimaActividadEn: Date;
 };
@@ -54,7 +53,7 @@ type ContadoresRow = { TODAS: number } & Record<
 /**
  * Una fila por usuaria con algún expediente referido a Psicología. Procesos y referencias se
  * agregan por usuaria (no por expediente) y cuentan los de toda el área, de ella y de sus
- * hijos/as; solo "por agendar" es personal: es un caso que tomó esta psicóloga.
+ * hijos/as.
  */
 function cteLista(params: ListarUsuariasPsicologiaParams) {
   const accesible = EXPEDIENTE_DE_PSICOLOGIA_SQL;
@@ -69,7 +68,6 @@ function cteLista(params: ListarUsuariasPsicologiaParams) {
         ex.numero AS "expedienteNumero",
         p.activos,
         p.total,
-        (r.sin_tomar OR p.por_agendar) AS "referenciaPendiente",
         r.sin_tomar AS "sinTomar",
         GREATEST(r.ultima, p.ultima) AS "ultimaActividadEn"
       FROM "Usuaria" u
@@ -93,11 +91,6 @@ function cteLista(params: ListarUsuariasPsicologiaParams) {
         SELECT
           count(*) FILTER (WHERE ap.estado <> 'CIERRE' AND ap."fechaInicio" IS NOT NULL)::int AS activos,
           count(*) FILTER (WHERE ap.estado = 'CIERRE' OR ap."fechaInicio" IS NOT NULL)::int AS total,
-          -- Caso que tomé y todavía no agendo: sigue siendo una referencia por atender.
-          coalesce(bool_or(
-            ap.estado <> 'CIERRE' AND ap."fechaInicio" IS NULL
-            AND ap."psicologaAsignadaId" = ${params.psicologaId}
-          ), FALSE) AS por_agendar,
           max(ap."updatedAt") AS ultima
         FROM "AtencionPsicologica" ap
         JOIN "Expediente" e ON e.id = ap."expedienteId"
@@ -110,7 +103,7 @@ function cteLista(params: ListarUsuariasPsicologiaParams) {
 
 const FILTRO_SQL: Record<FiltroUsuariasPsicologia, Prisma.Sql> = {
   CON_ACTIVO: Prisma.sql`activos > 0`,
-  SIN_ACTIVO: Prisma.sql`NOT "referenciaPendiente" AND activos = 0`,
+  SIN_ACTIVO: Prisma.sql`NOT "sinTomar" AND activos = 0`,
 };
 
 @Injectable()
@@ -151,11 +144,7 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
           fila.activos > 0 ? 'ACTIVO' : fila.total > 0 ? 'CERRADO' : null,
         // Un proceso abierto por persona: cada uno es alguien de la familia en atención.
         personasEnAtencion: fila.activos,
-        referenciaPendiente: !fila.referenciaPendiente
-          ? null
-          : fila.sinTomar
-            ? 'SIN_TOMAR'
-            : 'POR_AGENDAR',
+        referenciaPendiente: fila.sinTomar ? 'SIN_TOMAR' : null,
         ultimaActividadEn: fila.ultimaActividadEn.toISOString(),
       })),
       pagina: params.pagina,
@@ -167,7 +156,6 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
 
   async obtenerFicha(
     usuariaId: string,
-    psicologaId: string,
     ahora: Date,
   ): Promise<FichaUsuariaRepo | null> {
     const accesible = EXPEDIENTE_DE_PSICOLOGIA;
@@ -215,13 +203,11 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
             expediente: {
               select: {
                 numero: true,
-                atencionesPsicologicas: {
-                  where: { psicologaAsignadaId: { not: null } },
+                _count: {
                   select: {
-                    referidoId: true,
-                    fechaInicio: true,
-                    estado: true,
-                    psicologaAsignadaId: true,
+                    atencionesPsicologicas: {
+                      where: { psicologaAsignadaId: { not: null } },
+                    },
                   },
                 },
               },
@@ -285,12 +271,12 @@ export class UsuariasPsicologiaRepository implements IUsuariasPsicologiaReposito
     // el más reciente de los visibles: si está tomado, también es el tomado más reciente.
     const expedienteFichaTomado = expedienteTomado?.id === expediente.id;
 
+    // Un expediente se toma completo: si alguien ya tiene un caso en él, la referencia está atendida.
     const historial = referencias.map((referencia) => {
-      const estado = estadoReferencia(
-        referencia.id,
-        referencia.expediente.atencionesPsicologicas,
-        psicologaId,
-      );
+      const estado: EstadoReferenciaPsicologia =
+        referencia.expediente._count.atencionesPsicologicas > 0
+          ? 'ATENDIDA'
+          : 'SIN_TOMAR';
       return {
         referidoId: referencia.id,
         expedienteId: referencia.expedienteId,

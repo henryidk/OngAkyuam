@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import {
@@ -15,7 +15,7 @@ import { useTituloPagina } from '../../../components/TituloPagina'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
 import { useRecurso } from '../../../lib/useRecurso'
-import { listarBandeja, listarPorRegistrar, obtenerDia, obtenerSemana } from '../api/medica.api'
+import { listarPorRegistrar, obtenerDia, obtenerSemana } from '../api/medica.api'
 import { useContextoMedica } from '../compartido/contexto'
 import EncabezadoPagina from '../compartido/EncabezadoPagina'
 import { diaHabil, diaSemanaCorto, fechaLarga, fechaLargaEnFrase, numeroDia, textoSemana } from '../compartido/fechas'
@@ -25,14 +25,16 @@ import ModalInasistencia, { type ResultadoInasistencia } from '../compartido/Mod
 import ModalProgramar from '../compartido/ModalProgramar'
 import { RUTAS_MEDICA } from '../rutas'
 import PendientesAgenda from './PendientesAgenda'
+import PrimeraConsultaReservada from './PrimeraConsultaReservada'
 
 const FORMATO_FECHA = /^\d{4}-\d{2}-\d{2}$/
 
 /**
- * Agenda de consultas: la semana (lunes a viernes) con el día abierto y, a la derecha, dos
- * tarjetas con lo pendiente (por agendar y sin próxima consulta) que llevan a su lista. Aquí se programa, se registra la consulta o la inasistencia y
- * se reprograma. Las consultas de días anteriores sin registrar no se ven en la semana actual:
- * un aviso arriba lleva a Consultas › Por registrar. El día vive en la URL (`?dia=`) para que
+ * Agenda de consultas: la semana (lunes a viernes) con el día abierto y, a la derecha, la tarjeta
+ * "Sin próxima consulta" que lleva a su lista. Aquí se programa, se registra la consulta o la
+ * inasistencia y se reprograma; `?agendar=` abre la primera consulta de una referencia. Las
+ * consultas de días anteriores sin registrar no se ven en la semana actual: un aviso arriba lleva
+ * a Consultas › Por registrar. El día vive en la URL (`?dia=`) para que
  * "Ver en agenda", recargar y volver de registrar una consulta caigan ahí.
  */
 export default function Agenda() {
@@ -51,39 +53,23 @@ export default function Agenda() {
   const semana = useRecurso(useCallback(() => obtenerSemana(lunes), [lunes]))
   const agendaDia = useRecurso(useCallback(() => obtenerDia(dia), [dia]))
   const porRegistrar = useRecurso(listarPorRegistrar)
-  const porAgendar = useRecurso(listarBandeja)
   const recargarSemana = semana.recargar
   const recargarDia = agendaDia.recargar
   const recargarPorRegistrar = porRegistrar.recargar
-  const recargarPorAgendar = porAgendar.recargar
 
   const recargarTodo = useCallback(() => {
     void recargarSemana()
     void recargarDia()
     void recargarPorRegistrar()
-    void recargarPorAgendar()
-  }, [recargarSemana, recargarDia, recargarPorRegistrar, recargarPorAgendar])
+  }, [recargarSemana, recargarDia, recargarPorRegistrar])
   useRecargaNovedades(recargarTodo)
 
-  // `?agendar=<referidoId>` llega desde el Área de atención (otra ruta: la Agenda se monta de
-  // nuevo): abre el modal con esa paciente y se quita de la URL para que volver atrás o recargar
-  // no lo reabra.
+  // `?agendar=<referidoId>` llega del Área de atención con la referencia ya reservada. Vive en la
+  // URL mientras se agenda: recargar la página la vuelve a reservar y abre el mismo modal.
   const agendar = params.get('agendar')
-  const [programar, setProgramar] = useState<ProgramablesMedicaQuery | null>(() => (agendar ? { referidoId: agendar } : null))
+  const [programar, setProgramar] = useState<ProgramablesMedicaQuery | null>(null)
   const [reprogramar, setReprogramar] = useState<CitaAgendaMedicaDto | null>(null)
   const [inasistencia, setInasistencia] = useState<CitaAgendaMedicaDto | null>(null)
-
-  useEffect(() => {
-    if (!agendar) return
-    setParams(
-      (actuales) => {
-        const siguientes = new URLSearchParams(actuales)
-        siguientes.delete('agendar')
-        return siguientes
-      },
-      { replace: true },
-    )
-  }, [agendar, setParams])
 
   const irADia = useCallback(
     (nuevo: string) => {
@@ -107,8 +93,17 @@ export default function Agenda() {
     )
     // Recargar siempre: si el día nuevo cae en la misma semana, la tira no se vuelve a pedir sola.
     recargarTodo()
-    if (cita.fecha !== dia) irADia(cita.fecha)
     recargarContadores()
+    // Al día de la cita; si era una primera consulta del Área de atención, deja de abrirse.
+    setParams(
+      (actuales) => {
+        const siguientes = new URLSearchParams(actuales)
+        siguientes.set('dia', cita.fecha)
+        siguientes.delete('agendar')
+        return siguientes
+      },
+      { replace: true },
+    )
   }
 
   function trasReprogramar({ mensaje, nuevaFecha }: ResultadoInasistencia) {
@@ -230,17 +225,18 @@ export default function Agenda() {
               ))
             )}
           </section>
-          <PendientesAgenda
-            porAgendar={porAgendar.datos}
-            totalPorAgendar={contadores?.areaAtencion ?? null}
-            sinProxima={contadores?.sinProxima ?? null}
-            // Un solo elemento en ámbar a la vista: si ya hay consultas sin registrar, esta tarjeta queda neutra.
-            permitirUrgente={atrasadas === 0}
-            onAgendar={(referidoId) => setProgramar({ referidoId })}
-          />
+          <PendientesAgenda sinProxima={contadores?.sinProxima ?? null} />
         </div>
       )}
 
+      {agendar && (
+        <PrimeraConsultaReservada
+          key={agendar}
+          referidoId={agendar}
+          fechaPreferida={dia >= hoy ? dia : null}
+          onProgramada={trasProgramar}
+        />
+      )}
       {programar && (
         <ModalProgramar
           preseleccion={programar}

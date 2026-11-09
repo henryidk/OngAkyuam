@@ -37,3 +37,4 @@ export * from "./schemas/trabajoSocial.js";
 export * from "./schemas/medica.js";
 export * from "./schemas/fechaHora.js";
 export * from "./schemas/audienciasJuridico.js";
+export * from "./schemas/reservaCaso.js";

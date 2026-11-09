@@ -8,7 +8,7 @@ export interface ContextoPsicologia {
   recargarResumen: () => void
   /**
    * Sube cada vez que el socket avisa que cambió la lista de referencias sin tomar (Trabajo
-   * Social refirió una usuaria u otra psicóloga tomó un caso).
+   * Social refirió una usuaria, u otra psicóloga tomó, reservó o soltó una referencia).
    */
   versionNovedades: number
 }

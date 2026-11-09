@@ -1,8 +1,8 @@
 import type {
-  CasoPorAgendarDto,
   CasoPorReasignarDto,
   ExpedientePreviaTomaDto,
   ReferenciaBandejaPsicologiaDto,
+  ReferenciaParaAgendarDto,
 } from '@akyuam/shared';
 
 export const BANDEJA_PSICOLOGIA_REPOSITORY = Symbol(
@@ -10,12 +10,11 @@ export const BANDEJA_PSICOLOGIA_REPOSITORY = Symbol(
 );
 
 /**
- * En qué está una referencia para la psicóloga que pregunta:
- * - `SIN_TOMAR`: nadie se ha hecho cargo; cualquiera puede tomarla.
- * - `MIA`: la tomó ella y su proceso sigue sin cerrar.
- * - `NO_DISPONIBLE`: la tomó otra psicóloga, o el proceso que nació de ella ya se cerró.
+ * En qué está una referencia:
+ * - `SIN_TOMAR`: nadie se ha hecho cargo; cualquiera puede agendarle la primera cita o atenderla.
+ * - `TOMADA`: una psicóloga ya abrió un proceso en ese expediente.
  */
-export type SituacionReferencia = 'SIN_TOMAR' | 'MIA' | 'NO_DISPONIBLE';
+export type SituacionReferencia = 'SIN_TOMAR' | 'TOMADA';
 
 export interface ReferenciaPsicologia {
   referidoId: string;
@@ -23,8 +22,6 @@ export interface ReferenciaPsicologia {
   expedienteNumero: string;
   usuariaId: string;
   situacion: SituacionReferencia;
-  /** El proceso sin cerrar de esta psicóloga; solo viene cuando la situación es `MIA`. */
-  procesoId: string | null;
 }
 
 export interface ReasignarProcesoParams {
@@ -37,21 +34,22 @@ export interface ProcesoReasignado {
   procesoId: string;
   expedienteId: string;
   psicologaAnteriorId: string;
-  /** El caso no tenía primera cita: queda en "Casos por agendar" de la nueva dueña. */
-  referidoIdPorAgendar: string | null;
   citasCanceladas: number;
 }
 
 export interface IBandejaPsicologiaRepository {
-  /** Referencias a Psicología que nadie ha tomado, de la más antigua a la más reciente. */
-  listarSinTomar(): Promise<ReferenciaBandejaPsicologiaDto[]>;
-  /** Casos tomados por esta psicóloga que todavía no tienen primera cita. */
-  listarPorAgendar(psicologaId: string): Promise<CasoPorAgendarDto[]>;
-  /** Uno de esos casos; null si no es suyo o ya tiene primera cita. */
-  buscarPorAgendar(
-    psicologaId: string,
+  /**
+   * Referencias a Psicología que nadie ha tomado, de la más antigua a la más reciente. Sin la
+   * reserva: esa vive en Redis y la agrega el servicio.
+   */
+  listarSinTomar(): Promise<Omit<ReferenciaBandejaPsicologiaDto, 'reserva'>[]>;
+  /**
+   * Una referencia sin tomar con las personas a las que se les puede abrir proceso; null si no
+   * existe, no es de Psicología o ya la tomaron — indistinguibles desde afuera.
+   */
+  buscarParaAgendar(
     referidoId: string,
-  ): Promise<CasoPorAgendarDto | null>;
+  ): Promise<ReferenciaParaAgendarDto | null>;
   /** Casos y procesos abiertos cuya psicóloga tiene la cuenta desactivada, del más antiguo al más reciente. */
   listarPorReasignar(): Promise<CasoPorReasignarDto[]>;
   /**
@@ -68,8 +66,5 @@ export interface IBandejaPsicologiaRepository {
     referidoId: string,
   ): Promise<ExpedientePreviaTomaDto | null>;
   /** `null` si la referencia no existe o no es de Psicología — indistinguibles desde afuera. */
-  buscarReferencia(
-    referidoId: string,
-    psicologaId: string,
-  ): Promise<ReferenciaPsicologia | null>;
+  buscarReferencia(referidoId: string): Promise<ReferenciaPsicologia | null>;
 }

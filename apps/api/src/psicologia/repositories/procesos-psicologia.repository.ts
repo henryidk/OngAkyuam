@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
+  CasoYaTomadoError,
   OtroProcesoActivoError,
   ProcesoNoDisponibleError,
-  ProcesoYaAbiertoError,
   ReferenciaPendienteError,
 } from '../interfaces/procesos-psicologia-repository.interface';
 import type {
@@ -210,18 +210,21 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
     };
     return conReintentos(() =>
       this.prisma.$transaction(async (tx) => {
-        const delCaso = await this.abrirDelCaso(tx, {
-          ...persona,
-          ...primera,
-          procesoId: params.procesoId,
-        });
-        const abiertos = [delCaso];
+        await this.tomarReferencia(tx, params);
+        const abiertos = [
+          await this.crearProceso(tx, {
+            ...persona,
+            ...primera,
+            expedienteId: params.expedienteId,
+            referidoId: params.referidoId,
+          }),
+        ];
         for (const otra of resto) {
           abiertos.push(
             await this.abrirNuevoEn(tx, {
               ...persona,
               ...otra,
-              expedienteId: delCaso.expedienteId,
+              expedienteId: params.expedienteId,
             }),
           );
         }
@@ -235,11 +238,13 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
   ): Promise<ProcesoAbiertoYRegistrado> {
     return conReintentos(() =>
       this.prisma.$transaction(async (tx) => {
-        const abierto = await this.abrirDelCaso(tx, {
+        await this.tomarReferencia(tx, params);
+        const abierto = await this.crearProceso(tx, {
           ...params.persona,
-          procesoId: params.procesoId,
           usuariaId: params.usuariaId,
           psicologaId: params.psicologaId,
+          expedienteId: params.expedienteId,
+          referidoId: params.referidoId,
         });
         const registrada = await guardarRegistroEnTx(tx, {
           ...params.registro,
@@ -293,24 +298,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
     if (!expediente) {
       throw new ProcesoNoDisponibleError();
     }
-    const ninoConsecutivo = await consecutivoDeNino(
-      tx,
-      params.ninoId,
-      expediente.id,
-    );
-
-    // Sin fecha de inicio es un caso tomado que espera su primera cita: se atiende ese.
-    const sinCerrar = await tx.atencionPsicologica.findFirst({
-      where: procesoAbiertoDePersona(params),
-      select: { fechaInicio: true },
-      orderBy: { fechaInicio: { sort: 'desc', nulls: 'last' } },
-    });
-    if (sinCerrar) {
-      throw sinCerrar.fechaInicio
-        ? new OtroProcesoActivoError()
-        : new ReferenciaPendienteError();
-    }
-    // Una referencia nueva de la usuaria se atiende desde la bandeja, no desde la ficha.
+    // Una referencia nueva de la usuaria se atiende desde el Área de atención, no desde la ficha.
     if (params.ninoId === null) {
       const referenciaSinTomar = await tx.referidoArea.findFirst({
         where: {
@@ -326,15 +314,78 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
         throw new ReferenciaPendienteError();
       }
     }
+    return this.crearProceso(tx, { ...params, referidoId: null });
+  }
+
+  /**
+   * Bloquea el expediente de la referencia y comprueba que siga sin tomar: si dos psicólogas
+   * confirman a la vez, la segunda espera el bloqueo, ve el caso tomado y no escribe nada.
+   */
+  private async tomarReferencia(
+    tx: Prisma.TransactionClient,
+    params: { expedienteId: string; referidoId: string; usuariaId: string },
+  ): Promise<void> {
+    await tx.$queryRaw`SELECT id FROM "Expediente" WHERE id = ${params.expedienteId} FOR UPDATE`;
+    const expediente = await tx.expediente.findFirst({
+      where: {
+        id: params.expedienteId,
+        usuariaId: params.usuariaId,
+        referidos: { some: { id: params.referidoId, area: 'PSICOLOGIA' } },
+      },
+      select: {
+        _count: {
+          select: {
+            atencionesPsicologicas: {
+              where: { psicologaAsignadaId: { not: null } },
+            },
+          },
+        },
+      },
+    });
+    if (!expediente) {
+      throw new ProcesoNoDisponibleError();
+    }
+    if (expediente._count.atencionesPsicologicas > 0) {
+      throw new CasoYaTomadoError();
+    }
+  }
+
+  /**
+   * Crea el proceso de una persona con su cita de primera atención; quien lo abre queda como
+   * responsable. "Un solo proceso abierto por persona" cruza expedientes: para un hijo/a la base
+   * lo respalda (`AtencionPsicologica_activa_hijo_uq`); para la usuaria no hay índice que lo
+   * cubra, así que se comprueba aquí, serializable, para las dos.
+   */
+  private async crearProceso(
+    tx: Prisma.TransactionClient,
+    params: PersonaParaAbrir & {
+      expedienteId: string;
+      /** La referencia que se atiende; null al abrir desde la ficha. */
+      referidoId: string | null;
+    },
+  ): Promise<ProcesoAbiertoEn> {
+    const ninoConsecutivo = await consecutivoDeNino(
+      tx,
+      params.ninoId,
+      params.expedienteId,
+    );
+    const otroAbierto = await tx.atencionPsicologica.findFirst({
+      where: procesoAbiertoDePersona(params),
+      select: { id: true },
+    });
+    if (otroAbierto) {
+      throw new OtroProcesoActivoError();
+    }
 
     const ahora = new Date();
     const proceso = await tx.atencionPsicologica.create({
       data: {
-        expedienteId: expediente.id,
+        expedienteId: params.expedienteId,
         ninoId: params.ninoId,
+        referidoId: params.referidoId,
         consecutivo: await siguienteConsecutivoProceso(
           tx,
-          expediente.id,
+          params.expedienteId,
           params.ninoId,
         ),
         estado: 'INICIO',
@@ -361,93 +412,7 @@ export class ProcesosPsicologiaRepository implements IProcesosPsicologiaReposito
       consecutivo: proceso.consecutivo,
       ninoConsecutivo,
       citaId,
-      expedienteId: expediente.id,
-    };
-  }
-
-  /** El proceso del caso tomado pasa a ser de la persona y recibe su primera cita. */
-  private async abrirDelCaso(
-    tx: Prisma.TransactionClient,
-    params: PersonaParaAbrir & { procesoId: string },
-  ): Promise<ProcesoAbiertoEn> {
-    const proceso = await tx.atencionPsicologica.findFirst({
-      where: {
-        id: params.procesoId,
-        psicologaAsignadaId: params.psicologaId,
-        estado: { not: 'CIERRE' },
-      },
-      select: {
-        id: true,
-        expedienteId: true,
-        consecutivo: true,
-        estado: true,
-        _count: { select: { citas: true } },
-      },
-    });
-    if (!proceso) {
-      throw new ProcesoNoDisponibleError();
-    }
-    if (proceso._count.citas > 0) {
-      throw new ProcesoYaAbiertoError();
-    }
-    const ninoConsecutivo = await consecutivoDeNino(
-      tx,
-      params.ninoId,
-      proceso.expedienteId,
-    );
-
-    // "Un solo proceso abierto por persona" cruza expedientes. Para un hijo/a la base lo
-    // respalda (`AtencionPsicologica_activa_hijo_uq`); para la usuaria no hay índice que lo
-    // cubra, así que se comprueba aquí, serializable, para las dos.
-    const otroAbierto = await tx.atencionPsicologica.findFirst({
-      where: {
-        id: { not: proceso.id },
-        fechaInicio: { not: null },
-        ...procesoAbiertoDePersona(params),
-      },
-      select: { id: true },
-    });
-    if (otroAbierto) {
-      throw new OtroProcesoActivoError();
-    }
-
-    // La persona se fija antes de la primera cita (la base lo exige). El caso se tomó en el
-    // lugar de la usuaria; si es para un hijo/a, toma el siguiente número de los suyos.
-    const consecutivo =
-      params.ninoId === null
-        ? proceso.consecutivo
-        : await siguienteConsecutivoProceso(
-            tx,
-            proceso.expedienteId,
-            params.ninoId,
-          );
-    await tx.atencionPsicologica.update({
-      where: { id: proceso.id },
-      data: {
-        ninoId: params.ninoId,
-        consecutivo,
-        fechaInicio: new Date(),
-        actualizadoPorId: params.psicologaId,
-        version: { increment: 1 },
-      },
-    });
-    await tx.cambioEstadoAtencion.create({
-      data: {
-        atencionId: proceso.id,
-        estadoAnterior: null,
-        estadoNuevo: proceso.estado,
-        registradoPorId: params.psicologaId,
-      },
-    });
-    const citaId = await crearPrimeraCita(tx, proceso.id, params);
-
-    return {
-      procesoId: proceso.id,
-      ninoId: params.ninoId,
-      consecutivo,
-      ninoConsecutivo,
-      citaId,
-      expedienteId: proceso.expedienteId,
+      expedienteId: params.expedienteId,
     };
   }
 

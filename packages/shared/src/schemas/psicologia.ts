@@ -16,6 +16,7 @@ import {
   MOTIVOS_CIERRE_PSICOLOGIA,
   TIPOS_CITA_PSICOLOGICA,
 } from '../catalogos/psicologia.js'
+import type { ReservaCasoDto } from './reservaCaso.js'
 import type { TipoIngresoArea } from '../catalogos/ingresoArea.js'
 import type { GENEROS, GRUPOS_ETNICOS } from '../catalogos/registroUsuaria.js'
 import type { TipoDocumento } from './documentos.js'
@@ -587,6 +588,8 @@ export interface ReferenciaBandejaPsicologiaDto {
   personas: PersonaAtendidaDto[]
   /** Si esta referencia es el primer ingreso de la usuaria al área o un seguimiento. */
   ingreso: TipoIngresoArea
+  /** Quién está agendando o atendiendo ahora este caso; null = está libre. */
+  reserva: ReservaCasoDto | null
 }
 
 /**
@@ -610,14 +613,16 @@ export interface ExpedientePreviaTomaDto {
   personas: PersonaAtendidaDto[]
 }
 
-/** Fila de `GET /psicologia/agenda/por-agendar`: caso que tomé y todavía no tiene primera cita. */
-export interface CasoPorAgendarDto {
+/**
+ * `GET /psicologia/bandeja/:referidoId/para-agendar`: la referencia sin tomar a la que se le agenda
+ * la primera cita. Agendarla es lo que toma el caso.
+ */
+export interface ReferenciaParaAgendarDto {
   referidoId: string
   expedienteId: string
   expedienteNumero: string
   usuariaId: string
   usuariaNombreCompleto: string
-  tomadaEn: string
   /** La usuaria primero y luego cada hijo/a: a quién se le puede abrir el proceso. */
   personas: PersonaParaAbrirDto[]
 }
@@ -641,11 +646,14 @@ export interface CasoPorReasignarDto {
   usuariaNombreCompleto: string
   edad: number
   municipio: string | null
-  /** "05-2026"; `null` si la psicóloga anterior lo tomó pero nunca le agendó la primera cita. */
+  /**
+   * "05-2026"; `null` si el proceso no tiene fecha de inicio. Desde que el caso se toma al
+   * confirmar la primera cita no nace ninguno así, pero la columna lo permite.
+   */
   codigo: string | null
   etapa: EstadoAtencionPsicologica
   sesionesAtendidas: number
-  /** Cuándo abrió el proceso; `null` mientras no tenga primera cita. */
+  /** Cuándo abrió el proceso; `null` en el mismo caso que `codigo`. */
   fechaInicio: string | null
   /** Nombre de la psicóloga que lo llevaba. */
   psicologaAnterior: string
@@ -657,8 +665,6 @@ export interface CasoPorReasignarDto {
 /** Respuesta de `POST /psicologia/bandeja/por-reasignar/:procesoId/tomar`. */
 export interface CasoReasignadoDto {
   procesoId: string
-  /** Solo viene si el caso aún no tenía primera cita: toca agendarla desde la agenda. */
-  referidoIdPorAgendar: string | null
   citasCanceladas: number
 }
 
@@ -770,7 +776,6 @@ export interface ResumenProcesosPsicologia {
   referenciasSinTomar: number
   /** Casos y procesos abiertos de psicólogas con la cuenta desactivada, que nadie ha retomado. */
   casosPorReasignar: number
-  casosPorAgendar: number
   /** Sesiones mías que ya empezaron y siguen sin registrar: la insignia de Consultas. */
   sesionesPorRegistrar: number
 }
@@ -891,12 +896,6 @@ export interface DetalleConsultaPsicologiaDto extends SesionProcesoDto {
   atendidoPor: string
 }
 
-/** Respuesta de `POST /psicologia/bandeja/:referidoId/tomar`: el caso ya es de quien lo tomó. */
-export interface CasoPsicologiaTomadoDto {
-  referidoId: string
-  procesoId: string
-}
-
 /** Un proceso recién abierto, con la cita de primera atención que se creó junto con él. */
 export interface ProcesoPsicologiaAbiertoDto {
   procesoId: string
@@ -962,7 +961,7 @@ export interface FilaUsuariaPsicologia {
   estadoProceso: EstadoProcesoUsuariaPsicologia | null
   /** Personas de la familia (la usuaria y sus hijos/as) con un proceso abierto. */
   personasEnAtencion: number
-  /** `SIN_TOMAR` = nadie la ha tomado; `POR_AGENDAR` = la tomé y falta su primera cita; null = nada pendiente. */
+  /** `SIN_TOMAR` = una referencia espera en el Área de atención; null = nada pendiente. */
   referenciaPendiente: ReferenciaPendientePsicologia | null
   ultimaActividadEn: string
 }
@@ -976,9 +975,9 @@ export interface ListaUsuariasPsicologia {
   contadores: { TODAS: number } & Record<FiltroUsuariasPsicologia, number>
 }
 
-export const ESTADOS_REFERENCIA_PSICOLOGIA = ['SIN_TOMAR', 'POR_AGENDAR', 'ATENDIDA'] as const
+export const ESTADOS_REFERENCIA_PSICOLOGIA = ['SIN_TOMAR', 'ATENDIDA'] as const
 export type EstadoReferenciaPsicologia = (typeof ESTADOS_REFERENCIA_PSICOLOGIA)[number]
-/** Referencia que todavía pide algo a la psicóloga: tomarla, o agendarle la primera cita. */
+/** Referencia que todavía espera que una psicóloga la tome. */
 export type ReferenciaPendientePsicologia = Exclude<EstadoReferenciaPsicologia, 'ATENDIDA'>
 
 export interface ReferenciaHistorialPsicologiaDto {

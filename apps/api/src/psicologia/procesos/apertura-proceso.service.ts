@@ -19,6 +19,7 @@ import { RELOJ, type IReloj } from '../../common/reloj';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import { eventoAuditoria } from '../compartido/auditoria';
 import { IdempotenciaPsicologia } from '../compartido/idempotencia';
+import { ReservasPsicologia } from '../compartido/reservas';
 import {
   camposDelRegistro,
   proximaCitaDelRegistro,
@@ -27,9 +28,9 @@ import { avisarTraslape as avisarTraslapeCita } from '../compartido/traslape';
 import {
   CODIGO_TRASLAPE_CITA,
   MENSAJE_APERTURA_EN_CURSO,
+  MENSAJE_CASO_YA_TOMADO,
   MENSAJE_OTRO_PROCESO_ACTIVO,
   MENSAJE_PERSONA_AJENA,
-  MENSAJE_PROCESO_YA_ABIERTO,
   MENSAJE_REFERENCIA_PENDIENTE,
   MENSAJE_SIN_ACCESO_REFERENCIA,
   MENSAJE_SIN_ACCESO_USUARIA,
@@ -38,10 +39,10 @@ import {
 import { CITAS_PSICOLOGICAS_REPOSITORY } from '../interfaces/citas-psicologicas-repository.interface';
 import type { ICitasPsicologicasRepository } from '../interfaces/citas-psicologicas-repository.interface';
 import {
+  CasoYaTomadoError,
   OtroProcesoActivoError,
   PROCESOS_PSICOLOGIA_REPOSITORY,
   ProcesoNoDisponibleError,
-  ProcesoYaAbiertoError,
   ReferenciaPendienteError,
 } from '../interfaces/procesos-psicologia-repository.interface';
 import type {
@@ -49,9 +50,10 @@ import type {
   PrimeraCitaPersona,
   ProcesoAbierto,
 } from '../interfaces/procesos-psicologia-repository.interface';
+import type { ReferenciaPsicologia } from '../interfaces/bandeja-psicologia-repository.interface';
 import { AccesoPsicologiaService } from '../services/acceso-psicologia.service';
 
-/** La usuaria primero: en una referencia es la que ocupa el proceso del caso tomado. */
+/** La usuaria primero: en una referencia es su proceso el que lleva la referencia. */
 function usuariaPrimero(
   personas: PrimeraCitaPersonaInput[],
 ): PrimeraCitaPersonaInput[] {
@@ -85,15 +87,15 @@ export class AperturaProcesoService {
     private readonly citasRepository: ICitasPsicologicasRepository,
     private readonly acceso: AccesoPsicologiaService,
     private readonly idempotencia: IdempotenciaPsicologia,
+    private readonly reservas: ReservasPsicologia,
     private readonly auditService: AuditService,
     @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
   /**
-   * "Atender": agenda la primera cita de un caso ya tomado, para una o varias personas del
-   * expediente (la usuaria y/o sus hijos/as). La primera ocupa el proceso del caso, que recibe su
-   * fecha de inicio y deja de estar "por agendar"; cada una de las demás recibe su propio
-   * proceso en el mismo expediente, con su correlativo. Todo o nada.
+   * "Atender": agenda la primera cita de una referencia sin tomar, para una o varias personas
+   * del expediente (la usuaria y/o sus hijos/as), y con eso toma el caso. Cada persona recibe
+   * su proceso con su correlativo. Todo o nada: si no se confirma, el caso sigue sin tomar.
    */
   async atender(
     referidoId: string,
@@ -101,19 +103,19 @@ export class AperturaProcesoService {
     contexto: ContextoAuditoria,
     claveIdempotencia?: string,
   ): Promise<ProcesosPsicologiaAbiertosDto> {
-    const caso = await this.acceso.exigirCasoTomado(
-      referidoId,
-      contexto.usuarioId,
-    );
     const personas = usuariaPrimero(datos.personas);
 
-    return this.unaSolaVez(
+    const abiertos = await this.unaSolaVez(
       this.idempotencia.clave(
         claveIdempotencia,
         `atender:${referidoId}:${firmaPersonas(personas)}`,
         contexto.usuarioId,
       ),
       async () => {
+        const caso = await this.exigirReferenciaLibre(
+          referidoId,
+          contexto.usuarioId,
+        );
         for (const persona of personas) {
           await this.exigirDelExpediente(persona.ninoId, caso.expedienteId);
         }
@@ -122,22 +124,26 @@ export class AperturaProcesoService {
           MENSAJE_SIN_ACCESO_REFERENCIA,
           () =>
             this.procesosRepository.abrir({
-              procesoId: caso.procesoId,
+              expedienteId: caso.expedienteId,
+              referidoId,
               psicologaId: contexto.usuarioId,
               usuariaId: caso.usuariaId,
               personas: personas.map(aCita),
             }),
         );
+        await this.auditarCasoTomado(abiertos[0], caso, contexto);
         return this.concluir(abiertos, caso, 'REFERENCIA', contexto);
       },
     );
+    await this.reservas.liberar(referidoId, contexto.usuarioId);
+    return abiertos;
   }
 
   /**
-   * "Atender ahora": la persona de un caso ya tomado llegó sin primera cita agendada y se
-   * atendió. Al registrar la sesión se abre su proceso con la cita de primera atención (fecha y
-   * hora del servidor) y la sesión queda registrada, todo junto: abrir el formulario y salir no
-   * abre nada. Una persona por vez; las demás se abren después, desde la Agenda o la ficha.
+   * "Atender ahora": la persona de una referencia sin tomar llegó sin cita y se atendió. Al
+   * registrar la sesión se toma el caso, se abre su proceso con la cita de primera atención
+   * (fecha y hora del servidor) y la sesión queda registrada, todo junto: abrir el formulario y
+   * salir no toma ni abre nada. Una persona por vez; las demás se abren después desde la ficha.
    */
   async atenderAhora(
     referidoId: string,
@@ -145,18 +151,17 @@ export class AperturaProcesoService {
     contexto: ContextoAuditoria,
     claveIdempotencia?: string,
   ): Promise<ConsultaRegistradaDto> {
-    const caso = await this.acceso.exigirCasoTomado(
-      referidoId,
-      contexto.usuarioId,
-    );
-
-    return this.unaSolaVez(
+    const consulta = await this.unaSolaVez(
       this.idempotencia.clave(
         claveIdempotencia,
         `atender-ahora:${referidoId}:${datos.ninoId ?? 'usuaria'}`,
         contexto.usuarioId,
       ),
       async () => {
+        const caso = await this.exigirReferenciaLibre(
+          referidoId,
+          contexto.usuarioId,
+        );
         await this.exigirDelExpediente(datos.ninoId, caso.expedienteId);
         // La sesión ocurre ahora, con la persona presente: solo se avisa el traslape de la próxima.
         const siguiente = proximaCitaDelRegistro(datos.registro);
@@ -171,7 +176,8 @@ export class AperturaProcesoService {
           MENSAJE_SIN_ACCESO_REFERENCIA,
           () =>
             this.procesosRepository.abrirYRegistrar({
-              procesoId: caso.procesoId,
+              expedienteId: caso.expedienteId,
+              referidoId,
               psicologaId: contexto.usuarioId,
               usuariaId: caso.usuariaId,
               persona: {
@@ -185,6 +191,7 @@ export class AperturaProcesoService {
               },
             }),
         );
+        await this.auditarCasoTomado(abierto, caso, contexto);
         await this.concluir([abierto], caso, 'REFERENCIA', contexto);
         // Mismo evento que cualquier registro, sin texto clínico: solo ids y banderas.
         await this.auditService.registrar(
@@ -217,6 +224,8 @@ export class AperturaProcesoService {
         };
       },
     );
+    await this.reservas.liberar(referidoId, contexto.usuarioId);
+    return consulta;
   }
 
   /**
@@ -326,6 +335,39 @@ export class AperturaProcesoService {
     }
   }
 
+  /**
+   * La referencia sigue sin tomar y nadie más la está agendando o atendiendo. La reserva propia
+   * no hace falta que siga viva: si venció y nadie más llegó, se guarda igual. La transacción
+   * vuelve a comprobar que siga sin tomar, con el expediente bloqueado.
+   */
+  private async exigirReferenciaLibre(
+    referidoId: string,
+    usuarioId: string,
+  ): Promise<ReferenciaPsicologia> {
+    const referencia = await this.acceso.exigirReferenciaSinTomar(referidoId);
+    await this.reservas.exigirSinReservaAjena(referidoId, usuarioId);
+    return referencia;
+  }
+
+  /** "Caso tomado" se audita una vez, cuando de verdad se toma: al confirmar la primera cita. */
+  private async auditarCasoTomado(
+    primero: ProcesoAbierto,
+    caso: ReferenciaPsicologia,
+    contexto: ContextoAuditoria,
+  ): Promise<void> {
+    await this.auditService.registrar(
+      eventoAuditoria(contexto, {
+        accion: 'CASO_PSICOLOGIA_TOMADO',
+        entidad: 'AtencionPsicologica',
+        entidadId: primero.procesoId,
+        detalles: {
+          expedienteId: caso.expedienteId,
+          referidoId: caso.referidoId,
+        },
+      }),
+    );
+  }
+
   private async exigirDelExpediente(
     ninoId: string | null,
     expedienteId: string,
@@ -427,8 +469,8 @@ export class AperturaProcesoService {
       if (error instanceof ProcesoNoDisponibleError) {
         throw new ForbiddenException(mensajeSinAcceso);
       }
-      if (error instanceof ProcesoYaAbiertoError) {
-        throw new ConflictException(MENSAJE_PROCESO_YA_ABIERTO);
+      if (error instanceof CasoYaTomadoError) {
+        throw new ConflictException(MENSAJE_CASO_YA_TOMADO);
       }
       if (error instanceof OtroProcesoActivoError) {
         throw new ConflictException(MENSAJE_OTRO_PROCESO_ACTIVO);

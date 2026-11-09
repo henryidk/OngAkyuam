@@ -44,11 +44,6 @@ export const GLOSARIO: Record<AreaGlosario, readonly Definicion[]> = {
   ],
   psicologia: [
     {
-      termino: 'por-agendar',
-      nombre: 'Por agendar',
-      texto: 'Caso tomado que todavía no tiene su primera cita. Al programarla se abre el proceso.',
-    },
-    {
       termino: 'sin-proxima',
       nombre: 'Sin próxima cita',
       texto: 'Proceso activo que no tiene ninguna cita programada. Se revisa en Procesos.',

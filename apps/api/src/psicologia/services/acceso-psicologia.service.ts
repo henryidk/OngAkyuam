@@ -5,11 +5,11 @@ import {
   Injectable,
 } from '@nestjs/common';
 import {
+  MENSAJE_CASO_YA_TOMADO,
   MENSAJE_SIN_ACCESO_CITA,
   MENSAJE_SIN_ACCESO_PROCESO,
   MENSAJE_SIN_ACCESO_REFERENCIA,
   MENSAJE_SIN_ACCESO_USUARIA,
-  MENSAJE_TOMAR_PRIMERO,
 } from '../compartido/mensajes';
 import { BANDEJA_PSICOLOGIA_REPOSITORY } from '../interfaces/bandeja-psicologia-repository.interface';
 import type {
@@ -99,33 +99,24 @@ export class AccesoPsicologiaService {
    * La referencia existe y es de Psicología. No exige dueña: la bandeja sin tomar la ve toda
    * el área, así que saber que una referencia existe no revela nada que la cola no muestre ya.
    */
-  async exigirReferencia(
-    referidoId: string,
-    psicologaId: string,
-  ): Promise<ReferenciaPsicologia> {
-    const referencia = await this.bandejaRepository.buscarReferencia(
-      referidoId,
-      psicologaId,
-    );
+  async exigirReferencia(referidoId: string): Promise<ReferenciaPsicologia> {
+    const referencia =
+      await this.bandejaRepository.buscarReferencia(referidoId);
     if (!referencia) {
       throw new ForbiddenException(MENSAJE_SIN_ACCESO_REFERENCIA);
     }
     return referencia;
   }
 
-  /** La referencia ya es un caso de esta psicóloga con su proceso sin cerrar. */
-  async exigirCasoTomado(
+  /** Como `exigirReferencia`, y además nadie la ha tomado: se puede reservar o atender. */
+  async exigirReferenciaSinTomar(
     referidoId: string,
-    psicologaId: string,
-  ): Promise<ReferenciaPsicologia & { procesoId: string }> {
-    const referencia = await this.exigirReferencia(referidoId, psicologaId);
-    if (referencia.situacion === 'SIN_TOMAR') {
-      throw new ConflictException(MENSAJE_TOMAR_PRIMERO);
+  ): Promise<ReferenciaPsicologia> {
+    const referencia = await this.exigirReferencia(referidoId);
+    if (referencia.situacion !== 'SIN_TOMAR') {
+      throw new ConflictException(MENSAJE_CASO_YA_TOMADO);
     }
-    if (referencia.situacion !== 'MIA' || referencia.procesoId === null) {
-      throw new ForbiddenException(MENSAJE_SIN_ACCESO_REFERENCIA);
-    }
-    return { ...referencia, procesoId: referencia.procesoId };
+    return referencia;
   }
 
   /**

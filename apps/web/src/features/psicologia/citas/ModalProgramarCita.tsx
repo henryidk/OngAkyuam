@@ -12,7 +12,6 @@ import {
   parseLocalGT,
   type AbrirProcesosPsicologiaInput,
   type AgendarCitaPsicologicaInput,
-  type CasoPorAgendarDto,
   type CitaAgendaDto,
   type CitaResumen,
   type ConflictoTraslapeCita,
@@ -20,6 +19,7 @@ import {
   type PersonaAtendidaDto,
   type PersonaParaAbrirDto,
   type ProcesoParaAgendarDto,
+  type ReferenciaParaAgendarDto,
   textoCodigo,
 } from '@akyuam/shared'
 import ModalPasos from '../../../components/agenda/ModalPasos'
@@ -33,8 +33,11 @@ import ElegirHorario, { type HorarioElegido } from './ElegirHorario'
 
 /** Para qué se abre el modal: cada caso guarda contra un endpoint distinto. */
 export type DestinoCita =
-  /** Primera cita de un caso tomado: al guardarla se abre el proceso de cada persona elegida. */
-  | { tipo: 'PRIMERA'; caso: CasoPorAgendarDto }
+  /**
+   * Primera cita de una referencia sin tomar (reservada mientras el modal está abierto): al
+   * guardarla se toma el caso y se abre el proceso de cada persona elegida.
+   */
+  | { tipo: 'PRIMERA'; caso: ReferenciaParaAgendarDto }
   /**
    * Procesos nuevos desde la ficha: la usuaria que regresa y/o sus hijos/as. En `personas`, el
    * `numero` es el código que tendrá el proceso; `preseleccion`, quienes vienen ya marcadas.

@@ -19,6 +19,7 @@ import { InasistenciaService } from './citas/inasistencia.service';
 import { ProgramacionCitaService } from './citas/programacion-cita.service';
 import { AccesoMedicaService } from './compartido/acceso-medica.service';
 import { IdempotenciaMedica } from './compartido/idempotencia';
+import { ReservasMedica } from './compartido/reservas';
 import { RELOJ, RelojSistema } from '../common/reloj';
 import { ConsultasMedicasController } from './consultas/consultas-medicas.controller';
 import { ConsultasMedicasService } from './consultas/consultas-medicas.service';
@@ -81,6 +82,7 @@ import { VisibilidadMedicaReader } from './visibilidad/visibilidad-medica.reader
   providers: [
     LimitePorUsuarioGuard,
     IdempotenciaMedica,
+    ReservasMedica,
     AccesoMedicaService,
     BandejaMedicaService,
     AgendaMedicaService,

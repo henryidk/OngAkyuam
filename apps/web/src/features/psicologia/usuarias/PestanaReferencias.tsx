@@ -4,7 +4,6 @@ import { useContextoFicha } from './contextoFicha'
 
 const ESTADO: Record<ReferenciaHistorialPsicologiaDto['estado'], { etiqueta: string; clase: string }> = {
   SIN_TOMAR: { etiqueta: 'Sin tomar', clase: 'bg-[#fef3c7] text-[#b45309]' },
-  POR_AGENDAR: { etiqueta: 'Por agendar', clase: 'bg-[#f7f3fc] text-[#7346a5]' },
   ATENDIDA: { etiqueta: 'Atendida', clase: 'bg-[#dcfce7] text-[#15803d]' },
 }
 

@@ -28,7 +28,6 @@ describe('AccesoPsicologiaService', () => {
     };
     bandejaRepository = {
       listarSinTomar: jest.fn(),
-      listarPorAgendar: jest.fn(),
       buscarReferencia: jest.fn(),
     };
     procesosRepository = {
@@ -151,58 +150,41 @@ describe('AccesoPsicologiaService', () => {
     });
   });
 
-  describe('exigirCasoTomado', () => {
+  describe('exigirReferenciaSinTomar', () => {
     const referencia: ReferenciaPsicologia = {
       referidoId: 'ref-1',
       expedienteId: 'exp-1',
       expedienteNumero: '05-2026',
       usuariaId: 'usuaria-1',
-      situacion: 'MIA',
-      procesoId: 'proc-1',
+      situacion: 'SIN_TOMAR',
     };
 
     it('rechaza con 403 una referencia que no existe o no es de Psicología', async () => {
       bandejaRepository.buscarReferencia.mockResolvedValue(null);
 
       await expect(
-        service.exigirCasoTomado('ref-1', 'psicologa-a'),
+        service.exigirReferenciaSinTomar('ref-1'),
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it('rechaza con 403 el caso que tomó otra psicóloga', async () => {
+    it('rechaza con 409 la referencia de un caso que ya tomó alguien', async () => {
       bandejaRepository.buscarReferencia.mockResolvedValue({
         ...referencia,
-        situacion: 'NO_DISPONIBLE',
-        procesoId: null,
+        situacion: 'TOMADA',
       });
 
       await expect(
-        service.exigirCasoTomado('ref-1', 'psicologa-b'),
-      ).rejects.toBeInstanceOf(ForbiddenException);
-    });
-
-    it('pide tomar el caso primero (409) si nadie lo ha tomado', async () => {
-      bandejaRepository.buscarReferencia.mockResolvedValue({
-        ...referencia,
-        situacion: 'SIN_TOMAR',
-        procesoId: null,
-      });
-
-      await expect(
-        service.exigirCasoTomado('ref-1', 'psicologa-a'),
+        service.exigirReferenciaSinTomar('ref-1'),
       ).rejects.toBeInstanceOf(ConflictException);
     });
 
-    it('devuelve el caso con su proceso cuando es de quien pregunta', async () => {
+    it('devuelve la referencia que sigue sin tomar', async () => {
       bandejaRepository.buscarReferencia.mockResolvedValue(referencia);
 
-      await expect(
-        service.exigirCasoTomado('ref-1', 'psicologa-a'),
-      ).resolves.toMatchObject({ procesoId: 'proc-1', expedienteId: 'exp-1' });
-      expect(bandejaRepository.buscarReferencia).toHaveBeenCalledWith(
-        'ref-1',
-        'psicologa-a',
+      await expect(service.exigirReferenciaSinTomar('ref-1')).resolves.toEqual(
+        referencia,
       );
+      expect(bandejaRepository.buscarReferencia).toHaveBeenCalledWith('ref-1');
     });
   });
 

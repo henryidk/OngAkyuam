@@ -44,13 +44,8 @@ export default function SeccionPorReasignar({ casos, onCambio }: SeccionPorReasi
     try {
       const tomado = await tomarCasoPorReasignar(caso.procesoId)
       onCambio()
-      if (tomado.referidoIdPorAgendar) {
-        mostrar('Caso tomado. Prográmale la primera cita.')
-        navigate(RUTAS_PSICOLOGIA.agenda(undefined, tomado.referidoIdPorAgendar))
-      } else {
-        mostrar('Proceso tomado: ahora es tuyo. Prográmale su próxima cita.')
-        navigate(RUTAS_PSICOLOGIA.proceso(tomado.procesoId))
-      }
+      mostrar('Proceso tomado: ahora es tuyo. Prográmale su próxima cita.')
+      navigate(RUTAS_PSICOLOGIA.proceso(tomado.procesoId))
     } catch (err) {
       setError(extraerMensajeError(err))
       // 409: otra psicóloga lo tomó primero; la lista que se ve ya no es cierta.

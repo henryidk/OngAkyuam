@@ -10,6 +10,7 @@ import { AccesoMedicaService } from '../compartido/acceso-medica.service';
 import { eventoAuditoria } from '../compartido/auditoria';
 import { traducirErrorMedica } from '../compartido/errores-http';
 import { IdempotenciaMedica } from '../compartido/idempotencia';
+import { ReservasMedica } from '../compartido/reservas';
 import { RELOJ, type IReloj } from '../../common/reloj';
 import { exigirInicioValido } from '../compartido/validar-horario';
 import {
@@ -30,6 +31,7 @@ export class ProgramacionCitaService {
     private readonly acceso: AccesoMedicaService,
     private readonly idempotencia: IdempotenciaMedica,
     private readonly auditService: AuditService,
+    private readonly reservas: ReservasMedica,
   ) {}
 
   async programar(
@@ -51,6 +53,12 @@ export class ProgramacionCitaService {
     const expediente = datos.referidoId
       ? await this.acceso.exigirReferencia(datos.referidoId)
       : await this.acceso.exigirExpediente(datos.expedienteId!);
+    if (datos.referidoId) {
+      await this.reservas.exigirSinReservaAjena(
+        datos.referidoId,
+        contexto.usuarioId,
+      );
+    }
     const ahora = this.reloj.ahora();
     const inicio = exigirInicioValido(datos.inicio, ahora, datos.duracionMin);
 
@@ -107,6 +115,9 @@ export class ProgramacionCitaService {
       hora: horaGT(inicio),
     };
     await this.idempotencia.guardar(claveRedis, respuesta);
+    if (datos.referidoId) {
+      await this.reservas.liberar(datos.referidoId, contexto.usuarioId);
+    }
     return respuesta;
   }
 }

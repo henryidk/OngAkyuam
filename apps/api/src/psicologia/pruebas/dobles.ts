@@ -2,7 +2,7 @@ import type { CitaResumen } from '@akyuam/shared';
 import type { AuditService } from '../../auth/services/audit.service';
 import type { ContextoAuditoria } from '../../common/types/contexto-auditoria';
 import type { RedisService } from '../../redis/redis.service';
-import type { IAtencionPsicologicaRepository } from '../interfaces/atencion-psicologica-repository.interface';
+import type { ReservasPsicologia } from '../compartido/reservas';
 import type {
   IBandejaPsicologiaRepository,
   ReferenciaPsicologia,
@@ -39,8 +39,7 @@ export function referencia(
     expedienteId: EXPEDIENTE_ID,
     expedienteNumero: '05-2026',
     usuariaId: USUARIA_ID,
-    situacion: 'MIA',
-    procesoId: PROCESO_ID,
+    situacion: 'SIN_TOMAR',
     ...parcial,
   };
 }
@@ -64,8 +63,7 @@ export function procesoConAcceso(
 export function crearBandejaRepository(): jest.Mocked<IBandejaPsicologiaRepository> {
   return {
     listarSinTomar: jest.fn().mockResolvedValue([]),
-    listarPorAgendar: jest.fn().mockResolvedValue([]),
-    buscarPorAgendar: jest.fn().mockResolvedValue(null),
+    buscarParaAgendar: jest.fn().mockResolvedValue(null),
     listarPorReasignar: jest.fn().mockResolvedValue([]),
     reasignar: jest.fn().mockResolvedValue(null),
     obtenerPreviaToma: jest.fn().mockResolvedValue(null),
@@ -86,11 +84,11 @@ export function crearProcesosRepository(): jest.Mocked<IProcesosPsicologiaReposi
       .fn()
       .mockResolvedValue({ id: EXPEDIENTE_ID, numero: '05-2026' }),
     ninoPerteneceAExpediente: jest.fn().mockResolvedValue(true),
-    // Un proceso por persona, en el orden recibido: la primera del caso ocupa el proceso tomado.
+    // Un proceso por persona, en el orden recibido.
     abrir: jest.fn((params: AbrirProcesoParams) =>
       Promise.resolve(
         params.personas.map((persona, i) => ({
-          procesoId: i === 0 ? params.procesoId : `proceso-${i + 1}`,
+          procesoId: i === 0 ? PROCESO_ID : `proceso-${i + 1}`,
           ninoId: persona.ninoId,
           consecutivo: 1,
           ninoConsecutivo: persona.ninoId === null ? null : i + 1,
@@ -112,7 +110,7 @@ export function crearProcesosRepository(): jest.Mocked<IProcesosPsicologiaReposi
     abrirYRegistrar: jest.fn((params: AbrirYRegistrarParams) =>
       Promise.resolve({
         abierto: {
-          procesoId: params.procesoId,
+          procesoId: PROCESO_ID,
           ninoId: params.persona.ninoId,
           consecutivo: 1,
           ninoConsecutivo: params.persona.ninoId === null ? null : 1,
@@ -164,16 +162,26 @@ export function crearCitasRepository(): CitasParaAcceso {
   } as unknown as CitasParaAcceso;
 }
 
-type AtencionParaTomar = Pick<
-  jest.Mocked<IAtencionPsicologicaRepository>,
-  'tomarCaso'
+/** Reservas sin Redis: libres salvo que la prueba diga otra cosa. Los scripts se prueban en e2e. */
+export function crearReservas(): jest.Mocked<
+  Pick<
+    ReservasPsicologia,
+    'reservar' | 'liberar' | 'vigentes' | 'exigirSinReservaAjena'
+  >
 > &
-  IAtencionPsicologicaRepository;
-
-export function crearAtencionRepository(): AtencionParaTomar {
+  ReservasPsicologia {
   return {
-    tomarCaso: jest.fn().mockResolvedValue('TOMADO'),
-  } as unknown as AtencionParaTomar;
+    reservar: jest.fn().mockResolvedValue(undefined),
+    liberar: jest.fn().mockResolvedValue(undefined),
+    vigentes: jest.fn((ids: string[]) => Promise.resolve(ids.map(() => null))),
+    exigirSinReservaAjena: jest.fn().mockResolvedValue(undefined),
+  } as unknown as jest.Mocked<
+    Pick<
+      ReservasPsicologia,
+      'reservar' | 'liberar' | 'vigentes' | 'exigirSinReservaAjena'
+    >
+  > &
+    ReservasPsicologia;
 }
 
 /** El servicio de acceso real sobre repositorios dobles: las pruebas ejercen el 403 de verdad. */

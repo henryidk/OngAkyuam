@@ -196,7 +196,7 @@ export default function ListaUsuarias() {
                       </td>
                       <td className="px-4 py-3 text-sm">
                         <div className="flex flex-wrap gap-1.5">
-                          {fila.referenciaPendiente && <InsigniaReferencia estado={fila.referenciaPendiente} />}
+                          {fila.referenciaPendiente && <InsigniaReferencia />}
                           {pildora && <span className={`${CLASE_PILDORA} ${pildora.clase}`}>{pildora.etiqueta}</span>}
                           {!pildora && !fila.referenciaPendiente && <span className="text-gray-500">—</span>}
                         </div>

@@ -5,6 +5,9 @@ import {
   type ReferenciaBandejaMedicaDto,
 } from '@akyuam/shared';
 import { RELOJ, type IReloj } from '../../common/reloj';
+import type { PersonalQueReserva } from '../../common/reservas-caso';
+import { AccesoMedicaService } from '../compartido/acceso-medica.service';
+import { ReservasMedica } from '../compartido/reservas';
 import { corteSinVenir } from '../dominio/sin-proxima';
 import { PorRegistrarService } from '../consultas/por-registrar.service';
 import {
@@ -20,10 +23,40 @@ export class BandejaMedicaService {
     private readonly lectorPendientes: ILectorPendientesMedica,
     private readonly porRegistrar: PorRegistrarService,
     @Inject(RELOJ) private readonly reloj: IReloj,
+    private readonly acceso: AccesoMedicaService,
+    private readonly reservas: ReservasMedica,
   ) {}
 
-  pendientes(): Promise<ReferenciaBandejaMedicaDto[]> {
-    return this.lectorPendientes.referenciasPendientes(LIMITE_BANDEJA_MEDICA);
+  /** Cada tarjeta dice si alguien le está agendando la primera consulta en este momento. */
+  async pendientes(usuarioId: string): Promise<ReferenciaBandejaMedicaDto[]> {
+    const referencias = await this.lectorPendientes.referenciasPendientes(
+      LIMITE_BANDEJA_MEDICA,
+    );
+    const reservas = await this.reservas.vigentes(
+      referencias.map((referencia) => referencia.referidoId),
+      usuarioId,
+    );
+    return referencias.map((referencia, i) => ({
+      ...referencia,
+      reserva: reservas[i],
+    }));
+  }
+
+  /**
+   * Reserva o renueva la referencia mientras se agenda su primera consulta. Que ya esté atendida
+   * lo decide la transacción que crea la cita: reservar no cambia nada del caso.
+   */
+  async reservar(
+    referidoId: string,
+    personal: PersonalQueReserva,
+  ): Promise<void> {
+    await this.acceso.exigirReferencia(referidoId);
+    await this.reservas.reservar(referidoId, personal, 'AGENDANDO');
+  }
+
+  /** Suelta la reserva propia; si es de otra persona o ya venció, no pasa nada. */
+  liberar(referidoId: string, usuarioId: string): Promise<void> {
+    return this.reservas.liberar(referidoId, usuarioId);
   }
 
   /**

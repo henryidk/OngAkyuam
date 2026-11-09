@@ -3,10 +3,10 @@ import { ConflictException, ForbiddenException } from '@nestjs/common';
 import {
   contexto,
   crearAcceso,
-  crearAtencionRepository,
   crearAuditService,
   crearBandejaRepository,
   crearProcesosRepository,
+  crearReservas,
   eventosAuditados,
   EXPEDIENTE_ID,
   PROCESO_ID,
@@ -15,94 +15,137 @@ import {
 } from '../pruebas/dobles';
 import { BandejaPsicologiaService } from './bandeja-psicologia.service';
 
+// La reserva real necesita Redis: aquí se usa el doble y se evita cargar su configuración.
+jest.mock('../../redis/redis.service', () => ({ RedisService: class {} }));
+
 describe('BandejaPsicologiaService', () => {
   const bandejaRepository = crearBandejaRepository();
-  const atencionRepository = crearAtencionRepository();
+  const reservas = crearReservas();
   const auditService = crearAuditService();
   const service = new BandejaPsicologiaService(
     bandejaRepository,
-    atencionRepository,
     crearAcceso(bandejaRepository, crearProcesosRepository()),
+    reservas,
     auditService,
   );
-
-  const sinTomar = referencia({ situacion: 'SIN_TOMAR', procesoId: null });
+  const personal = { id: 'psicologa-a', nombreCompleto: 'Psicóloga Ficticia' };
+  const tomada = referencia({ situacion: 'TOMADA' });
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Antes de tomar nadie es dueña; después, la referencia ya es de quien la tomó.
     bandejaRepository.buscarReferencia
       .mockReset()
-      .mockResolvedValueOnce(sinTomar)
       .mockResolvedValue(referencia());
-    (atencionRepository.tomarCaso as jest.Mock).mockResolvedValue('TOMADO');
   });
 
-  it('"por agendar" siempre se pide con la psicóloga autenticada', async () => {
-    await service.listarPorAgendar('psicologa-a');
+  it('cada tarjeta del Área de atención lleva su reserva, vista por quien pregunta', async () => {
+    const reserva = {
+      nombre: 'Psicóloga Ficticia',
+      desde: '2026-11-09T16:15:00.000Z',
+      motivo: 'AGENDANDO' as const,
+      propia: false,
+    };
+    bandejaRepository.listarSinTomar.mockResolvedValue([
+      { referidoId: 'ref-1' },
+      { referidoId: 'ref-2' },
+    ] as Awaited<ReturnType<typeof bandejaRepository.listarSinTomar>>);
+    reservas.vigentes.mockResolvedValue([reserva, null]);
 
-    expect(bandejaRepository.listarPorAgendar).toHaveBeenCalledWith(
-      'psicologa-a',
+    await expect(service.listarSinTomar('psicologa-b')).resolves.toEqual([
+      { referidoId: 'ref-1', reserva },
+      { referidoId: 'ref-2', reserva: null },
+    ]);
+    expect(reservas.vigentes).toHaveBeenCalledWith(
+      ['ref-1', 'ref-2'],
+      'psicologa-b',
     );
   });
 
-  describe('tomar', () => {
-    it('asigna el caso a quien lo toma y devuelve su proceso', async () => {
-      await expect(service.tomar(REFERIDO_ID, contexto)).resolves.toEqual({
-        referidoId: REFERIDO_ID,
-        procesoId: PROCESO_ID,
-      });
-      expect(atencionRepository.tomarCaso).toHaveBeenCalledWith({
-        expedienteId: EXPEDIENTE_ID,
-        psicologaId: 'psicologa-a',
-      });
-    });
+  describe('reservar', () => {
+    it('reserva a nombre de quien llama, sin tomar el caso ni auditar', async () => {
+      await service.reservar(REFERIDO_ID, 'AGENDANDO', personal);
 
-    it('audita solo ids', async () => {
-      await service.tomar(REFERIDO_ID, contexto);
-
-      expect(eventosAuditados(auditService)).toEqual([
-        expect.objectContaining({
-          accion: 'CASO_PSICOLOGIA_TOMADO',
-          entidadId: PROCESO_ID,
-          detalles: { expedienteId: EXPEDIENTE_ID, referidoId: REFERIDO_ID },
-        }),
-      ]);
-    });
-
-    it('rechaza con 403 una referencia inexistente o de otra área, sin tocar nada', async () => {
-      bandejaRepository.buscarReferencia.mockReset().mockResolvedValue(null);
-
-      await expect(service.tomar(REFERIDO_ID, contexto)).rejects.toBeInstanceOf(
-        ForbiddenException,
+      expect(reservas.reservar).toHaveBeenCalledWith(
+        REFERIDO_ID,
+        personal,
+        'AGENDANDO',
       );
-      expect(atencionRepository.tomarCaso).not.toHaveBeenCalled();
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
 
-    it.each(['MIA', 'NO_DISPONIBLE'] as const)(
-      'responde 409 si la referencia ya está %s',
-      async (situacion) => {
-        bandejaRepository.buscarReferencia
-          .mockReset()
-          .mockResolvedValue(referencia({ situacion }));
+    it('rechaza con 403 una referencia inexistente o de otra área, sin reservar', async () => {
+      bandejaRepository.buscarReferencia.mockResolvedValue(null);
+
+      await expect(
+        service.reservar(REFERIDO_ID, 'AGENDANDO', personal),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(reservas.reservar).not.toHaveBeenCalled();
+    });
+
+    it('rechaza con 409 un caso que ya tomó alguien, sin reservar', async () => {
+      bandejaRepository.buscarReferencia.mockResolvedValue(tomada);
+
+      await expect(
+        service.reservar(REFERIDO_ID, 'ATENDIENDO', personal),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(reservas.reservar).not.toHaveBeenCalled();
+    });
+
+    it('propaga el 409 cuando otra persona tiene la reserva', async () => {
+      reservas.reservar.mockRejectedValueOnce(new ConflictException());
+
+      await expect(
+        service.reservar(REFERIDO_ID, 'AGENDANDO', personal),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  it('libera solo la reserva de quien llama', async () => {
+    await service.liberar(REFERIDO_ID, 'psicologa-a');
+
+    expect(reservas.liberar).toHaveBeenCalledWith(REFERIDO_ID, 'psicologa-a');
+  });
+
+  describe('obtenerParaAgendar', () => {
+    // Datos ficticios.
+    const paraAgendar = {
+      referidoId: REFERIDO_ID,
+      expedienteId: EXPEDIENTE_ID,
+      expedienteNumero: '05-2026',
+      usuariaId: 'usuaria-ficticia',
+      usuariaNombreCompleto: 'Usuaria Ficticia',
+      personas: [],
+    };
+
+    it('devuelve a quién se le puede agendar la primera cita', async () => {
+      bandejaRepository.buscarParaAgendar.mockResolvedValue(paraAgendar);
+
+      await expect(service.obtenerParaAgendar(REFERIDO_ID)).resolves.toEqual(
+        paraAgendar,
+      );
+    });
+
+    it.each([
+      ['inexistente (403)', null, ForbiddenException],
+      ['ya tomada (409)', tomada, ConflictException],
+    ])(
+      'rechaza una referencia %s sin consultar nada',
+      async (_, encontrada, error) => {
+        bandejaRepository.buscarReferencia.mockResolvedValue(encontrada);
 
         await expect(
-          service.tomar(REFERIDO_ID, contexto),
-        ).rejects.toBeInstanceOf(ConflictException);
-        expect(atencionRepository.tomarCaso).not.toHaveBeenCalled();
+          service.obtenerParaAgendar(REFERIDO_ID),
+        ).rejects.toBeInstanceOf(error);
+        expect(bandejaRepository.buscarParaAgendar).not.toHaveBeenCalled();
       },
     );
 
-    it('responde 409 y no audita cuando otra psicóloga ganó la carrera', async () => {
-      (atencionRepository.tomarCaso as jest.Mock).mockResolvedValue(
-        'YA_TOMADO',
-      );
+    it('responde 409 si entre una consulta y otra alguien la tomó', async () => {
+      bandejaRepository.buscarParaAgendar.mockResolvedValue(null);
 
-      await expect(service.tomar(REFERIDO_ID, contexto)).rejects.toEqual(
-        new ConflictException('Este caso ya fue tomado por otra profesional'),
-      );
-      expect(auditService.registrar).not.toHaveBeenCalled();
+      await expect(
+        service.obtenerParaAgendar(REFERIDO_ID),
+      ).rejects.toBeInstanceOf(ConflictException);
     });
   });
 
@@ -123,9 +166,6 @@ describe('BandejaPsicologiaService', () => {
     };
 
     beforeEach(() => {
-      bandejaRepository.buscarReferencia
-        .mockReset()
-        .mockResolvedValue(sinTomar);
       bandejaRepository.obtenerPreviaToma.mockResolvedValue(previa);
     });
 
@@ -152,12 +192,8 @@ describe('BandejaPsicologiaService', () => {
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
 
-    it('rechaza con 403 el caso que ya tomó otra psicóloga, sin consultar nada', async () => {
-      bandejaRepository.buscarReferencia
-        .mockReset()
-        .mockResolvedValue(
-          referencia({ situacion: 'NO_DISPONIBLE', procesoId: null }),
-        );
+    it('rechaza con 403 el caso que ya tomó alguien, sin consultar nada', async () => {
+      bandejaRepository.buscarReferencia.mockReset().mockResolvedValue(tomada);
 
       await expect(
         service.obtenerPreviaToma(REFERIDO_ID, contexto),
@@ -167,81 +203,11 @@ describe('BandejaPsicologiaService', () => {
     });
   });
 
-  describe('obtenerPorAgendar', () => {
-    // Datos ficticios.
-    const caso = {
-      referidoId: REFERIDO_ID,
-      expedienteId: EXPEDIENTE_ID,
-      expedienteNumero: '05-2026',
-      usuariaId: 'usuaria-ficticia',
-      usuariaNombreCompleto: 'Usuaria Ficticia',
-      tomadaEn: '2026-11-01T15:00:00.000Z',
-      personas: [],
-    };
-
-    beforeEach(() => {
-      bandejaRepository.buscarReferencia
-        .mockReset()
-        .mockResolvedValue(referencia());
-      bandejaRepository.buscarPorAgendar.mockReset().mockResolvedValue(caso);
-    });
-
-    it('devuelve el caso tomado, buscado con la psicóloga autenticada', async () => {
-      await expect(
-        service.obtenerPorAgendar(REFERIDO_ID, 'psicologa-a'),
-      ).resolves.toEqual(caso);
-      expect(bandejaRepository.buscarPorAgendar).toHaveBeenCalledWith(
-        'psicologa-a',
-        REFERIDO_ID,
-      );
-    });
-
-    it.each([
-      ['inexistente', null],
-      [
-        'de otra psicóloga',
-        referencia({ situacion: 'NO_DISPONIBLE', procesoId: null }),
-      ],
-    ])(
-      'rechaza con 403 un caso %s, sin consultar nada',
-      async (_, encontrada) => {
-        bandejaRepository.buscarReferencia
-          .mockReset()
-          .mockResolvedValue(encontrada);
-
-        await expect(
-          service.obtenerPorAgendar(REFERIDO_ID, 'psicologa-a'),
-        ).rejects.toBeInstanceOf(ForbiddenException);
-        expect(bandejaRepository.buscarPorAgendar).not.toHaveBeenCalled();
-      },
-    );
-
-    it('exige tomar el caso antes (409)', async () => {
-      bandejaRepository.buscarReferencia
-        .mockReset()
-        .mockResolvedValue(sinTomar);
-
-      await expect(
-        service.obtenerPorAgendar(REFERIDO_ID, 'psicologa-a'),
-      ).rejects.toBeInstanceOf(ConflictException);
-      expect(bandejaRepository.buscarPorAgendar).not.toHaveBeenCalled();
-    });
-
-    it('avisa con 409 si el caso ya tiene su primera cita', async () => {
-      bandejaRepository.buscarPorAgendar.mockResolvedValue(null);
-
-      await expect(
-        service.obtenerPorAgendar(REFERIDO_ID, 'psicologa-a'),
-      ).rejects.toBeInstanceOf(ConflictException);
-    });
-  });
-
   describe('tomarPorReasignar', () => {
     const reasignado = {
       procesoId: PROCESO_ID,
       expedienteId: EXPEDIENTE_ID,
       psicologaAnteriorId: 'psicologa-inactiva',
-      referidoIdPorAgendar: null,
       citasCanceladas: 2,
     };
 
@@ -258,25 +224,12 @@ describe('BandejaPsicologiaService', () => {
         service.tomarPorReasignar(PROCESO_ID, contexto),
       ).resolves.toEqual({
         procesoId: PROCESO_ID,
-        referidoIdPorAgendar: null,
         citasCanceladas: 2,
       });
       expect(bandejaRepository.reasignar).toHaveBeenCalledWith({
         procesoId: PROCESO_ID,
         psicologaId: 'psicologa-a',
       });
-    });
-
-    it('devuelve la referencia cuando el caso aún no tenía primera cita', async () => {
-      bandejaRepository.reasignar.mockResolvedValue({
-        ...reasignado,
-        referidoIdPorAgendar: REFERIDO_ID,
-        citasCanceladas: 0,
-      });
-
-      await expect(
-        service.tomarPorReasignar(PROCESO_ID, contexto),
-      ).resolves.toMatchObject({ referidoIdPorAgendar: REFERIDO_ID });
     });
 
     it('audita solo ids: quién lo llevaba y cuántas citas se cancelaron', async () => {

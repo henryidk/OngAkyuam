@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
+  HttpCode,
   Param,
   ParseUUIDPipe,
   Post,
@@ -12,10 +14,12 @@ import { Throttle } from '@nestjs/throttler';
 import {
   abrirProcesosPsicologiaSchema,
   atenderAhoraSchema,
+  reservarCasoSchema,
 } from '@akyuam/shared';
 import type {
   AbrirProcesosPsicologiaInput,
   AtenderAhoraInput,
+  ReservarCasoInput,
 } from '@akyuam/shared';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { Roles } from '../../auth/decorators/roles.decorator';
@@ -38,8 +42,8 @@ export class BandejaPsicologiaController {
   ) {}
 
   @Get('bandeja')
-  listarSinTomar() {
-    return this.bandejaService.listarSinTomar();
+  listarSinTomar(@CurrentUser() usuario: AuthenticatedUser) {
+    return this.bandejaService.listarSinTomar(usuario.id);
   }
 
   @Get('bandeja/por-reasignar')
@@ -57,20 +61,6 @@ export class BandejaPsicologiaController {
     return this.bandejaService.tomarPorReasignar(procesoId, contexto);
   }
 
-  @Get('agenda/por-agendar')
-  listarPorAgendar(@CurrentUser() usuario: AuthenticatedUser) {
-    return this.bandejaService.listarPorAgendar(usuario.id);
-  }
-
-  /** Un caso tomado por agendar, para "Atender ahora" (a quién se puede atender). */
-  @Get('agenda/por-agendar/:referidoId')
-  obtenerPorAgendar(
-    @Param('referidoId', ParseUUIDPipe) referidoId: string,
-    @CurrentUser() usuario: AuthenticatedUser,
-  ) {
-    return this.bandejaService.obtenerPorAgendar(referidoId, usuario.id);
-  }
-
   /** Vista previa del expediente antes de tomar el caso: sin agresor, dirección ni teléfono. */
   @Get('bandeja/:referidoId/previa')
   obtenerPreviaToma(
@@ -80,14 +70,37 @@ export class BandejaPsicologiaController {
     return this.bandejaService.obtenerPreviaToma(referidoId, contexto);
   }
 
-  @Post('bandeja/:referidoId/tomar')
+  /** A quién se le puede agendar la primera cita: la referencia tiene que seguir sin tomar. */
+  @Get('bandeja/:referidoId/para-agendar')
+  obtenerParaAgendar(@Param('referidoId', ParseUUIDPipe) referidoId: string) {
+    return this.bandejaService.obtenerParaAgendar(referidoId);
+  }
+
+  /**
+   * Reserva o renueva la referencia mientras se agenda o se atiende; la pantalla abierta la
+   * llama cada pocos segundos. Ni reservar ni liberar se auditan: no tocan el caso.
+   */
+  @Post('bandeja/:referidoId/reserva')
+  @HttpCode(204)
   @UseGuards(LimitePorUsuarioGuard)
-  @Throttle({ default: { limit: 20, ttl: 60_000 } })
-  tomar(
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  reservar(
     @Param('referidoId', ParseUUIDPipe) referidoId: string,
-    @ContextoAuditoria() contexto: IContextoAuditoria,
+    @Body(new ZodValidationPipe(reservarCasoSchema)) datos: ReservarCasoInput,
+    @CurrentUser() usuario: AuthenticatedUser,
   ) {
-    return this.bandejaService.tomar(referidoId, contexto);
+    return this.bandejaService.reservar(referidoId, datos.motivo, usuario);
+  }
+
+  @Delete('bandeja/:referidoId/reserva')
+  @HttpCode(204)
+  @UseGuards(LimitePorUsuarioGuard)
+  @Throttle({ default: { limit: 30, ttl: 60_000 } })
+  liberar(
+    @Param('referidoId', ParseUUIDPipe) referidoId: string,
+    @CurrentUser() usuario: AuthenticatedUser,
+  ) {
+    return this.bandejaService.liberar(referidoId, usuario.id);
   }
 
   @Post('bandeja/:referidoId/atender')

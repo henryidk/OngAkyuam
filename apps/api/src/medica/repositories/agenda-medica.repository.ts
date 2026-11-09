@@ -314,7 +314,7 @@ export class AgendaMedicaRepository
 
   async referenciasPendientes(
     limite: number,
-  ): Promise<ReferenciaBandejaMedicaDto[]> {
+  ): Promise<Omit<ReferenciaBandejaMedicaDto, 'reserva'>[]> {
     // Prisma no compara columnas entre relaciones: los ids salen del SQL con la regla completa y
     // el tope; los datos de la tarjeta, de Prisma.
     const ids = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`

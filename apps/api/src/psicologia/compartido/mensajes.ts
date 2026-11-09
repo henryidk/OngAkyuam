@@ -8,12 +8,7 @@ export const MENSAJE_CASO_YA_TOMADO =
   'Este caso ya fue tomado por otra profesional';
 export const MENSAJE_CASO_NO_REASIGNABLE =
   'Este caso ya no está disponible: otra profesional lo tomó o volvió con su psicóloga';
-export const MENSAJE_TOMAR_PRIMERO =
-  'Tome el caso antes de agendar la primera cita';
-export const MENSAJE_CASO_YA_AGENDADO =
-  'Este caso ya tiene su primera cita. Búscalo en la Agenda o en Procesos.';
-export const MENSAJE_PROCESO_YA_ABIERTO =
-  'Este caso ya tiene agendada su primera cita';
+/** 409 al reservar o guardar un caso que otra profesional está agendando o atendiendo. */
 export const MENSAJE_OTRO_PROCESO_ACTIVO =
   'Esta persona ya tiene un proceso psicológico activo';
 export const MENSAJE_PROCESO_CERRADO = 'El proceso ya está cerrado';
@@ -25,7 +20,7 @@ export const MENSAJE_TRASLAPE = 'Ya existe una cita programada en ese horario';
 /** `codigo` del 409 de traslape: el frontend lo reconoce para ofrecer "programar de todos modos". */
 export const CODIGO_TRASLAPE_CITA = 'TRASLAPE_CITA';
 export const MENSAJE_REFERENCIA_PENDIENTE =
-  'La usuaria tiene una referencia pendiente: atiéndala desde el Área de atención o la Agenda';
+  'La usuaria tiene una referencia pendiente: atiéndala desde el Área de atención';
 export const MENSAJE_CITA_NO_MARCABLE =
   'La cita ya fue registrada o todavía no ha ocurrido';
 export const MENSAJE_RANGO_AGENDA_INVALIDO =

@@ -111,7 +111,6 @@ describe('UsuariasPsicologiaService', () => {
       );
 
       expect(usuariasRepository.listar).toHaveBeenCalledWith({
-        psicologaId: 'psicologa-a',
         filtro: 'CON_ACTIVO',
         busqueda: { tipo: 'numeroExpediente', valor: '05-2026' },
         pagina: 2,
@@ -152,7 +151,6 @@ describe('UsuariasPsicologiaService', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(usuariasRepository.obtenerFicha).toHaveBeenCalledWith(
         USUARIA_ID,
-        'psicologa-a',
         expect.any(Date),
       );
       expect(consultasRepository.listarDeUsuaria).not.toHaveBeenCalled();

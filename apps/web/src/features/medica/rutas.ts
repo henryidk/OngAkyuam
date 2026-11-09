@@ -28,7 +28,8 @@ export const RUTAS_MEDICA = {
   atencion: () => '/medica/atencion',
   /**
    * `dia` (`YYYY-MM-DD`) abre la agenda en ese día y su semana; sin él, en hoy. `agendar` (id de
-   * la referencia) abre el modal "Agendar primera consulta" con esa paciente.
+   * la referencia, ya reservada desde el Área de atención) abre "Agendar primera consulta" con esa
+   * paciente y la mantiene reservada mientras el modal está abierto.
    */
   agenda: (dia?: string, agendar?: string) => conQuery('/medica/agenda', { dia, agendar }),
   pacientes: (estado?: FiltroPacientesMedica) => conQuery('/medica/pacientes', { estado }),

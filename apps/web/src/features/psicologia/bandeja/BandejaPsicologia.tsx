@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Inbox } from 'lucide-react'
-import type { ReferenciaBandejaPsicologiaDto } from '@akyuam/shared'
+import { RENOVACION_RESERVA_CASO_MS, type MotivoReservaCaso, type ReferenciaBandejaPsicologiaDto } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import EmptyState from '../../../components/ui/EmptyState'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
-import { useToast } from '../../../components/ui/Toast'
+import { useEmpezarReserva } from '../../../lib/useEmpezarReserva'
 import { useRecurso } from '../../../lib/useRecurso'
-import { listarBandeja, listarPorReasignar } from '../api/psicologia.api'
+import { listarBandeja, listarPorReasignar, reservarReferencia } from '../api/psicologia.api'
 import { useContextoPsicologia } from '../compartido/contexto'
-import { useReclamarCaso } from '../hooks/useReclamarCaso'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import SeccionPorReasignar from './SeccionPorReasignar'
 import TarjetaReferencia from './TarjetaReferencia'
@@ -21,19 +20,20 @@ function textoTotal(total: number): string {
 
 /**
  * Área de atención: las usuarias que Trabajo Social refirió a Psicología y que nadie ha tomado.
- * La lista es común a todas las psicólogas; al tomar un caso pasa a ser de quien lo tomó y sale
- * de aquí. La primera cita se programa después, desde la agenda. Arriba, si los hay, los casos y
- * procesos abiertos de una psicóloga que ya no tiene la cuenta activa, para que alguien los retome.
+ * La lista es común a todas las psicólogas. "Tomar caso" reserva la referencia y abre la agenda:
+ * el caso pasa a ser de quien lo toma al confirmar la primera cita (o al registrar la sesión con
+ * "Atender ahora"); si se cancela, sigue aquí. Mientras tanto las demás ven quién lo está
+ * agendando. Arriba, si los hay, los casos y procesos abiertos de una psicóloga que ya no tiene
+ * la cuenta activa, para que alguien los retome.
  */
 export default function BandejaPsicologia() {
   useTituloPagina({ titulo: 'Área de atención' })
   const navigate = useNavigate()
-  const { mostrar } = useToast()
   const { recargarResumen, versionNovedades } = useContextoPsicologia()
   const { datos: referencias, error, recargar: recargarReferencias } = useRecurso(listarBandeja)
   // Si esta lista falla no se tapa la bandeja: simplemente no se muestra la sección.
   const { datos: porReasignar, recargar: recargarPorReasignar } = useRecurso(listarPorReasignar)
-  const { reclamandoId, error: errorReclamar, reclamar } = useReclamarCaso()
+  const { reservandoId, error: errorReservar, empezar } = useEmpezarReserva()
 
   const recargar = useCallback(async () => {
     await Promise.all([recargarReferencias(), recargarPorReasignar()])
@@ -48,18 +48,25 @@ export default function BandejaPsicologia() {
     void recargar()
   }, [versionNovedades, recargar])
 
-  function tomar(referencia: ReferenciaBandejaPsicologiaDto, atenderAhora = false) {
-    void reclamar(referencia.referidoId, {
-      alTomar: () => {
-        recargarResumen()
-        if (atenderAhora) {
-          navigate(RUTAS_PSICOLOGIA.atenderAhora(referencia.referidoId, 'atencion'))
-          return
-        }
-        mostrar('Caso tomado. Prográmale la primera cita.')
-        navigate(RUTAS_PSICOLOGIA.agenda(undefined, referencia.referidoId))
-      },
-      alPerderlo: () => {
+  // Una reserva ajena que vence sola (pestaña cerrada sin avisar, sin luz) no dispara el socket:
+  // mientras se vea alguna, la lista se vuelve a pedir al ritmo en que se renuevan.
+  const hayReservaAjena = referencias?.some((referencia) => referencia.reserva && !referencia.reserva.propia) ?? false
+  useEffect(() => {
+    if (!hayReservaAjena) return
+    const intervalo = window.setInterval(() => void recargarReferencias(), RENOVACION_RESERVA_CASO_MS)
+    return () => window.clearInterval(intervalo)
+  }, [hayReservaAjena, recargarReferencias])
+
+  function empezarCon(referencia: ReferenciaBandejaPsicologiaDto, motivo: MotivoReservaCaso) {
+    const { referidoId } = referencia
+    void empezar(referidoId, () => reservarReferencia(referidoId, motivo), {
+      alReservar: () =>
+        navigate(
+          motivo === 'ATENDIENDO'
+            ? RUTAS_PSICOLOGIA.atenderAhora(referidoId, 'atencion')
+            : RUTAS_PSICOLOGIA.agendarPrimeraCita(referidoId, 'atencion'),
+        ),
+      alPerderla: () => {
         void recargar()
         recargarResumen()
       },
@@ -73,8 +80,8 @@ export default function BandejaPsicologia() {
           {referencias && !(referencias.length === 0 && porReasignar?.length) ? textoTotal(referencias.length) : 'Referencias sin tomar'}
         </h2>
         <p className="mt-1 text-sm text-gray-600">
-          Usuarias que Trabajo Social refirió a Psicología. Al tomar un caso pasa a ser tuyo; después le programas la
-          primera cita desde la agenda.
+          Usuarias que Trabajo Social refirió a Psicología. El caso pasa a ser tuyo al confirmar su primera cita en la
+          agenda; si cancelas, sigue aquí sin tomar.
         </p>
       </div>
 
@@ -88,9 +95,9 @@ export default function BandejaPsicologia() {
         />
       )}
 
-      {errorReclamar && (
+      {errorReservar && (
         <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
-          {errorReclamar}
+          {errorReservar}
         </p>
       )}
 
@@ -115,10 +122,10 @@ export default function BandejaPsicologia() {
             <TarjetaReferencia
               key={referencia.referidoId}
               referencia={referencia}
-              tomando={reclamandoId === referencia.referidoId}
-              deshabilitada={reclamandoId !== null}
-              onTomar={() => tomar(referencia)}
-              onAtenderAhora={() => tomar(referencia, true)}
+              tomando={reservandoId === referencia.referidoId}
+              deshabilitada={reservandoId !== null}
+              onTomar={() => empezarCon(referencia, 'AGENDANDO')}
+              onAtenderAhora={() => empezarCon(referencia, 'ATENDIENDO')}
             />
           ))}
         </div>

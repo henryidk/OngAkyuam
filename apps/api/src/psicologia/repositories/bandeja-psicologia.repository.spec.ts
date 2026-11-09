@@ -30,8 +30,6 @@ describe('BandejaPsicologiaRepository.reasignar', () => {
   const porReasignar = {
     expedienteId: EXPEDIENTE_ID,
     psicologaAsignadaId: 'psicologa-inactiva',
-    fechaInicio: new Date('2026-05-04T15:00:00.000Z'),
-    referidoId: REFERIDO_ID,
   };
 
   it('no toca nada si el proceso no existe, está cerrado o su psicóloga sigue activa', async () => {
@@ -114,25 +112,12 @@ describe('BandejaPsicologiaRepository.reasignar', () => {
       procesoId: PROCESO_ID,
       expedienteId: EXPEDIENTE_ID,
       psicologaAnteriorId: 'psicologa-inactiva',
-      referidoIdPorAgendar: null,
       citasCanceladas: 3,
     });
     expect(tx.citaPsicologica.updateMany).toHaveBeenCalledWith({
       where: { atencionId: PROCESO_ID, estado: 'PROGRAMADA' },
       data: { estado: 'CANCELADA' },
     });
-  });
-
-  it('un caso sin primera cita queda por agendar para la nueva dueña', async () => {
-    const { tx, prisma } = crearPrisma();
-    tx.atencionPsicologica.findFirst.mockResolvedValue({
-      ...porReasignar,
-      fechaInicio: null,
-    });
-
-    await expect(
-      new BandejaPsicologiaRepository(prisma).reasignar(params),
-    ).resolves.toMatchObject({ referidoIdPorAgendar: REFERIDO_ID });
   });
 });
 

@@ -39,25 +39,24 @@ export interface PrimeraCitaPersona {
   duracionMinutos: number;
 }
 
-export interface AbrirProcesoParams {
-  procesoId: string;
+/** La referencia sin tomar que se atiende: atenderla es lo que toma el caso. */
+interface ReferenciaQueSeAtiende {
+  expedienteId: string;
+  referidoId: string;
   psicologaId: string;
   usuariaId: string;
-  /**
-   * La primera ocupa el proceso del caso tomado; cada una de las demás recibe uno nuevo en el
-   * mismo expediente.
-   */
+}
+
+export interface AbrirProcesoParams extends ReferenciaQueSeAtiende {
+  /** Cada una recibe su proceso en el expediente de la referencia; la primera lleva la referencia. */
   personas: PrimeraCitaPersona[];
 }
 
 /**
- * "Atender ahora" en un caso tomado: se abre el proceso de una persona con su cita de primera
- * atención (a la hora del servidor) y la sesión queda registrada en la misma transacción.
+ * "Atender ahora": se toma el caso, se abre el proceso de una persona con su cita de primera
+ * atención (a la hora del servidor) y la sesión queda registrada, en la misma transacción.
  */
-export interface AbrirYRegistrarParams {
-  procesoId: string;
-  psicologaId: string;
-  usuariaId: string;
+export interface AbrirYRegistrarParams extends ReferenciaQueSeAtiende {
   persona: PrimeraCitaPersona;
   registro: Omit<RegistrarConsultaParams, 'citaId' | 'psicologaId' | 'ahora'>;
 }
@@ -122,11 +121,11 @@ export interface ActualizarVisibilidadParams {
 
 /** El caso ya no es de esta psicóloga o se cerró entre la validación y el guardado. */
 export class ProcesoNoDisponibleError extends Error {}
-/** El caso ya tenía primera cita: otro envío abrió el proceso antes. */
-export class ProcesoYaAbiertoError extends Error {}
+/** Otra psicóloga tomó el caso entre la validación y el guardado. */
+export class CasoYaTomadoError extends Error {}
 /** La persona ya tiene otro proceso abierto, en este o en otro de los expedientes de la usuaria. */
 export class OtroProcesoActivoError extends Error {}
-/** La usuaria tiene una referencia sin tomar o un caso tomado sin agendar: se atiende ese. */
+/** La usuaria tiene una referencia sin tomar: se atiende desde el Área de atención. */
 export class ReferenciaPendienteError extends Error {}
 
 export interface IProcesosPsicologiaRepository {
@@ -163,11 +162,9 @@ export interface IProcesosPsicologiaRepository {
     expedienteId: string,
   ): Promise<boolean>;
   /**
-   * Abre el proceso de un caso tomado para las personas elegidas: la primera ocupa el del caso
-   * (fija la persona y la fecha de inicio) y las demás reciben uno nuevo en el mismo expediente;
-   * cada una con su cita de primera atención. Todo o nada. Revalida dentro de la transacción que
-   * el caso siga siendo de la psicóloga, que no tenga citas y que ninguna persona tenga otro
-   * proceso abierto.
+   * Toma el caso de una referencia y abre el proceso de cada persona elegida, con su cita de
+   * primera atención, todo o nada. Con el expediente bloqueado revalida que siga sin tomar
+   * (`CasoYaTomadoError`) y que ninguna persona tenga otro proceso abierto.
    */
   abrir(params: AbrirProcesoParams): Promise<ProcesoAbierto[]>;
   /**

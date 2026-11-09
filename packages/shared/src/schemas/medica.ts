@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ATENCION_BRINDADA_MAX } from '../dominio/poblacionBeneficiada.js'
+import type { ReservaCasoDto } from './reservaCaso.js'
 import type { TipoIngresoArea } from '../catalogos/ingresoArea.js'
 import {
   BUSQUEDA_PACIENTES_MEDICA_MAX,
@@ -543,6 +544,8 @@ export interface ReferenciaBandejaMedicaDto {
   personas: PersonaAtendidaDto[]
   /** Si esta referencia es el primer ingreso de la usuaria al área o un seguimiento. */
   ingreso: TipoIngresoArea
+  /** Quién está agendando la primera consulta de este caso; null = está libre. */
+  reserva: ReservaCasoDto | null
 }
 
 /** Una cita tal como la muestra la Agenda. Nunca incluye datos clínicos. */

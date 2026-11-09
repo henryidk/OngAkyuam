@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useCallback, useMemo, useState } from 'react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { CalendarDays, Plus } from 'lucide-react'
 import {
   diaSemanaGT,
@@ -16,22 +16,18 @@ import EmptyState from '../../../components/ui/EmptyState'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
 import { useRecurso } from '../../../lib/useRecurso'
-import {
-  listarCitasAgenda,
-  listarHuecos,
-  listarPorAgendar,
-  listarProcesosParaAgendar,
-} from '../api/psicologia.api'
+import { listarCitasAgenda, listarHuecos, listarProcesosParaAgendar } from '../api/psicologia.api'
 import ConfirmarNoAsistio from '../citas/ConfirmarNoAsistio'
 import ModalProgramarCita, { type DestinoCita } from '../citas/ModalProgramarCita'
 import { useContextoPsicologia } from '../compartido/contexto'
 import { horaDeInstante } from '../compartido/horas'
-import { RUTAS_PSICOLOGIA } from '../rutas'
+import { RUTAS_PSICOLOGIA, type OrigenPrimeraCita } from '../rutas'
 import ControlSemana from './ControlSemana'
 import FilaCita from './FilaCita'
 import FilaHueco from './FilaHueco'
 import NavegadorSemana from './NavegadorSemana'
 import PendientesAgenda from './PendientesAgenda'
+import PrimeraCitaReservada from './PrimeraCitaReservada'
 import {
   citaPrincipal,
   citaYaEmpezo,
@@ -55,6 +51,10 @@ type Renglon =
   | { tipo: 'CITA'; minuto: number; cita: CitaAgendaDto }
   | { tipo: 'HUECO'; minuto: number; hueco: HuecoLibreDto }
 
+function origenDe(valor: string | null): OrigenPrimeraCita {
+  return valor === 'ficha' ? 'ficha' : 'atencion'
+}
+
 function minutoDe(hora: string): number {
   const [horas, minutos] = hora.split(':').map(Number)
   return horas * 60 + minutos
@@ -62,14 +62,14 @@ function minutoDe(hora: string): number {
 
 /**
  * Su trabajo es planificar el tiempo: a la izquierda la semana y el día abierto con sus citas y
- * sus tramos libres; a la derecha lo que pide programar (casos tomados sin primera cita y procesos
- * sin siguiente fecha). Las sesiones pasadas sin registrar viven en Consultas: aquí solo se avisa
- * cuántas hay. Este componente solo orquesta: decide qué semana y qué día se ven, y reparte datos.
+ * sus tramos libres; a la derecha los procesos sin siguiente fecha. Las sesiones pasadas sin
+ * registrar viven en Consultas: aquí solo se avisa cuántas hay. Con `?agendar=<referidoId>` abre
+ * la primera cita de una referencia del Área de atención. Este componente solo orquesta: decide
+ * qué semana y qué día se ven, y reparte datos.
  */
 export default function Agenda() {
   useTituloPagina({ titulo: 'Agenda' })
   const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
   const { mostrar } = useToast()
   const { resumen, recargarResumen } = useContextoPsicologia()
 
@@ -84,29 +84,14 @@ export default function Agenda() {
 
   const semana = useRecurso(useCallback(() => listarCitasAgenda({ desde: lunes, hasta: domingo }), [lunes, domingo]))
   const huecos = useRecurso(useCallback(() => listarHuecos(dia), [dia]))
-  const porAgendar = useRecurso(listarPorAgendar)
   const procesos = useRecurso(listarProcesosParaAgendar)
 
   const [modal, setModal] = useState<ModalAbierto | null>(null)
   const [aMarcar, setAMarcar] = useState<CitaAgendaDto | null>(null)
   // El reloj se lee una vez al abrir la pantalla: basta para decidir cuál de las citas de hoy toca.
   const [ahora] = useState(() => Date.now())
-  // Caso recién tomado en el Área de atención. Se guarda al entrar porque el parámetro se quita
-  // de la URL en cuanto se muestra: recargar o volver atrás no debe resaltarlo otra vez.
-  const [resaltadoId] = useState(() => searchParams.get('porAgendar'))
-  const hayParametroPorAgendar = searchParams.has('porAgendar')
-
-  useEffect(() => {
-    if (!hayParametroPorAgendar) return
-    setSearchParams(
-      (actuales) => {
-        const sinParametro = new URLSearchParams(actuales)
-        sinParametro.delete('porAgendar')
-        return sinParametro
-      },
-      { replace: true },
-    )
-  }, [hayParametroPorAgendar, setSearchParams])
+  const agendarId = searchParams.get('agendar')
+  const origenAgendar = origenDe(searchParams.get('origen'))
 
   const { citasPorDia, diasSinRegistrar } = useMemo(() => {
     const cuenta = new Map<string, number>()
@@ -146,7 +131,6 @@ export default function Agenda() {
   function recargarTodo() {
     void semana.recargar()
     void huecos.recargar()
-    void porAgendar.recargar()
     void procesos.recargar()
     recargarResumen()
   }
@@ -157,6 +141,13 @@ export default function Agenda() {
     recargarTodo()
     // La agenda salta al día de la cita para que se vea dónde quedó.
     if (fechaCita !== dia) irA(fechaCita)
+  }
+
+  /** La primera cita quedó y el caso ya es suyo: se quita `?agendar` sin dejarlo en el historial. */
+  function alGuardarPrimera(fechaCita: string, mensaje: string) {
+    mostrar(mensaje)
+    recargarTodo()
+    setSearchParams(fechaCita === hoy ? {} : { semana: lunesDe(fechaCita), dia: fechaCita }, { replace: true })
   }
 
   function alIntentarNoAsistio(resultado: { mensaje: string; fechaNueva: string | null } | null) {
@@ -287,18 +278,19 @@ export default function Agenda() {
         </section>
 
         <aside aria-label="Pendientes de agendar" className="xl:sticky xl:top-6">
-          <PendientesAgenda
-            porAgendar={porAgendar.datos}
-            errorPorAgendar={porAgendar.error?.mensaje ?? null}
-            resaltadoId={resaltadoId}
-            sinProxima={resumen?.procesos.SIN_PROXIMA ?? null}
-            // Un solo elemento en ámbar a la vista: si ya hay sesiones por registrar, esta tarjeta queda neutra.
-            permitirUrgente={porRegistrar === 0}
-            onAgendar={(caso) => setModal({ destino: { tipo: 'PRIMERA', caso }, fecha: dia })}
-            onAtenderAhora={(caso) => navigate(RUTAS_PSICOLOGIA.atenderAhora(caso.referidoId, 'agenda'))}
-          />
+          <PendientesAgenda sinProxima={resumen?.procesos.SIN_PROXIMA ?? null} />
         </aside>
       </div>
+
+      {agendarId && (
+        <PrimeraCitaReservada
+          key={agendarId}
+          referidoId={agendarId}
+          origen={origenAgendar}
+          fechaInicial={dia}
+          onGuardada={alGuardarPrimera}
+        />
+      )}
 
       {modal && (
         <ModalProgramarCita

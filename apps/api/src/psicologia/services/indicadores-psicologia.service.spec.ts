@@ -51,7 +51,6 @@ describe('IndicadoresPsicologiaService', () => {
 
   beforeEach(() => {
     atencionRepository = {
-      tomarCaso: jest.fn(),
       fechaPrimerProceso: jest.fn(),
       contarCasosActivos: jest.fn(),
       contarIniciadosEnRango: jest.fn(),

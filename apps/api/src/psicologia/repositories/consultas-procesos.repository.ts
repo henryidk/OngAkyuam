@@ -29,7 +29,6 @@ import {
   sesionPorRegistrar,
 } from './acceso-expediente';
 import { condicionBusqueda } from './busqueda-procesos';
-import { casoPorAgendar } from './bandeja-psicologia.repository';
 import { mapearDocumentoCita } from './citas-psicologicas.mapper';
 import { codigoProceso, SELECT_CODIGO_PROCESO } from './codigo-proceso';
 import {
@@ -284,7 +283,6 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       procesosEquipo,
       referenciasSinTomar,
       casosPorReasignar,
-      casosPorAgendar,
       sesionesPorRegistrar,
     ] = await Promise.all([
       contarPorFiltro('MIOS'),
@@ -293,9 +291,6 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         where: { area: 'PSICOLOGIA', expediente: EXPEDIENTE_SIN_TOMAR },
       }),
       this.prisma.atencionPsicologica.count({ where: PROCESO_POR_REASIGNAR }),
-      this.prisma.atencionPsicologica.count({
-        where: casoPorAgendar(psicologaId),
-      }),
       this.prisma.citaPsicologica.count({
         where: sesionPorRegistrar(psicologaId, ahora),
       }),
@@ -306,7 +301,6 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
       procesosEquipo,
       referenciasSinTomar,
       casosPorReasignar,
-      casosPorAgendar,
       sesionesPorRegistrar,
     };
   }

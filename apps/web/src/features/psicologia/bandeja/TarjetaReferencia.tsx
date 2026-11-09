@@ -1,19 +1,22 @@
 import { Link } from 'react-router-dom'
+import { Clock } from 'lucide-react'
 import { DIAS_ALERTA_ESPERA_PSICOLOGIA, type ReferenciaBandejaPsicologiaDto } from '@akyuam/shared'
 import EtiquetaIngreso from '../../../components/EtiquetaIngreso'
 import Button from '../../../components/ui/Button'
 import MenuAcciones from '../../../components/ui/MenuAcciones'
-import { fechaDeInstante, iniciales } from '../../../lib/formato'
+import { fechaDeInstante, iniciales, textoReserva } from '../../../lib/formato'
 import { etiquetaPersona } from '../compartido/personas'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 
 interface TarjetaReferenciaProps {
   referencia: ReferenciaBandejaPsicologiaDto
+  /** Se está reservando esta referencia para abrir la agenda o "Atender ahora". */
   tomando: boolean
-  /** Mientras se toma otro caso no se puede tomar este: evita dos tomas a la vez. */
+  /** Mientras se reserva otra referencia no se puede empezar esta: evita dos a la vez. */
   deshabilitada: boolean
+  /** Reserva la referencia y abre la agenda con su primera cita: el caso se toma al confirmarla. */
   onTomar: () => void
-  /** Toma el caso y registra de una vez la sesión de la persona que está aquí, sin agendar. */
+  /** Reserva la referencia y registra la sesión de la persona que está aquí, sin agendar. */
   onAtenderAhora: () => void
 }
 
@@ -33,6 +36,8 @@ export default function TarjetaReferencia({
   onAtenderAhora,
 }: TarjetaReferenciaProps) {
   const enAlerta = referencia.diasEsperando >= DIAS_ALERTA_ESPERA_PSICOLOGIA
+  // La reserva propia (otra pestaña de la misma psicóloga) no bloquea: es suya.
+  const ajena = referencia.reserva && !referencia.reserva.propia ? referencia.reserva : null
   const detalle = [
     `Exp. ${referencia.expedienteNumero}`,
     `Referida ${fechaDeInstante(referencia.referidoEn)}`,
@@ -75,7 +80,7 @@ export default function TarjetaReferencia({
 
         {/* A la derecha del encabezado; en pantallas angostas (< 768 px) baja a su propia fila. */}
         <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 pt-3 md:border-t-0 md:pt-0">
-          {/* Igual que en Jurídico: abre la ficha de la usuaria, donde también se puede tomar el caso. */}
+          {/* Igual que en Jurídico: abre la ficha de la usuaria, donde también se puede agendar. */}
           <Link
             to={RUTAS_PSICOLOGIA.usuaria(referencia.usuariaId)}
             aria-label={`Ver expediente de ${referencia.usuariaNombreCompleto}`}
@@ -83,29 +88,45 @@ export default function TarjetaReferencia({
           >
             Ver expediente
           </Link>
-          <Button
-            tamano="md"
-            cargando={tomando}
-            disabled={deshabilitada}
-            onClick={onTomar}
-            aria-label={`Tomar el caso de ${referencia.usuariaNombreCompleto}`}
-          >
-            Tomar caso
-          </Button>
-          {/* Lo habitual es tomar y agendar; atender sin cita es la excepción, por eso va aparte. */}
-          {!deshabilitada && (
-            <MenuAcciones
-              etiqueta={`Más acciones para ${referencia.usuariaNombreCompleto}`}
-              boton="borde"
-              opciones={[
-                {
-                  clave: 'atender-ahora',
-                  etiqueta: 'Atender ahora',
-                  detalle: 'La persona está aquí: tomas el caso y registras la sesión sin agendar.',
-                  onElegir: onAtenderAhora,
-                },
-              ]}
-            />
+          {ajena ? (
+            // Otra psicóloga la está agendando o atendiendo: el caso sigue sin tomar, pero no se
+            // puede empezar a la vez. Vuelve a habilitarse cuando la suelte o venza su reserva.
+            <Button
+              variante="secondary"
+              tamano="md"
+              disabled
+              aria-label={`Caso de ${referencia.usuariaNombreCompleto}: ${textoReserva(ajena)}`}
+            >
+              <Clock aria-hidden="true" className="h-3.5 w-3.5" />
+              {textoReserva(ajena)}
+            </Button>
+          ) : (
+            <>
+              <Button
+                tamano="md"
+                cargando={tomando}
+                disabled={deshabilitada}
+                onClick={onTomar}
+                aria-label={`Tomar el caso de ${referencia.usuariaNombreCompleto}`}
+              >
+                Tomar caso
+              </Button>
+              {/* Lo habitual es agendar; atender sin cita es la excepción, por eso va aparte. */}
+              {!deshabilitada && (
+                <MenuAcciones
+                  etiqueta={`Más acciones para ${referencia.usuariaNombreCompleto}`}
+                  boton="borde"
+                  opciones={[
+                    {
+                      clave: 'atender-ahora',
+                      etiqueta: 'Atender ahora',
+                      detalle: 'La persona está aquí: registras la sesión sin agendar y con ella tomas el caso.',
+                      onElegir: onAtenderAhora,
+                    },
+                  ]}
+                />
+              )}
+            </>
           )}
         </div>
       </div>

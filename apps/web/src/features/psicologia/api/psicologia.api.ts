@@ -2,9 +2,7 @@ import type {
   AbrirProcesosPsicologiaInput,
   AgendarCitaPsicologicaInput,
   BuscarHistorialConsultasPsicologiaInput,
-  CasoPorAgendarDto,
   CasoPorReasignarDto,
-  CasoPsicologiaTomadoDto,
   CasoReasignadoDto,
   CerrarProcesoPsicologiaInput,
   CitaAgendaDto,
@@ -35,7 +33,9 @@ import type {
   ProcesoPsicologiaDetalle,
   ProcesosPsicologiaPaginados,
   RangoFechasQuery,
+  MotivoReservaCaso,
   ReferenciaBandejaPsicologiaDto,
+  ReferenciaParaAgendarDto,
   RegistroConsultaInput,
   SesionSinCitaInput,
   AtenderAhoraInput,
@@ -45,7 +45,7 @@ import type {
   VisibilidadProcesoPsicologiaDto,
   VisibilidadProcesoPsicologiaInput,
 } from '@akyuam/shared'
-import { api } from '../../../lib/api'
+import { api, borrarAlCerrar } from '../../../lib/api'
 
 /** Cliente tipado del módulo de psicología — una función por endpoint, nunca `api.get` suelto en un componente. */
 
@@ -67,23 +67,31 @@ export function listarBandeja() {
   return api.get<ReferenciaBandejaPsicologiaDto[]>('/psicologia/bandeja').then((res) => res.data)
 }
 
-export function tomarCaso(referidoId: string) {
-  return api.post<CasoPsicologiaTomadoDto>(`/psicologia/bandeja/${referidoId}/tomar`).then((res) => res.data)
+/**
+ * Reserva o renueva la referencia mientras se le agenda la primera cita o se atiende ahora; 409
+ * si ya la tomó o la tiene reservada otra psicóloga. No toma el caso.
+ */
+export function reservarReferencia(referidoId: string, motivo: MotivoReservaCaso) {
+  return api.post<void>(`/psicologia/bandeja/${referidoId}/reserva`, { motivo })
 }
 
-/** Casos que la psicóloga ya tomó y todavía no tienen primera cita. */
-export function listarPorAgendar() {
-  return api.get<CasoPorAgendarDto[]>('/psicologia/agenda/por-agendar').then((res) => res.data)
+export function liberarReferencia(referidoId: string) {
+  return api.delete<void>(`/psicologia/bandeja/${referidoId}/reserva`)
 }
 
-/** Un caso tomado por agendar; 409 si ya tiene primera cita. */
-export function obtenerCasoPorAgendar(referidoId: string) {
-  return api.get<CasoPorAgendarDto>(`/psicologia/agenda/por-agendar/${referidoId}`).then((res) => res.data)
+/** Igual que `liberarReferencia`, para cuando se cierra la pestaña. */
+export function liberarReferenciaAlCerrar(referidoId: string) {
+  borrarAlCerrar(`/psicologia/bandeja/${referidoId}/reserva`)
+}
+
+/** Lo que pide el modal de la primera cita (y "Atender ahora") de una referencia sin tomar. */
+export function obtenerReferenciaParaAgendar(referidoId: string) {
+  return api.get<ReferenciaParaAgendarDto>(`/psicologia/bandeja/${referidoId}/para-agendar`).then((res) => res.data)
 }
 
 /**
- * "Atender ahora": registra la sesión de una persona del caso tomado y con ella abre su proceso,
- * todo o nada. La fecha y la hora las pone el servidor.
+ * "Atender ahora": registra la sesión de una persona de la referencia y con ella toma el caso y
+ * abre su proceso, todo o nada. La fecha y la hora las pone el servidor.
  */
 export function atenderAhora(referidoId: string, datos: AtenderAhoraInput, claveIdempotencia: string) {
   return api

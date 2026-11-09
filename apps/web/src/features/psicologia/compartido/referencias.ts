@@ -1,11 +1,8 @@
 import type { ReferenciaHistorialPsicologiaDto } from '@akyuam/shared'
 
-/** De varias referencias pendientes manda la que nadie ha tomado: es la que pide actuar primero. */
+/** La referencia que nadie ha tomado todavía: la que pide actuar desde la ficha. */
 export function referenciaPendiente(
   referencias: ReferenciaHistorialPsicologiaDto[],
 ): ReferenciaHistorialPsicologiaDto | undefined {
-  return (
-    referencias.find((referencia) => referencia.estado === 'SIN_TOMAR') ??
-    referencias.find((referencia) => referencia.estado === 'POR_AGENDAR')
-  )
+  return referencias.find((referencia) => referencia.estado === 'SIN_TOMAR')
 }

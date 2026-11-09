@@ -10,7 +10,6 @@ export const USUARIAS_PSICOLOGIA_REPOSITORY = Symbol(
 );
 
 export interface ListarUsuariasPsicologiaParams {
-  psicologaId: string;
   filtro?: FiltroUsuariasPsicologia;
   busqueda?: BusquedaListaUsuarias;
   pagina: number;
@@ -40,7 +39,6 @@ export interface IUsuariasPsicologiaRepository {
    */
   obtenerFicha(
     usuariaId: string,
-    psicologaId: string,
     ahora: Date,
   ): Promise<FichaUsuariaRepo | null>;
 }

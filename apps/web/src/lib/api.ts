@@ -95,3 +95,18 @@ api.interceptors.response.use(
     }
   },
 )
+
+/**
+ * Petición que sobrevive al cierre de la pestaña (`keepalive`): para soltar una reserva en
+ * `pagehide`, cuando axios ya no alcanza a terminar. Lleva la cookie de sesión y el token CSRF
+ * igual que `api`; si falla no importa, la reserva vence sola.
+ */
+export function borrarAlCerrar(ruta: string): void {
+  const csrfToken = leerCookie('csrfToken')
+  void fetch(`${import.meta.env.VITE_API_URL ?? ''}${ruta}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    keepalive: true,
+    headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : undefined,
+  }).catch(() => undefined)
+}

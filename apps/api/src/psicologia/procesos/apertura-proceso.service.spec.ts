@@ -14,9 +14,9 @@ import type {
 } from '@akyuam/shared';
 import { IdempotenciaPsicologia } from '../compartido/idempotencia';
 import {
+  CasoYaTomadoError,
   OtroProcesoActivoError,
   ProcesoNoDisponibleError,
-  ProcesoYaAbiertoError,
   ReferenciaPendienteError,
 } from '../interfaces/procesos-psicologia-repository.interface';
 import {
@@ -28,6 +28,7 @@ import {
   crearCitasRepository,
   crearProcesosRepository,
   crearRedis,
+  crearReservas,
   eventosAuditados,
   EXPEDIENTE_ID,
   NINO_ID,
@@ -37,6 +38,10 @@ import {
   USUARIA_ID,
 } from '../pruebas/dobles';
 import { AperturaProcesoService } from './apertura-proceso.service';
+
+const RESERVA_AJENA = new ConflictException(
+  'Psicóloga Ficticia le está agendando cita. Espera a que termine.',
+);
 
 // El módulo real de Redis arrastra `@nestjs/config` (ESM), que Jest no puede cargar; aquí
 // solo hace falta su tipo, y el doble en memoria ocupa su lugar.
@@ -115,6 +120,7 @@ describe('AperturaProcesoService', () => {
   let procesosRepository: ReturnType<typeof crearProcesosRepository>;
   let citasRepository: ReturnType<typeof crearCitasRepository>;
   let redis: ReturnType<typeof crearRedis>;
+  let reservas: ReturnType<typeof crearReservas>;
   let auditService: ReturnType<typeof crearAuditService>;
   let service: AperturaProcesoService;
 
@@ -123,12 +129,14 @@ describe('AperturaProcesoService', () => {
     procesosRepository = crearProcesosRepository();
     citasRepository = crearCitasRepository();
     redis = crearRedis();
+    reservas = crearReservas();
     auditService = crearAuditService();
     service = new AperturaProcesoService(
       procesosRepository,
       citasRepository,
       crearAcceso(bandejaRepository, procesosRepository),
       new IdempotenciaPsicologia(redis),
+      reservas,
       auditService,
       { ahora: () => AHORA },
     );
@@ -148,7 +156,8 @@ describe('AperturaProcesoService', () => {
       ],
     });
     expect(procesosRepository.abrir).toHaveBeenCalledWith({
-      procesoId: PROCESO_ID,
+      expedienteId: EXPEDIENTE_ID,
+      referidoId: REFERIDO_ID,
       psicologaId: 'psicologa-a',
       usuariaId: USUARIA_ID,
       personas: [
@@ -161,10 +170,16 @@ describe('AperturaProcesoService', () => {
     });
   });
 
-  it('audita la apertura solo con ids', async () => {
+  it('toma el caso al confirmar la cita y audita la toma y la apertura solo con ids', async () => {
     await service.atender(REFERIDO_ID, datos(), contexto);
 
     expect(eventosAuditados(auditService)).toEqual([
+      expect.objectContaining({
+        accion: 'CASO_PSICOLOGIA_TOMADO',
+        entidad: 'AtencionPsicologica',
+        entidadId: PROCESO_ID,
+        detalles: { expedienteId: EXPEDIENTE_ID, referidoId: REFERIDO_ID },
+      }),
       expect.objectContaining({
         accion: 'PROCESO_PSICOLOGICO_ABIERTO',
         entidadId: PROCESO_ID,
@@ -180,14 +195,14 @@ describe('AperturaProcesoService', () => {
   });
 
   describe('acceso', () => {
-    it('rechaza con 403 el caso de otra psicóloga, sin abrir ni auditar', async () => {
+    it('rechaza con 409 el caso que ya tomó alguien, sin abrir ni auditar', async () => {
       bandejaRepository.buscarReferencia.mockResolvedValue(
-        referencia({ situacion: 'NO_DISPONIBLE', procesoId: null }),
+        referencia({ situacion: 'TOMADA' }),
       );
 
       await expect(
         service.atender(REFERIDO_ID, datos(), contexto),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).rejects.toBeInstanceOf(ConflictException);
       expect(procesosRepository.abrir).not.toHaveBeenCalled();
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
@@ -200,26 +215,49 @@ describe('AperturaProcesoService', () => {
       ).rejects.toBeInstanceOf(ForbiddenException);
     });
 
-    it('exige tomar el caso antes de agendar (409)', async () => {
-      bandejaRepository.buscarReferencia.mockResolvedValue(
-        referencia({ situacion: 'SIN_TOMAR', procesoId: null }),
+    it('rechaza con 409 el caso que otra persona tiene reservado, sin abrir', async () => {
+      reservas.exigirSinReservaAjena.mockRejectedValue(RESERVA_AJENA);
+
+      await expect(
+        service.atender(REFERIDO_ID, datos(), contexto),
+      ).rejects.toBe(RESERVA_AJENA);
+      expect(reservas.exigirSinReservaAjena).toHaveBeenCalledWith(
+        REFERIDO_ID,
+        'psicologa-a',
       );
+      expect(procesosRepository.abrir).not.toHaveBeenCalled();
+    });
+
+    it('al confirmar libera la reserva propia', async () => {
+      await service.atender(REFERIDO_ID, datos(), contexto);
+
+      expect(reservas.liberar).toHaveBeenCalledWith(REFERIDO_ID, 'psicologa-a');
+    });
+
+    it('si no se pudo agendar, la reserva sigue: la pantalla decide si reintenta o sale', async () => {
+      procesosRepository.abrir.mockRejectedValue(new CasoYaTomadoError());
 
       await expect(
         service.atender(REFERIDO_ID, datos(), contexto),
       ).rejects.toBeInstanceOf(ConflictException);
-      expect(procesosRepository.abrir).not.toHaveBeenCalled();
+      expect(reservas.liberar).not.toHaveBeenCalled();
     });
 
-    it('no devuelve una respuesta guardada a quien ya no tiene el caso', async () => {
-      await service.atender(REFERIDO_ID, datos(), contexto, 'clave-0001');
+    it('el reintento con la misma clave devuelve la respuesta guardada, aunque el caso ya quedó tomado', async () => {
+      const primera = await service.atender(
+        REFERIDO_ID,
+        datos(),
+        contexto,
+        'clave-0001',
+      );
       bandejaRepository.buscarReferencia.mockResolvedValue(
-        referencia({ situacion: 'NO_DISPONIBLE', procesoId: null }),
+        referencia({ situacion: 'TOMADA' }),
       );
 
       await expect(
         service.atender(REFERIDO_ID, datos(), contexto, 'clave-0001'),
-      ).rejects.toBeInstanceOf(ForbiddenException);
+      ).resolves.toEqual(primera);
+      expect(procesosRepository.abrir).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -265,7 +303,8 @@ describe('AperturaProcesoService', () => {
           personas: [expect.objectContaining({ ninoId: NINO_ID })],
         }),
       );
-      expect(eventosAuditados(auditService)[0]).toMatchObject({
+      expect(eventosAuditados(auditService)[1]).toMatchObject({
+        accion: 'PROCESO_PSICOLOGICO_ABIERTO',
         detalles: { ninoId: NINO_ID },
       });
     });
@@ -311,7 +350,7 @@ describe('AperturaProcesoService', () => {
   describe('carreras detectadas en la transacción', () => {
     it.each([
       [new ProcesoNoDisponibleError(), ForbiddenException],
-      [new ProcesoYaAbiertoError(), ConflictException],
+      [new CasoYaTomadoError(), ConflictException],
       [new OtroProcesoActivoError(), ConflictException],
     ])('traduce %p', async (error, excepcion) => {
       procesosRepository.abrir.mockRejectedValue(error);
@@ -348,7 +387,8 @@ describe('AperturaProcesoService', () => {
 
       expect(segunda).toEqual(primera);
       expect(procesosRepository.abrir).toHaveBeenCalledTimes(1);
-      expect(auditService.registrar).toHaveBeenCalledTimes(1);
+      // La toma y la apertura, una sola vez.
+      expect(auditService.registrar).toHaveBeenCalledTimes(2);
     });
 
     it('la clave queda atada a la psicóloga y a la referencia', async () => {
@@ -443,7 +483,7 @@ describe('AperturaProcesoService', () => {
         service.abrirDesdeFicha(USUARIA_ID, datos(), contexto),
       ).rejects.toEqual(
         new ConflictException(
-          'La usuaria tiene una referencia pendiente: atiéndala desde el Área de atención o la Agenda',
+          'La usuaria tiene una referencia pendiente: atiéndala desde el Área de atención',
         ),
       );
       expect(procesosRepository.abrirNuevo).not.toHaveBeenCalled();
@@ -585,7 +625,7 @@ describe('AperturaProcesoService', () => {
     });
   });
   describe('varias personas a la vez', () => {
-    it('desde la referencia: la usuaria ocupa el proceso del caso y cada hijo/a recibe el suyo', async () => {
+    it('desde la referencia: la usuaria va primero y cada persona recibe su proceso', async () => {
       const respuesta = await service.atender(
         REFERIDO_ID,
         // El hijo/a viene primero en el envío: el servicio pone a la usuaria al frente.
@@ -601,7 +641,7 @@ describe('AperturaProcesoService', () => {
       expect(procesosRepository.abrir).toHaveBeenCalledTimes(1);
       expect(procesosRepository.abrir).toHaveBeenCalledWith(
         expect.objectContaining({
-          procesoId: PROCESO_ID,
+          referidoId: REFERIDO_ID,
           personas: [
             expect.objectContaining({ ninoId: null }),
             expect.objectContaining({
@@ -615,9 +655,16 @@ describe('AperturaProcesoService', () => {
         '05-2026',
         '05-2026.02',
       ]);
-      // Un evento por proceso abierto.
+      // El caso se toma una vez; luego, un evento por proceso abierto.
+      expect(eventosAuditados(auditService).map((e) => e.accion)).toEqual([
+        'CASO_PSICOLOGIA_TOMADO',
+        'PROCESO_PSICOLOGICO_ABIERTO',
+        'PROCESO_PSICOLOGICO_ABIERTO',
+      ]);
       expect(
-        eventosAuditados(auditService).map((e) => e.detalles?.ninoId),
+        eventosAuditados(auditService)
+          .slice(1)
+          .map((e) => e.detalles?.ninoId),
       ).toEqual([null, NINO_ID]);
     });
 
@@ -732,12 +779,12 @@ describe('AperturaProcesoService', () => {
     it('dos envíos simultáneos con la misma clave: uno abre y el otro recibe conflicto', async () => {
       let terminar!: () => void;
       procesosRepository.abrir.mockImplementationOnce(
-        (params) =>
+        () =>
           new Promise((resolver) => {
             terminar = () =>
               resolver([
                 {
-                  procesoId: params.procesoId,
+                  procesoId: PROCESO_ID,
                   ninoId: null,
                   consecutivo: 1,
                   ninoConsecutivo: null,
@@ -766,7 +813,7 @@ describe('AperturaProcesoService', () => {
       ).resolves.toMatchObject({ procesos: [{ procesoId: PROCESO_ID }] });
     });
 
-    it('si la escritura falla, libera la reserva y se puede reintentar', async () => {
+    it('si la escritura falla, la clave queda libre y se puede reintentar', async () => {
       procesosRepository.abrir.mockRejectedValueOnce(new Error('caída'));
       await expect(
         service.atender(REFERIDO_ID, datos(), contexto, 'clave-0001'),
@@ -779,9 +826,9 @@ describe('AperturaProcesoService', () => {
 
   describe('atender ahora', () => {
     describe('acceso', () => {
-      it('exige tomar el caso antes (409), sin abrir ni registrar', async () => {
+      it('rechaza con 409 el caso que ya tomó alguien, sin abrir ni registrar', async () => {
         bandejaRepository.buscarReferencia.mockResolvedValue(
-          referencia({ situacion: 'SIN_TOMAR', procesoId: null }),
+          referencia({ situacion: 'TOMADA' }),
         );
 
         await expect(
@@ -791,16 +838,13 @@ describe('AperturaProcesoService', () => {
         expect(auditService.registrar).not.toHaveBeenCalled();
       });
 
-      it('rechaza con 403 el caso de otra psicóloga', async () => {
-        bandejaRepository.buscarReferencia.mockResolvedValue(
-          referencia({ situacion: 'NO_DISPONIBLE', procesoId: null }),
-        );
+      it('rechaza con 409 el caso que otra persona está atendiendo, sin registrar', async () => {
+        reservas.exigirSinReservaAjena.mockRejectedValue(RESERVA_AJENA);
 
         await expect(
           service.atenderAhora(REFERIDO_ID, sesionAhora(), contexto),
-        ).rejects.toBeInstanceOf(ForbiddenException);
+        ).rejects.toBe(RESERVA_AJENA);
         expect(procesosRepository.abrirYRegistrar).not.toHaveBeenCalled();
-        expect(auditService.registrar).not.toHaveBeenCalled();
       });
 
       it('rechaza con 403 una referencia inexistente', async () => {
@@ -828,25 +872,13 @@ describe('AperturaProcesoService', () => {
         expect(procesosRepository.abrirYRegistrar).not.toHaveBeenCalled();
       });
 
-      it('no devuelve una respuesta guardada a quien ya no tiene el caso', async () => {
-        await service.atenderAhora(
-          REFERIDO_ID,
-          sesionAhora(),
-          contexto,
-          'clave-0001',
-        );
-        bandejaRepository.buscarReferencia.mockResolvedValue(
-          referencia({ situacion: 'NO_DISPONIBLE', procesoId: null }),
-        );
+      it('al registrar libera la reserva propia', async () => {
+        await service.atenderAhora(REFERIDO_ID, sesionAhora(), contexto);
 
-        await expect(
-          service.atenderAhora(
-            REFERIDO_ID,
-            sesionAhora(),
-            contexto,
-            'clave-0001',
-          ),
-        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(reservas.liberar).toHaveBeenCalledWith(
+          REFERIDO_ID,
+          'psicologa-a',
+        );
       });
     });
 
@@ -861,7 +893,8 @@ describe('AperturaProcesoService', () => {
       });
       expect(procesosRepository.abrirYRegistrar).toHaveBeenCalledWith(
         expect.objectContaining({
-          procesoId: PROCESO_ID,
+          expedienteId: EXPEDIENTE_ID,
+          referidoId: REFERIDO_ID,
           psicologaId: 'psicologa-a',
           usuariaId: USUARIA_ID,
           persona: { ninoId: null, fechaHora: AHORA, duracionMinutos: 60 },
@@ -901,15 +934,16 @@ describe('AperturaProcesoService', () => {
       );
     });
 
-    it('audita la apertura y el registro solo con ids, sin texto clínico', async () => {
+    it('audita la toma, la apertura y el registro solo con ids, sin texto clínico', async () => {
       await service.atenderAhora(REFERIDO_ID, sesionAhora(), contexto);
 
       const eventos = eventosAuditados(auditService);
       expect(eventos.map((evento) => evento.accion)).toEqual([
+        'CASO_PSICOLOGIA_TOMADO',
         'PROCESO_PSICOLOGICO_ABIERTO',
         'REGISTRO_CONSULTA_GUARDADO',
       ]);
-      expect(eventos[1]).toMatchObject({
+      expect(eventos[2]).toMatchObject({
         entidad: 'CitaPsicologica',
         entidadId: CITA_ID,
         detalles: {
@@ -969,7 +1003,7 @@ describe('AperturaProcesoService', () => {
     describe('carreras detectadas en la transacción', () => {
       it.each([
         [new ProcesoNoDisponibleError(), ForbiddenException],
-        [new ProcesoYaAbiertoError(), ConflictException],
+        [new CasoYaTomadoError(), ConflictException],
         [new OtroProcesoActivoError(), ConflictException],
       ])('traduce %p', async (error, excepcion) => {
         procesosRepository.abrirYRegistrar.mockRejectedValue(error);
@@ -998,7 +1032,7 @@ describe('AperturaProcesoService', () => {
 
         expect(segunda).toEqual(primera);
         expect(procesosRepository.abrirYRegistrar).toHaveBeenCalledTimes(1);
-        expect(auditService.registrar).toHaveBeenCalledTimes(2);
+        expect(auditService.registrar).toHaveBeenCalledTimes(3);
       });
 
       it('un envío simultáneo con la misma clave recibe 409', async () => {

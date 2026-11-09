@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, Outlet, useNavigate, useParams } from 'react-router-dom'
+import { Outlet, useNavigate, useParams } from 'react-router-dom'
 import {
   ETIQUETAS_GRUPO_ETNICO,
   ETIQUETAS_TIPO_REGISTRO,
@@ -7,7 +7,6 @@ import {
   type ExpedienteDetalleArea,
   type FichaUsuariaPsicologiaDto,
   type ReferenciaHistorialPsicologiaDto,
-  type ReferenciaPendientePsicologia,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import Button from '../../../components/ui/Button'
@@ -16,19 +15,16 @@ import Tabs from '../../../components/ui/Tabs'
 import { useToast } from '../../../components/ui/Toast'
 import { extraerMensajeError } from '../../../lib/errors'
 import { fechaDeInstante, iniciales } from '../../../lib/formato'
+import { useEmpezarReserva } from '../../../lib/useEmpezarReserva'
 import { useRecurso } from '../../../lib/useRecurso'
 import { rangoEdadCorto } from '../../trabajo-social/usuarias/filaUsuaria'
-import { obtenerExpedienteTs, obtenerFichaUsuaria } from '../api/psicologia.api'
+import { obtenerExpedienteTs, obtenerFichaUsuaria, reservarReferencia } from '../api/psicologia.api'
 import ModalProgramarCita from '../citas/ModalProgramarCita'
 import { useContextoPsicologia } from '../compartido/contexto'
 import InsigniaReferencia from '../compartido/InsigniaReferencia'
 import { referenciaPendiente } from '../compartido/referencias'
-import { useReclamarCaso } from '../hooks/useReclamarCaso'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import { personasPorAbrir, type ContextoFicha } from './contextoFicha'
-
-const CLASE_BOTON_PRIMARIO =
-  'inline-flex items-center rounded-md bg-brand-600 px-3.5 py-2 text-sm font-medium text-white hover:bg-brand-700'
 
 /** Datos y documentos de Trabajo Social del expediente actual; se piden aparte de la ficha. */
 function useExpedienteTs(expedienteId: string | undefined) {
@@ -80,7 +76,7 @@ export default function FichaUsuaria() {
   const cargar = useCallback(() => obtenerFichaUsuaria(usuariaId!), [usuariaId])
   const { datos: ficha, error, recargar } = useRecurso(cargar)
   const { expediente: expedienteTs, error: errorExpedienteTs } = useExpedienteTs(ficha?.expediente.id)
-  const { reclamandoId, error: errorReclamar, reclamar } = useReclamarCaso()
+  const { reservandoId, error: errorReservar, empezar } = useEmpezarReserva()
   // Quiénes vienen marcadas al abrir el modal; null = cerrado.
   const [porAbrir, setPorAbrir] = useState<(string | null)[] | null>(null)
   const [procesoRecienAbierto, setProcesoRecienAbierto] = useState<string | null>(null)
@@ -106,16 +102,13 @@ export default function FichaUsuaria() {
     procesoRecienAbierto,
   }
 
+  // Reserva la referencia y abre la agenda con su primera cita; el caso se toma al confirmarla.
   function tomar(referencia: ReferenciaHistorialPsicologiaDto) {
-    void reclamar(referencia.referidoId, {
-      alTomar: () => {
-        recargarResumen()
-        mostrar('Caso tomado. Prográmale la primera cita.')
-        navigate(RUTAS_PSICOLOGIA.agenda(undefined, referencia.referidoId))
-      },
-      // Otra psicóloga lo tomó primero: la ficha se vuelve a pedir y, si ya no es accesible, lo dice.
-      alPerderlo: () => {
-        mostrar('Otra psicóloga ya tomó este caso', 'error')
+    const { referidoId } = referencia
+    void empezar(referidoId, () => reservarReferencia(referidoId, 'AGENDANDO'), {
+      alReservar: () => navigate(RUTAS_PSICOLOGIA.agendarPrimeraCita(referidoId, 'ficha')),
+      // Otra psicóloga la está agendando o ya la tomó: la ficha se vuelve a pedir y lo dice.
+      alPerderla: () => {
         recargarResumen()
         void recargar()
       },
@@ -136,7 +129,7 @@ export default function FichaUsuaria() {
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[22px] font-semibold text-gray-900">{usuaria.nombreCompleto}</h2>
               {pendiente ? (
-                <InsigniaReferencia estado={pendiente.estado as ReferenciaPendientePsicologia} />
+                <InsigniaReferencia />
               ) : (
                 <BadgeRegistro ficha={ficha} />
               )}
@@ -190,31 +183,19 @@ export default function FichaUsuaria() {
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#fde68a] bg-[#fffbeb] px-5 py-4">
           <div className="min-w-0 space-y-0.5">
             <p className="text-sm font-semibold text-gray-900">
-              {pendiente.estado === 'SIN_TOMAR'
-                ? 'Referencia nueva de Trabajo Social'
-                : 'Caso tomado: falta agendar la primera cita'}{' '}
-              · {fechaDeInstante(pendiente.referidoEn)}
+              Referencia nueva de Trabajo Social · {fechaDeInstante(pendiente.referidoEn)}
             </p>
             <p className="text-sm text-gray-700">{pendiente.motivo || 'Sin motivo registrado.'}</p>
-            <p className="text-xs text-gray-500">
-              Referida por {pendiente.referidoPor}
-              {pendiente.estado === 'POR_AGENDAR' && ' · Ya tomaste este caso: falta su primera cita.'}
-            </p>
-            {errorReclamar && (
+            <p className="text-xs text-gray-500">Referida por {pendiente.referidoPor}</p>
+            {errorReservar && (
               <p role="alert" className="text-xs font-medium text-red-700">
-                {errorReclamar}
+                {errorReservar}
               </p>
             )}
           </div>
-          {pendiente.estado === 'SIN_TOMAR' ? (
-            <Button tamano="md" cargando={reclamandoId === pendiente.referidoId} onClick={() => tomar(pendiente)}>
-              Tomar caso
-            </Button>
-          ) : (
-            <Link to={RUTAS_PSICOLOGIA.agenda(undefined, pendiente.referidoId)} className={CLASE_BOTON_PRIMARIO}>
-              Agendar primera cita
-            </Link>
-          )}
+          <Button tamano="md" cargando={reservandoId === pendiente.referidoId} onClick={() => tomar(pendiente)}>
+            Tomar caso
+          </Button>
         </div>
       )}
 
