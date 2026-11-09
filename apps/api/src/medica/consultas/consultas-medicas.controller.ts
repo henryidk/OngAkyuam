@@ -37,7 +37,7 @@ import { LimitePorUsuarioGuard } from '../../juridico/compartido/limite-por-usua
 import { DocumentosMedicosService } from '../documentos/documentos-medicos.service';
 import { ConsultasMedicasService } from './consultas-medicas.service';
 import { HistorialConsultasService } from './historial-consultas.service';
-import { PorAtenderService } from './por-atender.service';
+import { PorRegistrarService } from './por-registrar.service';
 import { RegistroConsultaService } from './registro-consulta.service';
 
 @Controller('medica/consultas')
@@ -48,14 +48,14 @@ export class ConsultasMedicasController {
     private readonly consultasService: ConsultasMedicasService,
     private readonly registroService: RegistroConsultaService,
     private readonly documentosService: DocumentosMedicosService,
-    private readonly porAtenderService: PorAtenderService,
+    private readonly porRegistrarService: PorRegistrarService,
     private readonly historialService: HistorialConsultasService,
   ) {}
 
   /** Lista de trabajo: citas de hoy pendientes y las de días anteriores sin registrar. */
-  @Get('por-atender')
-  porAtender() {
-    return this.porAtenderService.listar();
+  @Get('por-registrar')
+  porRegistrar() {
+    return this.porRegistrarService.listar();
   }
 
   /**

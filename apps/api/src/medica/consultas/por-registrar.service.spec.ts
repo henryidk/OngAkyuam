@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { CitaAgendaMedicaDto } from '@akyuam/shared';
 import type { ILectorCitasMedicas } from '../interfaces/agenda-medica-repository.interface';
-import { PorAtenderService } from './por-atender.service';
+import { PorRegistrarService } from './por-registrar.service';
 
 // Miércoles 14/10/2026, 09:00 en Guatemala (UTC-6).
 const AHORA = new Date('2026-10-14T15:00:00.000Z');
@@ -17,9 +17,9 @@ function cita(
   return { id, estado, estadoVista, inicio } as CitaAgendaMedicaDto;
 }
 
-describe('PorAtenderService', () => {
+describe('PorRegistrarService', () => {
   let lector: jest.Mocked<ILectorCitasMedicas>;
-  let service: PorAtenderService;
+  let service: PorRegistrarService;
 
   beforeEach(() => {
     lector = {
@@ -37,7 +37,7 @@ describe('PorAtenderService', () => {
       contarCitasSinRegistrar: jest.fn().mockResolvedValue(140),
       resumenEntre: jest.fn(),
     };
-    service = new PorAtenderService(lector, { ahora: () => AHORA });
+    service = new PorRegistrarService(lector, { ahora: () => AHORA });
   });
 
   it('de hoy solo lleva lo que ya empezó: lo que aún no empieza se registra desde la Agenda', async () => {

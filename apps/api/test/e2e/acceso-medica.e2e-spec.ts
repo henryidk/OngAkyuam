@@ -3,15 +3,16 @@ import type { INestApplication } from '@nestjs/common';
 import type { Rol, Usuario } from '@prisma/client';
 import type {
   ConsultaMedicaDto,
+  ContadoresMedicaDto,
   ConsultasMedicasPaginaDto,
   DiaAgendaMedicaDto,
   FichaPacienteMedicaDto,
   HistorialConsultasMedicaPaginaDto,
   PacienteBuscadaMedicaDto,
+  SinProximaMedicaPaginaDto,
   VistaMedicaParaJuridico,
 } from '@akyuam/shared';
 import {
-  dejoDeVenirMedica,
   diaSemanaGT,
   fechaCalendarioGT,
   horaGT,
@@ -54,7 +55,7 @@ const ENDPOINTS: [Metodo, string][] = [
   ['get', '/api/medica/reportes'],
   ['get', '/api/medica/reportes/excel'],
   ['get', '/api/medica/consultas/contexto'],
-  ['get', '/api/medica/consultas/por-atender'],
+  ['get', '/api/medica/consultas/por-registrar'],
   ['post', '/api/medica/consultas/historial/busqueda'],
   ['get', `/api/medica/consultas/${ID}`],
   ['get', `/api/medica/documentos/${ID}/url`],
@@ -707,13 +708,23 @@ describe('Medicina · acceso (e2e)', () => {
   });
 
   describe('Agenda: sin próxima consulta', () => {
+    /** Recorre todas las páginas de la lista: lo que crea cada prueba puede no caber en la primera. */
     async function sinProxima() {
-      const respuesta = await pedir(
-        'get',
-        `/api/medica/agenda/dia?fecha=${hoyGT()}`,
-        sesionMedica,
-      ).expect(200);
-      return (respuesta.body as DiaAgendaMedicaDto).sinProxima;
+      const items: SinProximaMedicaPaginaDto['items'] = [];
+      for (let pagina = 1; ; pagina++) {
+        const respuesta = await pedir(
+          'post',
+          '/api/medica/agenda/sin-proxima/busqueda',
+          sesionMedica,
+        )
+          .send({ pagina })
+          .expect(200);
+        const cuerpo = respuesta.body as SinProximaMedicaPaginaDto;
+        items.push(...cuerpo.items);
+        if (cuerpo.items.length === 0 || items.length >= cuerpo.total) {
+          return { items, total: cuerpo.total };
+        }
+      }
     }
 
     it('dice por qué está cada paciente y desde cuándo, de la más reciente a la más antigua', async () => {
@@ -742,7 +753,7 @@ describe('Medicina · acceso (e2e)', () => {
         },
       });
 
-      const lista = await sinProxima();
+      const { items: lista } = await sinProxima();
       const deSinFecha = lista.findIndex((p) => p.atencionId === sinFecha.id);
       const deConFalta = lista.findIndex((p) => p.atencionId === conFalta.id);
       expect(lista[deSinFecha]).toEqual(
@@ -760,16 +771,15 @@ describe('Medicina · acceso (e2e)', () => {
       expect(fechas).toEqual([...fechas].sort().reverse());
     });
 
-    it('la insignia de la Agenda cuenta solo las de la lista que no dejaron de venir', async () => {
-      const lista = await sinProxima();
+    it('el número de la tarjeta de la Agenda es el total de la lista', async () => {
+      const { items, total } = await sinProxima();
       const respuesta = await pedir(
         'get',
         '/api/medica/contadores',
         sesionMedica,
       ).expect(200);
-      expect(
-        (respuesta.body as { agendaSinProxima: number }).agendaSinProxima,
-      ).toBe(lista.filter((p) => !dejoDeVenirMedica(p.desde, hoyGT())).length);
+      expect(items).toHaveLength(total);
+      expect((respuesta.body as ContadoresMedicaDto).sinProxima).toBe(total);
     });
   });
 
@@ -961,7 +971,6 @@ describe('Medicina · acceso (e2e)', () => {
       expect(Object.keys(respuesta.body as object).sort()).toEqual([
         'citas',
         'fecha',
-        'sinProxima',
       ]);
     });
 

@@ -23,7 +23,7 @@ import { RELOJ, RelojSistema } from '../common/reloj';
 import { ConsultasMedicasController } from './consultas/consultas-medicas.controller';
 import { ConsultasMedicasService } from './consultas/consultas-medicas.service';
 import { HistorialConsultasService } from './consultas/historial-consultas.service';
-import { PorAtenderService } from './consultas/por-atender.service';
+import { PorRegistrarService } from './consultas/por-registrar.service';
 import { RegistroConsultaService } from './consultas/registro-consulta.service';
 import { DocumentosMedicosController } from './documentos/documentos-medicos.controller';
 import { DocumentosMedicosService } from './documentos/documentos-medicos.service';
@@ -88,7 +88,7 @@ import { VisibilidadMedicaReader } from './visibilidad/visibilidad-medica.reader
     InasistenciaService,
     RegistroConsultaService,
     ConsultasMedicasService,
-    PorAtenderService,
+    PorRegistrarService,
     HistorialConsultasService,
     DocumentosMedicosService,
     LimpiezaDocumentosMedicosService,

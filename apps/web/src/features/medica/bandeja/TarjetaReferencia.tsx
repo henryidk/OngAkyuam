@@ -24,45 +24,51 @@ export default function TarjetaReferencia({ referencia, onVerExpediente, onAgend
       <div className="flex flex-wrap items-start gap-3.5">
         <div
           aria-hidden="true"
-          className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-[#f7f3fc] text-[13px] font-semibold text-[#7346a5]"
+          className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-brand-50 text-[13px] font-semibold text-brand-600"
         >
           {iniciales(referencia.usuariaNombreCompleto)}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-[15px] font-semibold text-[#1c2430]">{referencia.usuariaNombreCompleto}</h3>
+            <h3 className="text-[15px] font-semibold text-texto">{referencia.usuariaNombreCompleto}</h3>
             <Chip tono={referencia.ingreso === 'PRIMER_INGRESO' ? 'purple' : 'gray'}>
               {ETIQUETAS_INGRESO_AREA[referencia.ingreso]}
             </Chip>
             <ChipEspera referidoEn={referencia.referidoEn} />
           </div>
-          <p className="mt-0.5 text-[13px] text-[#5b6573]">
+          <p className="mt-0.5 text-[13px] text-texto-suave">
             Exp. {referencia.expedienteNumero} · {referencia.edad} años · Referida {fechaDeInstante(referencia.referidoEn)} por{' '}
             {referencia.referidoPor}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variante="secondary" onClick={onVerExpediente}>
+          <Button
+            variante="secondary"
+            onClick={onVerExpediente}
+            aria-label={`Ver expediente de ${referencia.usuariaNombreCompleto}`}
+          >
             Ver expediente
           </Button>
-          <Button onClick={onAgendar}>Agendar primera consulta</Button>
+          <Button onClick={onAgendar} aria-label={`Agendar la primera consulta de ${referencia.usuariaNombreCompleto}`}>
+            Agendar primera consulta
+          </Button>
         </div>
       </div>
 
       <div className="mt-3 space-y-2 sm:pl-[50px]">
         {referencia.motivo && (
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-[#5b6573]">Motivo</p>
-            <p className="mt-0.5 whitespace-pre-line text-sm text-[#1c2430]">{referencia.motivo}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-texto-suave">Motivo</p>
+            <p className="mt-0.5 whitespace-pre-line text-sm text-texto">{referencia.motivo}</p>
           </div>
         )}
         {referencia.personas.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-[#5b6573]">
+          <div className="flex flex-wrap items-center gap-1.5 text-[13px] text-texto-suave">
             <span>Pacientes:</span>
             {referencia.personas.map((persona) => (
               <span
                 key={persona.ninoId ?? 'usuaria'}
-                className="rounded-full border border-[#e3e6ea] bg-[#f8f9fa] px-2 py-0.5 text-[12px] text-[#1c2430]"
+                className="rounded-full border border-borde bg-superficie px-2 py-0.5 text-[12px] text-texto"
               >
                 {etiquetaPersonaChip(persona)}
               </span>

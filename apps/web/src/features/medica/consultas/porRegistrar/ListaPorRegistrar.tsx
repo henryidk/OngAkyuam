@@ -5,12 +5,12 @@ import { AyudaTermino } from '../../../../components/Glosario'
 import { ErrorVista, Esqueleto } from '../../../../components/ui/EstadosVista'
 import { useToast } from '../../../../components/ui/Toast'
 import { useRecurso } from '../../../../lib/useRecurso'
-import { listarPorAtender } from '../../api/medica.api'
+import { listarPorRegistrar } from '../../api/medica.api'
 import { useContextoMedica } from '../../compartido/contexto'
 import ModalInasistencia, { type ResultadoInasistencia } from '../../compartido/ModalInasistencia'
 import { useRecargaNovedades } from '../../compartido/useRecargaNovedades'
 import { RUTAS_MEDICA } from '../../rutas'
-import FilaPorAtender from './FilaPorAtender'
+import FilaPorRegistrar from './FilaPorRegistrar'
 
 function Seccion({
   titulo,
@@ -42,11 +42,11 @@ function Seccion({
  * Consultas › Por registrar: las citas de hoy que ya empezaron y las de días anteriores sin
  * registrar, de la más reciente a la más antigua (regla compartida `citaPorRegistrar`).
  */
-export default function ListaPorAtender() {
+export default function ListaPorRegistrar() {
   const navigate = useNavigate()
   const { mostrar } = useToast()
   const { recargarContadores } = useContextoMedica()
-  const { datos, error, recargar } = useRecurso(listarPorAtender)
+  const { datos, error, recargar } = useRecurso(listarPorRegistrar)
   useRecargaNovedades(recargar)
   const [inasistencia, setInasistencia] = useState<CitaAgendaMedicaDto | null>(null)
 
@@ -73,7 +73,7 @@ export default function ListaPorAtender() {
           <p className="p-10 text-center text-sm text-texto-suave">No hay consultas de hoy por registrar.</p>
         ) : (
           datos.hoy.map((cita) => (
-            <FilaPorAtender key={cita.id} cita={cita} conFecha={false} onNoAsistio={() => setInasistencia(cita)} />
+            <FilaPorRegistrar key={cita.id} cita={cita} conFecha={false} onNoAsistio={() => setInasistencia(cita)} />
           ))
         )}
       </Seccion>
@@ -85,7 +85,7 @@ export default function ListaPorAtender() {
           descripcion="De otros días, de la más reciente a la más antigua: ya pasaron y no tienen consulta ni inasistencia."
         >
           {datos.atrasadas.map((cita) => (
-            <FilaPorAtender key={cita.id} cita={cita} conFecha onNoAsistio={() => setInasistencia(cita)} />
+            <FilaPorRegistrar key={cita.id} cita={cita} conFecha onNoAsistio={() => setInasistencia(cita)} />
           ))}
           {datos.totalAtrasadas > datos.atrasadas.length && (
             <p className="px-4 py-3 text-[13px] text-texto-suave">

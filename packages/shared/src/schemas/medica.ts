@@ -668,10 +668,10 @@ export interface DiaAgendaMedicaDto {
 }
 
 /**
- * `GET /medica/consultas/por-atender` — lo que la médica tiene que atender o registrar.
+ * `GET /medica/consultas/por-registrar` — lo que la médica tiene que atender o registrar.
  * `hoy` va en curso primero; `atrasadas` son citas de días anteriores que siguen sin registrar.
  */
-export interface PorAtenderMedicaDto {
+export interface PorRegistrarMedicaDto {
   hoy: CitaAgendaMedicaDto[]
   /** Las más recientes, como mucho `LIMITE_ATRASADAS_MEDICA`. */
   atrasadas: CitaAgendaMedicaDto[]
@@ -683,8 +683,8 @@ export interface PorAtenderMedicaDto {
 export interface ContadoresMedicaDto {
   /** Referencias pendientes de primera consulta. */
   areaAtencion: number
-  /** Lo de "Por atender" en Consultas: citas de hoy pendientes más las atrasadas sin registrar. */
-  consultasPorAtender: number
+  /** Lo de "Por registrar" en Consultas: citas de hoy pendientes más las atrasadas sin registrar. */
+  consultasPorRegistrar: number
   /**
    * Pacientes en atención sin próxima consulta, todas: el número de la tarjeta de la Agenda, igual
    * al total de la lista de Pacientes a la que lleva. No es insignia del menú.

@@ -57,14 +57,12 @@ export default function MedicaLayout() {
   // consultas por registrar. Varias a la vez compiten y ninguna se lee; lo pendiente de agendar
   // (incluidas las referidas del Área de atención) ya lo muestran las tarjetas de la Agenda.
   return (
-    <>
-      <SidebarLayout
-        items={ITEMS_NAV}
-        subtitulo="Medicina"
-        contadores={contadores ? { [RUTAS_MEDICA.consultas()]: contadores.consultasPorAtender } : undefined}
-        outletContext={contexto}
-      />
-      <AtajosTeclado />
-    </>
+    <SidebarLayout
+      items={ITEMS_NAV}
+      subtitulo="Medicina"
+      contadores={contadores ? { [RUTAS_MEDICA.consultas()]: contadores.consultasPorRegistrar } : undefined}
+      outletContext={contexto}
+      pieMenu={<AtajosTeclado />}
+    />
   )
 }

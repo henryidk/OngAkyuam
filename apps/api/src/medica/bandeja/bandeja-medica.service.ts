@@ -6,7 +6,7 @@ import {
 } from '@akyuam/shared';
 import { RELOJ, type IReloj } from '../../common/reloj';
 import { corteSinVenir } from '../dominio/sin-proxima';
-import { PorAtenderService } from '../consultas/por-atender.service';
+import { PorRegistrarService } from '../consultas/por-registrar.service';
 import {
   LECTOR_PENDIENTES_MEDICA,
   type ILectorPendientesMedica,
@@ -18,7 +18,7 @@ export class BandejaMedicaService {
   constructor(
     @Inject(LECTOR_PENDIENTES_MEDICA)
     private readonly lectorPendientes: ILectorPendientesMedica,
-    private readonly porAtender: PorAtenderService,
+    private readonly porRegistrar: PorRegistrarService,
     @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
@@ -27,21 +27,22 @@ export class BandejaMedicaService {
   }
 
   /**
-   * La insignia de Consultas cuenta lo mismo que muestra "Por atender": una sola definición.
+   * La insignia de Consultas cuenta lo mismo que muestra "Por registrar": una sola definición.
    * `sinProxima` no es insignia: es el número de la tarjeta de la Agenda, calculado con la misma
    * consulta que la lista de Pacientes a la que lleva.
    */
   async contadores(): Promise<ContadoresMedicaDto> {
-    const [referencias, porAtender, sinProxima] = await Promise.all([
+    const [referencias, porRegistrar, sinProxima] = await Promise.all([
       this.lectorPendientes.contarReferenciasPendientes(),
-      this.porAtender.listar(),
+      this.porRegistrar.listar(),
       this.lectorPendientes.conteosSinProxima({
         corte: corteSinVenir(this.reloj.ahora()),
       }),
     ]);
     return {
       areaAtencion: referencias,
-      consultasPorAtender: porAtender.hoy.length + porAtender.totalAtrasadas,
+      consultasPorRegistrar:
+        porRegistrar.hoy.length + porRegistrar.totalAtrasadas,
       sinProxima: sinProxima.TODAS,
     };
   }

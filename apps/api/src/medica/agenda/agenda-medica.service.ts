@@ -43,7 +43,7 @@ const DIAS_SEMANA_LABORAL = 5;
 
 /**
  * La Agenda de la médica: tira de la semana, día abierto, "Sin próxima consulta" por páginas y
- * horas libres para los modales de programar. Registrar e inasistencias viven en Consultas › Por atender. Solo lectura; nunca devuelve datos clínicos.
+ * horas libres para los modales de programar. Registrar e inasistencias viven en Consultas › Por registrar. Solo lectura; nunca devuelve datos clínicos.
  */
 @Injectable()
 export class AgendaMedicaService {

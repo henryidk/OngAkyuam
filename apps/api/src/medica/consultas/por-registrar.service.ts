@@ -2,10 +2,10 @@ import { Inject, Injectable } from '@nestjs/common';
 import { fechaCalendarioGT, inicioDiaGT, sumarDiasGT } from '@akyuam/shared';
 import {
   LIMITE_ATRASADAS_MEDICA,
-  type PorAtenderMedicaDto,
+  type PorRegistrarMedicaDto,
 } from '@akyuam/shared';
 import { RELOJ, type IReloj } from '../../common/reloj';
-import { ordenarPorRegistrar } from '../dominio/por-atender';
+import { ordenarPorRegistrar } from '../dominio/por-registrar';
 import {
   LECTOR_CITAS_MEDICAS,
   type ILectorCitasMedicas,
@@ -17,14 +17,14 @@ import {
  * todavía no empiezan viven en la Agenda. Solo lectura; nunca devuelve datos clínicos.
  */
 @Injectable()
-export class PorAtenderService {
+export class PorRegistrarService {
   constructor(
     @Inject(LECTOR_CITAS_MEDICAS)
     private readonly lectorCitas: ILectorCitasMedicas,
     @Inject(RELOJ) private readonly reloj: IReloj,
   ) {}
 
-  async listar(): Promise<PorAtenderMedicaDto> {
+  async listar(): Promise<PorRegistrarMedicaDto> {
     const ahora = this.reloj.ahora();
     const hoy = fechaCalendarioGT(ahora);
     const desde = inicioDiaGT(hoy);

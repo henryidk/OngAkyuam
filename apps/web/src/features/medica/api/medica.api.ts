@@ -29,7 +29,7 @@ import type {
   PacienteBuscadaMedicaDto,
   PacienteProgramableDto,
   PacientesMedicaPaginaDto,
-  PorAtenderMedicaDto,
+  PorRegistrarMedicaDto,
   ProgramablesMedicaQuery,
   ProgramarCitaMedicaInput,
   ReferenciaBandejaMedicaDto,
@@ -126,8 +126,8 @@ export function obtenerContextoConsulta(query: ContextoConsultaMedicaQuery) {
 }
 
 /** Citas de hoy pendientes y las atrasadas sin registrar. */
-export function listarPorAtender() {
-  return api.get<PorAtenderMedicaDto>('/medica/consultas/por-atender').then((res) => res.data)
+export function listarPorRegistrar() {
+  return api.get<PorRegistrarMedicaDto>('/medica/consultas/por-registrar').then((res) => res.data)
 }
 
 /**

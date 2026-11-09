@@ -1,6 +1,6 @@
 import type { CitaAgendaMedicaDto } from '@akyuam/shared';
 import type { IReloj } from '../../common/reloj';
-import type { PorAtenderService } from '../consultas/por-atender.service';
+import type { PorRegistrarService } from '../consultas/por-registrar.service';
 import type { ILectorPendientesMedica } from '../interfaces/agenda-medica-repository.interface';
 import { BandejaMedicaService } from './bandeja-medica.service';
 
@@ -17,20 +17,20 @@ describe('BandejaMedicaService.contadores', () => {
         SIN_VENIR: 4,
       }),
     } as unknown as jest.Mocked<ILectorPendientesMedica>;
-    const porAtender = {
+    const porRegistrar = {
       listar: jest.fn().mockResolvedValue({
         hoy: [CITA, CITA],
         atrasadas: [CITA],
         totalAtrasadas: 1,
       }),
-    } as unknown as PorAtenderService;
+    } as unknown as PorRegistrarService;
     // 10 de enero de 2027 a las 10:00 en Guatemala.
     const reloj: IReloj = { ahora: () => new Date('2027-01-10T16:00:00Z') };
-    const service = new BandejaMedicaService(lector, porAtender, reloj);
+    const service = new BandejaMedicaService(lector, porRegistrar, reloj);
 
     await expect(service.contadores()).resolves.toEqual({
       areaAtencion: 1,
-      consultasPorAtender: 3,
+      consultasPorRegistrar: 3,
       sinProxima: 7,
     });
     // eslint-disable-next-line @typescript-eslint/unbound-method

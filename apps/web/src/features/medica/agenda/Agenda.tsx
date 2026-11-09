@@ -15,7 +15,7 @@ import { useTituloPagina } from '../../../components/TituloPagina'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
 import { useRecurso } from '../../../lib/useRecurso'
-import { listarBandeja, listarPorAtender, obtenerDia, obtenerSemana } from '../api/medica.api'
+import { listarBandeja, listarPorRegistrar, obtenerDia, obtenerSemana } from '../api/medica.api'
 import { useContextoMedica } from '../compartido/contexto'
 import EncabezadoPagina from '../compartido/EncabezadoPagina'
 import { diaHabil, diaSemanaCorto, fechaLarga, fechaLargaEnFrase, numeroDia, textoSemana } from '../compartido/fechas'
@@ -50,19 +50,19 @@ export default function Agenda() {
 
   const semana = useRecurso(useCallback(() => obtenerSemana(lunes), [lunes]))
   const agendaDia = useRecurso(useCallback(() => obtenerDia(dia), [dia]))
-  const porAtender = useRecurso(listarPorAtender)
+  const porRegistrar = useRecurso(listarPorRegistrar)
   const porAgendar = useRecurso(listarBandeja)
   const recargarSemana = semana.recargar
   const recargarDia = agendaDia.recargar
-  const recargarPorAtender = porAtender.recargar
+  const recargarPorRegistrar = porRegistrar.recargar
   const recargarPorAgendar = porAgendar.recargar
 
   const recargarTodo = useCallback(() => {
     void recargarSemana()
     void recargarDia()
-    void recargarPorAtender()
+    void recargarPorRegistrar()
     void recargarPorAgendar()
-  }, [recargarSemana, recargarDia, recargarPorAtender, recargarPorAgendar])
+  }, [recargarSemana, recargarDia, recargarPorRegistrar, recargarPorAgendar])
   useRecargaNovedades(recargarTodo)
 
   // `?agendar=<referidoId>` llega desde el Área de atención (otra ruta: la Agenda se monta de
@@ -122,7 +122,7 @@ export default function Agenda() {
   const citas = agendaDia.datos?.citas ?? []
   const atendidas = citas.filter((cita) => cita.estadoVista === 'ATENDIDA').length
   const pendientesDia = citas.filter((cita) => ['PROGRAMADA', 'EN_CURSO', 'SIN_REGISTRAR'].includes(cita.estadoVista)).length
-  const atrasadas = porAtender.datos?.totalAtrasadas ?? 0
+  const atrasadas = porRegistrar.datos?.totalAtrasadas ?? 0
   const titulo = dia === hoy ? `Hoy, ${fechaLargaEnFrase(dia)}` : fechaLarga(dia)
   const resumen = !agendaDia.datos
     ? ' '

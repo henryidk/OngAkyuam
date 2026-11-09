@@ -3,7 +3,7 @@ import type {
   EstadoCitaMedica,
   EstadoCitaMedicaDerivado,
 } from '@akyuam/shared';
-import { esPorRegistrar, ordenarPorRegistrar } from './por-atender';
+import { esPorRegistrar, ordenarPorRegistrar } from './por-registrar';
 
 // Miércoles 14/10/2026, 09:00 en Guatemala (UTC-6).
 const AHORA = new Date('2026-10-14T15:00:00.000Z');

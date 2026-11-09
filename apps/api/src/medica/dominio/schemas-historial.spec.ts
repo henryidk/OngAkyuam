@@ -1,6 +1,6 @@
 import { buscarHistorialConsultasMedicaSchema } from '@akyuam/shared';
 
-describe('buscarHistorialConsultasMedicaSchema (planconsultasmedica.md §2.2)', () => {
+describe('buscarHistorialConsultasMedicaSchema', () => {
   const RANGO = { desde: '2026-01-01', hasta: '2026-01-31' };
 
   it('acepta un rango sin búsqueda', () => {
