@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import type {
-  ContadoresMedicaDto,
-  ReferenciaBandejaMedicaDto,
+import {
+  LIMITE_BANDEJA_MEDICA,
+  type ContadoresMedicaDto,
+  type ReferenciaBandejaMedicaDto,
 } from '@akyuam/shared';
 import { RELOJ, type IReloj } from '../../common/reloj';
 import { corteSinVenir } from '../dominio/sin-proxima';
@@ -22,7 +23,7 @@ export class BandejaMedicaService {
   ) {}
 
   pendientes(): Promise<ReferenciaBandejaMedicaDto[]> {
-    return this.lectorPendientes.referenciasPendientes();
+    return this.lectorPendientes.referenciasPendientes(LIMITE_BANDEJA_MEDICA);
   }
 
   /**
@@ -32,14 +33,14 @@ export class BandejaMedicaService {
    */
   async contadores(): Promise<ContadoresMedicaDto> {
     const [referencias, porAtender, sinProxima] = await Promise.all([
-      this.lectorPendientes.referenciasPendientes(),
+      this.lectorPendientes.contarReferenciasPendientes(),
       this.porAtender.listar(),
       this.lectorPendientes.conteosSinProxima({
         corte: corteSinVenir(this.reloj.ahora()),
       }),
     ]);
     return {
-      areaAtencion: referencias.length,
+      areaAtencion: referencias,
       consultasPorAtender: porAtender.hoy.length + porAtender.atrasadas.length,
       sinProxima: sinProxima.TODAS,
     };

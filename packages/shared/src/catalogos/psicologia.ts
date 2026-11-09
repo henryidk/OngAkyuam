@@ -100,6 +100,8 @@ export const SEMANAS_DISPONIBILIDAD_PSICOLOGIA = 8
 /** Filas por página de la lista de Usuarias y de las listas por cursor del rediseño. */
 export const USUARIAS_PSICOLOGIA_POR_PAGINA = 20
 export const PROCESOS_PSICOLOGIA_POR_PAGINA = 20
+/** Tope de página de Procesos: evita un OFFSET gigante pedido a mano. */
+export const PAGINA_MAX_PROCESOS_PSICOLOGIA = 1000
 
 /** Una referencia sin tomar con estos días de espera o más se resalta en el Área de atención. */
 export const DIAS_ALERTA_ESPERA_PSICOLOGIA = 5

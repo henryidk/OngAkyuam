@@ -1,60 +1,38 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Search } from 'lucide-react'
 import {
   BUSQUEDA_PSICOLOGIA_MAX,
   ETIQUETAS_FILTRO_PROCESOS_PSICOLOGIA,
+  PAGINA_MAX_PROCESOS_PSICOLOGIA,
+  PROCESOS_PSICOLOGIA_POR_PAGINA,
   filtroProcesosPsicologiaSchema,
   type FiltroProcesosPsicologia,
 } from '@akyuam/shared'
 import { useTituloPagina } from '../../../components/TituloPagina'
-import Button from '../../../components/ui/Button'
 import { ErrorVista } from '../../../components/ui/EstadosVista'
+import TablaDatos from '../../../components/ui/TablaDatos'
+import { usePaginaConFilas, usePaginaUrl } from '../../../lib/usePaginaUrl'
+import { useRecurso } from '../../../lib/useRecurso'
 import { listarProcesos } from '../api/psicologia.api'
 import { useContextoPsicologia } from '../compartido/contexto'
 import SelectorAlcance from '../compartido/SelectorAlcance'
-import { usePaginasCursor } from '../compartido/usePaginasCursor'
-import FilaProceso from './FilaProceso'
+import { columnasProcesos } from './columnasProcesos'
 import TarjetasFiltro from './TarjetasFiltro'
 
 const ESPERA_BUSQUEDA_MS = 350
 /** El servidor rechaza búsquedas más cortas. */
 const LARGO_MINIMO_BUSQUEDA = 3
-const COLUMNAS = ['Proceso', 'Persona', 'Etapa', 'Sesiones', 'Última sesión', 'Próxima cita']
-/** En "Del equipo" importa quién lleva cada proceso; en "Míos" sobra. */
-const COLUMNAS_EQUIPO = [...COLUMNAS.slice(0, 2), 'Atiende', ...COLUMNAS.slice(2)]
 const FILTRO_INICIAL: FiltroProcesosPsicologia = 'ACTIVOS'
 
-function FilasEsqueleto({ columnas }: { columnas: string[] }) {
-  return (
-    <>
-      {Array.from({ length: 5 }, (_, indice) => (
-        <tr key={indice} className="border-t border-gray-100">
-          {columnas.map((columna) => (
-            <td key={columna} className="px-4 py-3">
-              <div className="h-4 animate-pulse rounded bg-gray-100" />
-            </td>
-          ))}
-        </tr>
-      ))}
-    </>
-  )
-}
-
 /**
- * Procesos psicológicos: los míos o los de toda el área (`?de=equipo`). El filtro y el alcance
- * viven en la URL; el término buscado no, para que el nombre de una usuaria no quede en el
- * historial del navegador.
+ * Procesos psicológicos: los míos o los de toda el área (`?de=equipo`), por páginas numeradas. El
+ * filtro, el alcance y la página viven en la URL; el término buscado no, para que el nombre de una
+ * usuaria no quede en el historial del navegador.
  */
 export default function ListaProcesos() {
   useTituloPagina({ titulo: 'Procesos' })
   const { resumen } = useContextoPsicologia()
-  const [params, setParams] = useSearchParams()
-  const filtroLeido = filtroProcesosPsicologiaSchema.safeParse(params.get('filtro'))
-  const filtro = filtroLeido.success ? filtroLeido.data : FILTRO_INICIAL
-  const equipo = params.get('de') === 'equipo'
-  const de = equipo ? 'EQUIPO' : 'MIOS'
-  const columnas = equipo ? COLUMNAS_EQUIPO : COLUMNAS
 
   const [texto, setTexto] = useState('')
   const [busqueda, setBusqueda] = useState('')
@@ -66,20 +44,28 @@ export default function ListaProcesos() {
     return () => clearTimeout(temporizador)
   }, [siguienteBusqueda, busqueda])
 
-  const cargar = useCallback(
-    (cursor?: string) => listarProcesos({ filtro, de, q: busqueda || undefined, cursor }),
-    [filtro, de, busqueda],
-  )
-  const { items, error, cargando, hayMas, cargarMas, cargandoMas, errorMas, recargar } = usePaginasCursor(
-    `${filtro}|${de}|${busqueda}`,
-    cargar,
-  )
+  const { pagina, params, cambiarParams, irAPagina } = usePaginaUrl(PAGINA_MAX_PROCESOS_PSICOLOGIA, busqueda)
+  const filtroLeido = filtroProcesosPsicologiaSchema.safeParse(params.get('filtro'))
+  const filtro = filtroLeido.success ? filtroLeido.data : FILTRO_INICIAL
+  const equipo = params.get('de') === 'equipo'
+  const de = equipo ? 'EQUIPO' : 'MIOS'
 
+  const lista = useRecurso(
+    useCallback(
+      () => listarProcesos({ filtro, de, q: busqueda || undefined, pagina }),
+      [filtro, de, busqueda, pagina],
+    ),
+  )
+  const datos = lista.datos
+  usePaginaConFilas(datos, irAPagina)
+
+  /** Otro filtro u otro alcance es otra lista: vuelve a la primera página. */
   function irA(nuevoFiltro: FiltroProcesosPsicologia, nuevoEquipo: boolean) {
-    const destino = new URLSearchParams()
-    if (nuevoFiltro !== FILTRO_INICIAL) destino.set('filtro', nuevoFiltro)
-    if (nuevoEquipo) destino.set('de', 'equipo')
-    setParams(destino, { replace: true })
+    cambiarParams({
+      filtro: nuevoFiltro !== FILTRO_INICIAL ? nuevoFiltro : undefined,
+      de: nuevoEquipo ? 'equipo' : undefined,
+      pagina: undefined,
+    })
   }
 
   const textoCorto = recortado.length > 0 && recortado.length < LARGO_MINIMO_BUSQUEDA
@@ -114,63 +100,41 @@ export default function ListaProcesos() {
         onElegir={(nuevo) => irA(nuevo, equipo)}
       />
 
-      {error && !items ? (
+      {lista.error ? (
         <ErrorVista
-          mensaje={error.mensaje}
-          sinPermiso={error.sinPermiso}
+          mensaje={lista.error.mensaje}
+          sinPermiso={lista.error.sinPermiso}
           recurso="los procesos"
-          onReintentar={() => void recargar()}
+          onReintentar={() => void lista.recargar()}
         />
       ) : (
-        <section className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,.04)]">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[820px] text-left">
-              <caption className="sr-only">
-                Procesos {equipo ? 'del equipo' : 'míos'}: {ETIQUETAS_FILTRO_PROCESOS_PSICOLOGIA[filtro]}
-              </caption>
-              <thead className="bg-gray-50 text-[11px] uppercase tracking-wider text-gray-500">
-                <tr>
-                  {columnas.map((columna) => (
-                    <th key={columna} scope="col" className="whitespace-nowrap px-4 py-2.5 font-medium">
-                      {columna}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className={cargando && items ? 'opacity-60' : undefined}>
-                {!items && <FilasEsqueleto columnas={columnas} />}
-                {items?.map((proceso) => (
-                  <FilaProceso key={proceso.id} proceso={proceso} conResponsable={equipo} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {items?.length === 0 && (
-            <p className="px-4 py-6 text-center text-sm text-gray-500">
-              {busqueda ? 'Ningún proceso coincide con la búsqueda.' : 'No hay procesos en esta lista.'}
-            </p>
-          )}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-[#fcfcfd] px-4 py-3.5 text-[13px] text-gray-500">
-            <span>
-              Un proceso se abre al agendar la primera cita de un caso tomado, desde la{' '}
-              <Link to="/psicologia/agenda" className="font-medium text-brand-700 hover:underline">
-                Agenda
-              </Link>
-              .
-            </span>
-            {hayMas && (
-              <Button variante="secondary" cargando={cargandoMas} onClick={() => void cargarMas()}>
-                Cargar más
-              </Button>
-            )}
-          </div>
-          {errorMas && (
-            <p role="alert" className="px-4 pb-3 text-sm text-red-600">
-              {errorMas}
-            </p>
-          )}
-        </section>
+        <TablaDatos
+          titulo={`Procesos ${equipo ? 'del equipo' : 'míos'}: ${ETIQUETAS_FILTRO_PROCESOS_PSICOLOGIA[filtro]}`}
+          columnas={columnasProcesos(equipo)}
+          filas={datos?.items ?? null}
+          claveFila={(proceso) => proceso.id}
+          vacio={busqueda ? 'Ningún proceso coincide con la búsqueda.' : 'No hay procesos en esta lista.'}
+          paginacion={
+            datos
+              ? {
+                  pagina: datos.pagina,
+                  porPagina: datos.porPagina,
+                  total: datos.total,
+                  totalNavegable: Math.min(datos.total, PAGINA_MAX_PROCESOS_PSICOLOGIA * PROCESOS_PSICOLOGIA_POR_PAGINA),
+                  onCambiar: irAPagina,
+                }
+              : undefined
+          }
+        />
       )}
+
+      <p className="text-[12.5px] text-texto-suave">
+        Un proceso se abre al agendar la primera cita de un caso tomado, desde la{' '}
+        <Link to="/psicologia/agenda" className="font-medium text-brand-700 hover:underline">
+          Agenda
+        </Link>
+        .
+      </p>
     </div>
   )
 }

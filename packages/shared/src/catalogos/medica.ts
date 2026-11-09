@@ -154,7 +154,15 @@ export const ETIQUETAS_FILTRO_PACIENTES_MEDICA: Record<(typeof FILTROS_PACIENTES
 
 export const BUSQUEDA_PACIENTES_MEDICA_MIN = 2
 export const BUSQUEDA_PACIENTES_MEDICA_MAX = 80
+/**
+ * Tope del Área de atención de Medicina: es una cola de trabajo, no un historial. Si un día hay
+ * más referencias esperando, se ven las más antiguas y el aviso dice cuántas faltan.
+ */
+export const LIMITE_BANDEJA_MEDICA = 200
+/** Filas por página de Pacientes: la lista se pagina con números, no con "Cargar más". */
 export const PAGINA_PACIENTES_MEDICA = 30
+/** Tope de página aceptado: evita un OFFSET gigante pedido a mano. */
+export const PAGINA_MAX_PACIENTES_MEDICA = 1000
 
 /**
  * Grupos de "Sin próxima consulta" (Pacientes): faltó y nadie le dio otra fecha, se atendió y no se

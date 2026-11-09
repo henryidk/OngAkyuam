@@ -1,7 +1,4 @@
-import type {
-  CitaAgendaMedicaDto,
-  ReferenciaBandejaMedicaDto,
-} from '@akyuam/shared';
+import type { CitaAgendaMedicaDto } from '@akyuam/shared';
 import type { IReloj } from '../../common/reloj';
 import type { PorAtenderService } from '../consultas/por-atender.service';
 import type { ILectorPendientesMedica } from '../interfaces/agenda-medica-repository.interface';
@@ -12,9 +9,7 @@ const CITA = {} as CitaAgendaMedicaDto;
 describe('BandejaMedicaService.contadores', () => {
   it('Consultas suma las de hoy por atender y las atrasadas; sinProxima es el total de la lista, con el corte de hoy', async () => {
     const lector = {
-      referenciasPendientes: jest
-        .fn()
-        .mockResolvedValue([{} as ReferenciaBandejaMedicaDto]),
+      contarReferenciasPendientes: jest.fn().mockResolvedValue(1),
       conteosSinProxima: jest.fn().mockResolvedValue({
         TODAS: 7,
         NO_ASISTIO: 2,

@@ -61,7 +61,9 @@ export interface ILectorCitasMedicas {
 /** Quién espera algo de la médica sin tener una cita delante. */
 export interface ILectorPendientesMedica {
   /** Referencias de Trabajo Social pendientes de primera consulta, las más antiguas primero. */
-  referenciasPendientes(): Promise<ReferenciaBandejaMedicaDto[]>;
+  referenciasPendientes(limite: number): Promise<ReferenciaBandejaMedicaDto[]>;
+  /** Cuántas referencias esperan primera consulta: el número del menú, sin traer las filas. */
+  contarReferenciasPendientes(): Promise<number>;
   /**
    * Una página de atenciones activas sin ninguna cita programada (ni futura ni sin registrar), de
    * la más reciente a la más antigua.

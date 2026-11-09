@@ -4,7 +4,10 @@ import { ConsultasProcesosRepository } from './consultas-procesos.repository';
 
 function crearRepositorio() {
   const prisma = {
-    atencionPsicologica: { findMany: jest.fn().mockResolvedValue([]) },
+    atencionPsicologica: {
+      findMany: jest.fn().mockResolvedValue([]),
+      count: jest.fn().mockResolvedValue(0),
+    },
     citaPsicologica: { findMany: jest.fn().mockResolvedValue([]) },
   };
   return {
@@ -22,6 +25,7 @@ async function condicionesDe(alcance: 'MIOS' | 'EQUIPO') {
     alcance,
     filtro: 'ACTIVOS',
     palabras: [],
+    pagina: 1,
     limite: 20,
     ahora: new Date(),
   });
@@ -43,6 +47,31 @@ describe('ConsultasProcesosRepository.listar', () => {
       psicologaAsignadaId: { not: null },
       ...PROCESO_LEGIBLE,
     });
+  });
+
+  it('pide la página con OFFSET y cuenta el total con el mismo filtro', async () => {
+    const { prisma, repository } = crearRepositorio();
+    prisma.atencionPsicologica.count.mockResolvedValue(57);
+
+    const resultado = await repository.listar({
+      psicologaId: 'psicologa-a',
+      alcance: 'MIOS',
+      filtro: 'SIN_PROXIMA',
+      palabras: ['ana'],
+      pagina: 3,
+      limite: 20,
+      ahora: new Date(),
+    });
+
+    const [[consulta]] = prisma.atencionPsicologica.findMany.mock.calls as [
+      [{ where: unknown; take: number; skip: number }],
+    ];
+    expect(consulta).toMatchObject({ take: 20, skip: 40 });
+    // El total no puede contar procesos de otra psicóloga ni sin el filtro de la lista.
+    expect(prisma.atencionPsicologica.count).toHaveBeenCalledWith({
+      where: consulta.where,
+    });
+    expect(resultado.total).toBe(57);
   });
 });
 
@@ -91,6 +120,7 @@ describe('ConsultasProcesosRepository.listar · sesión por registrar', () => {
       alcance: 'MIOS',
       filtro: 'ACTIVOS',
       palabras: [],
+      pagina: 1,
       limite: 20,
       ahora,
     });

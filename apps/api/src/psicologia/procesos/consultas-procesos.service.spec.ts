@@ -54,7 +54,7 @@ function detalle(
 
 function crearConsultasRepository(): jest.Mocked<IConsultasProcesosRepository> {
   return {
-    listar: jest.fn().mockResolvedValue({ items: [], siguienteCursor: null }),
+    listar: jest.fn().mockResolvedValue({ items: [], total: 0 }),
     listarDeUsuaria: jest.fn().mockResolvedValue([]),
     listarDeColegas: jest.fn().mockResolvedValue([]),
     resumen: jest.fn(),
@@ -98,7 +98,7 @@ describe('ConsultasProcesosService', () => {
   describe('lista y resumen', () => {
     it('lista con el id de la sesión, nunca con uno que venga de la petición', async () => {
       await service.listar(
-        { filtro: 'SIN_PROXIMA', de: 'MIOS', q: 'ana 05-2026', cursor: 'c1' },
+        { filtro: 'SIN_PROXIMA', de: 'MIOS', q: 'ana 05-2026', pagina: 3 },
         contexto,
       );
 
@@ -108,14 +108,17 @@ describe('ConsultasProcesosService', () => {
           alcance: 'MIOS',
           filtro: 'SIN_PROXIMA',
           palabras: ['ana', '05-2026'],
-          cursor: 'c1',
+          pagina: 3,
           limite: 20,
         }),
       );
     });
 
     it('"Míos" no deja rastro de lista en la auditoría', async () => {
-      await service.listar({ filtro: 'ACTIVOS', de: 'MIOS' }, contexto);
+      await service.listar(
+        { filtro: 'ACTIVOS', de: 'MIOS', pagina: 1 },
+        contexto,
+      );
 
       expect(auditService.registrar).not.toHaveBeenCalled();
     });
@@ -123,24 +126,25 @@ describe('ConsultasProcesosService', () => {
     it('"Del equipo" audita cada página sin guardar el texto buscado', async () => {
       consultasRepository.listar.mockResolvedValue({
         items: [{} as never, {} as never],
-        siguienteCursor: null,
+        total: 42,
       });
 
-      await service.listar(
-        { filtro: 'ACTIVOS', de: 'EQUIPO', q: 'Nombre Buscado' },
+      const pagina = await service.listar(
+        { filtro: 'ACTIVOS', de: 'EQUIPO', q: 'Nombre Buscado', pagina: 2 },
         contexto,
       );
 
       expect(consultasRepository.listar).toHaveBeenCalledWith(
         expect.objectContaining({ alcance: 'EQUIPO' }),
       );
+      expect(pagina).toMatchObject({ total: 42, pagina: 2, porPagina: 20 });
       const [evento] = eventosAuditados(auditService);
       expect(evento).toMatchObject({
         accion: 'PROCESOS_EQUIPO_PSICOLOGIA_CONSULTADOS',
         detalles: {
           filtro: 'ACTIVOS',
           conBusqueda: true,
-          pagina: 'primera',
+          pagina: 2,
           resultados: 2,
         },
       });

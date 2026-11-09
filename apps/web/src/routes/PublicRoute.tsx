@@ -6,7 +6,12 @@ export default function PublicRoute() {
   const { usuario, isAuthenticated, isLoading } = useAuthStore()
 
   if (isLoading) {
-    return <div className="p-8">Cargando…</div>
+    // Breve y sin menú (aún no se sabe quién entra): fondo liso en vez de un texto que parpadea.
+    return (
+      <div role="status" className="min-h-screen bg-gray-50">
+        <span className="sr-only">Cargando…</span>
+      </div>
+    )
   }
 
   if (isAuthenticated && usuario) {

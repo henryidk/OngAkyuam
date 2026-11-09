@@ -159,29 +159,30 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
 
   async listar(
     params: ListarProcesosParams,
-  ): Promise<PaginaConCursorRepo<FilaProcesoPsicologia>> {
-    const filas = await this.prisma.atencionPsicologica.findMany({
-      where: {
-        AND: [
-          condicionAlcance(params.alcance, params.psicologaId),
-          ES_PROCESO,
-          condicionFiltro(params.filtro),
-          ...condicionBusqueda(params.palabras),
-        ],
-      },
-      select: {
-        ...SELECT_RESUMEN,
-        psicologaAsignadaId: true,
-        psicologaAsignada: { select: { nombreCompleto: true } },
-      },
-      // `createdAt` y no `fechaInicio`: el cursor necesita una columna que nunca sea nula.
-      orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
-      take: params.limite + LIMITE_EXTRA_CURSOR,
-      ...(params.cursor ? { cursor: { id: params.cursor }, skip: 1 } : {}),
-    });
-
-    const hayMas = filas.length > params.limite;
-    const pagina = hayMas ? filas.slice(0, params.limite) : filas;
+  ): Promise<{ items: FilaProcesoPsicologia[]; total: number }> {
+    const where = {
+      AND: [
+        condicionAlcance(params.alcance, params.psicologaId),
+        ES_PROCESO,
+        condicionFiltro(params.filtro),
+        ...condicionBusqueda(params.palabras),
+      ],
+    };
+    const [pagina, total] = await Promise.all([
+      this.prisma.atencionPsicologica.findMany({
+        where,
+        select: {
+          ...SELECT_RESUMEN,
+          psicologaAsignadaId: true,
+          psicologaAsignada: { select: { nombreCompleto: true } },
+        },
+        // `createdAt` y no `fechaInicio`: un orden estable necesita una columna que nunca sea nula.
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        take: params.limite,
+        skip: (params.pagina - 1) * params.limite,
+      }),
+      this.prisma.atencionPsicologica.count({ where }),
+    ]);
     const ids = pagina.map((fila) => fila.id);
     const [proximas, porRegistrar] = await Promise.all([
       this.proximasCitas(ids, params.ahora),
@@ -195,7 +196,7 @@ export class ConsultasProcesosRepository implements IConsultasProcesosRepository
         propio: fila.psicologaAsignadaId === params.psicologaId,
         sesionPorRegistrar: porRegistrar.has(fila.id),
       })),
-      siguienteCursor: hayMas ? pagina[pagina.length - 1].id : null,
+      total,
     };
   }
 

@@ -9,6 +9,7 @@ import {
   ESTADOS_CITA_PSICOLOGICA,
   ESTADOS_HISTORIAL_CONSULTAS_PSICOLOGIA,
   FILTROS_PROCESOS_PSICOLOGIA,
+  PAGINA_MAX_PROCESOS_PSICOLOGIA,
   FILTROS_USUARIAS_PSICOLOGIA,
   MAX_DIAS_RANGO_HISTORIAL_PSICOLOGIA,
   MODALIDADES_CITA,
@@ -359,9 +360,10 @@ export const listarProcesosPsicologiaQuerySchema = z.object({
   filtro: filtroProcesosPsicologiaSchema.default('ACTIVOS'),
   de: alcancePsicologiaSchema.default('MIOS'),
   q: z.string().trim().min(3).max(BUSQUEDA_PSICOLOGIA_MAX).optional(),
-  cursor: z.string().optional(),
+  pagina: z.number().int().min(1).max(PAGINA_MAX_PROCESOS_PSICOLOGIA).default(1),
 })
 export type ListarProcesosPsicologiaQuery = z.infer<typeof listarProcesosPsicologiaQuerySchema>
+export type ListarProcesosPsicologiaInput = z.input<typeof listarProcesosPsicologiaQuerySchema>
 
 /** `GET /psicologia/procesos/:id/sesiones` — sesiones del proceso, de la más reciente a la más antigua. */
 export const sesionesProcesoPsicologiaQuerySchema = z.object({ cursor: z.string().optional() })
@@ -733,7 +735,14 @@ export interface FilaProcesoPsicologia extends ProcesoPsicologiaResumen {
   sesionPorRegistrar: boolean
 }
 
-export type ProcesosPsicologiaPaginados = PaginaConCursor<FilaProcesoPsicologia>
+/** Una página de Procesos: "Mostrando 1–20 de `total`" y páginas numeradas. */
+export interface ProcesosPsicologiaPaginados {
+  items: FilaProcesoPsicologia[]
+  /** Procesos que cumplen el alcance, el filtro y la búsqueda pedidos. */
+  total: number
+  pagina: number
+  porPagina: number
+}
 
 /** `GET /psicologia/procesos/resumen` — tarjetas de Procesos y contadores del menú lateral. */
 export interface ResumenProcesosPsicologia {

@@ -217,6 +217,18 @@ function aCitaAgenda(fila: FilaCitaAgenda, ahora: Date): CitaAgendaMedicaDto {
   };
 }
 
+/**
+ * La regla de `referenciaPendiente` en SQL, sobre una referencia `r`: es a Medicina y su
+ * expediente no tiene atención activa ni una abierta después de ella.
+ */
+const REFERENCIA_MEDICA_PENDIENTE_SQL = Prisma.sql`
+  r.area = 'MEDICA'
+  AND NOT EXISTS (
+    SELECT 1 FROM "AtencionMedica" a
+    WHERE a."expedienteId" = r."expedienteId"
+      AND (a.estado = 'ACTIVA' OR a."createdAt" >= r."createdAt")
+  )`;
+
 @Injectable()
 export class AgendaMedicaRepository
   implements ILectorCitasMedicas, ILectorPendientesMedica
@@ -277,14 +289,19 @@ export class AgendaMedicaRepository
     });
   }
 
-  async referenciasPendientes(): Promise<ReferenciaBandejaMedicaDto[]> {
-    // Prisma no compara columnas entre relaciones: la regla "sin atención posterior a la
-    // referencia" se termina de aplicar con `referenciaPendiente`, la misma función del dominio.
+  async referenciasPendientes(
+    limite: number,
+  ): Promise<ReferenciaBandejaMedicaDto[]> {
+    // Prisma no compara columnas entre relaciones: los ids salen del SQL con la regla completa y
+    // el tope; los datos de la tarjeta, de Prisma.
+    const ids = await this.prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      SELECT r.id FROM "ReferidoArea" r
+      WHERE ${REFERENCIA_MEDICA_PENDIENTE_SQL}
+      ORDER BY r."createdAt" ASC, r.id ASC
+      LIMIT ${limite}`);
+    if (ids.length === 0) return [];
     const referidos = await this.prisma.referidoArea.findMany({
-      where: {
-        area: 'MEDICA',
-        expediente: { atencionesMedicas: { none: { estado: 'ACTIVA' } } },
-      },
+      where: { id: { in: ids.map((fila) => fila.id) } },
       select: {
         id: true,
         createdAt: true,
@@ -303,23 +320,34 @@ export class AgendaMedicaRepository
       },
       orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
     });
-    return referidos
-      .filter((r) =>
-        referenciaPendiente(r.createdAt, r.expediente.atencionesMedicas),
-      )
-      .map((r) => ({
-        referidoId: r.id,
-        expedienteId: r.expediente.id,
-        expedienteNumero: r.expediente.numero,
-        usuariaId: r.expediente.usuaria.id,
-        usuariaNombreCompleto: nombreCompleto(r.expediente.usuaria),
-        edad: edad(r.expediente.usuaria),
-        motivo: r.motivo,
-        referidoEn: r.createdAt.toISOString(),
-        referidoPor: r.otorgadoPor.nombreCompleto,
-        personas: personasDelExpediente(r.expediente),
-        ingreso: ingresoDeUsuaria(r),
-      }));
+    return (
+      referidos
+        // La misma regla otra vez, ahora en el dominio: si una atención se abrió entre las dos
+        // consultas, la referencia ya no está pendiente.
+        .filter((r) =>
+          referenciaPendiente(r.createdAt, r.expediente.atencionesMedicas),
+        )
+        .map((r) => ({
+          referidoId: r.id,
+          expedienteId: r.expediente.id,
+          expedienteNumero: r.expediente.numero,
+          usuariaId: r.expediente.usuaria.id,
+          usuariaNombreCompleto: nombreCompleto(r.expediente.usuaria),
+          edad: edad(r.expediente.usuaria),
+          motivo: r.motivo,
+          referidoEn: r.createdAt.toISOString(),
+          referidoPor: r.otorgadoPor.nombreCompleto,
+          personas: personasDelExpediente(r.expediente),
+          ingreso: ingresoDeUsuaria(r),
+        }))
+    );
+  }
+
+  async contarReferenciasPendientes(): Promise<number> {
+    const [fila] = await this.prisma.$queryRaw<{ total: bigint }[]>(Prisma.sql`
+      SELECT COUNT(*) AS total FROM "ReferidoArea" r
+      WHERE ${REFERENCIA_MEDICA_PENDIENTE_SQL}`);
+    return Number(fila?.total ?? 0);
   }
 
   async paginaSinProxima(

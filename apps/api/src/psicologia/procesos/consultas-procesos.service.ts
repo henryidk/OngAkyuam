@@ -56,12 +56,12 @@ export class ConsultasProcesosService {
     query: ListarProcesosPsicologiaQuery,
     contexto: ContextoAuditoria,
   ): Promise<ProcesosPsicologiaPaginados> {
-    const pagina = await this.consultasRepository.listar({
+    const { items, total } = await this.consultasRepository.listar({
       psicologaId: contexto.usuarioId,
       alcance: query.de,
       filtro: query.filtro,
       palabras: palabrasDeBusqueda(query.q),
-      cursor: query.cursor,
+      pagina: query.pagina,
       limite: PROCESOS_PSICOLOGIA_POR_PAGINA,
       ahora: new Date(),
     });
@@ -75,14 +75,19 @@ export class ConsultasProcesosService {
           detalles: {
             filtro: query.filtro,
             conBusqueda: query.q !== undefined,
-            pagina: query.cursor ? 'siguiente' : 'primera',
-            resultados: pagina.items.length,
+            pagina: query.pagina,
+            resultados: items.length,
           },
         }),
       );
     }
 
-    return pagina;
+    return {
+      items,
+      total,
+      pagina: query.pagina,
+      porPagina: PROCESOS_PSICOLOGIA_POR_PAGINA,
+    };
   }
 
   /** Contadores de las tarjetas de Procesos y de los avisos del menú lateral. */

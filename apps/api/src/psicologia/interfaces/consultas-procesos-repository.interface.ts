@@ -21,7 +21,8 @@ export interface ListarProcesosParams {
   filtro: FiltroProcesosPsicologia;
   /** Palabras ya limpias; cada una debe aparecer en un nombre (usuaria o hijo/a) o en el número de expediente. */
   palabras: string[];
-  cursor?: string;
+  /** Página pedida, desde 1. */
+  pagina: number;
   limite: number;
   /** "Próxima cita" y "sin próxima cita" se miden contra este instante. */
   ahora: Date;
@@ -48,7 +49,7 @@ export type DetalleProcesoRepo = Omit<
 export interface IConsultasProcesosRepository {
   listar(
     params: ListarProcesosParams,
-  ): Promise<PaginaConCursorRepo<FilaProcesoPsicologia>>;
+  ): Promise<{ items: FilaProcesoPsicologia[]; total: number }>;
   /** Todos los procesos que esta psicóloga lleva o llevó de una usuaria, el más reciente primero. */
   listarDeUsuaria(
     usuariaId: string,
