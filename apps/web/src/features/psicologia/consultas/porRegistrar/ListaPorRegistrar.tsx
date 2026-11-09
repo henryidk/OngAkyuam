@@ -44,10 +44,10 @@ export default function ListaPorRegistrar() {
 
   const grupos = useMemo(() => (sesiones.datos ? agruparPorRegistrar(sesiones.datos, hoyGT()) : null), [sesiones.datos])
 
-  function alIntentarNoAsistio(marcada: boolean) {
-    if (marcada) {
+  function alIntentarNoAsistio(resultado: { mensaje: string } | null) {
+    if (resultado) {
       setAMarcar(null)
-      mostrar('Inasistencia registrada')
+      mostrar(resultado.mensaje)
     }
     // También si falló: lo más probable es que otra pestaña ya la haya registrado.
     void recargar()
@@ -88,7 +88,14 @@ export default function ListaPorRegistrar() {
       <AvisoRecorte vistas={sesiones.datos?.length ?? 0} total={resumen?.sesionesPorRegistrar ?? 0} />
 
       <ConfirmarNoAsistio
-        cita={aMarcar && { id: aMarcar.citaId, descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.codigoProceso}` }}
+        cita={
+          aMarcar && {
+            id: aMarcar.citaId,
+            descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.codigoProceso}`,
+            fechaHora: aMarcar.fechaHora,
+            duracionMinutos: aMarcar.duracionMinutos,
+          }
+        }
         onCancelar={() => setAMarcar(null)}
         onIntento={alIntentarNoAsistio}
       />

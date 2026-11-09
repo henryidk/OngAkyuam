@@ -25,7 +25,9 @@ import type {
   DisponibilidadPsicologiaQuery,
   HuecoLibreDto,
   HuecosAgendaQuery,
+  MarcarNoAsistioPsicologiaInput,
   MoverCitaPsicologicaInput,
+  NoAsistioPsicologiaDto,
   ProcesoParaAgendarDto,
   RangoFechasQuery,
 } from '@akyuam/shared';
@@ -169,38 +171,86 @@ export class AgendaPsicologiaService {
 
   /**
    * "Marcar no asistió": la cita ya pasó y la persona no llegó. No lleva texto. Es un registro
-   * de la sesión: lo hace quien la tenía asignada.
+   * de la sesión: lo hace quien la tenía asignada. Con `reprogramar`, en el mismo paso nace la
+   * cita nueva, que como cualquier reprogramación es de quien lleva el proceso.
    */
   async marcarNoAsistio(
     citaId: string,
+    datos: MarcarNoAsistioPsicologiaInput,
     contexto: ContextoAuditoria,
-  ): Promise<{ id: string; estado: 'NO_ASISTIO' }> {
+  ): Promise<NoAsistioPsicologiaDto> {
     const cita = await this.acceso.exigirAutoriaCita(
       citaId,
       contexto.usuarioId,
     );
+    const ahora = new Date();
+    const detalles = {
+      expedienteId: cita.expedienteId,
+      procesoId: cita.atencionId,
+    };
 
-    const marcada = await this.agendaRepository.marcarNoAsistio(
+    if (!datos.reprogramar) {
+      const marcada = await this.agendaRepository.marcarNoAsistio(
+        citaId,
+        ahora,
+      );
+      if (!marcada) {
+        throw new ConflictException(MENSAJE_CITA_NO_MARCABLE);
+      }
+      await this.auditarNoAsistio(contexto, citaId, detalles);
+      return { id: citaId, estado: 'NO_ASISTIO', nuevaCita: null };
+    }
+
+    const reprogramar = datos.reprogramar;
+    await this.acceso.exigirAccesoCita(citaId, contexto.usuarioId);
+    const fechaHora = parseLocalGT(reprogramar.fechaHora);
+    await this.avisarTraslape(reprogramar, fechaHora, contexto.usuarioId);
+
+    const nuevaId = await this.agendaRepository.marcarNoAsistioYReprogramar({
       citaId,
-      new Date(),
-    );
-    if (!marcada) {
+      psicologaId: contexto.usuarioId,
+      fechaHora,
+      duracionMinutos: reprogramar.duracionMinutos,
+      ahora,
+    });
+    if (nuevaId === null) {
       throw new ConflictException(MENSAJE_CITA_NO_MARCABLE);
     }
 
+    await this.auditarNoAsistio(contexto, citaId, detalles);
     await this.auditService.registrar(
+      eventoAuditoria(contexto, {
+        accion: 'CITA_PSICOLOGICA_REPROGRAMADA',
+        entidad: 'CitaPsicologica',
+        entidadId: nuevaId,
+        detalles: { ...detalles, citaAnteriorId: citaId },
+      }),
+    );
+
+    return {
+      id: citaId,
+      estado: 'NO_ASISTIO',
+      nuevaCita: {
+        id: nuevaId,
+        procesoId: cita.atencionId,
+        fechaHora: fechaHora.toISOString(),
+      },
+    };
+  }
+
+  private auditarNoAsistio(
+    contexto: ContextoAuditoria,
+    citaId: string,
+    detalles: { expedienteId: string; procesoId: string },
+  ): Promise<void> {
+    return this.auditService.registrar(
       eventoAuditoria(contexto, {
         accion: 'CITA_PSICOLOGICA_NO_ASISTIO',
         entidad: 'CitaPsicologica',
         entidadId: citaId,
-        detalles: {
-          expedienteId: cita.expedienteId,
-          procesoId: cita.atencionId,
-        },
+        detalles,
       }),
     );
-
-    return { id: citaId, estado: 'NO_ASISTIO' };
   }
 
   /** Mis procesos abiertos: alimenta el selector de "Programar cita" y "Sin próxima cita". */

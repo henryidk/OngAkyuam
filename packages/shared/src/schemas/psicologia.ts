@@ -109,6 +109,16 @@ export type AbrirProcesosPsicologiaInput = z.infer<typeof abrirProcesosPsicologi
 export const moverCitaPsicologicaSchema = agendarCitaPsicologicaSchema.omit({ ninoId: true })
 export type MoverCitaPsicologicaInput = z.infer<typeof moverCitaPsicologicaSchema>
 
+/**
+ * `POST /psicologia/citas/:citaId/no-asistio` — la persona no llegó. Con `reprogramar`, en el
+ * mismo paso nace la cita nueva (todo o nada): no queda nadie sin fecha por olvidar el segundo
+ * paso. Sin cuerpo equivale a "solo registrar la inasistencia".
+ */
+export const marcarNoAsistioPsicologiaSchema = z.object({
+  reprogramar: moverCitaPsicologicaSchema.nullable().default(null),
+})
+export type MarcarNoAsistioPsicologiaInput = z.infer<typeof marcarNoAsistioPsicologiaSchema>
+
 export const RESUMEN_CIERRE_PSICOLOGIA_MAX = 2000
 
 /** `POST /psicologia/procesos/:id/cierre`. */
@@ -703,6 +713,13 @@ export interface CitaProgramadaDto {
   id: string
   procesoId: string
   fechaHora: string
+}
+
+/** Respuesta de `POST /psicologia/citas/:citaId/no-asistio`: la cita nueva si se reprogramó. */
+export interface NoAsistioPsicologiaDto {
+  id: string
+  estado: 'NO_ASISTIO'
+  nuevaCita: CitaProgramadaDto | null
 }
 
 /** Fila de `GET /psicologia/procesos`. */

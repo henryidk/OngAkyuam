@@ -30,6 +30,10 @@ export interface MoverCitaParams {
   duracionMinutos: number;
 }
 
+export interface NoAsistioReprogramarParams extends MoverCitaParams {
+  ahora: Date;
+}
+
 /** La agenda siempre es la de quien consulta: todas las lecturas filtran por la psicóloga dueña. */
 export interface IAgendaPsicologiaRepository {
   /** Citas que ocupan agenda en el rango (ni canceladas ni reprogramadas), en orden cronológico. */
@@ -44,6 +48,15 @@ export interface IAgendaPsicologiaRepository {
    * Se usa tras `exigirAutoriaCita`.
    */
   marcarNoAsistio(citaId: string, ahora: Date): Promise<boolean>;
+  /**
+   * Lo mismo, y en la misma transacción nace la cita nueva para la misma persona (enlazada con
+   * `reprogramadaDesdeId`). `null` si la cita no se podía marcar o el proceso ya no es de esta
+   * psicóloga o se cerró: no se escribió nada. Se usa tras `exigirAutoriaCita` y
+   * `exigirAccesoCita`.
+   */
+  marcarNoAsistioYReprogramar(
+    params: NoAsistioReprogramarParams,
+  ): Promise<string | null>;
   /**
    * Mis procesos sin cerrar que ya abrieron (tienen primera cita agendada), con las personas a
    * quienes se puede citar, su próxima cita programada (si la tienen) y si alguna cita suya

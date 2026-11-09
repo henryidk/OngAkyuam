@@ -14,6 +14,7 @@ import {
   agendarCitaPsicologicaSchema,
   disponibilidadPsicologiaQuerySchema,
   huecosAgendaQuerySchema,
+  marcarNoAsistioPsicologiaSchema,
   moverCitaPsicologicaSchema,
   rangoFechasQuerySchema,
 } from '@akyuam/shared';
@@ -21,6 +22,7 @@ import type {
   AgendarCitaPsicologicaInput,
   DisponibilidadPsicologiaQuery,
   HuecosAgendaQuery,
+  MarcarNoAsistioPsicologiaInput,
   MoverCitaPsicologicaInput,
   RangoFechasQuery,
 } from '@akyuam/shared';
@@ -102,8 +104,10 @@ export class AgendaPsicologiaController {
   @Throttle({ default: { limit: 30, ttl: 60_000 } })
   marcarNoAsistio(
     @Param('citaId', ParseUUIDPipe) citaId: string,
+    @Body(new ZodValidationPipe(marcarNoAsistioPsicologiaSchema))
+    datos: MarcarNoAsistioPsicologiaInput,
     @ContextoAuditoria() contexto: IContextoAuditoria,
   ) {
-    return this.agendaService.marcarNoAsistio(citaId, contexto);
+    return this.agendaService.marcarNoAsistio(citaId, datos, contexto);
   }
 }

@@ -380,12 +380,19 @@ export default function DetalleProceso() {
 
       {cerrando && acciones.includes('CERRAR') && <ModalCerrar {...propsModal} />}
       <ConfirmarNoAsistio
-        cita={aMarcar && { id: aMarcar.id, descripcion: `${proceso.usuariaNombreCompleto} · cita del ${fechaYHora(aMarcar)}` }}
+        cita={
+          aMarcar && {
+            id: aMarcar.id,
+            descripcion: `${proceso.usuariaNombreCompleto} · cita del ${fechaYHora(aMarcar)}`,
+            fechaHora: aMarcar.fechaHora,
+            puedeReprogramar: puedeProgramar,
+          }
+        }
         onCancelar={() => setAMarcar(null)}
-        onIntento={(marcada) => {
-          if (marcada) {
+        onIntento={(resultado) => {
+          if (resultado) {
             setAMarcar(null)
-            mostrar('Inasistencia registrada')
+            mostrar(resultado.mensaje)
           }
           // También si falló: lo más probable es que otra pestaña ya la haya registrado.
           refrescar()

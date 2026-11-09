@@ -26,7 +26,9 @@ import type {
   ListaUsuariasPsicologia,
   ListarProcesosPsicologiaQuery,
   ListarUsuariasPsicologiaQuery,
+  MarcarNoAsistioPsicologiaInput,
   MoverCitaPsicologicaInput,
+  NoAsistioPsicologiaDto,
   ProcesoParaAgendarDto,
   ProcesosPsicologiaAbiertosDto,
   ProcesoPsicologiaCerradoDto,
@@ -136,8 +138,9 @@ export function moverCita(citaId: string, datos: MoverCitaPsicologicaInput) {
   return api.post<CitaProgramadaDto>(`/psicologia/citas/${citaId}/reprogramacion`, datos).then((res) => res.data)
 }
 
-export function marcarNoAsistio(citaId: string) {
-  return api.post(`/psicologia/citas/${citaId}/no-asistio`).then(() => undefined)
+/** Con `reprogramar`, la cita nueva nace en el mismo paso (todo o nada). */
+export function marcarNoAsistio(citaId: string, datos: MarcarNoAsistioPsicologiaInput) {
+  return api.post<NoAsistioPsicologiaDto>(`/psicologia/citas/${citaId}/no-asistio`, datos).then((res) => res.data)
 }
 
 /**

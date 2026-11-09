@@ -159,10 +159,11 @@ export default function Agenda() {
     if (fechaCita !== dia) irA(fechaCita)
   }
 
-  function alIntentarNoAsistio(marcada: boolean) {
-    if (marcada) {
+  function alIntentarNoAsistio(resultado: { mensaje: string; fechaNueva: string | null } | null) {
+    if (resultado) {
       setAMarcar(null)
-      mostrar('Inasistencia registrada')
+      mostrar(resultado.mensaje)
+      if (resultado.fechaNueva && resultado.fechaNueva !== dia) irA(resultado.fechaNueva)
     }
     // También si falló: lo más probable es que otra pestaña ya la haya registrado.
     recargarTodo()
@@ -308,7 +309,14 @@ export default function Agenda() {
       )}
 
       <ConfirmarNoAsistio
-        cita={aMarcar && { id: aMarcar.id, descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.codigoProceso}` }}
+        cita={
+          aMarcar && {
+            id: aMarcar.id,
+            descripcion: `${aMarcar.persona.nombreCompleto} · ${aMarcar.codigoProceso}`,
+            fechaHora: aMarcar.fechaHora,
+            duracionMinutos: aMarcar.duracionMinutos,
+          }
+        }
         onCancelar={() => setAMarcar(null)}
         onIntento={alIntentarNoAsistio}
       />

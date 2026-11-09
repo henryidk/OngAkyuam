@@ -37,6 +37,8 @@ const DATOS_MOVER = {
   duracionMinutos: 60 as const,
   confirmarTraslape: false,
 };
+const SOLO_MARCAR = { reprogramar: null };
+const MARCAR_Y_REPROGRAMAR = { reprogramar: DATOS_MOVER };
 
 describe('AgendaPsicologiaService', () => {
   let agendaRepository: jest.Mocked<IAgendaPsicologiaRepository>;
@@ -51,6 +53,7 @@ describe('AgendaPsicologiaService', () => {
       listarCitas: jest.fn().mockResolvedValue([]),
       listarOcupadas: jest.fn().mockResolvedValue([]),
       marcarNoAsistio: jest.fn().mockResolvedValue(true),
+      marcarNoAsistioYReprogramar: jest.fn().mockResolvedValue(CITA_NUEVA_ID),
       listarProcesosParaAgendar: jest.fn().mockResolvedValue([]),
       programarCita: jest.fn().mockResolvedValue(CITA_NUEVA_ID),
       moverCita: jest.fn().mockResolvedValue(CITA_NUEVA_ID),
@@ -200,7 +203,7 @@ describe('AgendaPsicologiaService', () => {
       citasRepository.buscarAutoriaCita.mockResolvedValue(null);
 
       await expect(
-        service.marcarNoAsistio(CITA_ID, contexto),
+        service.marcarNoAsistio(CITA_ID, SOLO_MARCAR, contexto),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(citasRepository.buscarAutoriaCita).toHaveBeenCalledWith(
         CITA_ID,
@@ -211,9 +214,13 @@ describe('AgendaPsicologiaService', () => {
     });
 
     it('marca la cita y lo audita solo con ids', async () => {
-      await expect(service.marcarNoAsistio(CITA_ID, contexto)).resolves.toEqual(
-        { id: CITA_ID, estado: 'NO_ASISTIO' },
-      );
+      await expect(
+        service.marcarNoAsistio(CITA_ID, SOLO_MARCAR, contexto),
+      ).resolves.toEqual({
+        id: CITA_ID,
+        estado: 'NO_ASISTIO',
+        nuevaCita: null,
+      });
       expect(agendaRepository.marcarNoAsistio).toHaveBeenCalledWith(
         CITA_ID,
         AHORA,
@@ -231,9 +238,105 @@ describe('AgendaPsicologiaService', () => {
       agendaRepository.marcarNoAsistio.mockResolvedValue(false);
 
       await expect(
-        service.marcarNoAsistio(CITA_ID, contexto),
+        service.marcarNoAsistio(CITA_ID, SOLO_MARCAR, contexto),
       ).rejects.toBeInstanceOf(ConflictException);
       expect(auditService.registrar).not.toHaveBeenCalled();
+    });
+
+    describe('con reprogramación en el mismo paso', () => {
+      it('rechaza con 403 a quien no atendió la cita, sin tocar nada', async () => {
+        citasRepository.buscarAutoriaCita.mockResolvedValue(null);
+
+        await expect(
+          service.marcarNoAsistio(CITA_ID, MARCAR_Y_REPROGRAMAR, contexto),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(
+          agendaRepository.marcarNoAsistioYReprogramar,
+        ).not.toHaveBeenCalled();
+        expect(agendaRepository.marcarNoAsistio).not.toHaveBeenCalled();
+        expect(auditService.registrar).not.toHaveBeenCalled();
+      });
+
+      it('rechaza con 403 a quien atendió pero no lleva el proceso: reprogramar es de la responsable', async () => {
+        citasRepository.buscarAccesoCita.mockResolvedValue(null);
+
+        await expect(
+          service.marcarNoAsistio(CITA_ID, MARCAR_Y_REPROGRAMAR, contexto),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+        expect(citasRepository.buscarAccesoCita).toHaveBeenCalledWith(
+          CITA_ID,
+          'psicologa-a',
+        );
+        expect(
+          agendaRepository.marcarNoAsistioYReprogramar,
+        ).not.toHaveBeenCalled();
+        expect(agendaRepository.marcarNoAsistio).not.toHaveBeenCalled();
+        expect(auditService.registrar).not.toHaveBeenCalled();
+      });
+
+      it('avisa del traslape con 409 antes de escribir: la inasistencia tampoco se marca', async () => {
+        citasRepository.buscarCitasSolapadas.mockResolvedValue([
+          { id: CITA_NUEVA_ID } as never,
+        ]);
+
+        await expect(
+          service.marcarNoAsistio(CITA_ID, MARCAR_Y_REPROGRAMAR, contexto),
+        ).rejects.toMatchObject({ response: { codigo: 'TRASLAPE_CITA' } });
+        expect(
+          agendaRepository.marcarNoAsistioYReprogramar,
+        ).not.toHaveBeenCalled();
+        expect(agendaRepository.marcarNoAsistio).not.toHaveBeenCalled();
+        expect(auditService.registrar).not.toHaveBeenCalled();
+      });
+
+      it('marca y crea la cita nueva en una sola operación, y audita ambas solo con ids', async () => {
+        await expect(
+          service.marcarNoAsistio(CITA_ID, MARCAR_Y_REPROGRAMAR, contexto),
+        ).resolves.toEqual({
+          id: CITA_ID,
+          estado: 'NO_ASISTIO',
+          nuevaCita: {
+            id: CITA_NUEVA_ID,
+            procesoId: PROCESO_ID,
+            fechaHora: expect.any(String) as string,
+          },
+        });
+        expect(
+          agendaRepository.marcarNoAsistioYReprogramar,
+        ).toHaveBeenCalledWith({
+          citaId: CITA_ID,
+          psicologaId: 'psicologa-a',
+          fechaHora: expect.any(Date) as Date,
+          duracionMinutos: 60,
+          ahora: AHORA,
+        });
+        expect(agendaRepository.marcarNoAsistio).not.toHaveBeenCalled();
+        expect(eventosAuditados(auditService)).toEqual([
+          expect.objectContaining({
+            accion: 'CITA_PSICOLOGICA_NO_ASISTIO',
+            entidadId: CITA_ID,
+            detalles: { expedienteId: EXPEDIENTE_ID, procesoId: PROCESO_ID },
+          }),
+          expect.objectContaining({
+            accion: 'CITA_PSICOLOGICA_REPROGRAMADA',
+            entidadId: CITA_NUEVA_ID,
+            detalles: {
+              expedienteId: EXPEDIENTE_ID,
+              procesoId: PROCESO_ID,
+              citaAnteriorId: CITA_ID,
+            },
+          }),
+        ]);
+      });
+
+      it('responde 409 si la cita ya no se podía marcar o el proceso se cerró, sin auditar', async () => {
+        agendaRepository.marcarNoAsistioYReprogramar.mockResolvedValue(null);
+
+        await expect(
+          service.marcarNoAsistio(CITA_ID, MARCAR_Y_REPROGRAMAR, contexto),
+        ).rejects.toBeInstanceOf(ConflictException);
+        expect(auditService.registrar).not.toHaveBeenCalled();
+      });
     });
   });
 

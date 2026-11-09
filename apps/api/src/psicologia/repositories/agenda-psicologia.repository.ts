@@ -11,6 +11,7 @@ import type {
   CitaOcupada,
   IAgendaPsicologiaRepository,
   MoverCitaParams,
+  NoAsistioReprogramarParams,
   ProgramarCitaParams,
   RangoAgendaParams,
 } from '../interfaces/agenda-psicologia-repository.interface';
@@ -38,6 +39,39 @@ function ocupanAgenda(
     estado: { notIn: ['CANCELADA', 'REPROGRAMADA'] },
   };
 }
+
+/**
+ * "No asistió" solo a una cita que sigue programada, cuya hora ya llegó, en un proceso sin cerrar.
+ * Las condiciones van en el WHERE: si otra pestaña ya registró la cita, no se pisa nada.
+ */
+function condicionNoAsistio(
+  citaId: string,
+  ahora: Date,
+): Prisma.CitaPsicologicaUpdateManyArgs {
+  return {
+    where: {
+      id: citaId,
+      estado: 'PROGRAMADA',
+      fechaHora: { lte: ahora },
+      atencion: { estado: { not: 'CIERRE' } },
+    },
+    data: { estado: 'NO_ASISTIO' },
+  };
+}
+
+/** Lo que hereda la cita nueva de la que reemplaza. */
+const SELECT_ORIGEN_CITA = {
+  atencionId: true,
+  tipo: true,
+  ninoId: true,
+  modalidad: true,
+  lugar: true,
+  motivo: true,
+} satisfies Prisma.CitaPsicologicaSelect;
+
+type OrigenCita = Prisma.CitaPsicologicaGetPayload<{
+  select: typeof SELECT_ORIGEN_CITA;
+}>;
 
 @Injectable()
 export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
@@ -105,17 +139,39 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
   }
 
   async marcarNoAsistio(citaId: string, ahora: Date): Promise<boolean> {
-    // Las condiciones van en el WHERE: si otra pestaña ya registró la cita, no se pisa nada.
-    const marcadas = await this.prisma.citaPsicologica.updateMany({
-      where: {
-        id: citaId,
-        estado: 'PROGRAMADA',
-        fechaHora: { lte: ahora },
-        atencion: { estado: { not: 'CIERRE' } },
-      },
-      data: { estado: 'NO_ASISTIO' },
-    });
+    const marcadas = await this.prisma.citaPsicologica.updateMany(
+      condicionNoAsistio(citaId, ahora),
+    );
     return marcadas.count === 1;
+  }
+
+  marcarNoAsistioYReprogramar(
+    params: NoAsistioReprogramarParams,
+  ): Promise<string | null> {
+    return this.prisma.$transaction(async (tx) => {
+      const origen = await tx.citaPsicologica.findUnique({
+        where: { id: params.citaId },
+        select: SELECT_ORIGEN_CITA,
+      });
+      if (
+        !origen ||
+        !(await this.bloquearProcesoAbierto(tx, {
+          procesoId: origen.atencionId,
+          psicologaId: params.psicologaId,
+        }))
+      ) {
+        return null;
+      }
+
+      const marcadas = await tx.citaPsicologica.updateMany(
+        condicionNoAsistio(params.citaId, params.ahora),
+      );
+      if (marcadas.count !== 1) {
+        return null;
+      }
+
+      return this.crearDesde(tx, origen, params);
+    });
   }
 
   async listarProcesosParaAgendar(
@@ -206,14 +262,7 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
     return this.prisma.$transaction(async (tx) => {
       const origen = await tx.citaPsicologica.findUnique({
         where: { id: params.citaId },
-        select: {
-          atencionId: true,
-          tipo: true,
-          ninoId: true,
-          modalidad: true,
-          lugar: true,
-          motivo: true,
-        },
+        select: SELECT_ORIGEN_CITA,
       });
       if (
         !origen ||
@@ -234,23 +283,32 @@ export class AgendaPsicologiaRepository implements IAgendaPsicologiaRepository {
         return null;
       }
 
-      const nueva = await tx.citaPsicologica.create({
-        data: {
-          atencionId: origen.atencionId,
-          fechaHora: params.fechaHora,
-          duracionMinutos: params.duracionMinutos,
-          tipo: origen.tipo,
-          ninoId: origen.ninoId,
-          modalidad: origen.modalidad,
-          lugar: origen.lugar,
-          motivo: origen.motivo,
-          atendidoPorId: params.psicologaId,
-          reprogramadaDesdeId: params.citaId,
-        },
-        select: { id: true },
-      });
-      return nueva.id;
+      return this.crearDesde(tx, origen, params);
     });
+  }
+
+  /** La cita que reemplaza a otra: misma persona, tipo y modalidad, en la fecha nueva. */
+  private async crearDesde(
+    tx: Prisma.TransactionClient,
+    origen: OrigenCita,
+    params: MoverCitaParams,
+  ): Promise<string> {
+    const nueva = await tx.citaPsicologica.create({
+      data: {
+        atencionId: origen.atencionId,
+        fechaHora: params.fechaHora,
+        duracionMinutos: params.duracionMinutos,
+        tipo: origen.tipo,
+        ninoId: origen.ninoId,
+        modalidad: origen.modalidad,
+        lugar: origen.lugar,
+        motivo: origen.motivo,
+        atendidoPorId: params.psicologaId,
+        reprogramadaDesdeId: params.citaId,
+      },
+      select: { id: true },
+    });
+    return nueva.id;
   }
 
   /**
