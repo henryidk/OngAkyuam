@@ -11,6 +11,7 @@ import PanelPersonasAtendidas, { type Rango } from './PanelPersonasAtendidas'
 import SelectorAnio from './SelectorAnio'
 import TablaDesglose from './TablaDesglose'
 import TarjetasKpi from './TarjetasKpi'
+import { TituloPrincipal } from '../../../components/TituloPagina'
 
 type Vista = 'estadisticas' | 'personas'
 
@@ -119,7 +120,7 @@ export default function Indicadores() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1">
           <p className="text-xs font-medium uppercase tracking-wide text-gray-500">Reportes</p>
-          <h1 className="text-2xl font-semibold text-gray-900">Estadísticas de Psicología</h1>
+          <TituloPrincipal className="text-2xl font-semibold text-gray-900">Estadísticas de Psicología</TituloPrincipal>
           <p className="text-sm text-gray-500">
             {describirAlcance(filtros)} · edad, etnia y tipología vienen de Trabajo Social.
           </p>

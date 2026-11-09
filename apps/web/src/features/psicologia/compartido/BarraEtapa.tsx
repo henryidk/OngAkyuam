@@ -40,7 +40,7 @@ export default function BarraEtapa({ etapa, fechaInicio, fechaCierre, huboSesion
               <span
                 aria-hidden="true"
                 className={`flex h-6 w-6 flex-none items-center justify-center rounded-full border text-xs font-semibold ${
-                  paso.alcanzado ? claseActiva : 'border-gray-300 bg-white text-gray-400'
+                  paso.alcanzado ? claseActiva : 'border-gray-300 bg-white text-gray-500'
                 }`}
               >
                 {indice + 1}
@@ -49,7 +49,7 @@ export default function BarraEtapa({ etapa, fechaInicio, fechaCierre, huboSesion
                 <span className={`h-0.5 flex-1 rounded ${siguiente.alcanzado ? claseLinea : 'bg-gray-200'}`} />
               )}
             </div>
-            <p className={`mt-1.5 text-sm font-medium ${paso.alcanzado ? 'text-gray-900' : 'text-gray-400'}`}>
+            <p className={`mt-1.5 text-sm font-medium ${paso.alcanzado ? 'text-gray-900' : 'text-gray-500'}`}>
               {paso.etiqueta}
               {!paso.alcanzado && <span className="sr-only"> (pendiente)</span>}
             </p>

@@ -2,7 +2,7 @@ import { ChevronRight, Menu, X } from 'lucide-react'
 import { type ComponentType, type ReactNode, useState } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom'
 import LogoutButton from './LogoutButton'
-import { TituloPaginaProvider, useTituloPaginaActual } from './TituloPagina'
+import { TituloPaginaProvider, usePaginaConTituloPropio, useTituloPaginaActual } from './TituloPagina'
 import { useEnlaceProtegido } from '../lib/guardiaSalida'
 import { useAuthStore } from '../store/auth.store'
 
@@ -35,6 +35,8 @@ interface SidebarLayoutProps {
   contadores?: Partial<Record<string, number>>
   /** Se reenvía tal cual al `Outlet` — para que el layout cargue datos una sola vez y las páginas los lean con `useOutletContext`. */
   outletContext?: unknown
+  /** Contenido opcional al pie del menú, sobre la cuenta — p. ej. el aviso de atajos de Medicina y Psicología. */
+  pieMenu?: ReactNode
 }
 
 /** Una sola definición de "estoy en esta sección", usada por el resaltado y por el título. */
@@ -64,7 +66,7 @@ export default function SidebarLayout(props: SidebarLayoutProps) {
   )
 }
 
-function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, outletContext }: SidebarLayoutProps) {
+function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, outletContext, pieMenu }: SidebarLayoutProps) {
   const [sidebarAbierto, setSidebarAbierto] = useState(false)
   const usuario = useAuthStore((state) => state.usuario)
   const location = useLocation()
@@ -74,6 +76,7 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
   const paginaActual = seccionActual(items, location.pathname, location.search)
   const titulo = tituloPagina?.titulo ?? paginaActual?.etiqueta ?? subtitulo
   const migas = tituloPagina?.migas
+  const EtiquetaTitulo = usePaginaConTituloPropio() ? 'p' : 'h1'
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -138,6 +141,7 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
         </nav>
 
         <div className="shrink-0 border-t border-white/10 p-4">
+          {pieMenu}
           <div className="flex items-center gap-3 rounded-lg bg-white/5 p-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
               {usuario ? obtenerIniciales(usuario.nombreCompleto) : ''}
@@ -184,7 +188,7 @@ function SidebarLayoutInterno({ items, subtitulo, accionesHeader, contadores, ou
                 ))}
               </nav>
             )}
-            <h1 className="truncate text-xl font-semibold text-gray-900">{titulo}</h1>
+            <EtiquetaTitulo className="truncate text-xl font-semibold text-gray-900">{titulo}</EtiquetaTitulo>
           </div>
 
           {accionesHeader && <div className="flex shrink-0 items-center gap-2">{accionesHeader}</div>}

@@ -4,6 +4,7 @@ import Button from '../../../components/ui/Button'
 import Tabs from '../../../components/ui/Tabs'
 import { rangoEdadCorto } from '../usuarias/filaUsuaria'
 import { badgeRegistro, iniciales, nombreCompleto, textoGrupoEtnico, textoUbicacion } from './textoUsuaria'
+import { TituloPrincipal } from '../../../components/TituloPagina'
 
 interface EncabezadoFichaProps {
   usuaria: UsuariaExpedienteHub
@@ -51,7 +52,7 @@ export default function EncabezadoFicha({ usuaria, editandoDatos, onReferir, onR
           </div>
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-[22px] font-semibold tracking-tight text-gray-900">{nombreCompleto(usuaria)}</h1>
+              <TituloPrincipal className="text-[22px] font-semibold tracking-tight text-gray-900">{nombreCompleto(usuaria)}</TituloPrincipal>
               {badge && <Badge tono={badge.tono}>{badge.texto}</Badge>}
             </div>
             <p className="mt-1.5 text-sm tabular-nums text-gray-600">

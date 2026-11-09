@@ -21,4 +21,38 @@
   --color-brand-800: #402c65;
   --color-brand-900: #2d2465;
   --color-brand-950: #1c1640;
+
+  /*
+   * Tokens semánticos (plan de mejora V0): el color dice qué es, no qué tono tiene. Contraste
+   * medido sobre blanco y sobre `superficie`: todo texto que informa pasa 4.5:1 (WCAG 1.4.3).
+   */
+  --color-texto: #1c2430; /* 15.6:1 */
+  --color-texto-cuerpo: #374151; /* 10.3:1 */
+  --color-texto-suave: #5b6573; /* 5.9:1 */
+  --color-texto-sutil: #687180; /* 4.9:1 — lo más claro permitido para texto */
+  --color-borde: #e3e6ea;
+  --color-borde-fuerte: #d5dadf;
+  --color-borde-suave: #eef0f2;
+  --color-superficie: #f8f9fa;
+  --color-superficie-hundida: #f0f2f4;
+  --color-seleccion: #f2ecfa;
+  --color-seleccion-borde: #e6dbf3;
+
+  /* Estados. El ámbar se reserva para "requiere acción hoy"; lo informativo va en neutro. */
+  --color-estado-pendiente: #8a5a14;
+  --color-estado-pendiente-marca: #a15c07;
+  --color-estado-pendiente-fondo: #fdf6e9;
+  --color-estado-pendiente-insignia: #fbf1de;
+  --color-estado-pendiente-borde: #ecd9b8;
+  /* Rojo: solo errores del sistema y acciones destructivas, nunca para culpar a la paciente. */
+  --color-estado-error: #9b2c20;
+  --color-estado-error-marca: #d4574a;
+  --color-estado-error-fondo: #fdf3f1;
+  --color-estado-error-insignia: #fbe4e1;
+  --color-estado-error-borde: #f3c4bd;
+  --color-estado-ok: #2f6b3f;
+  --color-estado-ok-marca: #2f7d4f;
+  --color-estado-ok-insignia: #e7f1ea;
+  --color-estado-info: #1f5aa6;
+  --color-estado-info-insignia: #e8f0fb;
 }

@@ -3,7 +3,7 @@ import { formatFechaGT, type FilaPersonaAtendidaPsicologia } from '@akyuam/share
 
 /** Texto clínico o listas largas: dos líneas como máximo y el texto completo al pasar el cursor. */
 function TextoLargo({ texto, ancho }: { texto: string; ancho: string }) {
-  if (!texto) return <span className="text-gray-400">—</span>
+  if (!texto) return <span className="text-gray-500">—</span>
   return (
     <span className={`line-clamp-2 block whitespace-normal break-words ${ancho}`} title={texto}>
       {texto}

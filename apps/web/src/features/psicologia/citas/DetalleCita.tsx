@@ -12,6 +12,7 @@ import { extraerMensajeError } from '../../../lib/errors'
 import { obtenerDetalleCita } from '../api/psicologia.api'
 import { RUTAS_PSICOLOGIA } from '../rutas'
 import CodigoProceso from '../compartido/CodigoProceso'
+import { TituloPrincipal } from '../../../components/TituloPagina'
 
 export default function DetalleCita() {
   const { citaId } = useParams<{ citaId: string }>()
@@ -43,9 +44,9 @@ export default function DetalleCita() {
   return (
     <div className="max-w-xl space-y-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-semibold text-gray-800">
+        <TituloPrincipal className="text-lg font-semibold text-gray-800">
           {cita.ninoNombreCompleto ?? cita.usuariaNombreCompleto}
-        </h1>
+        </TituloPrincipal>
         <Badge>{ETIQUETAS_ESTADO_CITA_PSICOLOGICA[cita.estado]}</Badge>
       </div>
 

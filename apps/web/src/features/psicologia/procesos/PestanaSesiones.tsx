@@ -79,7 +79,7 @@ function TarjetaSesion({ sesion, abierta, onAlternar }: TarjetaSesionProps) {
       </div>
 
       {notas.length === 0 ? (
-        <p className="px-4 pb-3 text-xs text-gray-400 italic">{atendida ? 'Sin notas registradas.' : 'Sin motivo registrado.'}</p>
+        <p className="px-4 pb-3 text-xs text-gray-500 italic">{atendida ? 'Sin notas registradas.' : 'Sin motivo registrado.'}</p>
       ) : abierta ? (
         <dl id={idNotas} className="space-y-3 border-t border-gray-100 px-4 py-3">
           {notas.map((nota) => (
