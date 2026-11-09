@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { ArrowRight, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import {
   hoyGT,
   lunesDeSemanaGT,
@@ -10,6 +10,7 @@ import {
   type ProgramablesMedicaQuery,
   textoCodigo,
 } from '@akyuam/shared'
+import AvisoAgenda from '../../../components/AvisoAgenda'
 import { useTituloPagina } from '../../../components/TituloPagina'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
@@ -175,28 +176,25 @@ export default function Agenda() {
         }
       />
 
-      {hoyEsFinDeSemana && dia === diaHabil(hoy) && (
-        <p className="w-fit rounded-md border border-borde bg-white px-3 py-2 text-[13.5px] text-texto-suave">
-          Hoy es {fechaLargaEnFrase(hoy)} y la agenda es de lunes a viernes: se muestra el {fechaLargaEnFrase(dia)}. Si
-          atiendes hoy, regístralo en{' '}
-          <Link to={RUTAS_MEDICA.consultas()} className="font-medium text-brand-600 underline underline-offset-2">
-            Consultas › Consulta sin cita
-          </Link>
-          .
-        </p>
-      )}
-
-      {atrasadas > 0 && (
-        <Link
-          to={RUTAS_MEDICA.consultas()}
-          className="flex w-fit items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-[13.5px] font-medium text-amber-900 hover:bg-amber-100"
-        >
-          {atrasadas === 1
-            ? 'Tienes 1 consulta de días anteriores sin registrar'
-            : `Tienes ${atrasadas} consultas de días anteriores sin registrar`}
-          <ArrowRight aria-hidden="true" className="h-4 w-4" />
-        </Link>
-      )}
+      <AvisoAgenda
+        sinRegistrar={{
+          total: atrasadas,
+          texto: atrasadas === 1 ? 'Consulta de días anteriores sin registrar' : 'Consultas de días anteriores sin registrar',
+          to: RUTAS_MEDICA.consultas(),
+        }}
+        noLaboral={
+          hoyEsFinDeSemana && dia === diaHabil(hoy) ? (
+            <>
+              Hoy es {fechaLargaEnFrase(hoy)} y la agenda es de lunes a viernes: se muestra el {fechaLargaEnFrase(dia)}. Si
+              atiendes hoy, regístralo en{' '}
+              <Link to={RUTAS_MEDICA.consultas()} className="font-medium text-brand-600 underline underline-offset-2">
+                Consultas › Consulta sin cita
+              </Link>
+              .
+            </>
+          ) : null
+        }
+      />
 
       <TiraSemana lunes={lunes} dia={dia} hoy={hoy} semana={semana.datos?.dias ?? null} onElegir={irADia} />
 
@@ -210,8 +208,8 @@ export default function Agenda() {
       ) : !agendaDia.datos ? (
         <Esqueleto filas={4} />
       ) : (
-        <div className="flex flex-wrap items-start gap-5">
-          <div className="min-w-0 flex-[999_1_460px] overflow-hidden rounded-lg border border-borde bg-white">
+        <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <section aria-label={`Consultas del ${fechaLarga(dia).toLowerCase()}`} className="min-w-0 overflow-hidden rounded-lg border border-borde bg-white">
             {citas.length === 0 ? (
               <p className="p-12 text-center text-sm text-texto-suave">No hay consultas este día.</p>
             ) : (
@@ -225,10 +223,13 @@ export default function Agenda() {
                 />
               ))
             )}
-          </div>
+          </section>
           <PendientesAgenda
             porAgendar={porAgendar.datos}
+            totalPorAgendar={contadores?.areaAtencion ?? null}
             sinProxima={contadores?.sinProxima ?? null}
+            // Un solo elemento en ámbar a la vista: si ya hay consultas sin registrar, esta tarjeta queda neutra.
+            permitirUrgente={atrasadas === 0}
             onAgendar={(referidoId) => setProgramar({ referidoId })}
           />
         </div>

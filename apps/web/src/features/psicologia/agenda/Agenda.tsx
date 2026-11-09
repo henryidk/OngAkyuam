@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowRight, CalendarDays, Plus } from 'lucide-react'
+import { CalendarDays, Plus } from 'lucide-react'
 import {
   diaSemanaGT,
   formatFechaLargaGT,
@@ -9,6 +9,7 @@ import {
   type CitaAgendaDto,
   type HuecoLibreDto,
 } from '@akyuam/shared'
+import AvisoAgenda from '../../../components/AvisoAgenda'
 import { useTituloPagina, TituloPrincipal } from '../../../components/TituloPagina'
 import Button from '../../../components/ui/Button'
 import EmptyState from '../../../components/ui/EmptyState'
@@ -200,25 +201,24 @@ export default function Agenda() {
         </div>
       </div>
 
-      {porRegistrar > 0 && (
-        <Link
-          to={RUTAS_PSICOLOGIA.consultas()}
-          className="flex w-fit items-center gap-1.5 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-900 hover:bg-amber-100"
-        >
-          {porRegistrar === 1 ? 'Tienes 1 sesión por registrar' : `Tienes ${porRegistrar} sesiones por registrar`}
-          <ArrowRight aria-hidden="true" className="h-4 w-4" />
-        </Link>
-      )}
-
-      {dia === hoy && diaSemanaGT(hoy) >= 6 && (
-        <p className="w-fit rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-600">
-          Hoy no es día laboral: la agenda se programa de lunes a viernes. Si atiendes hoy, regístralo en{' '}
-          <Link to={RUTAS_PSICOLOGIA.consultas()} className="font-medium text-brand-700 underline underline-offset-2">
-            Consultas › Sesión sin cita
-          </Link>
-          .
-        </p>
-      )}
+      <AvisoAgenda
+        sinRegistrar={{
+          total: porRegistrar,
+          texto: porRegistrar === 1 ? 'Sesión por registrar' : 'Sesiones por registrar',
+          to: RUTAS_PSICOLOGIA.consultas(),
+        }}
+        noLaboral={
+          dia === hoy && diaSemanaGT(hoy) >= 6 ? (
+            <>
+              Hoy no es día laboral: la agenda se programa de lunes a viernes. Si atiendes hoy, regístralo en{' '}
+              <Link to={RUTAS_PSICOLOGIA.consultas()} className="font-medium text-brand-700 underline underline-offset-2">
+                Consultas › Sesión sin cita
+              </Link>
+              .
+            </>
+          ) : null
+        }
+      />
 
       <NavegadorSemana
         dias={dias}
@@ -283,12 +283,14 @@ export default function Agenda() {
           )}
         </section>
 
-        <aside className="space-y-4 xl:sticky xl:top-6">
+        <aside aria-label="Pendientes de agendar" className="xl:sticky xl:top-6">
           <PendientesAgenda
             porAgendar={porAgendar.datos}
             errorPorAgendar={porAgendar.error?.mensaje ?? null}
             resaltadoId={resaltadoId}
             sinProxima={resumen?.procesos.SIN_PROXIMA ?? null}
+            // Un solo elemento en ámbar a la vista: si ya hay sesiones por registrar, esta tarjeta queda neutra.
+            permitirUrgente={porRegistrar === 0}
             onAgendar={(caso) => setModal({ destino: { tipo: 'PRIMERA', caso }, fecha: dia })}
             onAtenderAhora={(caso) => navigate(RUTAS_PSICOLOGIA.atenderAhora(caso.referidoId, 'agenda'))}
           />

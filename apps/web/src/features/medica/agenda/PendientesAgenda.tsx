@@ -19,8 +19,12 @@ function textoEspera(dias: number): string {
 interface PendientesAgendaProps {
   /** Referencias del Área de atención; null mientras cargan. */
   porAgendar: ReferenciaBandejaMedicaDto[] | null
+  /** Total real del Área de atención (la lista trae como mucho LIMITE_BANDEJA_MEDICA); null mientras carga. */
+  totalPorAgendar: number | null
   /** Total de "Sin próxima consulta" de los contadores del menú; null mientras carga. */
   sinProxima: number | null
+  /** false cuando ya hay otro aviso en ámbar arriba: la tarjeta no compite con él. */
+  permitirUrgente: boolean
   onAgendar: (referidoId: string) => void
 }
 
@@ -31,15 +35,15 @@ interface PendientesAgendaProps {
  * - Sin próxima consulta: pacientes en atención sin cita; su lista vive en Pacientes, con páginas
  *   y búsqueda, porque con miles de pacientes no cabe aquí. Nunca va en ámbar: no es urgente hoy.
  */
-export default function PendientesAgenda({ porAgendar, sinProxima, onAgendar }: PendientesAgendaProps) {
+export default function PendientesAgenda({ porAgendar, totalPorAgendar, sinProxima, permitirUrgente, onAgendar }: PendientesAgendaProps) {
   // De la que más espera a la más reciente.
   const ordenadas = porAgendar ? [...porAgendar].sort((a, b) => a.referidoEn.localeCompare(b.referidoEn)) : null
-  const total = ordenadas?.length ?? null
+  const total = ordenadas ? Math.max(ordenadas.length, totalPorAgendar ?? 0) : null
   const maxEspera = ordenadas && ordenadas.length > 0 ? diasDesdeGT(ordenadas[0].referidoEn) : 0
   const visibles = ordenadas?.slice(0, VISIBLES_POR_AGENDAR) ?? []
 
   return (
-    <div className="flex min-w-0 flex-[1_1_320px] flex-col gap-4">
+    <aside aria-label="Pendientes de agendar" className="grid min-w-0 items-start gap-4 md:grid-cols-2 xl:sticky xl:top-6 xl:grid-cols-1">
       <TarjetaPendiente
         titulo="Por agendar"
         total={total}
@@ -50,7 +54,7 @@ export default function PendientesAgenda({ porAgendar, sinProxima, onAgendar }: 
           accion: 'Ver en Área de atención',
           etiqueta: `${total ?? 0} ${total === 1 ? 'paciente por agendar' : 'pacientes por agendar'}, ver en Área de atención`,
         }}
-        urgente={maxEspera > DIAS_ESPERA_URGENTE}
+        urgente={permitirUrgente && maxEspera > DIAS_ESPERA_URGENTE}
       >
         {visibles.length > 0 && (
           <ul aria-label="Las que más esperan" className="flex flex-col border-t border-borde px-4">
@@ -93,6 +97,6 @@ export default function PendientesAgenda({ porAgendar, sinProxima, onAgendar }: 
           etiqueta: `${sinProxima ?? 0} ${sinProxima === 1 ? 'paciente sin próxima consulta' : 'pacientes sin próxima consulta'}, revisar`,
         }}
       />
-    </div>
+    </aside>
   )
 }

@@ -27,6 +27,8 @@ interface PendientesAgendaProps {
   resaltadoId: string | null
   /** Total de procesos sin próxima cita, el mismo que cuenta el filtro de Procesos; null mientras carga. */
   sinProxima: number | null
+  /** false cuando ya hay otro aviso en ámbar arriba: la tarjeta no compite con él. */
+  permitirUrgente: boolean
   onAgendar: (caso: CasoPorAgendarDto) => void
   /** La persona está aquí: se registra la sesión sin agendar y con ella se abre el proceso. */
   onAtenderAhora: (caso: CasoPorAgendarDto) => void
@@ -44,6 +46,7 @@ export default function PendientesAgenda({
   errorPorAgendar,
   resaltadoId,
   sinProxima,
+  permitirUrgente,
   onAgendar,
   onAtenderAhora,
 }: PendientesAgendaProps) {
@@ -69,13 +72,13 @@ export default function PendientesAgenda({
   }, [hayResaltado])
 
   return (
-    <div className="flex min-w-0 flex-col gap-4">
+    <div className="grid min-w-0 items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
       <TarjetaPendiente
         titulo="Casos tomados por agendar"
         total={errorPorAgendar ? null : total}
         contexto={maxEspera > 0 ? `El que más espera: ${maxEspera === 1 ? '1 día' : `${maxEspera} días`}` : 'Tomados hoy'}
         textoVacio="Todos tienen primera cita"
-        urgente={maxEspera > DIAS_ESPERA_URGENTE}
+        urgente={permitirUrgente && maxEspera > DIAS_ESPERA_URGENTE}
       >
         {errorPorAgendar && <p className="border-t border-borde px-4 py-2 text-[12.5px] text-red-600">{errorPorAgendar}</p>}
         {visibles.length > 0 && (

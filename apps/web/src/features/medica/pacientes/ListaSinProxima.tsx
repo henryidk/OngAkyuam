@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useCallback, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import {
   ETIQUETAS_GRUPO_SIN_PROXIMA_MEDICA,
   ETIQUETAS_MOTIVO_ALTA_MEDICA,
@@ -15,15 +15,16 @@ import {
   type SinProximaConsultaDto,
   textoCodigo,
 } from '@akyuam/shared'
-import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
-import Paginacion from '../../../components/ui/Paginacion'
+import { ErrorVista } from '../../../components/ui/EstadosVista'
+import MenuAcciones from '../../../components/ui/MenuAcciones'
+import TablaDatos, { type ColumnaTabla } from '../../../components/ui/TablaDatos'
 import { useToast } from '../../../components/ui/Toast'
+import { usePaginaConFilas, usePaginaUrl } from '../../../lib/usePaginaUrl'
 import { useRecurso } from '../../../lib/useRecurso'
 import { listarSinProxima } from '../api/medica.api'
 import ModalAlta from '../atenciones/ModalAlta'
 import CodigoAtencion from '../compartido/CodigoAtencion'
 import { useContextoMedica } from '../compartido/contexto'
-import { CLASE_TARJETA } from '../compartido/estilos'
 import { anioDe, fechaCorta, fechaLargaEnFrase } from '../compartido/fechas'
 import ModalProgramar from '../compartido/ModalProgramar'
 import { useRecargaNovedades } from '../compartido/useRecargaNovedades'
@@ -31,8 +32,6 @@ import { RUTAS_MEDICA } from '../rutas'
 
 const BOTON_AGENDAR =
   'whitespace-nowrap rounded-md border border-brand-600 bg-white px-2.5 py-1.5 text-[12.5px] font-semibold text-brand-600 hover:bg-brand-50'
-const BOTON_ALTA =
-  'whitespace-nowrap rounded-md border border-borde-fuerte bg-white px-2.5 py-1.5 text-[12.5px] font-medium text-texto hover:bg-superficie'
 
 /** Qué significa cada grupo, debajo de los chips, para no tener que adivinarlo. */
 const AYUDA_GRUPO: Record<GrupoSinProximaMedica | 'TODAS', string> = {
@@ -45,11 +44,6 @@ const AYUDA_GRUPO: Record<GrupoSinProximaMedica | 'TODAS', string> = {
 
 function esGrupo(valor: string | null): valor is GrupoSinProximaMedica {
   return (GRUPOS_SIN_PROXIMA_MEDICA as readonly string[]).includes(valor ?? '')
-}
-
-function leerPagina(valor: string | null): number {
-  const numero = Number(valor)
-  return Number.isInteger(numero) && numero >= 1 && numero <= PAGINA_MAX_SIN_PROXIMA_MEDICA ? numero : 1
 }
 
 /** "hoy", "ayer", "hace 5 días", "hace 3 semanas", "hace 4 meses", "hace más de un año". */
@@ -78,53 +72,20 @@ interface ListaSinProximaProps {
  * agrupadas por lo que pasó. El número de la tarjeta de la Agenda es el "Todas" de aquí.
  */
 export default function ListaSinProxima({ busqueda }: ListaSinProximaProps) {
-  const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const { mostrar } = useToast()
   const { recargarContadores } = useContextoMedica()
+  const { pagina, params, cambiarParams, irAPagina } = usePaginaUrl(PAGINA_MAX_SIN_PROXIMA_MEDICA, busqueda)
   const grupoParam = params.get('grupo')
   const grupo = esGrupo(grupoParam) ? grupoParam : undefined
-  const pagina = leerPagina(params.get('pagina'))
 
   const [programar, setProgramar] = useState<SinProximaConsultaDto | null>(null)
   const [alta, setAlta] = useState<SinProximaConsultaDto | null>(null)
 
-  const cambiarParams = useCallback(
-    (cambios: Record<string, string | undefined>) => {
-      setParams(
-        (actuales) => {
-          const nuevos = new URLSearchParams(actuales)
-          for (const [clave, valor] of Object.entries(cambios)) {
-            if (valor) nuevos.set(clave, valor)
-            else nuevos.delete(clave)
-          }
-          return nuevos
-        },
-        { replace: true },
-      )
-    },
-    [setParams],
-  )
-
-  // Una búsqueda nueva empieza en la primera página (la primera vez no: se respeta la URL).
-  const busquedaAnterior = useRef(busqueda)
-  useEffect(() => {
-    if (busquedaAnterior.current === busqueda) return
-    busquedaAnterior.current = busqueda
-    cambiarParams({ pagina: undefined })
-  }, [busqueda, cambiarParams])
-
   const lista = useRecurso(useCallback(() => listarSinProxima({ q: busqueda, grupo, pagina }), [busqueda, grupo, pagina]))
   const { recargar } = lista
   useRecargaNovedades(recargar)
-
-  // Si se agendó o dio de alta a la última de la última página, se vuelve a la que sí tiene filas.
-  const datosActuales = lista.datos
-  useEffect(() => {
-    if (!datosActuales || datosActuales.items.length > 0 || datosActuales.pagina <= 1) return
-    const ultima = Math.max(1, Math.ceil(datosActuales.total / datosActuales.porPagina))
-    cambiarParams({ pagina: ultima > 1 ? String(ultima) : undefined })
-  }, [datosActuales, cambiarParams])
+  usePaginaConFilas(lista.datos, irAPagina)
 
   function trasCambio() {
     void recargar()
@@ -155,8 +116,75 @@ export default function ListaSinProxima({ busqueda }: ListaSinProximaProps) {
       total: datos?.conteos[clave],
     })),
   ]
-  const desde = datos ? (datos.pagina - 1) * datos.porPagina + 1 : 0
-  const hasta = datos ? desde + datos.items.length - 1 : 0
+
+  const columnas: ColumnaTabla<SinProximaConsultaDto>[] = [
+    {
+      clave: 'paciente',
+      encabezado: 'Paciente',
+      rol: 'titulo',
+      celda: (paciente) => (
+        <div className="flex flex-col gap-0.5">
+          <Link
+            to={RUTAS_MEDICA.paciente(paciente.usuariaId)}
+            className="font-medium text-texto hover:text-brand-700 hover:underline hover:underline-offset-2"
+          >
+            {paciente.usuariaNombreCompleto}
+          </Link>
+          <CodigoAtencion codigo={paciente.codigoAtencion} />
+        </div>
+      ),
+    },
+    {
+      clave: 'que-paso',
+      encabezado: 'Qué pasó',
+      celda: (paciente) => (
+        <div className="flex flex-col gap-0.5">
+          <span>
+            {paciente.motivo === 'NO_ASISTIO' ? 'Faltó' : 'Última consulta'}{' '}
+            <span className="whitespace-nowrap">{haceCuanto(paciente.desde)}</span>
+          </span>
+          <span className="text-xs tabular-nums text-texto-suave">{fechaBreve(paciente.desde)}</span>
+        </div>
+      ),
+    },
+    {
+      clave: 'atendio',
+      encabezado: 'Atendió',
+      className: 'text-texto-cuerpo',
+      celda: (paciente) => paciente.atendioPor ?? <span className="text-texto-sutil">—</span>,
+    },
+    {
+      clave: 'acciones',
+      encabezado: 'Acciones',
+      rol: 'acciones',
+      celda: (paciente) => (
+        // "Dar de alta" cierra la atención: va en el menú "⋯", lejos de "Agendar" (plan V2.5).
+        <div className="flex items-center justify-end gap-1.5 max-md:justify-start">
+          <button
+            type="button"
+            onClick={() => setProgramar(paciente)}
+            aria-label={`Agendar consulta a ${paciente.usuariaNombreCompleto}`}
+            className={BOTON_AGENDAR}
+          >
+            Agendar
+          </button>
+          {paciente.grupo === 'SIN_VENIR' && (
+            <MenuAcciones
+              etiqueta={`Más acciones para ${paciente.usuariaNombreCompleto}`}
+              opciones={[
+                {
+                  clave: 'alta',
+                  etiqueta: 'Dar de alta',
+                  detalle: 'Cierra la atención. La historia se conserva.',
+                  onElegir: () => setAlta(paciente),
+                },
+              ]}
+            />
+          )}
+        </div>
+      ),
+    },
+  ]
 
   return (
     <div className="flex flex-col gap-3">
@@ -186,105 +214,30 @@ export default function ListaSinProxima({ busqueda }: ListaSinProximaProps) {
       {lista.error ? (
         <ErrorVista mensaje={lista.error.mensaje} sinPermiso={lista.error.sinPermiso} recurso="las pacientes" onReintentar={() => void recargar()} />
       ) : (
-        <section className={`${CLASE_TARJETA} overflow-x-auto`}>
-          {!datos ? (
-            <div className="p-4">
-              <Esqueleto filas={5} />
-            </div>
-          ) : datos.items.length === 0 ? (
-            <p className="p-9 text-center text-sm text-texto-suave">
-              {busqueda
-                ? 'Ninguna paciente sin próxima consulta coincide con la búsqueda.'
-                : grupo
-                  ? 'Ninguna paciente en este grupo.'
-                  : 'Todas las pacientes en atención tienen fecha.'}
-            </p>
-          ) : (
-            <table className="w-full min-w-[760px] text-left text-[13.5px] text-texto">
-              <caption className="sr-only">Pacientes sin próxima consulta</caption>
-              <thead className="bg-superficie text-[11px] font-semibold uppercase tracking-[.06em] text-texto-suave">
-                <tr>
-                  <th scope="col" className="px-4 py-2.5 font-semibold">
-                    Paciente
-                  </th>
-                  <th scope="col" className="px-4 py-2.5 font-semibold">
-                    Qué pasó
-                  </th>
-                  <th scope="col" className="px-4 py-2.5 font-semibold">
-                    Atendió
-                  </th>
-                  <th scope="col" className="px-4 py-2.5 font-semibold">
-                    <span className="sr-only">Acciones</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {datos.items.map((paciente) => (
-                  <tr key={paciente.atencionId} className="border-t border-borde-suave align-middle">
-                    <td className="px-4 py-2.5">
-                      <div className="flex flex-col gap-0.5">
-                        <Link
-                          to={RUTAS_MEDICA.paciente(paciente.usuariaId)}
-                          className="font-medium text-texto hover:text-brand-700 hover:underline hover:underline-offset-2"
-                        >
-                          {paciente.usuariaNombreCompleto}
-                        </Link>
-                        <CodigoAtencion codigo={paciente.codigoAtencion} />
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex flex-col gap-0.5">
-                        <span>
-                          {paciente.motivo === 'NO_ASISTIO' ? 'Faltó' : 'Última consulta'}{' '}
-                          <span className="whitespace-nowrap">{haceCuanto(paciente.desde)}</span>
-                        </span>
-                        <span className="text-xs tabular-nums text-texto-suave">{fechaBreve(paciente.desde)}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-texto-cuerpo">{paciente.atendioPor ?? <span className="text-texto-sutil">—</span>}</td>
-                    <td className="px-4 py-2.5">
-                      <div className="flex justify-end gap-1.5">
-                        <button
-                          type="button"
-                          onClick={() => setProgramar(paciente)}
-                          aria-label={`Agendar consulta a ${paciente.usuariaNombreCompleto}`}
-                          className={BOTON_AGENDAR}
-                        >
-                          Agendar
-                        </button>
-                        {paciente.grupo === 'SIN_VENIR' && (
-                          <button
-                            type="button"
-                            onClick={() => setAlta(paciente)}
-                            aria-label={`Dar de alta a ${paciente.usuariaNombreCompleto}`}
-                            className={BOTON_ALTA}
-                          >
-                            Dar de alta
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </section>
-      )}
-
-      {datos && datos.total > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-[12.5px] tabular-nums text-texto-suave">
-            {datos.items.length > 0 ? `Mostrando ${desde}–${hasta} de ${datos.total}` : `${datos.total} en total`}
-          </p>
-          <Paginacion
-            etiqueta="Páginas de pacientes sin próxima consulta"
-            pagina={datos.pagina}
-            pageSize={datos.porPagina}
-            total={Math.min(datos.total, PAGINA_MAX_SIN_PROXIMA_MEDICA * PAGINA_SIN_PROXIMA_MEDICA)}
-            onCambiar={(nueva) => cambiarParams({ pagina: nueva > 1 ? String(nueva) : undefined })}
-          />
-        </div>
+        <TablaDatos
+          titulo="Pacientes sin próxima consulta"
+          columnas={columnas}
+          filas={datos?.items ?? null}
+          claveFila={(paciente) => paciente.atencionId}
+          vacio={
+            busqueda
+              ? 'Ninguna paciente sin próxima consulta coincide con la búsqueda.'
+              : grupo
+                ? 'Ninguna paciente en este grupo.'
+                : 'Todas las pacientes en atención tienen fecha.'
+          }
+          paginacion={
+            datos
+              ? {
+                  pagina: datos.pagina,
+                  porPagina: datos.porPagina,
+                  total: datos.total,
+                  totalNavegable: Math.min(datos.total, PAGINA_MAX_SIN_PROXIMA_MEDICA * PAGINA_SIN_PROXIMA_MEDICA),
+                  onCambiar: irAPagina,
+                }
+              : undefined
+          }
+        />
       )}
 
       {programar && (
