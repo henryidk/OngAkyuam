@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { diasDesdeGT, type CasoPorAgendarDto } from '@akyuam/shared'
+import { AyudaTermino } from '../../../components/Glosario'
 import TarjetaPendiente from '../../../components/TarjetaPendiente'
 import MenuAcciones from '../../../components/ui/MenuAcciones'
 import { RUTAS_PSICOLOGIA } from '../rutas'
@@ -75,6 +76,7 @@ export default function PendientesAgenda({
     <div className="grid min-w-0 items-start gap-4 md:grid-cols-2 xl:grid-cols-1">
       <TarjetaPendiente
         titulo="Casos tomados por agendar"
+        ayuda={<AyudaTermino area="psicologia" termino="por-agendar" />}
         total={errorPorAgendar ? null : total}
         contexto={maxEspera > 0 ? `El que más espera: ${maxEspera === 1 ? '1 día' : `${maxEspera} días`}` : 'Tomados hoy'}
         textoVacio="Todos tienen primera cita"
@@ -102,7 +104,12 @@ export default function PendientesAgenda({
                     </span>
                   </div>
                   <div className="flex flex-none items-center gap-1">
-                    <button type="button" onClick={() => onAgendar(caso)} className={BOTON_AGENDAR}>
+                    <button
+                      type="button"
+                      onClick={() => onAgendar(caso)}
+                      aria-label={`Agendar cita a ${caso.usuariaNombreCompleto}`}
+                      className={BOTON_AGENDAR}
+                    >
                       Agendar
                     </button>
                     <MenuAcciones
@@ -143,6 +150,7 @@ export default function PendientesAgenda({
 
       <TarjetaPendiente
         titulo="Sin próxima cita"
+        ayuda={<AyudaTermino area="psicologia" termino="sin-proxima" />}
         total={sinProxima}
         contexto="Procesos activos sin siguiente fecha"
         textoVacio="Todos tienen fecha"

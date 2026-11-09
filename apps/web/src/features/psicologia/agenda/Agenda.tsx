@@ -190,6 +190,8 @@ export default function Agenda() {
           <Button
             tamano="md"
             className="font-semibold"
+            aria-keyshortcuts="N"
+            data-atajo="nuevo"
             disabled={!procesos.datos}
             onClick={() =>
               procesos.datos &&

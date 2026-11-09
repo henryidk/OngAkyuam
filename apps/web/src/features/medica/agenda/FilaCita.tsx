@@ -74,28 +74,45 @@ export default function FilaCita({ cita, onReprogramar, onNoAsistio, onIrA }: Fi
         {registrable && (
           <Link
             to={RUTAS_MEDICA.nuevaConsulta({ cita: cita.id, origen: 'agenda' })}
+            aria-label={`Registrar consulta de ${cita.usuariaNombreCompleto}`}
             className={enCurso || sinRegistrar ? BOTON_PRIMARIO : BOTON_SECUNDARIO}
           >
             Registrar consulta
           </Link>
         )}
         {sinRegistrar && (
-          <button type="button" onClick={onNoAsistio} className={BOTON_NEUTRO}>
+          <button
+            type="button"
+            onClick={onNoAsistio}
+            aria-label={`Marcar que ${cita.usuariaNombreCompleto} no asistió`}
+            className={BOTON_NEUTRO}
+          >
             No asistió
           </button>
         )}
         {cita.puedeReprogramar && (
-          <button type="button" onClick={onReprogramar} className={BOTON_BORDE_MORADO}>
+          <button
+            type="button"
+            onClick={onReprogramar}
+            aria-label={`Reprogramar la cita de ${cita.usuariaNombreCompleto}`}
+            className={BOTON_BORDE_MORADO}
+          >
             Reprogramar
           </button>
         )}
         {cita.reprogramadaA && (
-          <button type="button" onClick={() => onIrA(cita.reprogramadaA!.fecha)} className={`${ENLACE} font-medium text-brand-600`}>
+          <button
+            type="button"
+            onClick={() => onIrA(cita.reprogramadaA!.fecha)}
+            aria-label={`Ver nueva cita de ${cita.usuariaNombreCompleto}`}
+            className={`${ENLACE} font-medium text-brand-600`}
+          >
             Ver nueva cita
           </button>
         )}
         <Link
           to={atendida ? RUTAS_MEDICA.historia(cita.usuariaId, undefined, cita.consultaId!) : RUTAS_MEDICA.paciente(cita.usuariaId)}
+          aria-label={`${atendida ? 'Ver consulta' : 'Ver ficha'} de ${cita.usuariaNombreCompleto}`}
           className={`${ENLACE} text-texto-suave hover:text-texto`}
         >
           {atendida ? 'Ver consulta' : 'Ver ficha'}

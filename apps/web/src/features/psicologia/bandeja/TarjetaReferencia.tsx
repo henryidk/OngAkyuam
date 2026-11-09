@@ -76,10 +76,20 @@ export default function TarjetaReferencia({
         {/* A la derecha del encabezado; en pantallas angostas (< 768 px) baja a su propia fila. */}
         <div className="flex shrink-0 justify-end gap-2 border-t border-gray-100 pt-3 md:border-t-0 md:pt-0">
           {/* Igual que en Jurídico: abre la ficha de la usuaria, donde también se puede tomar el caso. */}
-          <Link to={RUTAS_PSICOLOGIA.usuaria(referencia.usuariaId)} className={CLASE_ENLACE_BOTON}>
+          <Link
+            to={RUTAS_PSICOLOGIA.usuaria(referencia.usuariaId)}
+            aria-label={`Ver expediente de ${referencia.usuariaNombreCompleto}`}
+            className={CLASE_ENLACE_BOTON}
+          >
             Ver expediente
           </Link>
-          <Button tamano="md" cargando={tomando} disabled={deshabilitada} onClick={onTomar}>
+          <Button
+            tamano="md"
+            cargando={tomando}
+            disabled={deshabilitada}
+            onClick={onTomar}
+            aria-label={`Tomar el caso de ${referencia.usuariaNombreCompleto}`}
+          >
             Tomar caso
           </Button>
           {/* Lo habitual es tomar y agendar; atender sin cita es la excepción, por eso va aparte. */}

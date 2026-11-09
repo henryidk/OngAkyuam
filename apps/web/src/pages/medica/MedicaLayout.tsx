@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BarChart3, CalendarDays, Inbox, Stethoscope, Users } from 'lucide-react'
 import type { ContadoresMedicaDto } from '@akyuam/shared'
+import AtajosTeclado from '../../components/AtajosTeclado'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { obtenerContadores } from '../../features/medica/api/medica.api'
 import type { ContextoMedica } from '../../features/medica/compartido/contexto'
@@ -52,17 +53,18 @@ export default function MedicaLayout() {
     [contadores, recargarContadores, versionNovedades],
   )
 
+  // Una sola insignia, como Psicología (plan V3.2): lo que solo la médica puede resolver, sus
+  // consultas por registrar. Varias a la vez compiten y ninguna se lee; lo pendiente de agendar
+  // (incluidas las referidas del Área de atención) ya lo muestran las tarjetas de la Agenda.
   return (
-    <SidebarLayout
-      items={ITEMS_NAV}
-      subtitulo="Medicina"
-      contadores={
-        contadores
-          ? // Sin insignia en Agenda: sus tarjetas ya muestran lo pendiente al entrar (plan §5.2.6).
-            { [RUTAS_MEDICA.atencion()]: contadores.areaAtencion, '/medica/consultas': contadores.consultasPorAtender }
-          : undefined
-      }
-      outletContext={contexto}
-    />
+    <>
+      <SidebarLayout
+        items={ITEMS_NAV}
+        subtitulo="Medicina"
+        contadores={contadores ? { [RUTAS_MEDICA.consultas()]: contadores.consultasPorAtender } : undefined}
+        outletContext={contexto}
+      />
+      <AtajosTeclado />
+    </>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { CitaAgendaMedicaDto } from '@akyuam/shared'
+import { AyudaTermino } from '../../../../components/Glosario'
 import { ErrorVista, Esqueleto } from '../../../../components/ui/EstadosVista'
 import { useToast } from '../../../../components/ui/Toast'
 import { useRecurso } from '../../../../lib/useRecurso'
@@ -11,11 +12,25 @@ import { useRecargaNovedades } from '../../compartido/useRecargaNovedades'
 import { RUTAS_MEDICA } from '../../rutas'
 import FilaPorAtender from './FilaPorAtender'
 
-function Seccion({ titulo, descripcion, children }: { titulo: string; descripcion: string; children: ReactNode }) {
+function Seccion({
+  titulo,
+  descripcion,
+  ayuda,
+  children,
+}: {
+  titulo: string
+  descripcion: string
+  /** Ícono (i) del glosario junto al título. */
+  ayuda?: ReactNode
+  children: ReactNode
+}) {
   return (
     <section className="flex flex-col gap-2">
       <div>
-        <h2 className="text-sm font-semibold text-texto">{titulo}</h2>
+        <div className="flex items-center gap-1">
+          <h2 className="text-sm font-semibold text-texto">{titulo}</h2>
+          {ayuda}
+        </div>
         <p className="text-[12.5px] text-texto-suave">{descripcion}</p>
       </div>
       <div className="overflow-hidden rounded-lg border border-borde bg-white">{children}</div>
@@ -66,6 +81,7 @@ export default function ListaPorAtender() {
       {datos.atrasadas.length > 0 && (
         <Seccion
           titulo={`Atrasadas · ${datos.totalAtrasadas}`}
+          ayuda={<AyudaTermino area="medica" termino="atrasada" />}
           descripcion="De otros días, de la más reciente a la más antigua: ya pasaron y no tienen consulta ni inasistencia."
         >
           {datos.atrasadas.map((cita) => (

@@ -84,7 +84,11 @@ export default function FilaCita({ cita, principal, enCurso, onNoAsistio, onRepr
 
       <div className="ml-auto flex flex-wrap items-center justify-end gap-x-1.5 gap-y-1">
         {registrable && (
-          <Link to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id, 'agenda')} className={claseRegistrar}>
+          <Link
+            to={RUTAS_PSICOLOGIA.registrarConsulta(cita.id, 'agenda')}
+            aria-label={`Registrar sesión de ${cita.persona.nombreCompleto}`}
+            className={claseRegistrar}
+          >
             Registrar sesión
           </Link>
         )}
@@ -99,7 +103,12 @@ export default function FilaCita({ cita, principal, enCurso, onNoAsistio, onRepr
           </button>
         )}
         {programada ? (
-          <button type="button" onClick={() => onReprogramar(cita)} className={`${ENLACE_FILA} text-gray-500 hover:text-gray-800`}>
+          <button
+            type="button"
+            onClick={() => onReprogramar(cita)}
+            aria-label={`Reprogramar la cita de ${cita.persona.nombreCompleto}`}
+            className={`${ENLACE_FILA} text-gray-500 hover:text-gray-800`}
+          >
             Reprogramar
           </button>
         ) : (
@@ -109,6 +118,7 @@ export default function FilaCita({ cita, principal, enCurso, onNoAsistio, onRepr
                 ? RUTAS_PSICOLOGIA.proceso(cita.procesoId, cita.id)
                 : RUTAS_PSICOLOGIA.detalleCita(cita.id)
             }
+            aria-label={`${cita.estado === 'ATENDIDA' ? 'Ver sesión' : 'Ver detalle'} de ${cita.persona.nombreCompleto}`}
             className={`${ENLACE_FILA} text-gray-500 hover:text-gray-800`}
           >
             {cita.estado === 'ATENDIDA' ? 'Ver sesión' : 'Ver detalle'}
@@ -116,6 +126,7 @@ export default function FilaCita({ cita, principal, enCurso, onNoAsistio, onRepr
         )}
         <Link
           to={RUTAS_PSICOLOGIA.proceso(cita.procesoId)}
+          aria-label={`Ver proceso de ${cita.persona.nombreCompleto}`}
           className={`${ENLACE_FILA} font-medium text-brand-700 hover:text-brand-900`}
         >
           Ver proceso

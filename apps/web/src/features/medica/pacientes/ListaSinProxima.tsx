@@ -15,6 +15,7 @@ import {
   type SinProximaConsultaDto,
   textoCodigo,
 } from '@akyuam/shared'
+import { AyudaTermino } from '../../../components/Glosario'
 import { ErrorVista } from '../../../components/ui/EstadosVista'
 import MenuAcciones from '../../../components/ui/MenuAcciones'
 import TablaDatos, { type ColumnaTabla } from '../../../components/ui/TablaDatos'
@@ -208,7 +209,10 @@ export default function ListaSinProxima({ busqueda }: ListaSinProximaProps) {
             )
           })}
         </div>
-        <p className="max-w-[75ch] text-[12.5px] text-texto-suave">{AYUDA_GRUPO[grupo ?? 'TODAS']}</p>
+        <div className="flex items-start gap-1">
+          <p className="max-w-[75ch] text-[12.5px] text-texto-suave">{AYUDA_GRUPO[grupo ?? 'TODAS']}</p>
+          <AyudaTermino area="medica" termino={grupo === 'SIN_VENIR' ? 'sin-venir' : 'sin-proxima'} />
+        </div>
       </div>
 
       {lista.error ? (

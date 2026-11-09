@@ -15,13 +15,27 @@ export default function ControlSemana({ rango, onSemanaAnterior, onSemanaSiguien
   return (
     <div className="flex items-center gap-3">
       <div className="flex divide-x divide-gray-200 overflow-hidden rounded-md border border-gray-300 bg-white">
-        <button type="button" aria-label="Semana anterior" onClick={onSemanaAnterior} className={CLASE_FLECHA}>
+        <button
+          type="button"
+          aria-label="Semana anterior"
+          aria-keyshortcuts="ArrowLeft"
+          data-atajo="anterior"
+          onClick={onSemanaAnterior}
+          className={CLASE_FLECHA}
+        >
           <ChevronLeft className="h-4 w-4" />
         </button>
         <button type="button" onClick={onHoy} className={`${CLASE_FLECHA} px-3 text-[13px] font-medium`}>
           Hoy
         </button>
-        <button type="button" aria-label="Semana siguiente" onClick={onSemanaSiguiente} className={CLASE_FLECHA}>
+        <button
+          type="button"
+          aria-label="Semana siguiente"
+          aria-keyshortcuts="ArrowRight"
+          data-atajo="siguiente"
+          onClick={onSemanaSiguiente}
+          className={CLASE_FLECHA}
+        >
           <ChevronRight className="h-4 w-4" />
         </button>
       </div>

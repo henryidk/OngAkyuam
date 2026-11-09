@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { CircleCheck } from 'lucide-react'
 import { MAX_SESIONES_POR_REGISTRAR_PSICOLOGIA, hoyGT, type SesionPorRegistrarDto } from '@akyuam/shared'
+import { AyudaTermino } from '../../../../components/Glosario'
 import EmptyState from '../../../../components/ui/EmptyState'
 import { ErrorVista, Esqueleto } from '../../../../components/ui/EstadosVista'
 import { useToast } from '../../../../components/ui/Toast'
@@ -11,10 +12,13 @@ import { useContextoPsicologia } from '../../compartido/contexto'
 import FilaPorRegistrar from './FilaPorRegistrar'
 import { agruparPorRegistrar } from './grupos'
 
-function Grupo({ titulo, children }: { titulo: string; children: ReactNode }) {
+function Grupo({ titulo, ayuda, children }: { titulo: string; ayuda?: ReactNode; children: ReactNode }) {
   return (
     <section aria-label={titulo} className="space-y-2">
-      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">{titulo}</h2>
+      <div className="flex items-center gap-1">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">{titulo}</h2>
+        {ayuda}
+      </div>
       <ul className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">{children}</ul>
     </section>
   )
@@ -79,7 +83,7 @@ export default function ListaPorRegistrar() {
         </Grupo>
       )}
       {grupos.atrasadas.length > 0 && (
-        <Grupo titulo={`Atrasadas · ${grupos.atrasadas.length}`}>
+        <Grupo titulo={`Atrasadas · ${grupos.atrasadas.length}`} ayuda={<AyudaTermino area="psicologia" termino="atrasada" />}>
           {grupos.atrasadas.map(({ sesion, dias }) => (
             <FilaPorRegistrar key={sesion.citaId} sesion={sesion} atraso={dias} onNoAsistio={setAMarcar} />
           ))}

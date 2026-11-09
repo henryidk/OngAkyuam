@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BarChart3, CalendarDays, ClipboardCheck, HeartHandshake, Inbox, Users } from 'lucide-react'
 import type { ResumenProcesosPsicologia } from '@akyuam/shared'
+import AtajosTeclado from '../../components/AtajosTeclado'
 import SidebarLayout, { type ItemNav } from '../../components/SidebarLayout'
 import { obtenerResumenProcesos } from '../../features/psicologia/api/psicologia.api'
 import type { ContextoPsicologia } from '../../features/psicologia/compartido/contexto'
@@ -64,11 +65,14 @@ export default function PsicologiaLayout() {
   const contadores = resumen && { [RUTAS_PSICOLOGIA.consultas()]: resumen.sesionesPorRegistrar }
 
   return (
-    <SidebarLayout
-      items={ITEMS_NAV}
-      subtitulo="Psicológica"
-      contadores={contadores ?? undefined}
-      outletContext={contexto}
-    />
+    <>
+      <SidebarLayout
+        items={ITEMS_NAV}
+        subtitulo="Psicológica"
+        contadores={contadores ?? undefined}
+        outletContext={contexto}
+      />
+      <AtajosTeclado />
+    </>
   )
 }

@@ -142,6 +142,8 @@ export default function Agenda() {
               <button
                 type="button"
                 aria-label="Semana anterior"
+                aria-keyshortcuts="ArrowLeft"
+                data-atajo="anterior"
                 onClick={() => irADia(sumarDiasGT(dia, -7))}
                 className="px-3 py-2 text-texto hover:bg-superficie"
               >
@@ -157,6 +159,8 @@ export default function Agenda() {
               <button
                 type="button"
                 aria-label="Semana siguiente"
+                aria-keyshortcuts="ArrowRight"
+                data-atajo="siguiente"
                 onClick={() => irADia(sumarDiasGT(dia, 7))}
                 className="px-3 py-2 text-texto hover:bg-superficie"
               >
@@ -167,6 +171,8 @@ export default function Agenda() {
             <button
               type="button"
               onClick={() => setProgramar({})}
+              aria-keyshortcuts="N"
+              data-atajo="nuevo"
               className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-md bg-brand-600 px-4 py-2.5 text-[13.5px] font-semibold text-white hover:bg-brand-700"
             >
               <Plus className="h-4 w-4" aria-hidden="true" />

@@ -18,6 +18,8 @@ interface TarjetaPendienteProps {
   enlace?: { to: string; accion: string; etiqueta: string }
   /** Ámbar solo cuando alguien espera más de lo razonable; lo demás, neutro (plan §5.2.5). */
   urgente?: boolean
+  /** Ícono (i) del glosario (`AyudaTermino`). Va junto al encabezado, fuera del enlace. */
+  ayuda?: ReactNode
   /** Lista corta debajo del encabezado (p. ej. las primeras 5 por agendar). */
   children?: ReactNode
 }
@@ -33,10 +35,11 @@ export default function TarjetaPendiente({
   textoVacio,
   enlace,
   urgente = false,
+  ayuda,
   children,
 }: TarjetaPendienteProps) {
   const ambar = urgente && (total ?? 0) > 0
-  const claseEncabezado = `flex items-start justify-between gap-3 px-4 py-3 ${ambar ? 'bg-estado-pendiente-fondo' : ''}`
+  const claseEncabezado = `flex min-w-0 flex-1 items-start justify-between gap-3 px-4 py-3 ${ambar ? 'bg-estado-pendiente-fondo' : ''}`
   const contenido = (
     <>
       <div className="flex min-w-0 flex-col gap-0.5">
@@ -73,17 +76,20 @@ export default function TarjetaPendiente({
     <section
       className={`overflow-hidden rounded-lg border bg-white ${ambar ? 'border-estado-pendiente-borde' : 'border-borde'}`}
     >
-      {enlace ? (
-        <Link
-          to={enlace.to}
-          aria-label={total === null ? titulo : enlace.etiqueta}
-          className={`group ${claseEncabezado} ${ambar ? 'hover:bg-estado-pendiente-insignia' : 'hover:bg-superficie'}`}
-        >
-          {contenido}
-        </Link>
-      ) : (
-        <div className={claseEncabezado}>{contenido}</div>
-      )}
+      <div className={`flex items-stretch ${ambar ? 'bg-estado-pendiente-fondo' : ''}`}>
+        {enlace ? (
+          <Link
+            to={enlace.to}
+            aria-label={total === null ? titulo : enlace.etiqueta}
+            className={`group ${claseEncabezado} ${ambar ? 'hover:bg-estado-pendiente-insignia' : 'hover:bg-superficie'}`}
+          >
+            {contenido}
+          </Link>
+        ) : (
+          <div className={claseEncabezado}>{contenido}</div>
+        )}
+        {ayuda && <div className="flex-none py-2.5 pr-2">{ayuda}</div>}
+      </div>
       {children}
     </section>
   )

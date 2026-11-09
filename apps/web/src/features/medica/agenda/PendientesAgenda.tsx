@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { diasDesdeGT, type ReferenciaBandejaMedicaDto } from '@akyuam/shared'
+import { AyudaTermino } from '../../../components/Glosario'
 import TarjetaPendiente from '../../../components/TarjetaPendiente'
 import { RUTAS_MEDICA } from '../rutas'
 
@@ -46,6 +47,7 @@ export default function PendientesAgenda({ porAgendar, totalPorAgendar, sinProxi
     <aside aria-label="Pendientes de agendar" className="grid min-w-0 items-start gap-4 md:grid-cols-2 xl:sticky xl:top-6 xl:grid-cols-1">
       <TarjetaPendiente
         titulo="Por agendar"
+        ayuda={<AyudaTermino area="medica" termino="por-agendar" />}
         total={total}
         contexto={maxEspera > 0 ? `La que más espera: ${maxEspera === 1 ? '1 día' : `${maxEspera} días`}` : 'Referidas hoy'}
         textoVacio="Todas tienen primera consulta"
@@ -67,7 +69,12 @@ export default function PendientesAgenda({ porAgendar, totalPorAgendar, sinProxi
                   <span className="truncate text-[13px] font-medium text-texto">{referencia.usuariaNombreCompleto}</span>
                   <span className="text-xs text-texto-suave">{textoEspera(diasDesdeGT(referencia.referidoEn))}</span>
                 </div>
-                <button type="button" onClick={() => onAgendar(referencia.referidoId)} className={BOTON_AGENDAR}>
+                <button
+                  type="button"
+                  onClick={() => onAgendar(referencia.referidoId)}
+                  aria-label={`Agendar consulta a ${referencia.usuariaNombreCompleto}`}
+                  className={BOTON_AGENDAR}
+                >
                   Agendar
                 </button>
               </li>
@@ -88,6 +95,7 @@ export default function PendientesAgenda({ porAgendar, totalPorAgendar, sinProxi
 
       <TarjetaPendiente
         titulo="Sin próxima consulta"
+        ayuda={<AyudaTermino area="medica" termino="sin-proxima" />}
         total={sinProxima}
         contexto="En atención y sin cita programada"
         textoVacio="Todas tienen fecha"
