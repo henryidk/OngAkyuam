@@ -65,14 +65,12 @@ export default function PsicologiaLayout() {
   const contadores = resumen && { [RUTAS_PSICOLOGIA.consultas()]: resumen.sesionesPorRegistrar }
 
   return (
-    <>
-      <SidebarLayout
-        items={ITEMS_NAV}
-        subtitulo="Psicológica"
-        contadores={contadores ?? undefined}
-        outletContext={contexto}
-      />
-      <AtajosTeclado />
-    </>
+    <SidebarLayout
+      items={ITEMS_NAV}
+      subtitulo="Psicológica"
+      contadores={contadores ?? undefined}
+      outletContext={contexto}
+      pieMenu={<AtajosTeclado />}
+    />
   )
 }

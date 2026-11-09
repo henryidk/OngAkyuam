@@ -88,4 +88,13 @@ describe('AtajosTeclado', () => {
     await usuario.keyboard('n')
     expect(onNuevo).not.toHaveBeenCalled()
   })
+
+  it('el aviso del menú abre la misma lista de atajos', async () => {
+    const usuario = userEvent.setup()
+    render(<Pantalla onNuevo={vi.fn()} onAnterior={vi.fn()} />)
+
+    await usuario.click(screen.getByRole('button', { name: 'Atajos de teclado' }))
+
+    expect(screen.getByRole('dialog', { name: 'Atajos de teclado' })).toBeInTheDocument()
+  })
 })
