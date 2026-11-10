@@ -41,7 +41,9 @@ import { horaDeInstante } from '../../compartido/horas'
 import { RUTAS_PSICOLOGIA, type OrigenSesion } from '../../rutas'
 import ElegirClinica from '../ElegirClinica'
 import HojaEvolucion from '../HojaEvolucion'
+import ModalProximaCita, { type ProximaCitaElegida } from '../ModalProximaCita'
 import QueSigue, { type EstadoQueSigue } from '../QueSigue'
+import AvisoSinProxima from '../../../../components/agenda/AvisoSinProxima'
 import { VOLVER_A, rutaDeOrigen } from './origen'
 
 /** El contador del enfoque solo aparece cuando falta poco para el límite. */
@@ -111,7 +113,8 @@ export default function FormularioRegistro({ contexto, origen }: FormularioRegis
 
   const [documento, setDocumento] = useState<DocumentoCitaDto | null>(contexto.documento)
   const [siguiente, setSiguiente] = useState<EstadoQueSigue>(() => ({
-    tipo: 'NINGUNA',
+    // Nada marcado: qué sigue se decide siempre de forma explícita.
+    tipo: null,
     fecha: '',
     // La próxima cita suele ser a la misma hora que esta.
     hora: horaDeInstante(contexto.cita?.fechaHora ?? new Date().toISOString()),
@@ -120,8 +123,14 @@ export default function FormularioRegistro({ contexto, origen }: FormularioRegis
   const [conflicto, setConflicto] = useState<CitaResumen[] | null>(null)
   const [errorEnvio, setErrorEnvio] = useState<string | null>(null)
   const [guardandoFinal, setGuardandoFinal] = useState(false)
-  // Registro adelantado esperando que la psicóloga confirme.
-  const [porConfirmarAdelanto, setPorConfirmarAdelanto] = useState<RegistroConsultaInput | null>(null)
+  // Registro esperando que la psicóloga confirme un aviso: que vino antes o que no queda próxima cita.
+  const [porConfirmar, setPorConfirmar] = useState<{ datos: RegistroConsultaInput; aviso: 'ADELANTO' | 'SIN_PROXIMA' } | null>(
+    null,
+  )
+  // Se intentó registrar sin elegir qué sigue (o sin día y hora de la próxima cita).
+  const [errorQueSigue, setErrorQueSigue] = useState<string | null>(null)
+  const [modalProxima, setModalProxima] = useState(false)
+  const primeraOpcionQueSigue = useRef<HTMLInputElement>(null)
 
   const {
     register,
@@ -180,9 +189,42 @@ export default function FormularioRegistro({ contexto, origen }: FormularioRegis
     // El aviso de traslape era sobre la fecha anterior: al tocar un dato deja de valer.
     setConflicto(null)
     setErrorEnvio(null)
+    setErrorQueSigue(null)
+  }
+
+  function elegirQueSigue(tipo: SiguientePasoSesion['tipo']) {
+    cambiarSiguiente({ ...siguiente, tipo })
+    // Programar sin día ni hora todavía: se eligen en el modal, sin pasar por otro botón.
+    if (tipo === 'PROGRAMAR' && !siguiente.fecha) setModalProxima(true)
+  }
+
+  function usarProxima(elegida: ProximaCitaElegida) {
+    setModalProxima(false)
+    const misma =
+      elegida.fecha === siguiente.fecha && elegida.hora === siguiente.hora && elegida.duracion === siguiente.duracion
+    // Dejar la misma hora después del aviso de traslape es decidir que va así: el aviso se queda
+    // y el siguiente registro la confirma.
+    if (misma && conflicto) return
+    cambiarSiguiente({ ...siguiente, ...elegida })
+  }
+
+  /** Lo que falta en "¿Qué sigue?" para poder registrar, o null si está completo. */
+  function faltaEnQueSigue(): string | null {
+    if (yaRegistrada) return null
+    if (siguiente.tipo === null) return 'Elige qué sigue después de esta sesión.'
+    if (siguiente.tipo === 'PROGRAMAR' && (!siguiente.fecha || !siguiente.hora)) {
+      return 'Falta elegir el día y la hora de la próxima cita.'
+    }
+    return null
+  }
+
+  function irAQueSigue() {
+    primeraOpcionQueSigue.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    primeraOpcionQueSigue.current?.focus({ preventScroll: true })
   }
 
   function armarSiguiente(elegido: EstadoQueSigue): SiguientePasoSesion | null {
+    if (elegido.tipo === null) return null
     if (elegido.tipo !== 'PROGRAMAR') return { tipo: elegido.tipo }
     if (!elegido.fecha || !elegido.hora) return null
     return {
@@ -193,9 +235,24 @@ export default function FormularioRegistro({ contexto, origen }: FormularioRegis
     }
   }
 
+  /** Revisa qué sigue y pide los avisos que falten antes de guardar, uno a la vez. */
+  function revisar(datos: RegistroConsultaInput, confirmados: { adelanto?: boolean; sinProxima?: boolean } = {}) {
+    const falta = faltaEnQueSigue()
+    if (falta) {
+      setErrorQueSigue(falta)
+      irAQueSigue()
+      return
+    }
+    if (adelantada && !confirmados.adelanto) return setPorConfirmar({ datos, aviso: 'ADELANTO' })
+    // Sin próxima cita es fácil de pasar por alto y deja a la persona sin fecha: se pide confirmarlo.
+    if (!yaRegistrada && siguiente.tipo === 'NINGUNA' && !confirmados.sinProxima) {
+      return setPorConfirmar({ datos, aviso: 'SIN_PROXIMA' })
+    }
+    void finalizar(datos)
+  }
+
   function alEnviar(datos: RegistroConsultaInput) {
-    if (adelantada) setPorConfirmarAdelanto(datos)
-    else void finalizar(datos)
+    revisar(datos)
   }
 
   async function finalizar(datos: RegistroConsultaInput) {
@@ -203,10 +260,7 @@ export default function FormularioRegistro({ contexto, origen }: FormularioRegis
     let paso: SiguientePasoSesion | undefined
     if (!yaRegistrada) {
       const armado = armarSiguiente(siguiente)
-      if (!armado) {
-        setErrorEnvio('Indica la fecha y la hora de la próxima cita, o elige "Decidir después".')
-        return
-      }
+      if (!armado) return
       paso = armado
     }
 
@@ -232,6 +286,8 @@ export default function FormularioRegistro({ contexto, origen }: FormularioRegis
       const cuerpo = axios.isAxiosError(err) ? (err.response?.data as Partial<ConflictoTraslapeCita> | undefined) : undefined
       if (cuerpo?.codigo === CODIGO_TRASLAPE_CITA && cuerpo.detalle) {
         setConflicto(cuerpo.detalle.citas)
+        // Se vuelve a abrir el selector con el aviso: ahí se cambia la hora o se deja a propósito.
+        setModalProxima(true)
       } else {
         setErrorEnvio(extraerMensajeError(err))
       }
@@ -284,7 +340,11 @@ export default function FormularioRegistro({ contexto, origen }: FormularioRegis
       )}
 
       <form
-        onSubmit={(evento) => void handleSubmit(alEnviar)(evento)}
+        onSubmit={(evento) => {
+          // Se marca aunque falten otros campos, para que se vea todo lo pendiente de una vez.
+          setErrorQueSigue(faltaEnQueSigue())
+          void handleSubmit(alEnviar)(evento)
+        }}
         className="space-y-6 rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
       >
         {cita === null && (
@@ -400,7 +460,15 @@ export default function FormularioRegistro({ contexto, origen }: FormularioRegis
         )}
 
         {!yaRegistrada && (
-          <QueSigue valor={siguiente} onCambio={cambiarSiguiente} diaBase={diaBase} conflicto={conflicto} />
+          <QueSigue
+            valor={siguiente}
+            onElegir={elegirQueSigue}
+            onElegirHorario={() => setModalProxima(true)}
+            conflicto={conflicto}
+            error={errorQueSigue}
+            deshabilitado={guardandoFinal}
+            primeraOpcion={primeraOpcionQueSigue}
+          />
         )}
 
         {errorEnvio && (
@@ -438,18 +506,47 @@ export default function FormularioRegistro({ contexto, origen }: FormularioRegis
         onCancelar={aviso.quedarse}
       />
 
+      <AvisoSinProxima
+        abierto={porConfirmar?.aviso === 'SIN_PROXIMA'}
+        que="cita"
+        persona={contexto.persona}
+        dondeQueda={`"Sin próxima cita"`}
+        guardarLabel="Registrar sin próxima cita"
+        onVolver={() => setPorConfirmar(null)}
+        onProgramar={() => {
+          setPorConfirmar(null)
+          elegirQueSigue('PROGRAMAR')
+          irAQueSigue()
+        }}
+        onGuardar={() => {
+          const pendiente = porConfirmar
+          setPorConfirmar(null)
+          if (pendiente) revisar(pendiente.datos, { adelanto: true, sinProxima: true })
+        }}
+      />
+
+      {modalProxima && (
+        <ModalProximaCita
+          inicial={{ fecha: siguiente.fecha, hora: siguiente.hora, duracion: siguiente.duracion }}
+          diaBase={diaBase}
+          conflicto={conflicto}
+          onCerrar={() => setModalProxima(false)}
+          onElegir={usarProxima}
+        />
+      )}
+
       <ConfirmModal
-        abierto={porConfirmarAdelanto !== null}
+        abierto={porConfirmar?.aviso === 'ADELANTO'}
         titulo="Todavía no es la fecha de esta cita"
         descripcion={`La cita estaba agendada para ${cita ? formatInstanteGT(cita.fechaHora) : ''}. ¿Deseas registrar la consulta ahora? Quedará con la fecha y la hora de hoy.`}
         confirmarLabel="Registrar ahora"
         cancelarLabel="Volver"
         onConfirmar={() => {
-          const datos = porConfirmarAdelanto
-          setPorConfirmarAdelanto(null)
-          if (datos) void finalizar(datos)
+          const pendiente = porConfirmar
+          setPorConfirmar(null)
+          if (pendiente) revisar(pendiente.datos, { adelanto: true })
         }}
-        onCancelar={() => setPorConfirmarAdelanto(null)}
+        onCancelar={() => setPorConfirmar(null)}
       />
     </div>
   )

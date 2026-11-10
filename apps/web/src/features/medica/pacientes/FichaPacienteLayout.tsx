@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react'
-import { Outlet, useParams } from 'react-router-dom'
+import { useCallback, useEffect, useState } from 'react'
+import { Outlet, useParams, useSearchParams } from 'react-router-dom'
 import {
   ETIQUETAS_FILTRO_PACIENTES_MEDICA,
   ETIQUETAS_GRUPO_ETNICO,
@@ -44,7 +44,16 @@ export default function FichaPacienteLayout() {
 
   const [programar, setProgramar] = useState<ProgramablesMedicaQuery | null>(null)
   const [inasistencia, setInasistencia] = useState<CitaMedicaBreveDto | null>(null)
-  const [alta, setAlta] = useState(false)
+  // Quien eligió "Dar de alta" al registrar una consulta llega con el alta ya abierta.
+  const [params, setParams] = useSearchParams()
+  const [alta, setAlta] = useState(() => params.get('alta') === '1')
+  useEffect(() => {
+    if (!params.has('alta')) return
+    // Se quita de la URL para que recargar la página no vuelva a abrirla.
+    const sinAlta = new URLSearchParams(params)
+    sinAlta.delete('alta')
+    setParams(sinAlta, { replace: true })
+  }, [params, setParams])
 
   useTituloPagina({
     titulo: ficha?.nombreCompleto ?? 'Paciente',

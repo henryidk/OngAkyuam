@@ -15,6 +15,7 @@ import {
   type RegistrarConsultaMedicaInput,
 } from '@akyuam/shared'
 import { useTituloPagina, TituloPrincipal } from '../../../components/TituloPagina'
+import AvisoSinProxima from '../../../components/agenda/AvisoSinProxima'
 import ConfirmModal from '../../../components/ui/ConfirmModal'
 import { ErrorVista, Esqueleto } from '../../../components/ui/EstadosVista'
 import { useToast } from '../../../components/ui/Toast'
@@ -33,6 +34,7 @@ import { RUTAS_MEDICA, type OrigenConsulta } from '../rutas'
 import ModalProximaConsulta, { type ProximaElegida } from './ModalProximaConsulta'
 import PanelPersona from './PanelPersona'
 import PestanasPersonas, { type EstadoPestana } from './PestanasPersonas'
+import QueSigueConsulta, { type TipoQueSigueConsulta } from './QueSigueConsulta'
 import {
   SIN_DOCUMENTOS,
   estadoInicial,
@@ -109,7 +111,11 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
   // Una sola para toda la visita; el informe de atención cuenta aparte las telefónicas.
   const [modalidad, setModalidad] = useState<ModalidadConsultaMedica>('PRESENCIAL')
   const duracion = (cita?.duracionMin ?? DURACION_CITA_MEDICA_MIN) as DuracionCitaMedica
+  // Qué sigue después de la visita: se elige siempre, nada viene marcado.
+  const [queSigue, setQueSigue] = useState<TipoQueSigueConsulta | null>(null)
   const [proxima, setProxima] = useState<ProximaElegida | null>(null)
+  const [avisoSinProxima, setAvisoSinProxima] = useState(false)
+  const primeraOpcionQueSigue = useRef<HTMLButtonElement>(null)
   const [modalProxima, setModalProxima] = useState(false)
   // Por qué se reabrió el modal: la hora elegida se ocupó mientras se llenaba la consulta.
   const [avisoProxima, setAvisoProxima] = useState<string | null>(null)
@@ -122,7 +128,7 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
 
   const documentosDe = (clave: string) => documentos[clave] ?? SIN_DOCUMENTOS
   const cambiosDe = (clave: string) => tieneCambios(estados[clave], inicio[clave], documentosDe(clave).cantidad)
-  const hayCambios = proxima !== null || modalidad !== 'PRESENCIAL' || montadas.some((persona) => cambiosDe(clavePersona(persona)))
+  const hayCambios = queSigue !== null || modalidad !== 'PRESENCIAL' || montadas.some((persona) => cambiosDe(clavePersona(persona)))
 
   const estadosPestana: Record<string, EstadoPestana> = {}
   for (const persona of personas) {
@@ -177,7 +183,33 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
         ? RUTAS_MEDICA.agenda(cita?.fecha)
         : RUTAS_MEDICA.consultas()
 
-  async function guardar() {
+  function elegirQueSigue(tipo: TipoQueSigueConsulta) {
+    setQueSigue(tipo)
+    setErrorGuardar(null)
+    // Programar sin día ni hora todavía: se abre de una vez para elegirlos.
+    if (tipo === 'PROGRAMAR' && !proxima) abrirProxima()
+  }
+
+  function abrirProxima() {
+    setAvisoProxima(null)
+    setModalProxima(true)
+  }
+
+  function irAQueSigue() {
+    primeraOpcionQueSigue.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    primeraOpcionQueSigue.current?.focus({ preventScroll: true })
+  }
+
+  const errorQueSigue = !intentado
+    ? null
+    : queSigue === null
+      ? 'Elige qué sigue después de esta consulta.'
+      : queSigue === 'PROGRAMAR' && !proxima
+        ? 'Elige el día y la hora de la próxima consulta.'
+        : null
+
+  /** `sinProximaConfirmada`: ya se aceptó el aviso de guardar sin próxima consulta. */
+  async function guardar(sinProximaConfirmada = false) {
     setIntentado(true)
     setErrorGuardar(null)
     for (const persona of personas) {
@@ -193,6 +225,14 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
       }
     }
 
+    if (queSigue === null || (queSigue === 'PROGRAMAR' && !proxima)) {
+      irAQueSigue()
+      return setErrorGuardar(queSigue === null ? 'Falta elegir qué sigue.' : 'Falta el día y la hora de la próxima consulta.')
+    }
+    // Sin próxima es fácil de pasar por alto y deja a la paciente sin fecha: se pide confirmarlo.
+    if (queSigue === 'SIN_PROXIMA' && !sinProximaConfirmada) return setAvisoSinProxima(true)
+
+    const programada = queSigue === 'PROGRAMAR' ? proxima : null
     const datos: RegistrarConsultaMedicaInput = {
       citaId: cita?.id ?? null,
       atencionId: contexto.atencionId,
@@ -212,8 +252,8 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
           loteDocumentos: docs?.hayListos ? docs.lote : null,
         }
       }),
-      proxima: proxima
-        ? { inicio: `${proxima.fecha}T${proxima.hora}`, duracionMin: proxima.duracionMin, personas: proxima.personas }
+      proxima: programada
+        ? { inicio: `${programada.fecha}T${programada.hora}`, duracionMin: programada.duracionMin, personas: programada.personas }
         : null,
     }
     const validacion = registrarConsultaMedicaSchema.safeParse(datos)
@@ -231,7 +271,11 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
       }${agendada ? ` · próxima: ${fechaCorta(agendada.fecha)}, ${agendada.hora}` : ''}`
       const rutaHistoria = RUTAS_MEDICA.historia(registrada.usuariaId, undefined, registrada.consultas[0]?.consultaId)
       recargarContadores()
-      if (origen !== 'ficha') {
+      if (queSigue === 'ALTA') {
+        // El alta nunca es implícita: se abre en la ficha para que la médica la confirme.
+        navigate(RUTAS_MEDICA.paciente(registrada.usuariaId, { alta: true }))
+        mostrar(mensaje, 'success')
+      } else if (origen !== 'ficha') {
         navigate(rutaVolver)
         mostrar(mensaje, 'success', { etiqueta: 'Ver en historia clínica', onClick: () => navigate(rutaHistoria) })
       } else {
@@ -328,53 +372,45 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
         )
       })}
 
-      <section className={`${CLASE_TARJETA} flex flex-wrap items-center justify-between gap-3 px-5 py-[18px]`}>
-        <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-texto">Próxima consulta</h2>
-          {proxima ? (
-            <>
-              <p className="mt-0.5 text-[13.5px] text-texto">
-                <span className="font-semibold text-brand-700">{fechaLarga(proxima.fecha)}</span>
-                {' · '}
-                <span className="font-mono">
-                  {proxima.hora} – {horaMasMinutos(proxima.hora, proxima.duracionMin)}
-                </span>
-                {` (${ETIQUETAS_DURACION_CITA_MEDICA[proxima.duracionMin]})`}
-              </p>
-              <p className="text-[12.5px] text-texto-suave">
-                {contexto.personas.length > 1 &&
-                  `Para ${listaPrimerosNombres(atendidasProxima.map((persona) => persona.nombreCompleto))} · `}
-                Se agrega a la agenda al guardar.
-              </p>
-            </>
-          ) : (
-            <p className="mt-0.5 text-[13px] text-texto-suave">Sin próxima consulta por ahora.</p>
-          )}
-        </div>
-        <div className="flex flex-none items-center gap-2">
-          {proxima && (
+      <QueSigueConsulta
+        valor={queSigue}
+        onElegir={elegirQueSigue}
+        error={errorQueSigue}
+        deshabilitado={guardando}
+        primeraOpcion={primeraOpcionQueSigue}
+      >
+        {queSigue === 'PROGRAMAR' && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-borde bg-superficie px-4 py-3">
+            {proxima ? (
+              <div className="min-w-0">
+                <p className="text-[13.5px] text-texto">
+                  <span className="font-semibold text-brand-700">{fechaLarga(proxima.fecha)}</span>
+                  {' · '}
+                  <span className="tabular-nums">
+                    {proxima.hora} – {horaMasMinutos(proxima.hora, proxima.duracionMin)}
+                  </span>
+                  {` (${ETIQUETAS_DURACION_CITA_MEDICA[proxima.duracionMin]})`}
+                </p>
+                {contexto.personas.length > 1 && (
+                  <p className="text-[12.5px] text-texto-suave">
+                    Para {listaPrimerosNombres(atendidasProxima.map((persona) => persona.nombreCompleto))}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-[13px] text-texto-suave">Falta elegir el día y la hora.</p>
+            )}
             <button
               type="button"
               disabled={guardando}
-              onClick={() => setProxima(null)}
-              className="rounded-md px-3 py-2 text-[13px] font-medium text-texto-suave hover:bg-superficie disabled:opacity-60"
+              onClick={abrirProxima}
+              className="flex-none rounded-md border border-borde-fuerte bg-white px-3.5 py-2 text-[13px] font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-60"
             >
-              Quitar
+              {proxima ? 'Cambiar' : 'Elegir día y hora'}
             </button>
-          )}
-          <button
-            type="button"
-            disabled={guardando}
-            onClick={() => {
-              setAvisoProxima(null)
-              setModalProxima(true)
-            }}
-            className="rounded-md border border-borde-fuerte bg-white px-3.5 py-2 text-[13px] font-semibold text-brand-600 hover:bg-brand-50 disabled:opacity-60"
-          >
-            {proxima ? 'Cambiar' : 'Programar próxima'}
-          </button>
-        </div>
-      </section>
+          </div>
+        )}
+      </QueSigueConsulta>
 
       {modalProxima && (
         <ModalProximaConsulta
@@ -417,6 +453,24 @@ function FormularioConsulta({ contexto, origen }: { contexto: ContextoConsultaMe
           {guardando ? 'Guardando…' : varias ? `Guardar ${personas.length} consultas` : 'Guardar consulta'}
         </button>
       </div>
+
+      <AvisoSinProxima
+        abierto={avisoSinProxima}
+        que="consulta"
+        persona={listaPrimerosNombres(personas.map((persona) => persona.nombreCompleto))}
+        varias={varias}
+        dondeQueda={`Pacientes › "Sin próxima consulta"`}
+        guardarLabel="Guardar sin próxima consulta"
+        onVolver={() => setAvisoSinProxima(false)}
+        onProgramar={() => {
+          setAvisoSinProxima(false)
+          elegirQueSigue('PROGRAMAR')
+        }}
+        onGuardar={() => {
+          setAvisoSinProxima(false)
+          void guardar(true)
+        }}
+      />
 
       <ConfirmModal
         abierto={salidaPendiente !== null}

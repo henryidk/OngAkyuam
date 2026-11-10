@@ -35,7 +35,9 @@ export const RUTAS_MEDICA = {
   pacientes: (estado?: FiltroPacientesMedica) => conQuery('/medica/pacientes', { estado }),
   /** Pacientes › "Sin próxima consulta", opcionalmente en un grupo. */
   sinProxima: (grupo?: GrupoSinProximaMedica) => conQuery('/medica/pacientes', { vista: VISTA_SIN_PROXIMA, grupo }),
-  paciente: (usuariaId: string) => `/medica/pacientes/${usuariaId}`,
+  /** `alta`: abre la ficha con el alta ya abierta (se eligió "Dar de alta" al registrar). */
+  paciente: (usuariaId: string, opciones: { alta?: boolean } = {}) =>
+    conQuery(`/medica/pacientes/${usuariaId}`, { alta: opciones.alta ? '1' : undefined }),
   /** `persona`: "usuaria" o el id de un hijo/a. `consulta`: la que se abre desplegada. */
   historia: (usuariaId: string, persona?: string, consulta?: string) =>
     conQuery(`/medica/pacientes/${usuariaId}/historia`, { persona, consulta }),

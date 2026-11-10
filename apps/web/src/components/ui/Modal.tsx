@@ -9,6 +9,8 @@ interface ModalProps {
   titulo: string
   descripcion?: string
   Icono?: LucideIcon
+  /** `aviso`: el ícono en ámbar, para una advertencia que pide atención antes de seguir. */
+  tonoIcono?: 'marca' | 'aviso'
   onCerrar: () => void
   children: ReactNode
   /**
@@ -50,6 +52,7 @@ export default function Modal({
   titulo,
   descripcion,
   Icono,
+  tonoIcono = 'marca',
   onCerrar,
   children,
   ancho = 'lg',
@@ -82,7 +85,11 @@ export default function Modal({
       >
         <div className="flex shrink-0 items-start gap-3 border-b border-gray-100 px-6 py-4">
           {Icono && (
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
+            <span
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
+                tonoIcono === 'aviso' ? 'bg-estado-pendiente-insignia text-estado-pendiente-marca' : 'bg-brand-100 text-brand-700'
+              }`}
+            >
               <Icono className="h-5 w-5" />
             </span>
           )}

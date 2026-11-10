@@ -199,7 +199,7 @@ export default function SelectorHorario({
                           aria-pressed={elegida}
                           tabIndex={libres.indexOf(opcion) === horaEnfocable ? 0 : -1}
                           onClick={() => onHora(opcion)}
-                          className={`rounded-md border py-1.5 font-mono text-[12.5px] ${
+                          className={`rounded-md border py-1.5 text-[12.5px] tabular-nums ${
                             elegida
                               ? 'border-brand-600 bg-brand-600 text-white'
                               : 'border-gray-300 bg-white text-gray-900 hover:border-brand-600'
